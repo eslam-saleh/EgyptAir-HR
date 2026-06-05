@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calendar Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="portal.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #101722;
+    --surface: #172234;
+    --surface2: #202d42;
+    --border: rgba(255,255,255,0.07);
+    --border-bright: rgba(255,255,255,0.14);
+    --accent: #d4af37;
+    --accent2: #0078d4;
+    --accent3: #f060c8;
+    --text: #edf4ff;
+    --text-muted: #aab7ca;
+    --text-dim: #7b879a;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  :root[data-theme="light"] {
+    --bg: #f4f7fb;
+    --surface: #ffffff;
+    --surface2: #eef3f8;
+    --border: rgba(21,32,51,0.11);
+    --border-bright: rgba(21,32,51,0.2);
+    --accent: #005daa;
+    --accent2: #0078d4;
+    --accent3: #d4af37;
+    --text: #1a202c;
+    --text-muted: #4a5568;
+    --text-dim: #7b879a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  html[dir="rtl"] body,
+  html[dir="rtl"] button,
+  html[dir="rtl"] input,
+  html[dir="rtl"] select {
+    font-family: Cairo, Inter, sans-serif;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 2rem 1rem 5rem;
+  }
+
+  /* Header */
+  .page-header { margin-bottom: 2rem; }
+  .header-eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+  }
+  .page-header h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    line-height: 1.1;
+    font-weight: 800;
+    color: var(--text);
+  }
+  .page-header p {
+    margin-top: 0.5rem;
+    color: var(--text-muted);
+    font-size: 16px;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-bright);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .tab-btn:hover { color: var(--text); border-color: var(--accent); }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+  }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  /* Form row */
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  @media (max-width: 580px) { .form-row { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .field input, .field select {
+    background: var(--surface2);
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 15px;
+    padding: 12px;
+    outline: none;
+    width: 100%;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+
+  /* Checkbox */
+  .check-row {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; color: var(--text-muted); margin-bottom: 1.25rem; flex-wrap: wrap;
+  }
+  .check-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
+
+  /* Calc button */
+  .calc-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .calc-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* Result card */
+  .result-card {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-top: 1rem;
+  }
+  .result-card.visible { display: block; }
+
+  .result-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+
+  /* Metrics grid */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .metric {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    text-align: center;
+  }
+  .metric-val {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .metric-val.accent { color: var(--accent); }
+  .metric-lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+
+  /* Breakdown table */
+  .breakdown { border-top: 1px solid var(--border); padding-top: 1rem; }
+  .bd-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .bd-lbl { color: var(--text-muted); }
+  .bd-val { font-weight: 700; color: var(--text); }
+
+  /* Big result date */
+  .big-date { font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
+  .big-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 1rem; }
+
+  /* Badge */
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 800;
+    margin-left: 10px;
+    text-transform: uppercase;
+  }
+  .badge-we { background: rgba(212,175,55,0.15); color: var(--accent); }
+  .badge-wd { background: rgba(0,93,170,0.15); color: var(--accent2); }
+
+  .error { color: #ff4d4d; font-size: 14px; margin-top: 10px; display: none; }
+</style>
+</head>
+<body>
+<header class="portal-header">
+  <a class="brand" href="index.html" aria-label="EgyptAir home">
+    <img src="egyptair-logo_.png" alt="EgyptAir logo">
+    <span>
+      <strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong>
+      <small data-en="Arabic / English workspace" data-ar="مساحة عمل عربية / إنجليزية">Arabic / English workspace</small>
+    </span>
+  </a>
+
+  <nav class="portal-nav" aria-label="Main navigation">
+    <a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a>
+    <a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a>
+    <a class="active" href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a>
+    <a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a>
+  </nav>
+
+  <div class="portal-actions" aria-label="Display controls">
+    <button class="segmented-btn active" type="button" data-lang-option="en">EN</button>
+    <button class="segmented-btn" type="button" data-lang-option="ar">AR</button>
+    <button class="theme-btn" type="button" data-theme-toggle data-en="Dark" data-ar="داكن">Dark</button>
+  </div>
+</header>
+
+<div class="page">
+  <div class="page-header">
+    <p class="header-eyebrow" data-en="Time & Date Utility" data-ar="أداة الوقت والتاريخ">Time & Date Utility</p>
+    <h1 data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</h1>
+    <p data-en="Precise tools for date differences, additions, and work-day counts." data-ar="أدوات دقيقة لفروق التواريخ والإضافات وحساب أيام العمل.">Precise tools for date differences, additions, and work-day counts.</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('diff')" data-en="Date Difference" data-ar="فرق التاريخ">Date Difference</button>
+    <button class="tab-btn" onclick="switchTab('add')" data-en="Add / Subtract" data-ar="إضافة / طرح">Add / Subtract</button>
+    <button class="tab-btn" onclick="switchTab('age')" data-en="Age Calculator" data-ar="حساب العمر">Age Calculator</button>
+    <button class="tab-btn" onclick="switchTab('work')" data-en="Work Days" data-ar="أيام العمل">Work Days</button>
+  </div>
+
+  <!-- DIFF -->
+  <div id="panel-diff" class="panel active">
+    <div class="card">
+      <div class="form-row">
+        <div class="field"><label data-en="Start Date" data-ar="تاريخ البدء">Start Date</label><input type="date" id="diff-from" /></div>
+        <div class="field"><label data-en="End Date" data-ar="تاريخ الانتهاء">End Date</label><input type="date" id="diff-to" /></div>
+      </div>
+      <button class="calc-btn" onclick="calcDiff()">
+        <span data-en="Calculate" data-ar="احسب">Calculate</span>
+      </button>
+      <div class="error" id="diff-err"></div>
+    </div>
+    <div class="result-card" id="diff-result">
+      <div class="result-label" data-en="Result" data-ar="النتيجة">Result</div>
+      <div class="metrics" id="diff-metrics"></div>
+      <div class="breakdown" id="diff-breakdown"></div>
+    </div>
+  </div>
+
+  <!-- ADD -->
+  <div id="panel-add" class="panel">
+    <div class="card">
+      <div class="form-row">
+        <div class="field"><label data-en="Start Date" data-ar="تاريخ البدء">Start Date</label><input type="date" id="add-from" /></div>
+        <div class="field"><label data-en="Days" data-ar="الأيام">Days</label><input type="number" id="add-days" value="30" /></div>
+        <div class="field">
+          <label data-en="Operation" data-ar="العملية">Operation</label>
+          <select id="add-dir">
+            <option value="1" data-en="Add" data-ar="إضافة">Add</option>
+            <option value="-1" data-en="Subtract" data-ar="طرح">Subtract</option>
+          </select>
+        </div>
+      </div>
+      <button class="calc-btn" onclick="calcAdd()">
+        <span data-en="Calculate" data-ar="احسب">Calculate</span>
+      </button>
+      <div class="error" id="add-err"></div>
+    </div>
+    <div class="result-card" id="add-result">
+      <div class="result-label" data-en="Result" data-ar="النتيجة">Result</div>
+      <div id="add-output"></div>
+    </div>
+  </div>
+
+  <!-- AGE -->
+  <div id="panel-age" class="panel">
+    <div class="card">
+      <div class="form-row">
+        <div class="field"><label data-en="Date of birth" data-ar="تاريخ الميلاد">Date of birth</label><input type="date" id="age-dob" /></div>
+        <div class="field"><label data-en="As of date" data-ar="حتى تاريخ">As of date</label><input type="date" id="age-asof" /></div>
+      </div>
+      <button class="calc-btn" onclick="calcAge()">
+        <span data-en="Calculate" data-ar="احسب">Calculate</span>
+      </button>
+      <div class="error" id="age-err"></div>
+    </div>
+    <div class="result-card" id="age-result">
+      <div class="result-label" data-en="Result" data-ar="النتيجة">Result</div>
+      <div id="age-output"></div>
+    </div>
+  </div>
+
+  <!-- WORK -->
+  <div id="panel-work" class="panel">
+    <div class="card">
+      <div class="form-row">
+        <div class="field"><label data-en="From date" data-ar="من تاريخ">From date</label><input type="date" id="work-from" /></div>
+        <div class="field"><label data-en="To date" data-ar="إلى تاريخ">To date</label><input type="date" id="work-to" /></div>
+      </div>
+      <div class="check-row">
+        <input type="checkbox" id="work-fri" checked />
+        <label for="work-fri" data-en="Exclude Fridays" data-ar="استبعاد الجمعة">Exclude Fridays</label>
+        <input type="checkbox" id="work-sat" checked />
+        <label for="work-sat" data-en="Exclude Saturdays" data-ar="استبعاد السبت">Exclude Saturdays</label>
+      </div>
+      <button class="calc-btn" onclick="calcWork()">
+        <span data-en="Calculate" data-ar="احسب">Calculate</span>
+      </button>
+      <div class="error" id="work-err"></div>
+    </div>
+    <div class="result-card" id="work-result">
+      <div class="result-label" data-en="Result" data-ar="النتيجة">Result</div>
+      <div id="work-output"></div>
+    </div>
+  </div>
+</div>
+
+<script src="portal.js"></script>
+<script>
+const calcCopy = {
+  en: {
+    days: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+    months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+    labels: {
+      days: 'Days', weeks: 'Weeks', months: 'Months', years: 'Years', weekdays: 'Weekdays', weekends: 'Weekends',
+      breakdown: 'Breakdown', from: 'From', to: 'To', exact: 'Exact duration', weekdaysWeekends: 'Weekdays / Weekends',
+      today: 'Today', weekend: 'Weekend', weekday: 'Weekday', details: 'Details', equivalent: 'Equivalent to',
+      dayOfYear: 'Day of year', weekNumber: 'Week number', quarter: 'Quarter', bday: 'Days to B-day',
+      totalDays: 'Total days', totalWeeks: 'Total weeks', lastBirthday: 'Last birthday', next: 'Next',
+      bornOn: 'Born on', nextBirthday: 'Next birthday', totalMonths: 'Total months lived',
+      workingDays: 'Working days', offDays: 'Off days', workingWeeks: 'Working weeks', offDaysPct: 'Off days %'
+    },
+    errors: {
+      both: 'Please select both dates.',
+      start: 'Please select a start date.',
+      days: 'Please enter a valid number of days.',
+      dob: 'Please enter a date of birth.',
+      futureDob: 'Date of birth cannot be in the future.'
+    }
+  },
+  ar: {
+    days: ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'],
+    months: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
+    labels: {
+      days: 'الأيام', weeks: 'الأسابيع', months: 'الشهور', years: 'السنوات', weekdays: 'أيام العمل', weekends: 'نهاية الأسبوع',
+      breakdown: 'التفاصيل', from: 'من', to: 'إلى', exact: 'المدة الدقيقة', weekdaysWeekends: 'أيام العمل / العطلات',
+      today: 'اليوم', weekend: 'عطلة', weekday: 'يوم عمل', details: 'تفاصيل', equivalent: 'يعادل',
+      dayOfYear: 'يوم السنة', weekNumber: 'رقم الأسبوع', quarter: 'الربع', bday: 'أيام للعيد القادم',
+      totalDays: 'إجمالي الأيام', totalWeeks: 'إجمالي الأسابيع', lastBirthday: 'آخر عيد ميلاد', next: 'التالي',
+      bornOn: 'تاريخ الميلاد', nextBirthday: 'عيد الميلاد القادم', totalMonths: 'إجمالي الشهور',
+      workingDays: 'أيام العمل', offDays: 'أيام العطلة', workingWeeks: 'أسابيع العمل', offDaysPct: 'نسبة العطلات'
+    },
+    errors: {
+      both: 'اختر التاريخين من فضلك.',
+      start: 'اختر تاريخ البداية من فضلك.',
+      days: 'اكتب عدد أيام صحيحا.',
+      dob: 'اكتب تاريخ الميلاد من فضلك.',
+      futureDob: 'لا يمكن أن يكون تاريخ الميلاد في المستقبل.'
+    }
+  }
+};
+
+function lang() { return window.EgyptAirPortal?.language === 'ar' ? 'ar' : 'en'; }
+function copy() { return calcCopy[lang()]; }
+function label(key) { return copy().labels[key]; }
+
+function switchTab(id) {
+  const ids = ['diff','add','age','work'];
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ids[i] === id));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+}
+
+function parseLocal(s) {
+  if (!s) return null;
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+
+function fmt(d) { 
+  const c = copy();
+  return d.getDate() + ' ' + c.months[d.getMonth()] + ' ' + d.getFullYear(); 
+}
+
+function getWeekNum(d) {
+  const j1 = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d - j1) / 86400000 + j1.getDay() + 1) / 7);
+}
+
+function showErr(id, msgKey) {
+  const e = document.getElementById(id);
+  e.textContent = copy().errors[msgKey] || msgKey; 
+  e.style.display = 'block';
+}
+function hideErr(id) { document.getElementById(id).style.display = 'none'; }
+function showResult(id) { document.getElementById(id).classList.add('visible'); }
+function hideResult(id) { document.getElementById(id).classList.remove('visible'); }
+
+function calcDiff() {
+  hideErr('diff-err'); hideResult('diff-result');
+  const from = parseLocal(document.getElementById('diff-from').value);
+  const to   = parseLocal(document.getElementById('diff-to').value);
+  if (!from || !to) return showErr('diff-err', 'both');
+
+  const start = from <= to ? from : to;
+  const end   = from <= to ? to   : from;
+  const sign  = from <= to ? 1 : -1;
+
+  const totalDays = Math.round((end - start) / 86400000);
+  const totalWeeks = (totalDays / 7).toFixed(1);
+  const totalMonths = (totalDays / 30.4375).toFixed(1);
+  const totalYears = (totalDays / 365.25).toFixed(2);
+
+  let wd = 0, we = 0;
+  for (let t = new Date(start); t <= end; t.setDate(t.getDate() + 1)) {
+    (t.getDay() === 5 || t.getDay() === 6) ? we++ : wd++;
+  }
+
+  let yrs = end.getFullYear() - start.getFullYear();
+  let mos = end.getMonth() - start.getMonth();
+  let dys = end.getDate() - start.getDate();
+  if (dys < 0) { mos--; dys += new Date(end.getFullYear(), end.getMonth(), 0).getDate(); }
+  if (mos < 0) { yrs--; mos += 12; }
+
+  const c = copy();
+  document.getElementById('diff-metrics').innerHTML = `
+    <div class="metric"><div class="metric-val accent">${sign < 0 ? '−' : ''}${totalDays}</div><div class="metric-lbl">${c.labels.days}</div></div>
+    <div class="metric"><div class="metric-val">${totalWeeks}</div><div class="metric-lbl">${c.labels.weeks}</div></div>
+    <div class="metric"><div class="metric-val">${totalMonths}</div><div class="metric-lbl">${c.labels.months}</div></div>
+    <div class="metric"><div class="metric-val accent">${wd}</div><div class="metric-lbl">${c.labels.weekdays}</div></div>
+    <div class="metric"><div class="metric-val">${we}</div><div class="metric-lbl">${c.labels.weekends}</div></div>
+    <div class="metric"><div class="metric-val">${totalYears}</div><div class="metric-lbl">${c.labels.years}</div></div>
+  `;
+
+  document.getElementById('diff-breakdown').innerHTML = `
+    <div class="bd-row"><span class="bd-lbl">${c.labels.from}</span><span class="bd-val">${c.days[start.getDay()]}, ${fmt(start)}</span></div>
+    <div class="bd-row"><span class="bd-lbl">${c.labels.to}</span><span class="bd-val">${c.days[end.getDay()]}, ${fmt(end)}</span></div>
+    <div class="bd-row"><span class="bd-lbl">${c.labels.exact}</span><span class="bd-val">${yrs > 0 ? yrs + 'y ' : ''}${mos > 0 ? mos + 'm ' : ''}${dys}d</span></div>
+  `;
+  showResult('diff-result');
+}
+
+function calcAdd() {
+  hideErr('add-err'); hideResult('add-result');
+  const from = parseLocal(document.getElementById('add-from').value);
+  const days = parseInt(document.getElementById('add-days').value);
+  const dir  = parseInt(document.getElementById('add-dir').value);
+  if (!from) return showErr('add-err', 'start');
+  if (isNaN(days) || days < 0) return showErr('add-err', 'days');
+
+  const result = new Date(from);
+  result.setDate(result.getDate() + dir * days);
+
+  const c = copy();
+  const isWE = result.getDay() === 5 || result.getDay() === 6;
+  const badge = isWE ? `<span class="badge badge-we">${c.labels.weekend}</span>` : `<span class="badge badge-wd">${c.labels.weekday}</span>`;
+  
+  document.getElementById('add-output').innerHTML = `
+    <div class="big-date">${c.days[result.getDay()]}, ${fmt(result)} ${badge}</div>
+    <div class="big-sub">${dir > 0 ? '+' : '−'}${days} ${c.labels.days} ${c.labels.from} ${fmt(from)}</div>
+    <div class="breakdown">
+      <div class="bd-row"><span class="bd-lbl">${c.labels.weekNumber}</span><span class="bd-val">W${getWeekNum(result)}</span></div>
+      <div class="bd-row"><span class="bd-lbl">${c.labels.quarter}</span><span class="bd-val">Q${Math.ceil((result.getMonth() + 1) / 3)} ${result.getFullYear()}</span></div>
+    </div>
+  `;
+  showResult('add-result');
+}
+
+function calcAge() {
+  hideErr('age-err'); hideResult('age-result');
+  const dob  = parseLocal(document.getElementById('age-dob').value);
+  let asof   = parseLocal(document.getElementById('age-asof').value);
+  if (!dob) return showErr('age-err', 'dob');
+  if (!asof) { asof = new Date(); asof.setHours(0,0,0,0); }
+  if (dob > asof) return showErr('age-err', 'futureDob');
+
+  let yrs = asof.getFullYear() - dob.getFullYear();
+  let mos = asof.getMonth() - dob.getMonth();
+  let dys = asof.getDate() - dob.getDate();
+  if (dys < 0) { mos--; dys += new Date(asof.getFullYear(), asof.getMonth(), 0).getDate(); }
+  if (mos < 0) { yrs--; mos += 12; }
+
+  const totalDays = Math.round((asof - dob) / 86400000);
+  const c = copy();
+  document.getElementById('age-output').innerHTML = `
+    <div class="metrics">
+      <div class="metric"><div class="metric-val accent">${yrs}</div><div class="metric-lbl">${c.labels.years}</div></div>
+      <div class="metric"><div class="metric-val">${mos}</div><div class="metric-lbl">${c.labels.months}</div></div>
+      <div class="metric"><div class="metric-val">${dys}</div><div class="metric-lbl">${c.labels.days}</div></div>
+    </div>
+    <div class="breakdown">
+      <div class="bd-row"><span class="bd-lbl">${c.labels.bornOn}</span><span class="bd-val">${c.days[dob.getDay()]}, ${fmt(dob)}</span></div>
+      <div class="bd-row"><span class="bd-lbl">${c.labels.totalMonths}</span><span class="bd-val">${yrs * 12 + mos}</span></div>
+      <div class="bd-row"><span class="bd-lbl">${c.labels.totalDays}</span><span class="bd-val">${totalDays.toLocaleString()}</span></div>
+    </div>
+  `;
+  showResult('age-result');
+}
+
+function calcWork() {
+  hideErr('work-err'); hideResult('work-result');
+  const from  = parseLocal(document.getElementById('work-from').value);
+  const to    = parseLocal(document.getElementById('work-to').value);
+  const exFri = document.getElementById('work-fri').checked;
+  const exSat = document.getElementById('work-sat').checked;
+  if (!from || !to) return showErr('work-err', 'both');
+
+  const start = from <= to ? from : to;
+  const end   = from <= to ? to   : from;
+  let wd = 0, off = 0;
+
+  for (let t = new Date(start); t <= end; t.setDate(t.getDate() + 1)) {
+    const d = t.getDay();
+    if ((d === 5 && exFri) || (d === 6 && exSat)) off++;
+    else wd++;
+  }
+
+  const c = copy();
+  document.getElementById('work-output').innerHTML = `
+    <div class="metrics">
+      <div class="metric"><div class="metric-val accent">${wd}</div><div class="metric-lbl">${c.labels.workingDays}</div></div>
+      <div class="metric"><div class="metric-val">${off}</div><div class="metric-lbl">${c.labels.offDays}</div></div>
+    </div>
+    <div class="breakdown">
+      <div class="bd-row"><span class="bd-lbl">${c.labels.from}</span><span class="bd-val">${fmt(start)}</span></div>
+      <div class="bd-row"><span class="bd-lbl">${c.labels.to}</span><span class="bd-val">${fmt(end)}</span></div>
+    </div>
+  `;
+  showResult('work-result');
+}
+
+window.addEventListener('portal-language-change', () => {
+  // Re-run current active calculation if results are visible
+  const activePanel = document.querySelector('.panel.active');
+  if (activePanel) {
+    const btn = activePanel.querySelector('.calc-btn');
+    if (btn && activePanel.querySelector('.result-card.visible')) btn.click();
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Holiday Planner</title>
+    <link rel="stylesheet" href="portal.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="portal-header">
+        <a class="brand" href="index.html" aria-label="EgyptAir home">
+            <img src="egyptair-logo_.png" alt="EgyptAir logo">
+            <span>
+                <strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong>
+                <small data-en="Arabic / English workspace" data-ar="مساحة عمل عربية / إنجليزية">Arabic / English workspace</small>
+            </span>
+        </a>
+
+        <nav class="portal-nav" aria-label="Main navigation">
+            <a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a>
+            <a class="active" href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a>
+            <a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a>
+            <a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a>
+        </nav>
+
+        <div class="portal-actions" aria-label="Display controls">
+            <button class="segmented-btn active" type="button" data-lang-option="en">EN</button>
+            <button class="segmented-btn" type="button" data-lang-option="ar">AR</button>
+            <button class="theme-btn" type="button" data-theme-toggle data-en="Dark" data-ar="داكن">Dark</button>
+        </div>
+    </header>
+
+    <div class="container app-page">
+        <header class="page-header">
+            <div class="header-copy">
+                <p class="eyebrow" data-en="Egypt full-year planner" data-ar="مخطط السنة الكاملة لمصر">Egypt full-year planner</p>
+                <h1 data-en="Employee Holiday Planner" data-ar="مخطط إجازات الموظفين">Employee Holiday Planner</h1>
+                <p class="intro" data-en="Choose personal leave days from January 1 to December 31 of the current year." data-ar="اختر أيام الإجازة الشخصية من 1 يناير إلى 31 ديسمبر من العام الحالي.">Choose personal leave days from January 1 to December 31 of the current year.</p>
+            </div>
+        </header>
+
+        <section class="controls-panel" aria-label="Holiday controls">
+            <div class="balance-card">
+                <label for="balanceSelect" data-en="Annual holiday balance" data-ar="رصيد الإجازات السنوي">Annual holiday balance</label>
+                <div class="balance-row">
+                    <select id="balanceSelect" aria-label="Annual holiday balance"></select>
+                    <input id="balanceInput" type="number" min="0" max="365" step="1" value="14" aria-label="Custom annual holiday balance">
+                </div>
+                <p class="hint" data-en="Pick from the list or type a custom number." data-ar="اختر من القائمة أو اكتب رقماً مخصصاً.">Pick from the list or type a custom number.</p>
+            </div>
+
+            <div class="stat-card">
+                <span data-en="Days selected" data-ar="الأيام المختارة">Days selected</span>
+                <strong id="calculatorValue">0</strong>
+            </div>
+
+            <div class="stat-card">
+                <span data-en="Remaining balance" data-ar="الرصيد المتبقي">Remaining balance</span>
+                <strong id="currentBalance">14</strong>
+            </div>
+
+            <button id="resetBtn" class="btn-secondary" type="button" data-en="Reset selection" data-ar="إعادة تعيين">Reset selection</button>
+        </section>
+
+        <section class="legend" aria-label="Calendar legend">
+            <div class="legend-item">
+                <span class="legend-color regular"></span>
+                <span data-en="Regular day" data-ar="يوم عادي">Regular day</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color official-holiday"></span>
+                <span data-en="Official holiday" data-ar="عطلة رسمية">Official holiday</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color personal-holiday"></span>
+                <span data-en="Personal holiday" data-ar="إجازة شخصية">Personal holiday</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color weekend"></span>
+                <span data-en="Weekend" data-ar="عطلة نهاية الأسبوع">Weekend</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color today"></span>
+                <span data-en="Today" data-ar="اليوم">Today</span>
+            </div>
+        </section>
+
+        <main class="calendar-container" id="calendarContainer" aria-live="polite"></main>
+
+        <section class="summary-panel">
+            <label for="summaryText" data-en="Employee leave summary" data-ar="ملخص إجازات الموظف">Employee leave summary</label>
+            <textarea id="summaryText" readonly rows="8"></textarea>
+        </section>
+    </div>
+
+    <script src="portal.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
