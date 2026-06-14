@@ -51,7 +51,10 @@ const translations = {
       julyRevolution: 'July 23 Revolution Day',
       prophetBirthday: "Prophet Muhammad's Birthday",
       armedForces: 'Armed Forces Day',
-      armedForcesObserved: 'Day off for Armed Forces Day'
+      armedForcesObserved: 'Day off for Armed Forces Day',
+      sinaiLiberationObserved: 'Day off for Sinai Liberation Day',
+      julyRevolutionObserved: 'Day off for July 23 Revolution Day',
+      laborDayObserved: 'Day off for Labor Day'
     }
   },
   ar: {
@@ -98,12 +101,42 @@ const translations = {
       julyRevolution: 'ثورة 23 يوليو',
       prophetBirthday: 'المولد النبوي الشريف',
       armedForces: 'عيد القوات المسلحة',
-      armedForcesObserved: 'بدل إجازة عيد القوات المسلحة'
+      armedForcesObserved: 'بدل إجازة عيد القوات المسلحة',
+      sinaiLiberationObserved: 'بدل إجازة عيد تحرير سيناء',
+      julyRevolutionObserved: 'بدل إجازة ثورة 23 يوليو',
+      laborDayObserved: 'بدل إجازة عيد العمال'
     }
   }
 };
 
 const holidayDefinitions = {
+  2025: [
+    ['2025-01-07', 'copticChristmas'],
+    ['2025-01-25', 'policeDay'],
+    ['2025-01-26', 'policeDayObserved'],
+    ['2025-03-29', 'eidFitrHoliday'],
+    ['2025-03-30', 'eidFitrHoliday'],
+    ['2025-03-31', 'eidFitr'],
+    ['2025-04-01', 'eidFitrHoliday'],
+    ['2025-04-02', 'eidFitrHoliday'],
+    ['2025-04-21', 'shamElNessim'],
+    ['2025-04-24', 'sinaiLiberationObserved'],
+    ['2025-04-25', 'sinaiLiberation'],
+    ['2025-05-01', 'laborDay'],
+    ['2025-06-05', 'arafatDay'],
+    ['2025-06-06', 'eidAdha'],
+    ['2025-06-07', 'eidAdhaHoliday'],
+    ['2025-06-08', 'eidAdhaHoliday'],
+    ['2025-06-09', 'eidAdhaHoliday'],
+    ['2025-06-26', 'hijriNewYear'],
+    ['2025-06-30', 'june30'],
+    ['2025-07-03', 'june30Observed'],
+    ['2025-07-23', 'julyRevolution'],
+    ['2025-07-24', 'julyRevolutionObserved'],
+    ['2025-09-04', 'prophetBirthday'],
+    ['2025-10-06', 'armedForces'],
+    ['2025-10-09', 'armedForcesObserved']
+  ],
   2026: [
     ['2026-01-07', 'copticChristmas'],
     ['2026-01-25', 'policeDay'],
@@ -129,6 +162,29 @@ const holidayDefinitions = {
     ['2026-08-26', 'prophetBirthday'],
     ['2026-10-06', 'armedForces'],
     ['2026-10-08', 'armedForcesObserved']
+  ],
+  2027: [
+    ['2027-01-07', 'copticChristmas'],
+    ['2027-01-25', 'policeDay'],
+    ['2027-01-28', 'policeDayObserved'],
+    ['2027-03-09', 'eidFitr'],
+    ['2027-03-10', 'eidFitrHoliday'],
+    ['2027-03-11', 'eidFitrHoliday'],
+    ['2027-04-25', 'sinaiLiberation'],
+    ['2027-05-01', 'laborDay'],
+    ['2027-05-03', 'shamElNessim'],
+    ['2027-05-15', 'arafatDay'],
+    ['2027-05-16', 'eidAdha'],
+    ['2027-05-17', 'eidAdhaHoliday'],
+    ['2027-05-18', 'eidAdhaHoliday'],
+    ['2027-05-19', 'eidAdhaHoliday'],
+    ['2027-06-18', 'hijriNewYear'],
+    ['2027-06-30', 'june30'],
+    ['2027-07-01', 'june30Observed'],
+    ['2027-07-23', 'julyRevolution'],
+    ['2027-08-27', 'prophetBirthday'],
+    ['2027-10-06', 'armedForces'],
+    ['2027-10-08', 'armedForcesObserved']
   ]
 };
 
@@ -156,7 +212,7 @@ function getHolidayMap() {
 }
 
 function getFixedHolidayDefinitions(year) {
-  return [
+  const fixed = [
     [`${year}-01-07`, 'copticChristmas'],
     [`${year}-01-25`, 'policeDay'],
     [`${year}-04-25`, 'sinaiLiberation'],
@@ -165,6 +221,32 @@ function getFixedHolidayDefinitions(year) {
     [`${year}-07-23`, 'julyRevolution'],
     [`${year}-10-06`, 'armedForces']
   ];
+
+  const observedMap = {
+    policeDay: 'policeDayObserved',
+    sinaiLiberation: 'sinaiLiberationObserved',
+    laborDay: 'laborDayObserved',
+    june30: 'june30Observed',
+    julyRevolution: 'julyRevolutionObserved',
+    armedForces: 'armedForcesObserved'
+  };
+
+  const observed = [];
+  fixed.forEach(([dateStr, key]) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const day = date.getDay();
+    if (day === 5 || day === 6) { // Friday or Saturday
+      const offset = day === 5 ? 2 : 1; // next Sunday
+      const observedDate = new Date(y, m - 1, d + offset);
+      const oy = observedDate.getFullYear();
+      const om = String(observedDate.getMonth() + 1).padStart(2, '0');
+      const od = String(observedDate.getDate()).padStart(2, '0');
+      observed.push([`${oy}-${om}-${od}`, observedMap[key]]);
+    }
+  });
+
+  return [...fixed, ...observed];
 }
 
 function initializeBalanceControls() {

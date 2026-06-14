@@ -54,23 +54,24 @@
 
   <script src="portal.js"></script>
   <script>
-    const DEFAULT_DOCS = [
-      { id: '1stpWDbUnxf65uxVds-44giVZFU_Ji2Ex', name: 'مخالفات_مصر_للطيران.xlsx', size: 23460, savedAt: '2026-06-06T12:26:48.112Z', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-      { id: '1-lAvdEsQoW3fNyC3IQLRFmA6D8ln8wX-', name: 'Rules.pdf', size: 11533972, savedAt: '2026-06-01T19:53:28.078Z', type: 'application/pdf' }
-    ];
+    const FOLDER_ID = '1j6DuR_aAvrqJIkbRebdrIGTdUN86Jm8Q';
+    const API_KEY   = 'AIzaSyAsl5N735tOpOjkcQK4kEritH6noDBH2eA'; 
 
-    const list = document.getElementById('documentList');
+    let allDocs = [];
+
+    const list        = document.getElementById('documentList');
     const searchInput = document.getElementById('documentSearch');
 
     function formatBytes(bytes) {
-      if (bytes < 1024) return `${bytes} B`;
+      bytes = Number(bytes) || 0;
+      if (bytes < 1024)    return `${bytes} B`;
       if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
       return `${(bytes / 1048576).toFixed(1)} MB`;
     }
 
     function renderDocuments(filter = '') {
-      const lang = window.EgyptAirPortal?.language || 'en';
-      const filtered = DEFAULT_DOCS.filter(doc => 
+      const lang     = window.EgyptAirPortal?.language || 'en';
+      const filtered = allDocs.filter(doc =>
         doc.name.toLowerCase().includes(filter.toLowerCase())
       );
 
@@ -79,25 +80,57 @@
         return;
       }
 
-      list.innerHTML = filtered.map((doc) => `
+      list.innerHTML = filtered.map(doc => `
         <article class="document-row">
           <div>
             <p class="document-name">${doc.name}</p>
             <p class="document-meta">${formatBytes(doc.size)} · ${new Date(doc.savedAt).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</p>
           </div>
           <div>
-            <a class="primary-btn" href="https://drive.google.com/uc?export=download&id=${doc.id}" target="_blank" rel="noopener">${lang === 'ar' ? 'تحميل' : 'Download'}</a>
+            <a class="primary-btn" href="https://drive.google.com/uc?export=download&id=${doc.id}" target="_blank" rel="noopener">
+              ${lang === 'ar' ? 'تحميل' : 'Download'}
+            </a>
           </div>
         </article>
       `).join('');
     }
 
-    searchInput.addEventListener('input', (e) => {
-      renderDocuments(e.target.value);
-    });
+    function showLoading() {
+      const lang = window.EgyptAirPortal?.language || 'en';
+      list.innerHTML = `<div class="empty-state">${lang === 'ar' ? 'جارٍ التحميل…' : 'Loading…'}</div>`;
+    }
 
+    function showError(msg) {
+      list.innerHTML = `<div class="empty-state" style="color:var(--danger)">${msg}</div>`;
+    }
+
+    async function fetchDriveFiles() {
+      showLoading();
+      const url = `https://www.googleapis.com/drive/v3/files`
+        + `?q='${FOLDER_ID}'+in+parents+and+trashed=false`
+        + `&fields=files(id,name,size,modifiedTime,mimeType)`
+        + `&orderBy=name`
+        + `&key=${API_KEY}`;
+      try {
+        const res  = await fetch(url);
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        allDocs = (data.files || []).map(f => ({
+          id:      f.id,
+          name:    f.name,
+          size:    f.size || 0,
+          savedAt: f.modifiedTime,
+          type:    f.mimeType
+        }));
+        renderDocuments(searchInput.value);
+      } catch (err) {
+        showError('⚠ ' + err.message);
+      }
+    }
+
+    searchInput.addEventListener('input', e => renderDocuments(e.target.value));
     window.addEventListener('portal-language-change', () => renderDocuments(searchInput.value));
-    document.addEventListener('DOMContentLoaded', () => renderDocuments());
+    document.addEventListener('DOMContentLoaded', fetchDriveFiles);
   </script>
 </body>
 </html>
