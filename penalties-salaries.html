@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الجزاءات والمرتبات – EgyptAir</title>
+  <link rel="stylesheet" href="portal.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── Layout ── */
+    .ps-layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 0.9fr) minmax(0, 1.1fr);
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .ps-layout { grid-template-columns: 1fr; } }
+
+    /* ── Cards ── */
+    .ps-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: 0 8px 24px rgba(18,59,115,0.08);
+    }
+    .ps-card + .ps-card { margin-top: 18px; }
+    .ps-card-title {
+      font-size: 1rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin: 0 0 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ps-card-title .badge {
+      font-size: 0.72rem;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 20px;
+      padding: 2px 9px;
+      font-weight: 700;
+    }
+
+    /* ── Employee type toggle ── */
+    .type-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .type-toggle label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 14px;
+      border-radius: 8px;
+      border: 2px solid var(--line);
+      background: var(--surface-2);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: all .18s;
+      color: var(--muted);
+    }
+    .type-toggle input[type="radio"] { display: none; }
+    .type-toggle input[type="radio"]:checked + label {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* ── Search ── */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    .search-wrap input {
+      width: 100%;
+      padding: 11px 44px 11px 14px;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 1rem;
+      transition: border-color .18s, box-shadow .18s;
+      outline: none;
+    }
+    html[dir="rtl"] .search-wrap input { padding: 11px 14px 11px 44px; }
+    .search-wrap input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0,93,170,0.12);
+    }
+    .search-wrap .s-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+      font-size: 1rem;
+    }
+    html[dir="rtl"] .search-wrap .s-icon { right: auto; left: 14px; }
+
+    /* ── Results list ── */
+    .results-box {
+      max-height: 280px;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .r-item {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--line);
+      transition: background .12s;
+    }
+    .r-item:last-child { border-bottom: none; }
+    .r-item:hover { background: var(--surface-2); }
+    .r-num {
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 3px;
+    }
+    .r-text { font-size: 0.95rem; color: var(--text); line-height: 1.45; }
+    .r-empty {
+      padding: 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* ── Selected violation panel ── */
+    .violation-panel {
+      border: 1.5px solid var(--primary);
+      border-radius: 10px;
+      padding: 16px;
+      background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+      margin-top: 12px;
+    }
+    .vp-row { margin-bottom: 10px; }
+    .vp-row:last-child { margin-bottom: 0; }
+    .vp-label {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 4px;
+    }
+    .vp-value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .vp-penalty-value {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .vp-note {
+      font-size: 0.85rem;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      margin-top: 10px;
+      line-height: 1.55;
+    }
+    .clear-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 10px;
+      padding: 6px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .clear-btn:hover { border-color: var(--danger); color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
+
+    /* ── Occurrence radios ── */
+    .occ-group {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .occ-group label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1.5px solid var(--line);
+      background: var(--surface-2);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--muted);
+      transition: all .15s;
+    }
+    .occ-group input[type="radio"] { accent-color: var(--primary); }
+    .occ-group label:has(input:checked) {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+      color: var(--primary);
+    }
+
+    /* ── Punishment list ── */
+    .plist { list-style: none; margin: 0; padding: 0; }
+    .plist li {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.95rem;
+      color: var(--text);
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .plist li:last-child { border-bottom: none; }
+    .plist li::before { content: "•"; color: var(--primary); font-weight: 800; flex-shrink: 0; }
+
+    /* ── Salary section ── */
+    .sal-field { margin-bottom: 16px; }
+    .sal-label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 6px;
+    }
+    .sal-input-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .sal-input-row input[type="number"] {
+      width: 140px;
+      padding: 9px 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .18s;
+    }
+    .sal-input-row input[type="number"]:focus { border-color: var(--primary); }
+    .sal-input-row input[type="range"] {
+      flex: 1;
+      accent-color: var(--primary);
+    }
+    .sal-currency { font-weight: 800; color: var(--primary); font-size: 0.9rem; }
+
+    /* ── Deductions toggle ── */
+    .ded-toggle {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 12px 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      cursor: pointer;
+      margin-bottom: 14px;
+    }
+    .ded-toggle input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
+    .ded-toggle span { font-weight: 700; font-size: 0.95rem; color: var(--text); }
+
+    .ded-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 480px) { .ded-grid { grid-template-columns: 1fr; } }
+    .ded-field label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
+    .ded-field input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .18s;
+    }
+    .ded-field input:focus { border-color: var(--primary); }
+
+    /* ── Summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 10px;
+    }
+    .sum-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 12px;
+      text-align: center;
+      background: var(--surface-2);
+    }
+    .sum-card.highlight {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+    }
+    .sum-clabel {
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 6px;
+    }
+    .sum-cvalue {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .sum-cvalue.neg { color: var(--danger); }
+    .sum-cvalue.pos { color: var(--success); }
+
+    /* ── Crew penalty manual entry ── */
+    .crew-penalty-wrap {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    /* ── Penalty description tag ── */
+    .penalty-tag {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+      color: var(--primary);
+    }
+
+    /* ── Hint text ── */
+    .hint-text {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ── Warn for non-monetary ── */
+    .warn-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: color-mix(in srgb, #d4af37 15%, var(--surface));
+      color: #8a6b00;
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    :root[data-theme="dark"] .warn-tag { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header class="portal-header">
+    <a class="brand" href="index.html" aria-label="EgyptAir home">
+      <img src="egyptair-logo_.png" alt="EgyptAir logo">
+      <span>
+        <strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">أدوات عمل مصر للطيران</strong>
+        <small data-en="Arabic / English workspace" data-ar="مساحة عمل عربية / إنجليزية">مساحة عمل عربية / إنجليزية</small>
+      </span>
+    </a>
+    <nav class="portal-nav" aria-label="Main navigation">
+      <a href="index.html" data-en="Home" data-ar="الرئيسية">الرئيسية</a>
+      <a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">مخطط الإجازات</a>
+      <a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">حاسبة التقويم</a>
+      <a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">مركز المستندات</a>
+      <a class="active" href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">الجزاءات والمرتبات</a>
+    </nav>
+    <div class="portal-actions">
+      <button class="segmented-btn" type="button" data-lang-option="en">EN</button>
+      <button class="segmented-btn active" type="button" data-lang-option="ar">AR</button>
+      <button class="theme-btn" type="button" data-theme-toggle data-en="Dark" data-ar="داكن">داكن</button>
+    </div>
+  </header>
+
+  <div class="app-page">
+    <header class="page-header" style="margin-bottom:22px;">
+      <div class="header-copy">
+        <p class="eyebrow" data-en="Workplace Discipline & Payroll" data-ar="الانضباط الوظيفي والرواتب">الانضباط الوظيفي والرواتب</p>
+        <h1 data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">الجزاءات والمرتبات</h1>
+        <p class="intro" data-en="Search workplace violations, view applicable penalties, and calculate salary deductions for regular employees and flying crew." data-ar="ابحث عن المخالفات الوظيفية، واعرض الجزاءات المقررة، واحسب الخصومات من المرتب للموظفين العاديين وأفراد أطقم الطيران.">ابحث عن المخالفات الوظيفية، واعرض الجزاءات المقررة، واحسب الخصومات من المرتب للموظفين العاديين وأفراد أطقم الطيران.</p>
+      </div>
+    </header>
+
+    <div class="ps-layout">
+      <!-- LEFT COLUMN: Violation Lookup -->
+      <div>
+        <!-- Employee Type -->
+        <div class="ps-card">
+          <h2 class="ps-card-title">
+            <span>👤</span>
+            <span data-en="Employee Type" data-ar="نوع الموظف">نوع الموظف</span>
+          </h2>
+          <div class="type-toggle">
+            <div>
+              <input type="radio" name="empType" id="typeRegular" value="regular" checked>
+              <label for="typeRegular" data-en="Regular Employee" data-ar="موظف عادي">موظف عادي</label>
+            </div>
+            <div>
+              <input type="radio" name="empType" id="typeCrew" value="crew">
+              <label for="typeCrew" data-en="Flying Crew" data-ar="أطقم الطيران">أطقم الطيران</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Regular: Violation Search -->
+        <div class="ps-card" id="regularSection">
+          <h2 class="ps-card-title">
+            <span>🔎</span>
+            <span data-en="Search Violation" data-ar="البحث عن المخالفة">البحث عن المخالفة</span>
+            <span class="badge" data-en="114 violations" data-ar="١١٤ مخالفة">١١٤ مخالفة</span>
+          </h2>
+          <div class="search-wrap">
+            <span class="s-icon">🔍</span>
+            <input type="text" id="regularSearch" autocomplete="off"
+              data-en-placeholder="Search violations in Arabic or English…"
+              data-ar-placeholder="ابحث عن المخالفة بالعربية أو الإنجليزية…"
+              placeholder="ابحث عن المخالفة بالعربية أو الإنجليزية…">
+          </div>
+          <div class="results-box hidden" id="regularResults"></div>
+
+          <!-- Selected Violation output -->
+          <div id="regularOutput" class="hidden">
+            <div class="violation-panel">
+              <div class="vp-row">
+                <div class="vp-label" data-en="Violation" data-ar="المخالفة">المخالفة</div>
+                <div class="vp-value" id="regViolText"></div>
+              </div>
+              <div class="vp-row" id="occBlock">
+                <div class="vp-label" data-en="Occurrence" data-ar="عدد مرات التكرار">عدد مرات التكرار</div>
+                <div class="occ-group">
+                  <label><input type="radio" name="occ" value="first_time" checked><span data-en="1st time" data-ar="أول مرة">أول مرة</span></label>
+                  <label><input type="radio" name="occ" value="second_time"><span data-en="2nd time" data-ar="ثاني مرة">ثاني مرة</span></label>
+                  <label><input type="radio" name="occ" value="third_time"><span data-en="3rd time" data-ar="ثالث مرة">ثالث مرة</span></label>
+                  <label><input type="radio" name="occ" value="fourth_time"><span data-en="4th time" data-ar="رابع مرة">رابع مرة</span></label>
+                </div>
+              </div>
+              <div class="vp-row">
+                <div class="vp-label" data-en="Penalty" data-ar="الجزاء">الجزاء</div>
+                <div class="vp-penalty-value" id="regPenaltyText"></div>
+                <div id="regPenaltyCalc"></div>
+              </div>
+              <div class="vp-note hidden" id="regNote"></div>
+            </div>
+            <button class="clear-btn" id="clearRegular" type="button">
+              <span>✕</span>
+              <span data-en="Clear selection" data-ar="مسح الاختيار">مسح الاختيار</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Crew: Violation Search -->
+        <div class="ps-card hidden" id="crewSection">
+          <h2 class="ps-card-title">
+            <span>✈️</span>
+            <span data-en="Search Crew Violation" data-ar="البحث عن مخالفة أطقم الطيران">البحث عن مخالفة أطقم الطيران</span>
+            <span class="badge" data-en="42 violations" data-ar="٤٢ مخالفة">٤٢ مخالفة</span>
+          </h2>
+          <div class="search-wrap">
+            <span class="s-icon">🔍</span>
+            <input type="text" id="crewSearch" autocomplete="off"
+              data-en-placeholder="Search crew violations…"
+              data-ar-placeholder="ابحث عن مخالفة أطقم الطيران…"
+              placeholder="ابحث عن مخالفة أطقم الطيران…">
+          </div>
+          <div class="results-box hidden" id="crewResults"></div>
+
+          <div id="crewOutput" class="hidden">
+            <div class="violation-panel">
+              <div class="vp-row">
+                <div class="vp-label" data-en="Violation" data-ar="المخالفة">المخالفة</div>
+                <div class="vp-value" id="crewViolText"></div>
+              </div>
+              <div class="vp-row">
+                <div class="vp-label" data-en="Applicable Penalties" data-ar="الجزاءات الممكنة">الجزاءات الممكنة</div>
+                <ul class="plist" id="crewPunishments"></ul>
+              </div>
+              <div class="crew-penalty-wrap">
+                <div class="vp-label" data-en="Enter Deduction Amount" data-ar="أدخل مبلغ الخصم من المرتب">أدخل مبلغ الخصم من المرتب</div>
+                <div class="sal-input-row" style="margin-top:6px;">
+                  <input type="number" id="crewPenaltyAmt" min="0" max="100000" step="50" value="0" style="width:150px;">
+                  <span class="sal-currency">EGP</span>
+                </div>
+                <p class="hint-text" data-en="Enter the exact penalty amount decided by management." data-ar="أدخل مبلغ الجزاء المحدد من الإدارة.">أدخل مبلغ الجزاء المحدد من الإدارة.</p>
+              </div>
+            </div>
+            <button class="clear-btn" id="clearCrew" type="button">
+              <span>✕</span>
+              <span data-en="Clear selection" data-ar="مسح الاختيار">مسح الاختيار</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: Salary Calculator -->
+      <div>
+        <div class="ps-card">
+          <h2 class="ps-card-title">
+            <span>💰</span>
+            <span data-en="Salary & Deductions" data-ar="المرتب والخصومات">المرتب والخصومات</span>
+          </h2>
+
+          <!-- Base Salary -->
+          <div class="sal-field">
+            <label class="sal-label" for="salNumber" data-en="Base Salary" data-ar="المرتب الأساسي">المرتب الأساسي</label>
+            <div class="sal-input-row">
+              <input type="number" id="salNumber" min="3000" max="90000" step="100" value="15000">
+              <span class="sal-currency">EGP</span>
+              <input type="range" id="salRange" min="3000" max="90000" step="100" value="15000">
+            </div>
+          </div>
+
+          <!-- Annual Raise -->
+          <div class="sal-field">
+            <label class="sal-label" for="raiseAmt" data-en="Annual Raise (علاوة)" data-ar="قيمة العلاوة السنوية">قيمة العلاوة السنوية</label>
+            <div class="sal-input-row">
+              <input type="number" id="raiseAmt" min="0" max="50000" step="50" value="1500">
+              <span class="sal-currency">EGP</span>
+            </div>
+            <p class="hint-text" data-en="Used when the penalty is a fraction or multiple of the annual raise." data-ar="تُستخدم عند احتساب الجزاء كجزء أو مضاعفات من العلاوة السنوية.">تُستخدم عند احتساب الجزاء كجزء أو مضاعفات من العلاوة السنوية.</p>
+          </div>
+
+          <!-- Tax & Insurance toggle -->
+          <label class="ded-toggle" for="enableDed">
+            <input type="checkbox" id="enableDed">
+            <span data-en="Apply Tax & Insurance Deductions" data-ar="تطبيق خصومات الضرائب والتأمين">تطبيق خصومات الضرائب والتأمين</span>
+          </label>
+
+          <div class="ded-grid hidden" id="dedGrid">
+            <div class="ded-field">
+              <label for="taxRate" data-en="Tax Rate (%)" data-ar="نسبة الضريبة (%)">نسبة الضريبة (%)</label>
+              <input type="number" id="taxRate" min="0" max="50" step="0.5" value="10">
+            </div>
+            <div class="ded-field">
+              <label for="insRate" data-en="Insurance Rate (%)" data-ar="نسبة التأمين (%)">نسبة التأمين (%)</label>
+              <input type="number" id="insRate" min="0" max="50" step="0.5" value="5">
+            </div>
+          </div>
+
+          <!-- Summary -->
+          <div class="summary-grid">
+            <div class="sum-card">
+              <div class="sum-clabel" data-en="Base Salary" data-ar="المرتب الأساسي">المرتب الأساسي</div>
+              <div class="sum-cvalue" id="sBase">15,000.00 EGP</div>
+            </div>
+            <div class="sum-card hidden" id="sTaxCard">
+              <div class="sum-clabel" data-en="Tax" data-ar="الضريبة">الضريبة</div>
+              <div class="sum-cvalue neg" id="sTax">-0.00 EGP</div>
+            </div>
+            <div class="sum-card hidden" id="sInsCard">
+              <div class="sum-clabel" data-en="Insurance" data-ar="التأمين">التأمين</div>
+              <div class="sum-cvalue neg" id="sIns">-0.00 EGP</div>
+            </div>
+            <div class="sum-card">
+              <div class="sum-clabel" data-en="Penalty Deduction" data-ar="خصم الجزاء">خصم الجزاء</div>
+              <div class="sum-cvalue neg" id="sPenalty">-0.00 EGP</div>
+            </div>
+            <div class="sum-card highlight">
+              <div class="sum-clabel" data-en="Net Salary" data-ar="المرتب الصافي">المرتب الصافي</div>
+              <div class="sum-cvalue pos" id="sNet">15,000.00 EGP</div>
+            </div>
+          </div>
+
+          <!-- Penalty explanation row -->
+          <div id="penaltyExplain" class="hidden" style="margin-top:12px; padding:10px 14px; border-radius:8px; border:1px solid var(--line); background:var(--surface-2); font-size:0.85rem; color:var(--muted);">
+            <span data-en="Penalty basis: " data-ar="أساس احتساب الجزاء: ">أساس احتساب الجزاء: </span>
+            <strong id="penaltyBasis" style="color:var(--text);"></strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="portal.js"></script>
+  <script src="penalties-data.js"></script>
+  <script>
+  (function() {
+    // ── Data ──────────────────────────────────────────────────────────────────
+    let firstData  = [];
+    let secondData = [];
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let selectedReg  = null;
+    let selectedCrew = null;
+    let salary       = 15000;
+    let penaltyAmt   = 0;
+    let penaltyDesc  = '';
+
+    // ── Boot ──────────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      // Load embedded data
+      if (typeof penaltiesFirstTable  !== 'undefined') firstData  = penaltiesFirstTable;
+      if (typeof penaltiesSecondTable !== 'undefined') secondData = penaltiesSecondTable;
+
+      // Fallback fetch if embedded data missing
+      if (!firstData.length || !secondData.length) {
+        Promise.all([
+          fetch('penalties_first_table.json').then(r => r.json()),
+          fetch('penalties_second_table.json').then(r => r.json())
+        ]).then(([a, b]) => {
+          if (!firstData.length)  firstData  = a;
+          if (!secondData.length) secondData = b;
+        }).catch(e => console.error('Penalty data load failed:', e));
+      }
+
+      bindEvents();
+      updateSummary();
+    });
+
+    // ── Event binding ─────────────────────────────────────────────────────────
+    function bindEvents() {
+      // Employee type
+      document.querySelectorAll('input[name="empType"]').forEach(r => {
+        r.addEventListener('change', onTypeChange);
+      });
+
+      // Regular search
+      document.getElementById('regularSearch').addEventListener('input', onRegSearch);
+      document.getElementById('clearRegular').addEventListener('click', clearReg);
+
+      // Occurrence
+      document.querySelectorAll('input[name="occ"]').forEach(r => {
+        r.addEventListener('change', updateRegOutput);
+      });
+
+      // Crew search
+      document.getElementById('crewSearch').addEventListener('input', onCrewSearch);
+      document.getElementById('clearCrew').addEventListener('click', clearCrew);
+
+      // Crew manual amount
+      document.getElementById('crewPenaltyAmt').addEventListener('input', onCrewAmtChange);
+
+      // Salary
+      const salNum = document.getElementById('salNumber');
+      const salRng = document.getElementById('salRange');
+      salNum.addEventListener('input', () => {
+        let v = clampSal(+salNum.value);
+        salNum.value = v; salRng.value = v;
+        salary = v;
+        recalcPenalty();
+        updateSummary();
+      });
+      salRng.addEventListener('input', () => {
+        salary = +salRng.value;
+        salNum.value = salary;
+        recalcPenalty();
+        updateSummary();
+      });
+
+      // Raise
+      document.getElementById('raiseAmt').addEventListener('input', () => {
+        recalcPenalty();
+        updateSummary();
+      });
+
+      // Deductions
+      document.getElementById('enableDed').addEventListener('change', function() {
+        document.getElementById('dedGrid').classList.toggle('hidden', !this.checked);
+        document.getElementById('sTaxCard').classList.toggle('hidden', !this.checked);
+        document.getElementById('sInsCard').classList.toggle('hidden', !this.checked);
+        updateSummary();
+      });
+      document.getElementById('taxRate').addEventListener('input', updateSummary);
+      document.getElementById('insRate').addEventListener('input', updateSummary);
+    }
+
+    // ── Employee type switch ───────────────────────────────────────────────────
+    function onTypeChange(e) {
+      const isReg = e.target.value === 'regular';
+      document.getElementById('regularSection').classList.toggle('hidden', !isReg);
+      document.getElementById('crewSection').classList.toggle('hidden',  isReg);
+      if (isReg) { clearCrew(); } else { clearReg(); }
+    }
+
+    // ── Regular search ────────────────────────────────────────────────────────
+    function onRegSearch() {
+      const q = document.getElementById('regularSearch').value.trim();
+      const box = document.getElementById('regularResults');
+      if (!q) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+      const hits = firstData.filter(r => r.violation && normalize(r.violation).includes(normalize(q)));
+      box.classList.remove('hidden');
+      if (!hits.length) {
+        box.innerHTML = `<div class="r-empty" data-en="No results found." data-ar="لا توجد نتائج.">${getLang()==='ar'?'لا توجد نتائج.':'No results found.'}</div>`;
+        return;
+      }
+      box.innerHTML = '';
+      hits.forEach(r => {
+        const d = document.createElement('div');
+        d.className = 'r-item';
+        d.innerHTML = `<div class="r-num">${esc(r.number)}</div><div class="r-text">${esc(r.violation)}</div>`;
+        d.addEventListener('click', () => selectReg(r));
+        box.appendChild(d);
+      });
+    }
+
+    function selectReg(r) {
+      selectedReg = r;
+      document.getElementById('regularSearch').value = '';
+      document.getElementById('regularResults').classList.add('hidden');
+      document.getElementById('regularResults').innerHTML = '';
+      document.getElementById('regularOutput').classList.remove('hidden');
+      // reset occurrence to first
+      document.querySelector('input[name="occ"][value="first_time"]').checked = true;
+      updateRegOutput();
+    }
+
+    function updateRegOutput() {
+      if (!selectedReg) return;
+      const occ  = document.querySelector('input[name="occ"]:checked').value;
+      const pen  = selectedReg[occ] || '—';
+      document.getElementById('regViolText').textContent    = `[${selectedReg.number}] ${selectedReg.violation}`;
+      document.getElementById('regPenaltyText').textContent = pen;
+
+      const note = selectedReg.notes;
+      const noteEl = document.getElementById('regNote');
+      if (note) { noteEl.textContent = note; noteEl.classList.remove('hidden'); }
+      else       { noteEl.classList.add('hidden'); }
+
+      const { amount, desc, isMonetary } = calcPenalty(pen);
+      penaltyAmt  = amount;
+      penaltyDesc = desc;
+
+      const calcEl = document.getElementById('regPenaltyCalc');
+      if (isMonetary && amount > 0) {
+        calcEl.innerHTML = `<span class="penalty-tag">${fmt(amount)} EGP</span>`;
+      } else if (!isMonetary && pen !== '—') {
+        calcEl.innerHTML = `<span class="warn-tag">⚠ ${getLang()==='ar'?'جزاء غير نقدي — لا يُخصم من المرتب':'Non-monetary — no salary deduction'}</span>`;
+        penaltyAmt = 0;
+      } else {
+        calcEl.innerHTML = '';
+      }
+
+      updatePenaltyExplain();
+      updateSummary();
+    }
+
+    function clearReg() {
+      selectedReg = null;
+      penaltyAmt  = 0;
+      penaltyDesc = '';
+      document.getElementById('regularSearch').value = '';
+      document.getElementById('regularResults').innerHTML = '';
+      document.getElementById('regularResults').classList.add('hidden');
+      document.getElementById('regularOutput').classList.add('hidden');
+      document.getElementById('regPenaltyCalc').innerHTML = '';
+      updatePenaltyExplain();
+      updateSummary();
+    }
+
+    // ── Crew search ───────────────────────────────────────────────────────────
+    function onCrewSearch() {
+      const q = document.getElementById('crewSearch').value.trim();
+      const box = document.getElementById('crewResults');
+      if (!q) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+      const hits = secondData.filter(r => r.violation && normalize(r.violation).includes(normalize(q)));
+      box.classList.remove('hidden');
+      if (!hits.length) {
+        box.innerHTML = `<div class="r-empty">${getLang()==='ar'?'لا توجد نتائج.':'No results found.'}</div>`;
+        return;
+      }
+      box.innerHTML = '';
+      hits.forEach(r => {
+        const d = document.createElement('div');
+        d.className = 'r-item';
+        d.innerHTML = `<div class="r-num">${esc(r.number)}</div><div class="r-text">${esc(r.violation)}</div>`;
+        d.addEventListener('click', () => selectCrew(r));
+        box.appendChild(d);
+      });
+    }
+
+    function selectCrew(r) {
+      selectedCrew = r;
+      document.getElementById('crewSearch').value = '';
+      document.getElementById('crewResults').classList.add('hidden');
+      document.getElementById('crewResults').innerHTML = '';
+      document.getElementById('crewOutput').classList.remove('hidden');
+      document.getElementById('crewViolText').textContent = `[${r.number}] ${r.violation}`;
+      const ul = document.getElementById('crewPunishments');
+      ul.innerHTML = '';
+      (r.punishments || []).forEach(p => {
+        const li = document.createElement('li');
+        li.textContent = p;
+        ul.appendChild(li);
+      });
+      // Reset amount
+      document.getElementById('crewPenaltyAmt').value = 0;
+      penaltyAmt  = 0;
+      penaltyDesc = getLang()==='ar' ? 'إدخال يدوي' : 'Manual entry';
+      updatePenaltyExplain();
+      updateSummary();
+    }
+
+    function onCrewAmtChange() {
+      let v = parseInt(document.getElementById('crewPenaltyAmt').value, 10);
+      if (isNaN(v) || v < 0) v = 0;
+      penaltyAmt  = v;
+      penaltyDesc = getLang()==='ar' ? 'إدخال يدوي' : 'Manual entry';
+      updatePenaltyExplain();
+      updateSummary();
+    }
+
+    function clearCrew() {
+      selectedCrew = null;
+      penaltyAmt   = 0;
+      penaltyDesc  = '';
+      document.getElementById('crewSearch').value = '';
+      document.getElementById('crewResults').innerHTML = '';
+      document.getElementById('crewResults').classList.add('hidden');
+      document.getElementById('crewOutput').classList.add('hidden');
+      document.getElementById('crewPenaltyAmt').value = 0;
+      updatePenaltyExplain();
+      updateSummary();
+    }
+
+    // ── Penalty calculation (comprehensive) ──────────────────────────────────
+    function calcPenalty(text) {
+      if (!text || text === '—' || text === '-') return { amount: 0, desc: '', isMonetary: false };
+      const t = text.toString();
+      const daily  = salary / 30;
+      const raise  = getRaise();
+
+      // Percentage of daily wage
+      if (t.includes('١٠٪') || t.includes('10%'))                        return { amount: daily * 0.10, desc: fmt(daily)+'÷10', isMonetary: true };
+      if (t.includes('٧٥٪') || t.includes('75%'))                        return { amount: daily * 0.75, desc: fmt(daily)+'×0.75', isMonetary: true };
+
+      // Fractions of a day
+      if (t.includes('ربع اليوم') || t.includes('ربع يوم'))              return { amount: daily * 0.25, desc: fmt(daily)+'÷4', isMonetary: true };
+      if (t.includes('نصف اليوم') || t.includes('نصف يوم'))              return { amount: daily * 0.5,  desc: fmt(daily)+'÷2', isMonetary: true };
+      if (t.includes('ثلاثة أرباع') )                                     return { amount: daily * 0.75, desc: fmt(daily)+'×0.75', isMonetary: true };
+
+      // Days (order matters: check longer phrases first)
+      if (t.includes('يوم ونصف'))                                         return { amount: daily * 1.5, desc: fmt(daily)+'×1.5', isMonetary: true };
+      if (t.includes('يومان'))                                            return { amount: daily * 2,   desc: fmt(daily)+'×2',   isMonetary: true };
+      if (t.includes('ثلاثة أيام'))                                       return { amount: daily * 3,   desc: fmt(daily)+'×3',   isMonetary: true };
+      if (t.includes('أربعة أيام'))                                       return { amount: daily * 4,   desc: fmt(daily)+'×4',   isMonetary: true };
+      if (t.includes('خمسة أيام'))                                        return { amount: daily * 5,   desc: fmt(daily)+'×5',   isMonetary: true };
+      if (t === 'يوم' || (t.includes('يوم') && !t.includes('يومان') && !t.includes('يوم ونصف') && !t.includes('أيام')))
+                                                                           return { amount: daily * 1,   desc: fmt(daily)+'×1',   isMonetary: true };
+
+      // Raise-based
+      if (t.includes('نصف العلاوة') || t.includes('الحرمان من نصف العلاوة')) return { amount: raise * 0.5, desc: fmt(raise)+'÷2', isMonetary: true };
+      if (t.includes('خفض الأجر بمقدار علاوة') || t.includes('خصم من الأجر في حدود علاوة') || t.includes('خفض في حدود علاوة')) return { amount: raise, desc: fmt(raise), isMonetary: true };
+      if (t.includes('خصم من الأجر') || t.includes('الخصم من الأجر'))   return { amount: daily,        desc: fmt(daily)+'×1',   isMonetary: true };
+
+      // Non-monetary penalties
+      if (t.includes('إنذار'))                                            return { amount: 0, desc: '', isMonetary: false };
+      if (t.includes('تأجيل'))                                            return { amount: 0, desc: '', isMonetary: false };
+      if (t.includes('الحرمان من العلاوة') && !t.includes('نصف'))        return { amount: raise,        desc: fmt(raise),         isMonetary: true };
+      if (t.includes('تأجيل الترقية'))                                    return { amount: 0, desc: '', isMonetary: false };
+      if (t.includes('الخفض إلى وظيفة'))                                  return { amount: 0, desc: '', isMonetary: false };
+      if (t.includes('الفصل'))                                            return { amount: 0, desc: '', isMonetary: false };
+
+      return { amount: 0, desc: '', isMonetary: false };
+    }
+
+    function recalcPenalty() {
+      if (selectedReg) updateRegOutput();
+      // Crew: penalty is manual, no recalc needed
+    }
+
+    // ── Salary summary ────────────────────────────────────────────────────────
+    function updateSummary() {
+      const enableDed  = document.getElementById('enableDed').checked;
+      const taxRate    = parseFloat(document.getElementById('taxRate').value)  || 0;
+      const insRate    = parseFloat(document.getElementById('insRate').value)  || 0;
+      const taxAmt     = enableDed ? salary * taxRate / 100 : 0;
+      const insAmt     = enableDed ? salary * insRate / 100 : 0;
+      const net        = Math.max(0, salary - taxAmt - insAmt - penaltyAmt);
+
+      document.getElementById('sBase').textContent    = fmtEGP(salary);
+      document.getElementById('sTax').textContent     = '-' + fmtEGP(taxAmt);
+      document.getElementById('sIns').textContent     = '-' + fmtEGP(insAmt);
+      document.getElementById('sPenalty').textContent = '-' + fmtEGP(penaltyAmt);
+      document.getElementById('sNet').textContent     = fmtEGP(net);
+    }
+
+    function updatePenaltyExplain() {
+      const el    = document.getElementById('penaltyExplain');
+      const basis = document.getElementById('penaltyBasis');
+      if (penaltyAmt > 0 && penaltyDesc) {
+        basis.textContent = penaltyDesc + ' = ' + fmtEGP(penaltyAmt);
+        el.classList.remove('hidden');
+      } else {
+        el.classList.add('hidden');
+      }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function getRaise() {
+      const v = parseFloat(document.getElementById('raiseAmt').value);
+      return (!isNaN(v) && v > 0) ? v : salary * 0.10;
+    }
+
+    function clampSal(v) {
+      if (isNaN(v) || v < 3000) return 3000;
+      if (v > 90000) return 90000;
+      return v;
+    }
+
+    function getLang() {
+      return document.documentElement.lang === 'ar' ? 'ar' : 'en';
+    }
+
+    // Normalize for search: strip diacritics, lowercase
+    function normalize(s) {
+      return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    }
+
+    function esc(t) {
+      if (!t) return '';
+      const d = document.createElement('div');
+      d.textContent = t;
+      return d.innerHTML;
+    }
+
+    function fmt(n)    { return n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    function fmtEGP(n) { return fmt(n) + ' EGP'; }
+
+    // Re-run placeholders on language change
+    window.addEventListener('portal-language-change', () => {
+      document.querySelectorAll('[data-en-placeholder][data-ar-placeholder]').forEach(el => {
+        el.placeholder = el.getAttribute('data-' + getLang() + '-placeholder');
+      });
+      // Re-render results if search active
+      if (document.getElementById('regularSearch').value) onRegSearch();
+      if (document.getElementById('crewSearch').value) onCrewSearch();
+    });
+
+  }());
+  </script>
+</body>
+</html>
