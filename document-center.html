@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document Center</title>
+  <link rel="icon" href="egyptair-logo_.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -40,9 +41,22 @@
         <p class="eyebrow" data-en="Document center" data-ar="مركز المستندات">Document center</p>
         <h1 data-en="Search and download work documents." data-ar="ابحث وحمل مستندات العمل.">Search and download work documents.</h1>
         <p data-en="Access official Word and Excel templates. Use the search bar to find specific files quickly." data-ar="الوصول إلى نماذج Word وExcel الرسمية. استخدم شريط البحث للعثور على ملفات محددة بسرعة.">Access official Word and Excel templates. Use the search bar to find specific files quickly.</p>
-        
+
         <div class="search-zone" style="margin-top: 20px;">
           <input type="text" id="documentSearch" data-en="Search documents..." data-ar="ابحث عن المستندات..." style="width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text);">
+        </div>
+
+        <div id="documentFormPanel" class="document-form-panel" hidden>
+          <h3 id="documentFormTitle"></h3>
+          <p class="form-note" id="documentFormNote"></p>
+          <form id="placeholderForm">
+            <div class="document-form-fields" id="documentFormFields"></div>
+            <div class="document-form-actions">
+              <button class="primary-btn" type="submit" id="generatePdfBtn"></button>
+              <button class="ghost-btn" type="button" id="cancelFormBtn"></button>
+            </div>
+            <p class="document-form-status" id="documentFormStatus" hidden></p>
+          </form>
         </div>
       </div>
 
@@ -53,15 +67,45 @@
     </section>
   </main>
 
+  <div id="docxRenderHost" class="docx-render-host" aria-hidden="true"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.50.0/build/docxtemplater.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="portal.js"></script>
   <script>
     const FOLDER_ID = '1j6DuR_aAvrqJIkbRebdrIGTdUN86Jm8Q';
-    const API_KEY   = 'AIzaSyAsl5N735tOpOjkcQK4kEritH6noDBH2eA'; 
+    const API_KEY   = 'AIzaSyAsl5N735tOpOjkcQK4kEritH6noDBH2eA';
+
+    const ARABIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    const PLACEHOLDER_RE = /\{([^{}]+)\}/g;
+    const WORD_XML_RE = /^word\/(document|header|footer|footnotes|endnotes)\d*\.xml$/;
 
     let allDocs = [];
+    let selectedDoc = null;
+    let selectedPlaceholders = [];
+    let legacyDocHtml = null;
 
-    const list        = document.getElementById('documentList');
-    const searchInput = document.getElementById('documentSearch');
+    const list            = document.getElementById('documentList');
+    const searchInput     = document.getElementById('documentSearch');
+    const formPanel       = document.getElementById('documentFormPanel');
+    const formTitle       = document.getElementById('documentFormTitle');
+    const formNote        = document.getElementById('documentFormNote');
+    const formFields      = document.getElementById('documentFormFields');
+    const placeholderForm = document.getElementById('placeholderForm');
+    const generatePdfBtn  = document.getElementById('generatePdfBtn');
+    const cancelFormBtn   = document.getElementById('cancelFormBtn');
+    const formStatus      = document.getElementById('documentFormStatus');
+    const docxRenderHost  = document.getElementById('docxRenderHost');
+
+    function lang() {
+      return window.EgyptAirPortal?.language || 'en';
+    }
+
+    function t(en, ar) {
+      return lang() === 'ar' ? ar : en;
+    }
 
     function formatBytes(bytes) {
       bytes = Number(bytes) || 0;
@@ -70,35 +114,373 @@
       return `${(bytes / 1048576).toFixed(1)} MB`;
     }
 
+    function isWordDocument(doc) {
+      const name = doc.name.toLowerCase();
+      return name.endsWith('.docx') || name.endsWith('.doc');
+    }
+
+    function isLegacyDoc(doc) {
+      return doc.name.toLowerCase().endsWith('.doc') && !doc.name.toLowerCase().endsWith('.docx');
+    }
+
+    function toArabicDigits(value) {
+      return String(value ?? '').replace(/\d/g, (digit) => ARABIC_DIGITS[Number(digit)]);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function uniquePlaceholders(values) {
+      return groupPlaceholders(values);
+    }
+
+    function collectPlaceholdersFromText(text) {
+      const found = [];
+      if (!text) return found;
+      let match;
+      const re = new RegExp(PLACEHOLDER_RE.source, 'g');
+      while ((match = re.exec(text)) !== null) {
+        found.push(match[1]);
+      }
+      return found;
+    }
+
+    function groupPlaceholders(rawKeys) {
+      const groups = new Map();
+
+      for (const rawKey of rawKeys) {
+        const label = rawKey.trim();
+        if (!isValidPlaceholder(label)) continue;
+        if (!groups.has(label)) {
+          groups.set(label, new Set());
+        }
+        groups.get(label).add(rawKey);
+      }
+
+      return [...groups.entries()].map(([label, keys]) => ({
+        label,
+        rawKeys: [...keys]
+      }));
+    }
+
+    function iterateWordXmlFiles(zip, callback) {
+      const files = zip.files || {};
+      for (const path of Object.keys(files)) {
+        if (!WORD_XML_RE.test(path)) continue;
+        const file = files[path];
+        if (!file || file.dir) continue;
+        callback(path, file);
+      }
+    }
+
+    function isValidPlaceholder(key) {
+      const value = String(key || '').trim();
+      if (!value) return false;
+      if (/[<>&]/.test(value)) return false;
+      return true;
+    }
+
+    function extractTextFromWordXml(xml) {
+      const doc = new DOMParser().parseFromString(xml, 'application/xml');
+      const nodes = doc.getElementsByTagName('*');
+      let text = '';
+      for (let i = 0; i < nodes.length; i += 1) {
+        if (nodes[i].localName === 't') {
+          text += nodes[i].textContent || '';
+        }
+      }
+      return text;
+    }
+
+    function extractPlaceholdersFromDocxZip(zip) {
+      const found = [];
+
+      iterateWordXmlFiles(zip, (_path, file) => {
+        found.push(...collectPlaceholdersFromText(extractTextFromWordXml(file.asText())));
+      });
+
+      return groupPlaceholders(found);
+    }
+
+    async function downloadDriveFile(doc) {
+      const apiUrl = `https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media&key=${API_KEY}`;
+      let response = await fetch(apiUrl);
+      if (!response.ok) {
+        response = await fetch(`https://drive.google.com/uc?export=download&id=${doc.id}`);
+      }
+      if (!response.ok) {
+        throw new Error(t('Could not download the file.', 'تعذر تحميل الملف.'));
+      }
+      return response.arrayBuffer();
+    }
+
+    async function loadDocumentPlaceholders(doc) {
+      const buffer = await downloadDriveFile(doc);
+
+      if (isLegacyDoc(doc)) {
+        const result = await window.mammoth.convertToHtml({ arrayBuffer: buffer });
+        legacyDocHtml = result.value;
+        return uniquePlaceholders(collectPlaceholdersFromText(legacyDocHtml));
+      }
+
+      legacyDocHtml = null;
+      const zip = new window.PizZip(buffer);
+      return extractPlaceholdersFromDocxZip(zip);
+    }
+
+    function setFormStatus(message, isError = false) {
+      if (!message) {
+        formStatus.hidden = true;
+        formStatus.textContent = '';
+        formStatus.classList.remove('is-error');
+        return;
+      }
+      formStatus.hidden = false;
+      formStatus.textContent = message;
+      formStatus.classList.toggle('is-error', isError);
+    }
+
+    function hideDocumentForm() {
+      selectedDoc = null;
+      selectedPlaceholders = [];
+      legacyDocHtml = null;
+      formPanel.hidden = true;
+      formFields.innerHTML = '';
+      placeholderForm.reset();
+      setFormStatus('');
+      generatePdfBtn.disabled = false;
+    }
+
+    function updateFormStaticText() {
+      const legacy = selectedDoc && isLegacyDoc(selectedDoc);
+      generatePdfBtn.textContent = legacy ? t('Download PDF', 'تحميل PDF') : t('Download Word file', 'تحميل ملف Word');
+      cancelFormBtn.textContent = t('Cancel', 'إلغاء');
+    }
+
+    function renderPlaceholderForm(doc, placeholders) {
+      updateFormStaticText();
+      formTitle.textContent = t(`Selected: ${doc.name}`, `المحدد: ${doc.name}`);
+      formNote.textContent = t(
+        'Fill in the fields below. Repeated placeholders share one input. Numbers are saved as Arabic digits (e.g. ٢٠٢٦/٦/٢٢).',
+        'أدخل البيانات أدناه. الحقول المتكررة تستخدم نفس الإدخال. الأرقام تُحفظ بالأرقام العربية (مثل ٢٠٢٦/٦/٢٢).'
+      );
+
+      formFields.innerHTML = placeholders.map((group, index) => {
+        const fieldId = `placeholder-field-${index}`;
+        const useTextarea = group.label.length > 40;
+        const inputTag = useTextarea
+          ? `<textarea id="${fieldId}" data-placeholder-index="${index}" dir="auto" required></textarea>`
+          : `<input type="text" id="${fieldId}" data-placeholder-index="${index}" dir="auto" required>`;
+
+        return `
+          <div class="document-form-field">
+            <label for="${fieldId}">${escapeHtml(group.label)}</label>
+            ${inputTag}
+          </div>
+        `;
+      }).join('');
+
+      formPanel.hidden = false;
+      generatePdfBtn.disabled = false;
+      setFormStatus('');
+    }
+
+    async function selectDocument(docId) {
+      const doc = allDocs.find((item) => item.id === docId);
+      if (!doc) return;
+
+      selectedDoc = doc;
+      selectedPlaceholders = [];
+      legacyDocHtml = null;
+      formPanel.hidden = false;
+      updateFormStaticText();
+      formTitle.textContent = t(`Selected: ${doc.name}`, `المحدد: ${doc.name}`);
+      formNote.textContent = '';
+      formFields.innerHTML = '';
+      generatePdfBtn.disabled = true;
+      setFormStatus(t('Loading document fields…', 'جارٍ تحميل حقول المستند…'));
+
+      try {
+        const placeholders = await loadDocumentPlaceholders(doc);
+        if (!placeholders.length) {
+          throw new Error(t(
+            'No {placeholders} were found in this document.',
+            'لم يتم العثور على حقول {…} في هذا المستند.'
+          ));
+        }
+        selectedPlaceholders = placeholders;
+        renderPlaceholderForm(doc, placeholders);
+      } catch (err) {
+        setFormStatus(err.message || t('Failed to read the document.', 'تعذر قراءة المستند.'), true);
+        generatePdfBtn.disabled = true;
+      }
+    }
+
+    function readFormValues() {
+      const values = {};
+      formFields.querySelectorAll('[data-placeholder-index]').forEach((field) => {
+        const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
+        if (!group) return;
+        const value = toArabicDigits(field.value.trim());
+        for (const rawKey of group.rawKeys) {
+          values[rawKey] = value;
+        }
+      });
+      return values;
+    }
+
+    function replacePlaceholdersInHtml(html, values) {
+      return html.replace(PLACEHOLDER_RE, (_, key) => {
+        const trimmed = key.trim();
+        for (const group of selectedPlaceholders) {
+          if (group.label === trimmed) {
+            return escapeHtml(values[group.rawKeys[0]] ?? '');
+          }
+        }
+        return escapeHtml(values[key] ?? values[trimmed] ?? '');
+      });
+    }
+
+    function replacePlaceholdersInDocx(buffer, values) {
+      const zip = new window.PizZip(buffer);
+      const doc = new window.docxtemplater(zip, {
+        paragraphLoop: true,
+        linebreaks: true,
+        delimiters: { start: '{', end: '}' },
+        nullGetter: () => ''
+      });
+      doc.render(values);
+      return doc.getZip().generate({
+        type: 'blob',
+        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      });
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function filledDocxFileName(docName) {
+      const base = docName.replace(/\.(docx?|DOCX?)$/, '');
+      return `${base} - filled.docx`;
+    }
+
+    function pdfFileName(docName) {
+      const base = docName.replace(/\.(docx?|DOCX?)$/, '');
+      return `${base}.pdf`;
+    }
+
+    async function renderDocxBlobToHost(docxBlob) {
+      const arrayBuffer = await docxBlob.arrayBuffer();
+      const result = await window.mammoth.convertToHtml({ arrayBuffer });
+      return renderHtmlToHost(result.value);
+    }
+
+    async function renderHtmlToHost(html) {
+      docxRenderHost.innerHTML = `
+        <div class="legacy-doc-preview" dir="auto" style="padding:24px;background:#fff;color:#000;font-family:'Cairo',sans-serif;line-height:1.8;font-size:14pt;">
+          ${html}
+        </div>
+      `;
+      return docxRenderHost;
+    }
+
+    async function downloadPdfFromElement(element, filename) {
+      await window.html2pdf().set({
+        margin: [10, 10, 10, 10],
+        filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['css', 'legacy'] }
+      }).from(element).save();
+    }
+
+    async function generatePdf(event) {
+      event.preventDefault();
+      if (!selectedDoc || !selectedPlaceholders.length) return;
+
+      const values = readFormValues();
+      generatePdfBtn.disabled = true;
+
+      try {
+        if (isLegacyDoc(selectedDoc)) {
+          // Legacy .doc has no reliable client-side structure-preserving writer.
+          // Fall back to the HTML/canvas approximation — this is the one case
+          // where exact Word formatting can't be guaranteed.
+          setFormStatus(t('Preparing PDF…', 'جارٍ تجهيز ملف PDF…'));
+          const html = replacePlaceholdersInHtml(legacyDocHtml, values);
+          const renderTarget = await renderHtmlToHost(html);
+          await downloadPdfFromElement(renderTarget, pdfFileName(selectedDoc.name));
+          docxRenderHost.innerHTML = '';
+        } else {
+          // Modern .docx: edit the real Word XML directly with docxtemplater.
+          // This preserves all original formatting, fonts, tables, and RTL layout exactly.
+          setFormStatus(t('Preparing document…', 'جارٍ تجهيز المستند…'));
+          const buffer = await downloadDriveFile(selectedDoc);
+          const docxBlob = replacePlaceholdersInDocx(buffer, values);
+          downloadBlob(docxBlob, filledDocxFileName(selectedDoc.name));
+        }
+
+        hideDocumentForm();
+      } catch (err) {
+        generatePdfBtn.disabled = false;
+        setFormStatus(
+          err.message || t('Could not create the file.', 'تعذر إنشاء الملف.'),
+          true
+        );
+      }
+    }
+
     function renderDocuments(filter = '') {
-      const lang     = window.EgyptAirPortal?.language || 'en';
-      const filtered = allDocs.filter(doc =>
+      const filtered = allDocs.filter((doc) =>
         doc.name.toLowerCase().includes(filter.toLowerCase())
       );
 
       if (!filtered.length) {
-        list.innerHTML = `<div class="empty-state">${lang === 'ar' ? 'لم يتم العثور على مستندات.' : 'No documents found.'}</div>`;
+        list.innerHTML = `<div class="empty-state">${t('No documents found.', 'لم يتم العثور على مستندات.')}</div>`;
         return;
       }
 
-      list.innerHTML = filtered.map(doc => `
-        <article class="document-row">
-          <div>
-            <p class="document-name">${doc.name}</p>
-            <p class="document-meta">${formatBytes(doc.size)} · ${new Date(doc.savedAt).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB')}</p>
-          </div>
-          <div>
-            <a class="primary-btn" href="https://drive.google.com/uc?export=download&id=${doc.id}" target="_blank" rel="noopener">
-              ${lang === 'ar' ? 'تحميل' : 'Download'}
-            </a>
-          </div>
-        </article>
-      `).join('');
+      list.innerHTML = filtered.map((doc) => {
+        const wordDoc = isWordDocument(doc);
+        const selectBtn = wordDoc ? `
+          <button class="ghost-btn" type="button" data-select-id="${doc.id}">
+            ${t('Select', 'اختيار')}
+          </button>
+        ` : '';
+
+        return `
+          <article class="document-row">
+            <div>
+              <p class="document-name">${escapeHtml(doc.name)}</p>
+              <p class="document-meta">${formatBytes(doc.size)} · ${new Date(doc.savedAt).toLocaleDateString(lang() === 'ar' ? 'ar-EG' : 'en-GB')}</p>
+            </div>
+            <div class="document-row-actions">
+              ${selectBtn}
+              <a class="primary-btn" href="https://drive.google.com/uc?export=download&id=${doc.id}" target="_blank" rel="noopener">
+                ${t('Download', 'تحميل')}
+              </a>
+            </div>
+          </article>
+        `;
+      }).join('');
     }
 
     function showLoading() {
-      const lang = window.EgyptAirPortal?.language || 'en';
-      list.innerHTML = `<div class="empty-state">${lang === 'ar' ? 'جارٍ التحميل…' : 'Loading…'}</div>`;
+      list.innerHTML = `<div class="empty-state">${t('Loading…', 'جارٍ التحميل…')}</div>`;
     }
 
     function showError(msg) {
@@ -116,7 +498,7 @@
         const res  = await fetch(url);
         const data = await res.json();
         if (data.error) throw new Error(data.error.message);
-        allDocs = (data.files || []).map(f => ({
+        allDocs = (data.files || []).map((f) => ({
           id:      f.id,
           name:    f.name,
           size:    f.size || 0,
@@ -129,8 +511,24 @@
       }
     }
 
-    searchInput.addEventListener('input', e => renderDocuments(e.target.value));
-    window.addEventListener('portal-language-change', () => renderDocuments(searchInput.value));
+    list.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-select-id]');
+      if (!button) return;
+      selectDocument(button.dataset.selectId);
+    });
+
+    placeholderForm.addEventListener('submit', generatePdf);
+    cancelFormBtn.addEventListener('click', hideDocumentForm);
+
+    searchInput.addEventListener('input', (e) => renderDocuments(e.target.value));
+    window.addEventListener('portal-language-change', () => {
+      renderDocuments(searchInput.value);
+      if (!formPanel.hidden && selectedDoc) {
+        renderPlaceholderForm(selectedDoc, selectedPlaceholders);
+      } else {
+        updateFormStaticText();
+      }
+    });
     document.addEventListener('DOMContentLoaded', fetchDriveFiles);
   </script>
 </body>

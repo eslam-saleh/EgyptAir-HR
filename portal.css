@@ -386,6 +386,92 @@ p {
   background: var(--surface-2);
 }
 
+.document-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.document-form-panel {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.document-form-panel[hidden] {
+  display: none;
+}
+
+.document-form-panel h3 {
+  margin: 0 0 6px;
+  color: var(--primary);
+  font-size: 1.05rem;
+}
+
+.document-form-panel .form-note {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.document-form-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.document-form-field label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.document-form-field input,
+.document-form-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.document-form-field textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.document-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.document-form-status {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.document-form-status.is-error {
+  color: var(--danger);
+}
+
+.docx-render-host {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 210mm;
+  pointer-events: none;
+  opacity: 0;
+}
+
 .document-name {
   margin: 0 0 4px;
   font-weight: 800;
