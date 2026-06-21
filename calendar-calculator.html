@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr" data-theme="light">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -127,7 +127,7 @@
   /* Form row */
   .form-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
     margin-bottom: 1.25rem;
   }
@@ -435,8 +435,11 @@ function fmt(d) {
 }
 
 function getWeekNum(d) {
-  const j1 = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil(((d - j1) / 86400000 + j1.getDay() + 1) / 7);
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
 }
 
 function showErr(id, msgKey) {
@@ -458,7 +461,8 @@ function calcDiff() {
   const end   = from <= to ? to   : from;
   const sign  = from <= to ? 1 : -1;
 
-  const totalDays = Math.round((end - start) / 86400000);
+  const dayDiff = Math.round((end - start) / 86400000);
+  const totalDays = dayDiff + 1; /* inclusive count */
   const totalWeeks = (totalDays / 7).toFixed(1);
   const totalMonths = (totalDays / 30.4375).toFixed(1);
   const totalYears = (totalDays / 365.25).toFixed(2);

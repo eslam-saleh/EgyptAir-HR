@@ -21,6 +21,10 @@
       }
     });
 
+    document.querySelectorAll('[data-en-placeholder][data-ar-placeholder]').forEach((element) => {
+      element.placeholder = element.getAttribute(`data-${lang}-placeholder`) || '';
+    });
+
     document.querySelectorAll('[data-lang-option]').forEach((button) => {
       button.classList.toggle('active', button.dataset.langOption === lang);
     });
@@ -65,5 +69,26 @@
     },
     setLanguage,
     setTheme
+  };
+
+  /* ── Toast helper ── */
+  function ensureToastContainer() {
+    let container = document.getElementById('portal-toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'portal-toast-container';
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    return container;
+  }
+
+  window.showToast = function(message, type = 'info') {
+    const container = ensureToastContainer();
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
   };
 }());

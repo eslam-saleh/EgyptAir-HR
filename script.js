@@ -203,12 +203,17 @@ window.addEventListener('portal-language-change', event => {
   updateAll();
 });
 
+let holidayMapCache = null;
+
 function getHolidayMap() {
-  const definitions = holidayDefinitions[CALENDAR_YEAR] || getFixedHolidayDefinitions(CALENDAR_YEAR);
-  return definitions.reduce((map, [date, key]) => {
-    map[date] = key;
-    return map;
-  }, {});
+  if (!holidayMapCache) {
+    const definitions = holidayDefinitions[CALENDAR_YEAR] || getFixedHolidayDefinitions(CALENDAR_YEAR);
+    holidayMapCache = definitions.reduce((map, [date, key]) => {
+      map[date] = key;
+      return map;
+    }, {});
+  }
+  return holidayMapCache;
 }
 
 function getFixedHolidayDefinitions(year) {
@@ -262,7 +267,7 @@ function initializeBalanceControls() {
     select.appendChild(option);
   });
 
-  select.value = balanceOptions.includes(annualBalance) ? String(annualBalance) : String(DEFAULT_BALANCE);
+  select.value = balanceOptions.includes(annualBalance) ? String(annualBalance) : '';
   input.value = annualBalance;
 
   select.addEventListener('change', () => setAnnualBalance(Number(select.value)));
@@ -283,6 +288,10 @@ function initializeResetButton() {
 function setAnnualBalance(value) {
   annualBalance = Math.max(0, Math.min(365, Number.isFinite(value) ? Math.floor(value) : 0));
   document.getElementById('balanceInput').value = annualBalance;
+  const select = document.getElementById('balanceSelect');
+  if (select) {
+    select.value = [...select.options].some(o => o.value === String(annualBalance)) ? String(annualBalance) : '';
+  }
   saveState();
   updateAll();
 }
@@ -366,7 +375,10 @@ function createDayButton(year, month, day) {
   }
   
   if (isSelected) button.classList.add('personal-holiday');
-  if (isToday) button.classList.add('today');
+  if (isToday) {
+    button.classList.add('today');
+    button.setAttribute('data-today', t('today'));
+  }
 
   button.addEventListener('click', () => toggleDay(dateKey, holidayKey, isWeekend));
   return button;
@@ -374,11 +386,11 @@ function createDayButton(year, month, day) {
 
 function toggleDay(dateKey, holidayKey, isWeekend) {
   if (holidayKey) {
-    alert(t('blockedHoliday')(holidayName(holidayKey)));
+    window.showToast(t('blockedHoliday')(holidayName(holidayKey)), 'warning');
     return;
   }
   if (isWeekend) {
-    alert(t('blockedWeekend'));
+    window.showToast(t('blockedWeekend'), 'warning');
     return;
   }
 
@@ -386,7 +398,7 @@ function toggleDay(dateKey, holidayKey, isWeekend) {
     selectedDays.delete(dateKey);
   } else {
     if (selectedDays.size >= annualBalance) {
-      alert(t('limitReached')(annualBalance));
+      window.showToast(t('limitReached')(annualBalance), 'warning');
       return;
     }
     selectedDays.add(dateKey);

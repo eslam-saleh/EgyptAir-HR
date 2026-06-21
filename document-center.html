@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en" dir="ltr" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -43,7 +43,7 @@
         <p data-en="Access official Word and Excel templates. Use the search bar to find specific files quickly." data-ar="الوصول إلى نماذج Word وExcel الرسمية. استخدم شريط البحث للعثور على ملفات محددة بسرعة.">Access official Word and Excel templates. Use the search bar to find specific files quickly.</p>
 
         <div class="search-zone" style="margin-top: 20px;">
-          <input type="text" id="documentSearch" data-en="Search documents..." data-ar="ابحث عن المستندات..." style="width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text);">
+          <input type="text" id="documentSearch" class="search-input" data-en="Search documents..." data-ar="ابحث عن المستندات..." placeholder="Search documents...">
         </div>
 
         <div id="documentFormPanel" class="document-form-panel" hidden>
@@ -266,8 +266,8 @@
       updateFormStaticText();
       formTitle.textContent = t(`Selected: ${doc.name}`, `المحدد: ${doc.name}`);
       formNote.textContent = t(
-        'Fill in the fields below. Repeated placeholders share one input. Numbers are saved as Arabic digits (e.g. ٢٠٢٦/٦/٢٢).',
-        'أدخل البيانات أدناه. الحقول المتكررة تستخدم نفس الإدخال. الأرقام تُحفظ بالأرقام العربية (مثل ٢٠٢٦/٦/٢٢).'
+        'Fill in the fields below. Repeated placeholders share one input. Numbers are saved as Arabic digits.',
+        'أدخل البيانات أدناه. الحقول المتكررة تستخدم نفس الإدخال. الأرقام تُحفظ بالأرقام العربية.'
       );
 
       formFields.innerHTML = placeholders.map((group, index) => {
@@ -374,7 +374,7 @@
 
     function filledDocxFileName(docName) {
       const base = docName.replace(/\.(docx?|DOCX?)$/, '');
-      return `${base} - filled.docx`;
+      return `${base}.docx`;
     }
 
     function pdfFileName(docName) {

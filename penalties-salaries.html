@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -379,6 +379,19 @@
       margin-top: 6px;
     }
     :root[data-theme="dark"] .warn-tag { color: var(--accent); }
+
+    /* ── Penalty explain box ── */
+    .penalty-explain {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .mt-6 { margin-top: 6px; }
   </style>
 </head>
 <body>
@@ -508,7 +521,7 @@
               </div>
               <div class="crew-penalty-wrap">
                 <div class="vp-label" data-en="Enter Deduction Amount" data-ar="أدخل مبلغ الخصم من المرتب">أدخل مبلغ الخصم من المرتب</div>
-                <div class="sal-input-row" style="margin-top:6px;">
+                <div class="sal-input-row mt-6">
                   <input type="number" id="crewPenaltyAmt" min="0" max="100000" step="50" value="0" style="width:150px;">
                   <span class="sal-currency">EGP</span>
                 </div>
@@ -535,9 +548,9 @@
           <div class="sal-field">
             <label class="sal-label" for="salNumber" data-en="Base Salary" data-ar="المرتب الأساسي">المرتب الأساسي</label>
             <div class="sal-input-row">
-              <input type="number" id="salNumber" min="3000" max="90000" step="100" value="15000">
+              <input type="number" id="salNumber" min="3000" max="50000" step="100" value="15000">
               <span class="sal-currency">EGP</span>
-              <input type="range" id="salRange" min="3000" max="90000" step="100" value="15000">
+              <input type="range" id="salRange" min="3000" max="50000" step="100" value="15000">
             </div>
           </div>
 
@@ -593,7 +606,7 @@
           </div>
 
           <!-- Penalty explanation row -->
-          <div id="penaltyExplain" class="hidden" style="margin-top:12px; padding:10px 14px; border-radius:8px; border:1px solid var(--line); background:var(--surface-2); font-size:0.85rem; color:var(--muted);">
+          <div id="penaltyExplain" class="penalty-explain hidden">
             <span data-en="Penalty basis: " data-ar="أساس احتساب الجزاء: ">أساس احتساب الجزاء: </span>
             <strong id="penaltyBasis" style="color:var(--text);"></strong>
           </div>
@@ -924,12 +937,12 @@
 
     function clampSal(v) {
       if (isNaN(v) || v < 3000) return 3000;
-      if (v > 90000) return 90000;
+      if (v > 50000) return 50000;
       return v;
     }
 
     function getLang() {
-      return document.documentElement.lang === 'ar' ? 'ar' : 'en';
+      return (window.EgyptAirPortal?.language || document.documentElement.lang) === 'ar' ? 'ar' : 'en';
     }
 
     // Normalize for search: strip diacritics, lowercase

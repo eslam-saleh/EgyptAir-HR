@@ -17,6 +17,7 @@
     --personal: #0891b2;
     --weekend: #facc15;
     --today: #16a34a;
+    color-scheme: light;
 }
 
 :root[data-theme="dark"] {
@@ -29,8 +30,6 @@
     --primary-dark: #88d6e9;
     --regular: #202d42;
     --weekend: #8a6b13;
-    --ink: #ffffff;
-    --muted: #cbd5e0;
 }
 
 body {
@@ -203,12 +202,14 @@ input {
     align-self: center;
     min-width: 150px;
     padding: 0 18px;
-    background: var(--ink);
+    background: var(--primary);
     color: white;
+    border: 1px solid var(--primary);
 }
 
 .btn-secondary:hover {
     background: var(--primary-dark);
+    border-color: var(--primary-dark);
     transform: translateY(-1px);
 }
 
@@ -225,8 +226,8 @@ input {
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.75);
-    border: 1px solid rgba(217, 224, 232, 0.85);
+    background: var(--panel);
+    border: 1px solid var(--line);
     border-radius: 8px;
     color: var(--muted);
     font-size: 0.9rem;
