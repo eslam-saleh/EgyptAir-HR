@@ -279,8 +279,8 @@
       updateFormStaticText();
       formTitle.textContent = t(`Selected: ${doc.name}`, `المحدد: ${doc.name}`);
       formNote.textContent = t(
-        'Fill in the fields below. Repeated placeholders share one input. Numbers are saved as Arabic digits (e.g. ٢٠٢٦/٦/٢٢).',
-        'أدخل البيانات أدناه. الحقول المتكررة تستخدم نفس الإدخال. الأرقام تُحفظ بالأرقام العربية (مثل ٢٠٢٦/٦/٢٢).'
+        'Fill in the fields below. Repeated placeholders share one input. Numbers are saved as Arabic digits.',
+        'أدخل البيانات أدناه. الحقول المتكررة تستخدم نفس الإدخال. الأرقام تُحفظ بالأرقام العربية.'
       );
 
       formFields.innerHTML = placeholders.map((group, index) => {
