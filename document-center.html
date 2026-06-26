@@ -69,6 +69,19 @@
 
   <div id="docxRenderHost" class="docx-render-host" aria-hidden="true"></div>
 
+  <footer class="portal-footer">
+    <div class="footer-content">
+      <div class="footer-info">
+        <span><strong>Eslam Saleh</strong></span>
+        <span><a href="mailto:eslamsaleh1999@gmail.com">eslamsaleh1999@gmail.com</a></span>
+        <span><a href="tel:+201061438871">+201061438871</a></span>
+      </div>
+      <div class="footer-copyright">
+        &copy; 2026 Eslam Saleh. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
   <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.50.0/build/docxtemplater.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
@@ -266,8 +279,8 @@
       updateFormStaticText();
       formTitle.textContent = t(`Selected: ${doc.name}`, `المحدد: ${doc.name}`);
       formNote.textContent = t(
-        'Fill in the fields below. Repeated placeholders share one input. Numbers are saved as Arabic digits.',
-        'أدخل البيانات أدناه. الحقول المتكررة تستخدم نفس الإدخال. الأرقام تُحفظ بالأرقام العربية.'
+        'Fill in the fields below. Repeated placeholders share one input. Numbers are saved as Arabic digits (e.g. ٢٠٢٦/٦/٢٢).',
+        'أدخل البيانات أدناه. الحقول المتكررة تستخدم نفس الإدخال. الأرقام تُحفظ بالأرقام العربية (مثل ٢٠٢٦/٦/٢٢).'
       );
 
       formFields.innerHTML = placeholders.map((group, index) => {
