@@ -9,6 +9,182 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="portal.css">
+  <style>
+    .clinics-layout {
+      display: grid;
+      gap: 18px;
+    }
+
+    .reservation-panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .reservation-panel h1,
+    .admin-panel h2,
+    .results-panel h2 {
+      margin-bottom: 8px;
+      color: var(--primary);
+    }
+
+    .reservation-panel p,
+    .admin-panel p,
+    .results-panel p {
+      margin-bottom: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .admin-form {
+      display: grid;
+      grid-template-columns: minmax(220px, 320px) auto;
+      gap: 10px;
+      align-items: end;
+      margin-top: 16px;
+    }
+
+    .admin-field label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .admin-field input {
+      width: 100%;
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--text);
+      outline: none;
+    }
+
+    .admin-field input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
+    }
+
+    .status-line {
+      margin-top: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .status-line.error {
+      color: var(--danger);
+    }
+
+    .table-wrap {
+      margin-top: 18px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .clinics-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+
+    .clinics-table th,
+    .clinics-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: start;
+      vertical-align: top;
+      font-size: 0.92rem;
+    }
+
+    .clinics-table th {
+      color: var(--primary);
+      background: var(--surface-2);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .clinics-table tbody tr.decided {
+      opacity: 0.5;
+      background: color-mix(in srgb, var(--muted) 8%, var(--surface));
+    }
+
+    .decision-cell {
+      width: 64px;
+      text-align: center;
+    }
+
+    .decision-btn {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+
+    .decision-btn:hover:not(:disabled),
+    .decision-btn:focus-visible:not(:disabled) {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
+      outline: none;
+    }
+
+    .decision-btn.confirm {
+      color: var(--success);
+    }
+
+    .decision-btn.deny {
+      color: var(--danger);
+    }
+
+    .decision-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 10px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .status-badge.y {
+      color: var(--success);
+    }
+
+    .status-badge.n {
+      color: var(--danger);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 760px) {
+      .reservation-panel,
+      .admin-form {
+        grid-template-columns: 1fr;
+      }
+
+      .reservation-panel .primary-btn,
+      .admin-form .primary-btn {
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
   <header class="portal-header">
@@ -36,11 +212,45 @@
     </div>
   </header>
 
-  <main class="app-page">
-    <section class="panel-card">
-      <p class="eyebrow" data-en="Employee medical services" data-ar="الخدمات الطبية للموظفين">Employee medical services</p>
-      <h1 data-en="Clinics" data-ar="العيادات">Clinics</h1>
-      <p data-en="Clinic tools and resources will be available here." data-ar="ستتوفر أدوات وموارد العيادات هنا.">Clinic tools and resources will be available here.</p>
+  <main class="app-page clinics-layout">
+    <section class="panel-card reservation-panel">
+      <div>
+        <p class="eyebrow" data-en="Employee medical services" data-ar="الخدمات الطبية للموظفين">Employee medical services</p>
+        <h1 data-en="Place a clinic reservation" data-ar="تسجيل حجز العيادة">Place a clinic reservation</h1>
+        <p data-en="Use the reservation form to submit your clinic request." data-ar="استخدم نموذج الحجز لإرسال طلب العيادة الخاص بك.">Use the reservation form to submit your clinic request.</p>
+      </div>
+      <a class="primary-btn" href="https://forms.gle/74zUcvv5eW5WWzxp8" target="_blank" rel="noopener" data-en="Place a reservation" data-ar="تسجيل حجز">Place a reservation</a>
+    </section>
+
+    <section class="panel-card admin-panel">
+      <p class="eyebrow" data-en="Admin access" data-ar="دخول المسؤول">Admin access</p>
+      <h2 data-en="Clinic reservation results" data-ar="نتائج حجوزات العيادات">Clinic reservation results</h2>
+      <p data-en="Enter the admin password to load the reservation sheet." data-ar="أدخل كلمة مرور المسؤول لتحميل جدول الحجوزات.">Enter the admin password to load the reservation sheet.</p>
+
+      <form class="admin-form" id="adminForm">
+        <div class="admin-field">
+          <label for="adminPassword" data-en="Password" data-ar="كلمة المرور">Password</label>
+          <input id="adminPassword" type="password" autocomplete="current-password" inputmode="numeric">
+        </div>
+        <button class="primary-btn" type="submit" data-en="Unlock" data-ar="فتح">Unlock</button>
+      </form>
+      <p class="status-line" id="adminStatus" aria-live="polite"></p>
+    </section>
+
+    <section class="panel-card results-panel hidden" id="resultsPanel">
+      <div>
+        <p class="eyebrow" data-en="Admin table" data-ar="جدول المسؤول">Admin table</p>
+        <h2 data-en="Reservations" data-ar="الحجوزات">Reservations</h2>
+        <p data-en="Latest submissions appear first. Decided rows are greyed out." data-ar="تظهر أحدث الطلبات أولاً. الصفوف التي تم اتخاذ قرار بشأنها تظهر باللون الرمادي.">Latest submissions appear first. Decided rows are greyed out.</p>
+      </div>
+
+      <div class="table-wrap">
+        <table class="clinics-table">
+          <thead id="clinicTableHead"></thead>
+          <tbody id="clinicTableBody"></tbody>
+        </table>
+      </div>
+      <p class="status-line" id="tableStatus" aria-live="polite"></p>
     </section>
   </main>
 
@@ -58,5 +268,340 @@
   </footer>
 
   <script src="portal.js"></script>
+  <script>
+    const CLINIC_SHEET_ID = '1LCk4J_McBFhDuRf4s-5HIirck3uwfZzCFeI3084dGig';
+    const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
+    const ADMIN_PASSWORD_HASH = 'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64';
+
+    const EMAILJS_SERVICE_ID = 'service_ulzc3yq';
+    const EMAILJS_TEMPLATE_ID = 'template_2ww2fmf';
+    const EMAILJS_PUBLIC_KEY = '2HT2DiS7Jke92DnaM';
+
+    // Google Sheets needs a writable backend for updates. Paste the deployed
+    // Apps Script Web App URL here after deploying clinics-apps-script.gs.
+    const SHEET_UPDATE_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw_gRRaCBY_iBYHQkQ4SUCxGQ4AAg45VS1PW6dLDukN_DQVJUvkHyzyviUBCBmzLI8L/exec';
+
+    const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+    const EASTERN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+
+    let clinicRows = [];
+    let clinicColumns = [];
+    let isLoadingSheet = false;
+
+    const adminForm = document.getElementById('adminForm');
+    const adminPassword = document.getElementById('adminPassword');
+    const adminStatus = document.getElementById('adminStatus');
+    const resultsPanel = document.getElementById('resultsPanel');
+    const tableHead = document.getElementById('clinicTableHead');
+    const tableBody = document.getElementById('clinicTableBody');
+    const tableStatus = document.getElementById('tableStatus');
+
+    function lang() {
+      return window.EgyptAirPortal?.language === 'ar' ? 'ar' : 'en';
+    }
+
+    function t(en, ar) {
+      return lang() === 'ar' ? ar : en;
+    }
+
+    function setStatus(element, message, isError = false) {
+      element.textContent = message;
+      element.classList.toggle('error', isError);
+    }
+
+    async function sha256Hex(value) {
+      const data = new TextEncoder().encode(value);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      return [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+
+    function normalizeDigits(value) {
+      return String(value ?? '')
+        .replace(/[٠-٩]/g, digit => ARABIC_DIGITS.indexOf(digit))
+        .replace(/[۰-۹]/g, digit => EASTERN_DIGITS.indexOf(digit));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function sheetCellValue(cell) {
+      if (!cell) return '';
+      return cell.f ?? cell.v ?? '';
+    }
+
+    function normalizeHeader(label) {
+      return String(label || '').trim().toLowerCase();
+    }
+
+    function findColumnIndex(matchers) {
+      return clinicColumns.findIndex(column => {
+        const label = normalizeHeader(column.label);
+        return matchers.some(matcher => label.includes(matcher));
+      });
+    }
+
+    function getRowValue(row, matchers) {
+      const index = findColumnIndex(matchers);
+      return index >= 0 ? row.values[index] : '';
+    }
+
+    function isReservedColumn(column) {
+      return normalizeHeader(column.label) === 'isreserved';
+    }
+
+    function isCodeColumn(column) {
+      const label = normalizeHeader(column.label);
+      return label.includes('code') || label.includes('كود');
+    }
+
+    function decisionLabel(value) {
+      if (value === 'y') return t('Confirmed', 'تم التأكيد');
+      if (value === 'n') return t('Denied', 'تم الرفض');
+      return t('Pending', 'قيد الانتظار');
+    }
+
+    function renderClinicsTable() {
+      const visibleColumns = clinicColumns.filter(column => !isReservedColumn(column));
+      const orderedRows = [...clinicRows].reverse();
+
+      tableHead.innerHTML = `
+        <tr>
+          ${visibleColumns.map(column => `<th>${escapeHtml(column.label || column.id)}</th>`).join('')}
+          <th>${t('Status', 'الحالة')}</th>
+          <th>${t('Confirm', 'تأكيد')}</th>
+          <th>${t('Deny', 'رفض')}</th>
+        </tr>
+      `;
+
+      if (!orderedRows.length) {
+        tableBody.innerHTML = `<tr><td colspan="${visibleColumns.length + 3}">${t('No reservations found.', 'لا توجد حجوزات.')}</td></tr>`;
+        return;
+      }
+
+      tableBody.innerHTML = orderedRows.map(row => {
+        const decided = row.isReserved === 'y' || row.isReserved === 'n';
+        const valuesHtml = visibleColumns.map(column => {
+          const originalIndex = clinicColumns.indexOf(column);
+          const value = isCodeColumn(column) ? normalizeDigits(row.values[originalIndex]) : row.values[originalIndex];
+          return `<td>${escapeHtml(value)}</td>`;
+        }).join('');
+
+        return `
+          <tr class="${decided ? 'decided' : ''}" data-sheet-row="${row.sheetRow}">
+            ${valuesHtml}
+            <td><span class="status-badge ${escapeHtml(row.isReserved)}">${decisionLabel(row.isReserved)}</span></td>
+            <td class="decision-cell">
+              <button class="decision-btn confirm" type="button" data-decision="y" data-sheet-row="${row.sheetRow}" ${decided ? 'disabled' : ''} aria-label="${t('Confirm reservation', 'تأكيد الحجز')}">✅</button>
+            </td>
+            <td class="decision-cell">
+              <button class="decision-btn deny" type="button" data-decision="n" data-sheet-row="${row.sheetRow}" ${decided ? 'disabled' : ''} aria-label="${t('Deny reservation', 'رفض الحجز')}">❌</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function handleSheetResponse(response) {
+      try {
+        const table = response?.table;
+        if (!table) throw new Error('Missing table data.');
+
+        clinicColumns = table.cols || [];
+        const reservedIndex = clinicColumns.findIndex(isReservedColumn);
+        clinicRows = (table.rows || []).map((row, index) => {
+          const values = clinicColumns.map((_column, colIndex) => sheetCellValue(row.c?.[colIndex]));
+          return {
+            sheetRow: index + 2,
+            values,
+            isReserved: String(values[reservedIndex] || '').trim().toLowerCase()
+          };
+        });
+
+        renderClinicsTable();
+        setStatus(tableStatus, t(`${clinicRows.length} reservation(s) loaded.`, `تم تحميل ${clinicRows.length} حجز.`));
+      } catch (error) {
+        setStatus(tableStatus, t('Could not read the clinic sheet.', 'تعذر قراءة جدول العيادات.'), true);
+      } finally {
+        isLoadingSheet = false;
+      }
+    }
+
+    function loadClinicSheet() {
+      if (isLoadingSheet) return;
+      isLoadingSheet = true;
+      setStatus(tableStatus, t('Loading reservations...', 'جارٍ تحميل الحجوزات...'));
+      tableBody.innerHTML = '';
+
+      const callbackName = 'handleClinicSheetResponse';
+      window[callbackName] = handleSheetResponse;
+
+      const oldScript = document.getElementById('clinicSheetJsonp');
+      if (oldScript) oldScript.remove();
+
+      const script = document.createElement('script');
+      script.id = 'clinicSheetJsonp';
+      script.src = `https://docs.google.com/spreadsheets/d/${CLINIC_SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${callbackName}&t=${Date.now()}`;
+      script.onerror = () => {
+        isLoadingSheet = false;
+        setStatus(tableStatus, t('Could not load the clinic sheet.', 'تعذر تحميل جدول العيادات.'), true);
+      };
+      document.body.appendChild(script);
+    }
+
+    function reservationMessage(row, decision) {
+      const name = getRowValue(row, ['الاسم', 'name']) || t('employee', 'الموظف');
+      const clinic = getRowValue(row, ['العيادة', 'clinic']);
+      const shift = getRowValue(row, ['ميعاد', 'النوبة', 'shift']);
+      const date = getRowValue(row, ['التاريخ', 'date']);
+
+      if (decision === 'y') {
+        return {
+          title: 'تأكيد حجز العيادة',
+          name,
+          message: `تم تأكيد حجزك في عيادة ${clinic} بتاريخ ${date} خلال نوبة ${shift}. برجاء الالتزام بالموعد المحدد.`
+        };
+      }
+
+      return {
+        title: 'رفض حجز العيادة',
+        name,
+        message: `نعتذر، لم يتم قبول حجزك في عيادة ${clinic} بتاريخ ${date} خلال نوبة ${shift}. برجاء تسجيل طلب جديد أو مراجعة الإدارة المختصة.`
+      };
+    }
+
+    async function sendDecisionEmail(row, decision) {
+      const toEmail = getRowValue(row, ['email address', 'email', 'البريد']);
+      if (!toEmail) throw new Error(t('This row has no email address.', 'هذا الصف لا يحتوي على بريد إلكتروني.'));
+
+      const content = reservationMessage(row, decision);
+      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id: EMAILJS_SERVICE_ID,
+          template_id: EMAILJS_TEMPLATE_ID,
+          user_id: EMAILJS_PUBLIC_KEY,
+          template_params: {
+            title: content.title,
+            name: content.name,
+            time: new Date().toLocaleString('ar-EG'),
+            message: content.message,
+            to_email: toEmail,
+            email: toEmail,
+            reply_to: 'eslamsaleh1999@gmail.com'
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const details = await response.text().catch(() => '');
+        throw new Error(details || t('Email could not be sent.', 'تعذر إرسال البريد الإلكتروني.'));
+      }
+    }
+
+    async function updateSheetDecision(row, decision) {
+      if (!SHEET_UPDATE_WEB_APP_URL) {
+        throw new Error(t(
+          'Sheet update endpoint is not configured yet.',
+          'لم يتم إعداد رابط تحديث جدول Google Sheets بعد.'
+        ));
+      }
+
+      return new Promise((resolve, reject) => {
+        const callbackName = `handleClinicUpdate_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const script = document.createElement('script');
+        const url = new URL(SHEET_UPDATE_WEB_APP_URL);
+        url.searchParams.set('rowNumber', row.sheetRow);
+        url.searchParams.set('isReserved', decision);
+        url.searchParams.set('callback', callbackName);
+        url.searchParams.set('t', Date.now());
+
+        const cleanup = () => {
+          delete window[callbackName];
+          script.remove();
+        };
+
+        window[callbackName] = result => {
+          cleanup();
+          if (result?.ok) {
+            resolve(result);
+          } else {
+            reject(new Error(result?.error || t('Sheet update failed.', 'فشل تحديث الجدول.')));
+          }
+        };
+
+        script.onerror = () => {
+          cleanup();
+          reject(new Error(t('Sheet update failed.', 'فشل تحديث الجدول.')));
+        };
+
+        script.src = url.toString();
+        document.body.appendChild(script);
+      });
+    }
+
+    async function decideReservation(button) {
+      const rowNumber = Number(button.dataset.sheetRow);
+      const decision = button.dataset.decision;
+      const row = clinicRows.find(item => item.sheetRow === rowNumber);
+      if (!row || row.isReserved === 'y' || row.isReserved === 'n') return;
+
+      const rowButtons = tableBody.querySelectorAll(`[data-sheet-row="${rowNumber}"] .decision-btn`);
+      rowButtons.forEach(item => { item.disabled = true; });
+      setStatus(tableStatus, decision === 'y'
+        ? t('Confirming reservation...', 'جارٍ تأكيد الحجز...')
+        : t('Denying reservation...', 'جارٍ رفض الحجز...')
+      );
+
+      try {
+        await sendDecisionEmail(row, decision);
+        await updateSheetDecision(row, decision);
+        row.isReserved = decision;
+        renderClinicsTable();
+        setStatus(tableStatus, decision === 'y'
+          ? t('Reservation confirmed and email sent.', 'تم تأكيد الحجز وإرسال البريد الإلكتروني.')
+          : t('Reservation denied and email sent.', 'تم رفض الحجز وإرسال البريد الإلكتروني.')
+        );
+        window.showToast?.(tableStatus.textContent, 'info');
+      } catch (error) {
+        rowButtons.forEach(item => { item.disabled = false; });
+        setStatus(tableStatus, error.message || t('Action failed.', 'فشل تنفيذ الإجراء.'), true);
+        window.showToast?.(tableStatus.textContent, 'error');
+      }
+    }
+
+    adminForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      setStatus(adminStatus, t('Checking password...', 'جارٍ التحقق من كلمة المرور...'));
+
+      const hash = await sha256Hex(adminPassword.value);
+      if (hash !== ADMIN_PASSWORD_HASH) {
+        setStatus(adminStatus, t('Incorrect password.', 'كلمة المرور غير صحيحة.'), true);
+        return;
+      }
+
+      adminPassword.value = '';
+      setStatus(adminStatus, t('Access granted.', 'تم السماح بالدخول.'));
+      resultsPanel.classList.remove('hidden');
+      loadClinicSheet();
+    });
+
+    tableBody.addEventListener('click', event => {
+      const button = event.target.closest('.decision-btn');
+      if (!button) return;
+      decideReservation(button);
+    });
+
+    window.addEventListener('portal-language-change', () => {
+      if (!resultsPanel.classList.contains('hidden')) {
+        renderClinicsTable();
+      }
+    });
+  </script>
 </body>
 </html>
