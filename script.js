@@ -112,7 +112,6 @@ const translations = {
 const holidayDefinitions = {
   2025: [
     ['2025-01-07', 'copticChristmas'],
-    ['2025-01-25', 'policeDay'],
     ['2025-01-26', 'policeDayObserved'],
     ['2025-03-29', 'eidFitrHoliday'],
     ['2025-03-30', 'eidFitrHoliday'],
@@ -129,17 +128,13 @@ const holidayDefinitions = {
     ['2025-06-08', 'eidAdhaHoliday'],
     ['2025-06-09', 'eidAdhaHoliday'],
     ['2025-06-26', 'hijriNewYear'],
-    ['2025-06-30', 'june30'],
     ['2025-07-03', 'june30Observed'],
-    ['2025-07-23', 'julyRevolution'],
     ['2025-07-24', 'julyRevolutionObserved'],
     ['2025-09-04', 'prophetBirthday'],
-    ['2025-10-06', 'armedForces'],
     ['2025-10-09', 'armedForcesObserved']
   ],
   2026: [
     ['2026-01-07', 'copticChristmas'],
-    ['2026-01-25', 'policeDay'],
     ['2026-01-29', 'policeDayObserved'],
     ['2026-03-19', 'eidFitrHoliday'],
     ['2026-03-20', 'eidFitr'],
@@ -156,16 +151,13 @@ const holidayDefinitions = {
     ['2026-05-30', 'eidAdhaHoliday'],
     ['2026-05-31', 'eidAdhaHoliday'],
     ['2026-06-16', 'hijriNewYear'],
-    ['2026-06-30', 'june30'],
     ['2026-07-02', 'june30Observed'],
     ['2026-07-23', 'julyRevolution'],
     ['2026-08-26', 'prophetBirthday'],
-    ['2026-10-06', 'armedForces'],
     ['2026-10-08', 'armedForcesObserved']
   ],
   2027: [
     ['2027-01-07', 'copticChristmas'],
-    ['2027-01-25', 'policeDay'],
     ['2027-01-28', 'policeDayObserved'],
     ['2027-03-09', 'eidFitr'],
     ['2027-03-10', 'eidFitrHoliday'],
@@ -179,11 +171,9 @@ const holidayDefinitions = {
     ['2027-05-18', 'eidAdhaHoliday'],
     ['2027-05-19', 'eidAdhaHoliday'],
     ['2027-06-18', 'hijriNewYear'],
-    ['2027-06-30', 'june30'],
     ['2027-07-01', 'june30Observed'],
     ['2027-07-23', 'julyRevolution'],
     ['2027-08-27', 'prophetBirthday'],
-    ['2027-10-06', 'armedForces'],
     ['2027-10-08', 'armedForcesObserved']
   ]
 };
