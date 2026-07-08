@@ -269,7 +269,6 @@
 
   <script src="portal.js"></script>
   <script>
-    const CLINIC_SHEET_ID = '1LCk4J_McBFhDuRf4s-5HIirck3uwfZzCFeI3084dGig';
     const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
     const ADMIN_PASSWORD_HASH = 'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64';
 
@@ -281,12 +280,22 @@
     // Apps Script Web App URL here after deploying clinics-apps-script.gs.
     const SHEET_UPDATE_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw_gRRaCBY_iBYHQkQ4SUCxGQ4AAg45VS1PW6dLDukN_DQVJUvkHyzyviUBCBmzLI8L/exec';
 
-    const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
-    const EASTERN_DIGITS = '۰۱۲۳۴۵۶۷۸۹';
+    // Column order configuration
+    const COLUMN_ORDER = [
+      'timestamp',
+      'code',
+      'name',
+      'date',
+      'clinic',
+      'shift',
+      'email',
+      'isreserved'
+    ];
 
     let clinicRows = [];
     let clinicColumns = [];
     let isLoadingSheet = false;
+    let latestSheetRequestId = 0;
 
     const adminForm = document.getElementById('adminForm');
     const adminPassword = document.getElementById('adminPassword');
@@ -316,9 +325,53 @@
     }
 
     function normalizeDigits(value) {
-      return String(value ?? '')
-        .replace(/[٠-٩]/g, digit => ARABIC_DIGITS.indexOf(digit))
-        .replace(/[۰-۹]/g, digit => EASTERN_DIGITS.indexOf(digit));
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      const arabicMap = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
+      const easternMap = { '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9' };
+      return str
+        .replace(/[٠-٩]/g, d => arabicMap[d])
+        .replace(/[۰-۹]/g, d => easternMap[d]);
+    }
+
+    function formatTimestamp(value) {
+      if (!value) return '';
+      // Google Sheets typically returns "M/D/YYYY HH:MM:SS" in its JSON output
+      const dateMatch = String(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})?/);
+      if (!dateMatch) return value;
+      
+      // Swap month and day to get DD/MM/YYYY
+      // dateMatch[1] is Month, dateMatch[2] is Day
+      const month = String(dateMatch[1]).padStart(2, '0');
+      const day = String(dateMatch[2]).padStart(2, '0');
+      const year = dateMatch[3];
+      const hour24 = parseInt(dateMatch[4], 10);
+      const minute = String(dateMatch[5]).padStart(2, '0');
+      
+      // Convert 24-hour to 12-hour format
+      const isPM = hour24 >= 12;
+      const hour12 = hour24 % 12 || 12;
+      const period = isPM ? 'PM' : 'AM';
+      
+      return `${day}/${month}/${year} ${hour12}:${minute} ${period}`;
+    }
+
+    function getColumnMatcher(columnKey) {
+      const matchers = {
+        'timestamp': ['timestamp', 'الوقت', 'time'],
+        'code': ['code', 'كود', 'الموظف', 'emp'],
+        'name': ['name', 'الاسم'],
+        'date': ['date', 'التاريخ'],
+        'clinic': ['clinic', 'العيادة'],
+        'shift': ['shift', 'ميعاد', 'النوبة'],
+        'email': ['email', 'البريد'],
+        'isreserved': ['isreserved']
+      };
+      return matchers[columnKey] || [];
+    }
+
+    function getColumnIndexByKey(columnKey) {
+      return findColumnIndex(getColumnMatcher(columnKey));
     }
 
     function escapeHtml(value) {
@@ -327,11 +380,6 @@
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
-    }
-
-    function sheetCellValue(cell) {
-      if (!cell) return '';
-      return cell.f ?? cell.v ?? '';
     }
 
     function normalizeHeader(label) {
@@ -355,8 +403,9 @@
     }
 
     function isCodeColumn(column) {
-      const label = normalizeHeader(column.label);
-      return label.includes('code') || label.includes('كود');
+      if (!column) return false;
+      const label = normalizeHeader(column.label || column.id || '');
+      return label.includes('code') || label.includes('كود') || label.includes('emp') || label.includes('الموظف');
     }
 
     function decisionLabel(value) {
@@ -365,13 +414,43 @@
       return t('Pending', 'قيد الانتظار');
     }
 
+    // Sheet header text is whatever was literally typed in row 1 (mixed
+    // languages, since Google Forms auto-names the Timestamp/Email columns
+    // in English regardless of form language). Translate by column key
+    // instead of echoing the raw sheet label, so headers follow the site's
+    // language toggle consistently.
+    const COLUMN_HEADER_LABELS = {
+      timestamp: ['Timestamp', 'الوقت'],
+      code: ['Employee Code', 'كود الموظف'],
+      name: ['Full Name', 'الاسم كامل'],
+      date: ['Date', 'التاريخ'],
+      clinic: ['Clinic', 'العيادة المختارة'],
+      shift: ['Shift', 'ميعاد النوبة'],
+      email: ['Email Address', 'البريد الإلكتروني']
+    };
+
+    function columnHeaderLabel(item) {
+      const pair = COLUMN_HEADER_LABELS[item.key];
+      if (pair) return t(pair[0], pair[1]);
+      return item.column.label || item.column.id || '';
+    }
+
     function renderClinicsTable() {
-      const visibleColumns = clinicColumns.filter(column => !isReservedColumn(column));
       const orderedRows = [...clinicRows].reverse();
+
+      // Build ordered column list based on COLUMN_ORDER
+      const orderedColumns = [];
+      for (const columnKey of COLUMN_ORDER) {
+        if (columnKey === 'isreserved') continue; // Skip isreserved, it's handled separately
+        const index = getColumnIndexByKey(columnKey);
+        if (index >= 0) {
+          orderedColumns.push({ index, column: clinicColumns[index], key: columnKey });
+        }
+      }
 
       tableHead.innerHTML = `
         <tr>
-          ${visibleColumns.map(column => `<th>${escapeHtml(column.label || column.id)}</th>`).join('')}
+          ${orderedColumns.map(item => `<th>${escapeHtml(columnHeaderLabel(item))}</th>`).join('')}
           <th>${t('Status', 'الحالة')}</th>
           <th>${t('Confirm', 'تأكيد')}</th>
           <th>${t('Deny', 'رفض')}</th>
@@ -379,15 +458,20 @@
       `;
 
       if (!orderedRows.length) {
-        tableBody.innerHTML = `<tr><td colspan="${visibleColumns.length + 3}">${t('No reservations found.', 'لا توجد حجوزات.')}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="${orderedColumns.length + 3}">${t('No reservations found.', 'لا توجد حجوزات.')}</td></tr>`;
         return;
       }
 
       tableBody.innerHTML = orderedRows.map(row => {
         const decided = row.isReserved === 'y' || row.isReserved === 'n';
-        const valuesHtml = visibleColumns.map(column => {
-          const originalIndex = clinicColumns.indexOf(column);
-          const value = isCodeColumn(column) ? normalizeDigits(row.values[originalIndex]) : row.values[originalIndex];
+        const valuesHtml = orderedColumns.map(item => {
+          let value = row.values[item.index];
+          
+          // Apply formatting based on column type
+          if (item.key === 'timestamp') {
+            value = formatTimestamp(value);
+          }
+          
           return `<td>${escapeHtml(value)}</td>`;
         }).join('');
 
@@ -406,15 +490,31 @@
       }).join('');
     }
 
-    function handleSheetResponse(response) {
-      try {
-        const table = response?.table;
-        if (!table) throw new Error('Missing table data.');
+    function handleSheetResponse(response, requestId) {
+      // If a newer load has started since this request went out, drop this
+      // response even if it arrives late — otherwise a slow/older request
+      // could overwrite fresher data with stale data.
+      if (requestId !== latestSheetRequestId) return;
 
-        clinicColumns = table.cols || [];
+      try {
+        if (!response || response.ok === false) {
+          throw new Error(response?.error || 'Missing data.');
+        }
+
+        // headers/rows come straight from Apps Script's SpreadsheetApp.getValues(),
+        // which returns the exact stored cell content (no gviz type inference,
+        // so Arabic-Indic digit codes survive instead of being nulled out).
+        clinicColumns = (response.headers || []).map(label => ({ label }));
         const reservedIndex = clinicColumns.findIndex(isReservedColumn);
-        clinicRows = (table.rows || []).map((row, index) => {
-          const values = clinicColumns.map((_column, colIndex) => sheetCellValue(row.c?.[colIndex]));
+        clinicRows = (response.rows || []).map((row, index) => {
+          const values = clinicColumns.map((column, colIndex) => {
+            let val = row[colIndex] ?? '';
+            // Convert code column values to English digits immediately
+            if (isCodeColumn(column)) {
+              val = normalizeDigits(val);
+            }
+            return val;
+          });
           return {
             sheetRow: index + 2,
             values,
@@ -437,16 +537,33 @@
       setStatus(tableStatus, t('Loading reservations...', 'جارٍ تحميل الحجوزات...'));
       tableBody.innerHTML = '';
 
-      const callbackName = 'handleClinicSheetResponse';
-      window[callbackName] = handleSheetResponse;
+      if (!SHEET_UPDATE_WEB_APP_URL) {
+        isLoadingSheet = false;
+        setStatus(tableStatus, t('Sheet endpoint is not configured yet.', 'لم يتم إعداد رابط الجدول بعد.'), true);
+        return;
+      }
+
+      const requestId = ++latestSheetRequestId;
+      const callbackName = `handleClinicSheetResponse_${requestId}`;
+      window[callbackName] = result => {
+        delete window[callbackName];
+        handleSheetResponse(result, requestId);
+      };
 
       const oldScript = document.getElementById('clinicSheetJsonp');
       if (oldScript) oldScript.remove();
 
+      const url = new URL(SHEET_UPDATE_WEB_APP_URL);
+      url.searchParams.set('action', 'getData');
+      url.searchParams.set('callback', callbackName);
+      url.searchParams.set('t', Date.now());
+
       const script = document.createElement('script');
       script.id = 'clinicSheetJsonp';
-      script.src = `https://docs.google.com/spreadsheets/d/${CLINIC_SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${callbackName}&t=${Date.now()}`;
+      script.src = url.toString();
       script.onerror = () => {
+        delete window[callbackName];
+        if (requestId !== latestSheetRequestId) return;
         isLoadingSheet = false;
         setStatus(tableStatus, t('Could not load the clinic sheet.', 'تعذر تحميل جدول العيادات.'), true);
       };
@@ -579,7 +696,9 @@
       event.preventDefault();
       setStatus(adminStatus, t('Checking password...', 'جارٍ التحقق من كلمة المرور...'));
 
-      const hash = await sha256Hex(adminPassword.value);
+      // Convert Arabic numbers to English before hashing
+      const normalizedPassword = normalizeDigits(adminPassword.value);
+      const hash = await sha256Hex(normalizedPassword);
       if (hash !== ADMIN_PASSWORD_HASH) {
         setStatus(adminStatus, t('Incorrect password.', 'كلمة المرور غير صحيحة.'), true);
         return;
