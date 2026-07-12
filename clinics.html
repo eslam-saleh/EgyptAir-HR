@@ -272,9 +272,17 @@
     const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
     const ADMIN_PASSWORD_HASH = 'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64';
 
-    const EMAILJS_SERVICE_ID = 'service_ulzc3yq';
-    const EMAILJS_TEMPLATE_ID = 'template_2ww2fmf';
-    const EMAILJS_PUBLIC_KEY = '2HT2DiS7Jke92DnaM';
+    // Add as many EmailJS accounts as you want here. Each account needs its
+    // OWN copy of the same template (same variable names: title, name, time,
+    // message, to_email, email, reply_to) since templates don't carry over
+    // between EmailJS accounts. When the currently-used account's monthly
+    // quota (200 on the free plan) runs out, sending automatically rolls
+    // over to the next account in this list.
+    const EMAILJS_ACCOUNTS = [
+      { serviceId: 'service_ulzc3yq', templateId: 'template_2ww2fmf', publicKey: '2HT2DiS7Jke92DnaM' },
+      { serviceId: 'service_w5ir8kq', templateId: 'template_ygdl3ir', publicKey: 'tD0jDmxF7s4DZrqR1' },
+      // { serviceId: 'service_yyyyyyy', templateId: 'template_yyyyyyy', publicKey: 'yyyyyyyyyyyyyyyy' },
+    ];
 
     // Google Sheets needs a writable backend for updates. Paste the deployed
     // Apps Script Web App URL here after deploying clinics-apps-script.gs.
@@ -591,34 +599,89 @@
       };
     }
 
-    async function sendDecisionEmail(row, decision) {
-      const toEmail = getRowValue(row, ['email address', 'email', 'البريد']);
-      if (!toEmail) throw new Error(t('This row has no email address.', 'هذا الصف لا يحتوي على بريد إلكتروني.'));
+    const EMAIL_ACCOUNT_INDEX_KEY = 'egyptairPortal:emailAccountIndex';
+    const EMAIL_ACCOUNT_MONTH_KEY = 'egyptairPortal:emailAccountMonth';
 
-      const content = reservationMessage(row, decision);
+    function currentMonthKey() {
+      const now = new Date();
+      return `${now.getFullYear()}-${now.getMonth()}`;
+    }
+
+    function getEmailAccountIndex() {
+      // EmailJS quotas reset monthly, so once a new calendar month starts
+      // it's safe to try account 0 first again. Note: EmailJS's actual
+      // reset date is tied to your signup/billing date, not necessarily the
+      // 1st of the month — this is an approximation. If your accounts reset
+      // on a different day, adjust currentMonthKey() accordingly.
+      const savedMonth = localStorage.getItem(EMAIL_ACCOUNT_MONTH_KEY);
+      const thisMonth = currentMonthKey();
+      if (savedMonth !== thisMonth) {
+        localStorage.setItem(EMAIL_ACCOUNT_MONTH_KEY, thisMonth);
+        localStorage.setItem(EMAIL_ACCOUNT_INDEX_KEY, '0');
+        return 0;
+      }
+      const saved = parseInt(localStorage.getItem(EMAIL_ACCOUNT_INDEX_KEY) || '0', 10);
+      return Number.isInteger(saved) && saved >= 0 && saved < EMAILJS_ACCOUNTS.length ? saved : 0;
+    }
+
+    function setEmailAccountIndex(index) {
+      localStorage.setItem(EMAIL_ACCOUNT_INDEX_KEY, String(index));
+    }
+
+    async function sendEmailWithAccount(account, templateParams) {
       const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          service_id: EMAILJS_SERVICE_ID,
-          template_id: EMAILJS_TEMPLATE_ID,
-          user_id: EMAILJS_PUBLIC_KEY,
-          template_params: {
-            title: content.title,
-            name: content.name,
-            time: new Date().toLocaleString('ar-EG'),
-            message: content.message,
-            to_email: toEmail,
-            email: toEmail,
-            reply_to: 'eslamsaleh1999@gmail.com'
-          }
+          service_id: account.serviceId,
+          template_id: account.templateId,
+          user_id: account.publicKey,
+          template_params: templateParams
         })
       });
 
       if (!response.ok) {
         const details = await response.text().catch(() => '');
-        throw new Error(details || t('Email could not be sent.', 'تعذر إرسال البريد الإلكتروني.'));
+        throw new Error(details || `EmailJS request failed (${response.status}).`);
       }
+    }
+
+    async function sendDecisionEmail(row, decision) {
+      const toEmail = getRowValue(row, ['email address', 'email', 'البريد']);
+      if (!toEmail) throw new Error(t('This row has no email address.', 'هذا الصف لا يحتوي على بريد إلكتروني.'));
+      if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
+
+      const content = reservationMessage(row, decision);
+      const templateParams = {
+        title: content.title,
+        name: content.name,
+        time: new Date().toLocaleString('ar-EG'),
+        message: content.message,
+        to_email: toEmail,
+        email: toEmail,
+        reply_to: 'eslamsaleh1999@gmail.com'
+      };
+
+      const startIndex = getEmailAccountIndex();
+      let lastError = null;
+
+      // Try the saved account first, then roll forward through the rest of
+      // the list (wrapping around). Whichever account succeeds becomes the
+      // new saved starting point, so next time we don't waste a request
+      // re-trying an account we already know is exhausted.
+      for (let step = 0; step < EMAILJS_ACCOUNTS.length; step++) {
+        const index = (startIndex + step) % EMAILJS_ACCOUNTS.length;
+        try {
+          await sendEmailWithAccount(EMAILJS_ACCOUNTS[index], templateParams);
+          setEmailAccountIndex(index);
+          return;
+        } catch (error) {
+          lastError = error;
+          // try the next account
+        }
+      }
+
+      throw lastError || new Error(t('Email could not be sent.', 'تعذر إرسال البريد الإلكتروني.'));
     }
 
     async function updateSheetDecision(row, decision) {
