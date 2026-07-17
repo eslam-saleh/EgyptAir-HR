@@ -400,7 +400,7 @@
       <img src="egyptair-logo_.png" alt="EgyptAir logo">
       <span>
         <strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">أدوات عمل مصر للطيران</strong>
-        <small data-en="Arabic / English workspace" data-ar="مساحة عمل عربية / إنجليزية">مساحة عمل عربية / إنجليزية</small>
+        <small data-en="Human Resources Management" data-ar="ادارة الموارد البشرية">ادارة الموارد البشرية</small>
       </span>
     </a>
     <nav class="portal-nav" aria-label="Main navigation">
@@ -557,9 +557,9 @@
 
           <!-- Annual Raise -->
           <div class="sal-field">
-            <label class="sal-label" for="raiseAmt" data-en="Annual Raise (علاوة)" data-ar="قيمة العلاوة السنوية">قيمة العلاوة السنوية</label>
+            <label class="sal-label" for="raiseAmt" data-en="Annual Raise (علاوة) %7" data-ar="قيمة العلاوة السنوية %7">قيمة العلاوة السنوية %7</label>
             <div class="sal-input-row">
-              <input type="number" id="raiseAmt" min="0" max="50000" step="50" value="1500">
+              <input type="number" id="raiseAmt" min="0" max="50000" step="50" value="1050">
               <span class="sal-currency">EGP</span>
             </div>
             <p class="hint-text" data-en="Used when the penalty is a fraction or multiple of the annual raise." data-ar="تُستخدم عند احتساب الجزاء كجزء أو مضاعفات من العلاوة السنوية.">تُستخدم عند احتساب الجزاء كجزء أو مضاعفات من العلاوة السنوية.</p>
@@ -624,12 +624,13 @@
         <span><a href="tel:+201061438871">+201061438871</a></span>
       </div>
       <div class="footer-copyright">
-        &copy; 2026 Eslam Saleh. All rights reserved.
+        &copy; 2026 Egyptair inflight services. All rights reserved.
       </div>
     </div>
   </footer>
 
-  <script src="portal.js"></script>
+  <script src="site-data.js"></script>
+<script src="portal.js"></script>
   <script src="penalties-data.js"></script>
   <script>
   (function() {
@@ -689,24 +690,27 @@
       document.getElementById('crewPenaltyAmt').addEventListener('input', onCrewAmtChange);
 
       // Salary
-      const salNum = document.getElementById('salNumber');
-      const salRng = document.getElementById('salRange');
+      const salNum   = document.getElementById('salNumber');
+      const salRng   = document.getElementById('salRange');
+      const raiseAmt = document.getElementById('raiseAmt');
       salNum.addEventListener('input', () => {
         let v = clampSal(+salNum.value);
         salNum.value = v; salRng.value = v;
         salary = v;
+        updateRaise();
         recalcPenalty();
         updateSummary();
       });
       salRng.addEventListener('input', () => {
         salary = +salRng.value;
         salNum.value = salary;
+        updateRaise();
         recalcPenalty();
         updateSummary();
       });
 
-      // Raise
-      document.getElementById('raiseAmt').addEventListener('input', () => {
+      // Raise (auto-calculated as 7% of the base salary; still editable manually)
+      raiseAmt.addEventListener('input', () => {
         recalcPenalty();
         updateSummary();
       });
@@ -944,9 +948,13 @@
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+    function updateRaise() {
+      document.getElementById('raiseAmt').value = Math.round(salary * 0.07);
+    }
+
     function getRaise() {
       const v = parseFloat(document.getElementById('raiseAmt').value);
-      return (!isNaN(v) && v > 0) ? v : salary * 0.10;
+      return (!isNaN(v) && v > 0) ? v : salary * 0.07;
     }
 
     function clampSal(v) {

@@ -16,7 +16,7 @@
       <img src="egyptair-logo_.png" alt="EgyptAir logo">
       <span>
         <strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong>
-        <small data-en="Arabic / English workspace" data-ar="مساحة عمل عربية / إنجليزية">Arabic / English workspace</small>
+        <small data-en="Human Resources Management" data-ar="ادارة الموارد البشرية">ادارة الموارد البشرية</small>
       </span>
     </a>
 
@@ -78,7 +78,7 @@
         <span><a href="tel:+201061438871">+201061438871</a></span>
       </div>
       <div class="footer-copyright">
-        &copy; 2026 Eslam Saleh. All rights reserved.
+        &copy; 2026 Egyptair inflight services. All rights reserved.
       </div>
     </div>
   </footer>
@@ -87,7 +87,8 @@
   <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.50.0/build/docxtemplater.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="portal.js"></script>
+  <script src="site-data.js"></script>
+<script src="portal.js"></script>
   <script>
     const FOLDER_ID = '1j6DuR_aAvrqJIkbRebdrIGTdUN86Jm8Q';
     const API_KEY   = 'AIzaSyAsl5N735tOpOjkcQK4kEritH6noDBH2eA';
@@ -99,7 +100,21 @@
     let allDocs = [];
     let selectedDoc = null;
     let selectedPlaceholders = [];
+    let autoPlaceholders = [];
     let legacyDocHtml = null;
+
+    function normalizeKey(key) {
+      return String(key || '').toLowerCase().replace(/[\s_-]/g, '');
+    }
+
+    function getFixedDataMap() {
+      const map = {};
+      const src = window.SiteData || {};
+      Object.keys(src).forEach((key) => {
+        map[normalizeKey(key)] = src[key];
+      });
+      return map;
+    }
 
     const list            = document.getElementById('documentList');
     const searchInput     = document.getElementById('documentSearch');
@@ -262,6 +277,7 @@
     function hideDocumentForm() {
       selectedDoc = null;
       selectedPlaceholders = [];
+      autoPlaceholders = [];
       legacyDocHtml = null;
       formPanel.hidden = true;
       formFields.innerHTML = '';
@@ -310,6 +326,7 @@
 
       selectedDoc = doc;
       selectedPlaceholders = [];
+      autoPlaceholders = [];
       legacyDocHtml = null;
       formPanel.hidden = false;
       updateFormStaticText();
@@ -327,8 +344,10 @@
             'لم يتم العثور على حقول {…} في هذا المستند.'
           ));
         }
-        selectedPlaceholders = placeholders;
-        renderPlaceholderForm(doc, placeholders);
+        const fixedMap = getFixedDataMap();
+        autoPlaceholders = placeholders.filter((group) => normalizeKey(group.label) in fixedMap);
+        selectedPlaceholders = placeholders.filter((group) => !(normalizeKey(group.label) in fixedMap));
+        renderPlaceholderForm(doc, selectedPlaceholders);
       } catch (err) {
         setFormStatus(err.message || t('Failed to read the document.', 'تعذر قراءة المستند.'), true);
         generatePdfBtn.disabled = true;
@@ -345,6 +364,15 @@
           values[rawKey] = value;
         }
       });
+
+      const fixedMap = getFixedDataMap();
+      autoPlaceholders.forEach((group) => {
+        const value = toArabicDigits(fixedMap[normalizeKey(group.label)]);
+        for (const rawKey of group.rawKeys) {
+          values[rawKey] = value;
+        }
+      });
+
       return values;
     }
 

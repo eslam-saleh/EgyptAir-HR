@@ -247,7 +247,7 @@
     <img src="egyptair-logo_.png" alt="EgyptAir logo">
     <span>
       <strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong>
-      <small data-en="Arabic / English workspace" data-ar="مساحة عمل عربية / إنجليزية">Arabic / English workspace</small>
+      <small data-en="Human Resources Management" data-ar="ادارة الموارد البشرية">ادارة الموارد البشرية</small>
     </span>
   </a>
 
@@ -275,14 +275,15 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('diff')" data-en="Date Difference" data-ar="فرق التاريخ">Date Difference</button>
-    <button class="tab-btn" onclick="switchTab('add')" data-en="Add / Subtract" data-ar="إضافة / طرح">Add / Subtract</button>
+    <button class="tab-btn active" onclick="switchTab('add')" data-en="Add / Subtract" data-ar="إضافة / طرح">Add / Subtract</button>
+    <button class="tab-btn" onclick="switchTab('diff')" data-en="Date Difference" data-ar="فرق التاريخ">Date Difference</button>
     <button class="tab-btn" onclick="switchTab('age')" data-en="Age Calculator" data-ar="حساب العمر">Age Calculator</button>
     <button class="tab-btn" onclick="switchTab('work')" data-en="Work Days" data-ar="أيام العمل">Work Days</button>
+    <button class="tab-btn" onclick="switchTab('count')" data-en="Day Counter" data-ar="عداد الأيام">Day Counter</button>
   </div>
 
   <!-- DIFF -->
-  <div id="panel-diff" class="panel active">
+  <div id="panel-diff" class="panel">
     <div class="card">
       <div class="form-row">
         <div class="field"><label data-en="Start Date" data-ar="تاريخ البدء">Start Date</label><input type="date" id="diff-from" /></div>
@@ -301,11 +302,20 @@
   </div>
 
   <!-- ADD -->
-  <div id="panel-add" class="panel">
+  <div id="panel-add" class="panel active">
     <div class="card">
       <div class="form-row">
         <div class="field"><label data-en="Start Date" data-ar="تاريخ البدء">Start Date</label><input type="date" id="add-from" /></div>
-        <div class="field"><label data-en="Days" data-ar="الأيام">Days</label><input type="number" id="add-days" value="30" /></div>
+        <div class="field"><label data-en="Amount" data-ar="القيمة">Amount</label><input type="number" id="add-amount" min="0" value="30" /></div>
+        <div class="field">
+          <label data-en="Unit" data-ar="الوحدة">Unit</label>
+          <select id="add-unit">
+            <option value="day" data-en="Days" data-ar="أيام">Days</option>
+            <option value="week" data-en="Weeks" data-ar="أسابيع">Weeks</option>
+            <option value="month" data-en="Months" data-ar="أشهر">Months</option>
+            <option value="year" data-en="Years" data-ar="سنوات">Years</option>
+          </select>
+        </div>
         <div class="field">
           <label data-en="Operation" data-ar="العملية">Operation</label>
           <select id="add-dir">
@@ -330,7 +340,6 @@
     <div class="card">
       <div class="form-row">
         <div class="field"><label data-en="Date of birth" data-ar="تاريخ الميلاد">Date of birth</label><input type="date" id="age-dob" /></div>
-        <div class="field"><label data-en="As of date" data-ar="حتى تاريخ">As of date</label><input type="date" id="age-asof" /></div>
       </div>
       <button class="calc-btn" onclick="calcAge()">
         <span data-en="Calculate" data-ar="احسب">Calculate</span>
@@ -365,7 +374,40 @@
       <div class="result-label" data-en="Result" data-ar="النتيجة">Result</div>
       <div id="work-output"></div>
   </div>
+  </div>
 
+  <!-- COUNT -->
+  <div id="panel-count" class="panel">
+    <div class="card">
+      <div class="form-row">
+        <div class="field"><label data-en="From date" data-ar="من تاريخ">From date</label><input type="date" id="count-from" /></div>
+        <div class="field"><label data-en="To date" data-ar="إلى تاريخ">To date</label><input type="date" id="count-to" /></div>
+        <div class="field">
+          <label data-en="Weekday" data-ar="اليوم">Weekday</label>
+          <select id="count-weekday">
+            <option value="0" data-en="Sunday" data-ar="الأحد">Sunday</option>
+            <option value="1" data-en="Monday" data-ar="الاثنين">Monday</option>
+            <option value="2" data-en="Tuesday" data-ar="الثلاثاء">Tuesday</option>
+            <option value="3" data-en="Wednesday" data-ar="الأربعاء">Wednesday</option>
+            <option value="4" data-en="Thursday" data-ar="الخميس">Thursday</option>
+            <option value="5" data-en="Friday" data-ar="الجمعة">Friday</option>
+            <option value="6" data-en="Saturday" data-ar="السبت">Saturday</option>
+          </select>
+        </div>
+      </div>
+      <button class="calc-btn" onclick="calcCount()">
+        <span data-en="Calculate" data-ar="احسب">Calculate</span>
+      </button>
+      <div class="error" id="count-err"></div>
+    </div>
+    <div class="result-card" id="count-result">
+      <div class="result-label" data-en="Result" data-ar="النتيجة">Result</div>
+      <div id="count-output"></div>
+    </div>
+  </div>
+</div>
+
+<script src="site-data.js"></script>
 <script src="portal.js"></script>
 <script>
 const calcCopy = {
@@ -379,12 +421,14 @@ const calcCopy = {
       dayOfYear: 'Day of year', weekNumber: 'Week number', quarter: 'Quarter', bday: 'Days to B-day',
       totalDays: 'Total days', totalWeeks: 'Total weeks', lastBirthday: 'Last birthday', next: 'Next',
       bornOn: 'Born on', nextBirthday: 'Next birthday', totalMonths: 'Total months lived',
-      workingDays: 'Working days', offDays: 'Off days', workingWeeks: 'Working weeks', offDaysPct: 'Off days %'
+      workingDays: 'Working days', offDays: 'Off days', workingWeeks: 'Working weeks', offDaysPct: 'Off days %',
+      occurrences: 'Occurrences',
+      units: { day: 'Days', week: 'Weeks', month: 'Months', year: 'Years' }
     },
     errors: {
       both: 'Please select both dates.',
       start: 'Please select a start date.',
-      days: 'Please enter a valid number of days.',
+      days: 'Please enter a valid number.',
       dob: 'Please enter a date of birth.',
       futureDob: 'Date of birth cannot be in the future.'
     }
@@ -399,12 +443,14 @@ const calcCopy = {
       dayOfYear: 'يوم السنة', weekNumber: 'رقم الأسبوع', quarter: 'الربع', bday: 'أيام للعيد القادم',
       totalDays: 'إجمالي الأيام', totalWeeks: 'إجمالي الأسابيع', lastBirthday: 'آخر عيد ميلاد', next: 'التالي',
       bornOn: 'تاريخ الميلاد', nextBirthday: 'عيد الميلاد القادم', totalMonths: 'إجمالي الشهور',
-      workingDays: 'أيام العمل', offDays: 'أيام العطلة', workingWeeks: 'أسابيع العمل', offDaysPct: 'نسبة العطلات'
+      workingDays: 'أيام العمل', offDays: 'أيام العطلة', workingWeeks: 'أسابيع العمل', offDaysPct: 'نسبة العطلات',
+      occurrences: 'مرات التكرار',
+      units: { day: 'أيام', week: 'أسابيع', month: 'أشهر', year: 'سنوات' }
     },
     errors: {
       both: 'اختر التاريخين من فضلك.',
       start: 'اختر تاريخ البداية من فضلك.',
-      days: 'اكتب عدد أيام صحيحا.',
+      days: 'اكتب رقما صحيحا.',
       dob: 'اكتب تاريخ الميلاد من فضلك.',
       futureDob: 'لا يمكن أن يكون تاريخ الميلاد في المستقبل.'
     }
@@ -449,7 +495,7 @@ function isOfficialHoliday(d) {
 }
 
 function switchTab(id) {
-  const ids = ['diff','add','age','work'];
+  const ids = ['add','diff','age','work','count'];
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + id).classList.add('active');
@@ -530,22 +576,28 @@ function calcDiff() {
 
 function calcAdd() {
   hideErr('add-err'); hideResult('add-result');
-  const from = parseLocal(document.getElementById('add-from').value);
-  const days = parseInt(document.getElementById('add-days').value);
-  const dir  = parseInt(document.getElementById('add-dir').value);
+  const from   = parseLocal(document.getElementById('add-from').value);
+  const amount = parseInt(document.getElementById('add-amount').value);
+  const unit   = document.getElementById('add-unit').value;
+  const dir    = parseInt(document.getElementById('add-dir').value);
   if (!from) return showErr('add-err', 'start');
-  if (isNaN(days) || days < 0) return showErr('add-err', 'days');
+  if (isNaN(amount) || amount < 0) return showErr('add-err', 'days');
 
+  const signed = dir * amount;
   const result = new Date(from);
-  result.setDate(result.getDate() + dir * days);
+  if (unit === 'day') result.setDate(result.getDate() + signed);
+  else if (unit === 'week') result.setDate(result.getDate() + signed * 7);
+  else if (unit === 'month') result.setMonth(result.getMonth() + signed);
+  else if (unit === 'year') result.setFullYear(result.getFullYear() + signed);
 
   const c = copy();
+  const unitLabel = c.labels.units[unit] || c.labels.days;
   const isWE = result.getDay() === 5 || result.getDay() === 6;
   const badge = isWE ? `<span class="badge badge-we">${c.labels.weekend}</span>` : `<span class="badge badge-wd">${c.labels.weekday}</span>`;
   
   document.getElementById('add-output').innerHTML = `
     <div class="big-date">${c.days[result.getDay()]}, ${fmt(result)} ${badge}</div>
-    <div class="big-sub">${dir > 0 ? '+' : '−'}${days} ${c.labels.days} ${c.labels.from} ${fmt(from)}</div>
+    <div class="big-sub">${dir > 0 ? '+' : '−'}${amount} ${unitLabel} ${c.labels.from} ${fmt(from)}</div>
     <div class="breakdown">
       <div class="bd-row"><span class="bd-lbl">${c.labels.weekNumber}</span><span class="bd-val">W${getWeekNum(result)}</span></div>
       <div class="bd-row"><span class="bd-lbl">${c.labels.quarter}</span><span class="bd-val">Q${Math.ceil((result.getMonth() + 1) / 3)} ${result.getFullYear()}</span></div>
@@ -557,9 +609,9 @@ function calcAdd() {
 function calcAge() {
   hideErr('age-err'); hideResult('age-result');
   const dob  = parseLocal(document.getElementById('age-dob').value);
-  let asof   = parseLocal(document.getElementById('age-asof').value);
   if (!dob) return showErr('age-err', 'dob');
-  if (!asof) { asof = new Date(); asof.setHours(0,0,0,0); }
+  const asof = new Date();
+  asof.setHours(0,0,0,0);
   if (dob > asof) return showErr('age-err', 'futureDob');
 
   let yrs = asof.getFullYear() - dob.getFullYear();
@@ -615,6 +667,34 @@ function calcWork() {
     </div>
   `;
   showResult('work-result');
+}
+
+function calcCount() {
+  hideErr('count-err'); hideResult('count-result');
+  const from    = parseLocal(document.getElementById('count-from').value);
+  const to      = parseLocal(document.getElementById('count-to').value);
+  const weekday = parseInt(document.getElementById('count-weekday').value);
+  if (!from || !to) return showErr('count-err', 'both');
+
+  const start = from <= to ? from : to;
+  const end   = from <= to ? to   : from;
+
+  let count = 0;
+  for (let t = new Date(start); t <= end; t.setDate(t.getDate() + 1)) {
+    if (t.getDay() === weekday) count++;
+  }
+
+  const c = copy();
+  document.getElementById('count-output').innerHTML = `
+    <div class="metrics">
+      <div class="metric"><div class="metric-val accent">${count}</div><div class="metric-lbl">${c.days[weekday]}</div></div>
+    </div>
+    <div class="breakdown">
+      <div class="bd-row"><span class="bd-lbl">${c.labels.from}</span><span class="bd-val">${c.days[start.getDay()]}, ${fmt(start)}</span></div>
+      <div class="bd-row"><span class="bd-lbl">${c.labels.to}</span><span class="bd-val">${c.days[end.getDay()]}, ${fmt(end)}</span></div>
+    </div>
+  `;
+  showResult('count-result');
 }
 
 window.addEventListener('portal-language-change', () => {
