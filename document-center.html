@@ -292,6 +292,10 @@
       cancelFormBtn.textContent = t('Cancel', 'إلغاء');
     }
 
+    // Placeholder labels that should always render as a big textarea,
+    // regardless of how short the label text itself is.
+    const LONG_TEXT_LABELS = new Set(['subject', 'الموضوع'].map(normalizeKey));
+
     function renderPlaceholderForm(doc, placeholders) {
       updateFormStaticText();
       formTitle.textContent = t(`Selected: ${doc.name}`, `المحدد: ${doc.name}`);
@@ -302,7 +306,7 @@
 
       formFields.innerHTML = placeholders.map((group, index) => {
         const fieldId = `placeholder-field-${index}`;
-        const useTextarea = group.label.length > 40;
+        const useTextarea = group.label.length > 40 || LONG_TEXT_LABELS.has(normalizeKey(group.label));
         const inputTag = useTextarea
           ? `<textarea id="${fieldId}" data-placeholder-index="${index}" dir="auto" required></textarea>`
           : `<input type="text" id="${fieldId}" data-placeholder-index="${index}" dir="auto" required>`;
@@ -354,12 +358,22 @@
       }
     }
 
+    function normalizeFieldValue(raw) {
+      // Word paragraphs can have tab stops (often with a dotted/underline
+      // "fill" leader) that apply to every line inside that paragraph. If we
+      // insert a real line break (\n -> <w:br/>) into a value, the new line
+      // inherits that same tab stop and the leader repeats, which looks like
+      // a wall of tabs. So we collapse newlines to a single space instead —
+      // Word wraps the text naturally without ever creating a hard break.
+      return raw.replace(/\r\n|\r|\n/g, ' ').replace(/[ \t]+/g, ' ').trim();
+    }
+
     function readFormValues() {
       const values = {};
       formFields.querySelectorAll('[data-placeholder-index]').forEach((field) => {
         const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
         if (!group) return;
-        const value = toArabicDigits(field.value.trim());
+        const value = toArabicDigits(normalizeFieldValue(field.value));
         for (const rawKey of group.rawKeys) {
           values[rawKey] = value;
         }
@@ -376,25 +390,27 @@
       return values;
     }
 
-    function replacePlaceholdersInHtml(html, values) {
-      return html.replace(PLACEHOLDER_RE, (_, key) => {
+    function replacePlaceholdersInHtml(html, values, placeholders, keepUnmatched) {
+      return html.replace(PLACEHOLDER_RE, (full, key) => {
         const trimmed = key.trim();
-        for (const group of selectedPlaceholders) {
+        for (const group of placeholders) {
           if (group.label === trimmed) {
             return escapeHtml(values[group.rawKeys[0]] ?? '');
           }
         }
-        return escapeHtml(values[key] ?? values[trimmed] ?? '');
+        if (values[key] !== undefined) return escapeHtml(values[key]);
+        if (values[trimmed] !== undefined) return escapeHtml(values[trimmed]);
+        return keepUnmatched ? full : '';
       });
     }
 
-    function replacePlaceholdersInDocx(buffer, values) {
+    function replacePlaceholdersInDocx(buffer, values, keepUnmatched) {
       const zip = new window.PizZip(buffer);
       const doc = new window.docxtemplater(zip, {
         paragraphLoop: true,
         linebreaks: true,
         delimiters: { start: '{', end: '}' },
-        nullGetter: () => ''
+        nullGetter: (part) => keepUnmatched ? `{${part.value}}` : ''
       });
       doc.render(values);
       return doc.getZip().generate({
@@ -452,7 +468,7 @@
 
     async function generatePdf(event) {
       event.preventDefault();
-      if (!selectedDoc || !selectedPlaceholders.length) return;
+      if (!selectedDoc || (!selectedPlaceholders.length && !autoPlaceholders.length)) return;
 
       const values = readFormValues();
       generatePdfBtn.disabled = true;
@@ -463,7 +479,7 @@
           // Fall back to the HTML/canvas approximation — this is the one case
           // where exact Word formatting can't be guaranteed.
           setFormStatus(t('Preparing PDF…', 'جارٍ تجهيز ملف PDF…'));
-          const html = replacePlaceholdersInHtml(legacyDocHtml, values);
+          const html = replacePlaceholdersInHtml(legacyDocHtml, values, selectedPlaceholders);
           const renderTarget = await renderHtmlToHost(html);
           await downloadPdfFromElement(renderTarget, pdfFileName(selectedDoc.name));
           docxRenderHost.innerHTML = '';
@@ -486,6 +502,51 @@
       }
     }
 
+    // The row-level "Download" button (no Select step). It fills in whatever
+    // placeholders match SiteData and downloads immediately — it never opens
+    // the fill-in form. Any placeholder that isn't in SiteData is simply left
+    // as-is in the downloaded file; use "Select" if you need to type values in.
+    async function quickDownloadDocument(docId, triggerEl) {
+      const doc = allDocs.find((item) => item.id === docId);
+      if (!doc) return;
+
+      const original = triggerEl ? triggerEl.textContent : '';
+      if (triggerEl) {
+        triggerEl.disabled = true;
+        triggerEl.textContent = t('Loading…', 'جارٍ التحميل…');
+      }
+
+      try {
+        const placeholders = await loadDocumentPlaceholders(doc);
+        const fixedMap = getFixedDataMap();
+        const auto = placeholders.filter((group) => normalizeKey(group.label) in fixedMap);
+
+        const values = {};
+        auto.forEach((group) => {
+          const value = toArabicDigits(fixedMap[normalizeKey(group.label)]);
+          group.rawKeys.forEach((rawKey) => { values[rawKey] = value; });
+        });
+
+        if (isLegacyDoc(doc)) {
+          const html = replacePlaceholdersInHtml(legacyDocHtml, values, auto, true);
+          const renderTarget = await renderHtmlToHost(html);
+          await downloadPdfFromElement(renderTarget, pdfFileName(doc.name));
+          docxRenderHost.innerHTML = '';
+        } else {
+          const buffer = await downloadDriveFile(doc);
+          const docxBlob = replacePlaceholdersInDocx(buffer, values, true);
+          downloadBlob(docxBlob, filledDocxFileName(doc.name));
+        }
+      } catch (err) {
+        window.showToast?.(err.message || t('Could not create the file.', 'تعذر إنشاء الملف.'), 'error');
+      } finally {
+        if (triggerEl) {
+          triggerEl.disabled = false;
+          triggerEl.textContent = original;
+        }
+      }
+    }
+
     function renderDocuments(filter = '') {
       const filtered = allDocs.filter((doc) =>
         doc.name.toLowerCase().includes(filter.toLowerCase())
@@ -504,6 +565,16 @@
           </button>
         ` : '';
 
+        const downloadBtn = wordDoc ? `
+          <button class="primary-btn" type="button" data-quick-download-id="${doc.id}">
+            ${t('Download', 'تحميل')}
+          </button>
+        ` : `
+          <a class="primary-btn" href="https://drive.google.com/uc?export=download&id=${doc.id}" target="_blank" rel="noopener">
+            ${t('Download', 'تحميل')}
+          </a>
+        `;
+
         return `
           <article class="document-row">
             <div>
@@ -512,9 +583,7 @@
             </div>
             <div class="document-row-actions">
               ${selectBtn}
-              <a class="primary-btn" href="https://drive.google.com/uc?export=download&id=${doc.id}" target="_blank" rel="noopener">
-                ${t('Download', 'تحميل')}
-              </a>
+              ${downloadBtn}
             </div>
           </article>
         `;
@@ -554,9 +623,15 @@
     }
 
     list.addEventListener('click', (event) => {
-      const button = event.target.closest('[data-select-id]');
-      if (!button) return;
-      selectDocument(button.dataset.selectId);
+      const selectButton = event.target.closest('[data-select-id]');
+      if (selectButton) {
+        selectDocument(selectButton.dataset.selectId);
+        return;
+      }
+      const downloadButton = event.target.closest('[data-quick-download-id]');
+      if (downloadButton) {
+        quickDownloadDocument(downloadButton.dataset.quickDownloadId, downloadButton);
+      }
     });
 
     placeholderForm.addEventListener('submit', generatePdf);
