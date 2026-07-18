@@ -967,9 +967,15 @@
       return (window.EgyptAirPortal?.language || document.documentElement.lang) === 'ar' ? 'ar' : 'en';
     }
 
-    // Normalize for search: strip diacritics, lowercase
+    // Normalize for search: strip diacritics (Latin + Arabic tashkeel), unify Arabic letter variants, lowercase
     function normalize(s) {
-      return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      return String(s || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // strip Latin accents
+        .replace(/[\u064B-\u0652\u0670\u0640]/g, '')        // strip Arabic tashkeel + tatweel
+        .replace(/[إأآا]/g, 'ا')                             // normalize alef variants
+        .replace(/ى/g, 'ي')                                  // alef maksura -> yaa
+        .replace(/ة/g, 'ه')                                  // taa marbuta -> haa
+        .toLowerCase();
     }
 
     function esc(t) {

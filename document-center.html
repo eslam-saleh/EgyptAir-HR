@@ -547,9 +547,21 @@
       }
     }
 
+    function normalizeSearchText(str) {
+      return String(str || '')
+        .normalize('NFKC')
+        .replace(/[\u064B-\u0652\u0670\u0640]/g, '') // strip tashkeel/diacritics + tatweel
+        .replace(/[إأآا]/g, 'ا')                      // normalize alef variants
+        .replace(/ى/g, 'ي')                           // alef maksura -> yaa
+        .replace(/ة/g, 'ه')                           // taa marbuta -> haa
+        .toLowerCase()
+        .trim();
+    }
+
     function renderDocuments(filter = '') {
+      const normalizedFilter = normalizeSearchText(filter);
       const filtered = allDocs.filter((doc) =>
-        doc.name.toLowerCase().includes(filter.toLowerCase())
+        normalizeSearchText(doc.name).includes(normalizedFilter)
       );
 
       if (!filtered.length) {
