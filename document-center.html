@@ -358,6 +358,69 @@
       }
     }
 
+    function arabicDigitsToLatin(str) {
+      return String(str || '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+    }
+
+    const MONTH_NAMES = {
+      jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+      may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8,
+      sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11, dec: 12, december: 12,
+      يناير: 1, فبراير: 2, مارس: 3, ابريل: 4, أبريل: 4, مايو: 5, يونيو: 6, يوليو: 7,
+      اغسطس: 8, أغسطس: 8, سبتمبر: 9, اكتوبر: 10, أكتوبر: 10, نوفمبر: 11, ديسمبر: 12
+    };
+
+    // Tries to recognize a typed date in (almost) any common format and
+    // rewrites it as dd/mm/yyyy. Returns null if the text isn't a date,
+    // so the original value is left untouched.
+    function tryFormatAsDate(raw) {
+      const value = arabicDigitsToLatin(raw).trim();
+      if (!value) return null;
+      const pad2 = (n) => String(n).padStart(2, '0');
+
+      // Year-first, unambiguous: yyyy-mm-dd / yyyy/mm/dd / yyyy.mm.dd
+      let m = value.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+      if (m) {
+        const [, y, mo, d] = m;
+        if (+mo >= 1 && +mo <= 12 && +d >= 1 && +d <= 31) {
+          return `${pad2(d)}/${pad2(mo)}/${y}`;
+        }
+      }
+
+      // Numeric with separators: dd/mm/yyyy, mm/dd/yyyy, d-m-yy, etc.
+      m = value.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+      if (m) {
+        let [, a, b, y] = m;
+        const year = y.length === 2 ? (Number(y) < 50 ? `20${y}` : `19${y}`) : y;
+        let day = Number(a);
+        let month = Number(b);
+        if (month > 12 && day <= 12) {
+          [day, month] = [month, day]; // was actually mm/dd/yyyy (US style)
+        }
+        // if day > 12 it's already unambiguous day-first; if both <= 12 we
+        // keep the typed order (dd/mm), matching local convention
+        if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+          return `${pad2(day)}/${pad2(month)}/${year}`;
+        }
+      }
+
+      // Written month name: "19 July 2026" / "July 19, 2026" (English or Arabic)
+      m = value.match(/^(\d{1,2})\s+([a-zA-Z\u0600-\u06FF]+)\.?,?\s+(\d{4})$/);
+      let day, monthName, year;
+      if (m) {
+        [, day, monthName, year] = m;
+      } else {
+        m = value.match(/^([a-zA-Z\u0600-\u06FF]+)\.?\s+(\d{1,2}),?\s+(\d{4})$/);
+        if (m) [, monthName, day, year] = m;
+      }
+      if (m) {
+        const month = MONTH_NAMES[monthName.toLowerCase()];
+        if (month) return `${pad2(day)}/${pad2(month)}/${year}`;
+      }
+
+      return null;
+    }
+
     function normalizeFieldValue(raw) {
       // Word paragraphs can have tab stops (often with a dotted/underline
       // "fill" leader) that apply to every line inside that paragraph. If we
@@ -365,7 +428,8 @@
       // inherits that same tab stop and the leader repeats, which looks like
       // a wall of tabs. So we collapse newlines to a single space instead —
       // Word wraps the text naturally without ever creating a hard break.
-      return raw.replace(/\r\n|\r|\n/g, ' ').replace(/[ \t]+/g, ' ').trim();
+      const collapsed = raw.replace(/\r\n|\r|\n/g, ' ').replace(/[ \t]+/g, ' ').trim();
+      return tryFormatAsDate(collapsed) || collapsed;
     }
 
     function readFormValues() {
