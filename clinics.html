@@ -223,17 +223,26 @@
     </section>
 
     <section class="panel-card admin-panel">
-      <p class="eyebrow" data-en="Admin access" data-ar="دخول المسؤول">Admin access</p>
+      <p class="eyebrow" data-en="Admin access & Inquiry" data-ar="دخول المسؤول والاستعلام">Admin access & Inquiry</p>
       <h2 data-en="Clinic reservation results" data-ar="نتائج حجوزات العيادات">Clinic reservation results</h2>
-      <p data-en="Enter the admin password to load the reservation sheet." data-ar="أدخل كلمة مرور المسؤول لتحميل جدول الحجوزات.">Enter the admin password to load the reservation sheet.</p>
+      <p data-en="Enter the admin password for full access, or use the inquiry to check specific ID." data-ar="أدخل كلمة مرور المسؤول للدخول الكامل، أو استخدم الاستعلام للبحث عن كود معين.">Enter the admin password for full access, or use the inquiry to check specific ID.</p>
 
       <form class="admin-form" id="adminForm">
         <div class="admin-field">
-          <label for="adminPassword" data-en="Password" data-ar="كلمة المرور">Password</label>
+          <label for="adminPassword" data-en="Admin Password" data-ar="كلمة مرور المسؤول">Admin Password</label>
           <input id="adminPassword" type="password" autocomplete="current-password" inputmode="numeric">
         </div>
         <button class="primary-btn" type="submit" data-en="Unlock" data-ar="فتح">Unlock</button>
       </form>
+
+      <form class="admin-form" id="inquiryForm" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);">
+        <div class="admin-field">
+          <label for="patientId" data-en="Patient ID (Inquiry)" data-ar="كود الموظف (استعلام)">Patient ID (Inquiry)</label>
+          <input id="patientId" type="text" inputmode="numeric" data-en-placeholder="Enter ID" data-ar-placeholder="أدخل الكود">
+        </div>
+        <button class="primary-btn" type="submit" data-en="Inquiry" data-ar="استعلام">Inquiry</button>
+      </form>
+
       <p class="status-line" id="adminStatus" aria-live="polite"></p>
     </section>
 
@@ -305,8 +314,12 @@
     let clinicColumns = [];
     let isLoadingSheet = false;
     let latestSheetRequestId = 0;
+    let isAdmin = false;
+    let filterPatientId = null;
 
     const adminForm = document.getElementById('adminForm');
+    const inquiryForm = document.getElementById('inquiryForm');
+    const patientId = document.getElementById('patientId');
     const adminPassword = document.getElementById('adminPassword');
     const adminStatus = document.getElementById('adminStatus');
     const resultsPanel = document.getElementById('resultsPanel');
@@ -445,7 +458,15 @@
     }
 
     function renderClinicsTable() {
-      const orderedRows = [...clinicRows].reverse();
+      let rowsToRender = [...clinicRows].reverse();
+
+      if (filterPatientId) {
+        const codeIndex = getColumnIndexByKey('code');
+        rowsToRender = rowsToRender.filter(row => {
+          const rowCode = normalizeDigits(row.values[codeIndex]);
+          return rowCode === filterPatientId;
+        });
+      }
 
       // Build ordered column list based on COLUMN_ORDER
       const orderedColumns = [];
@@ -457,21 +478,19 @@
         }
       }
 
-      tableHead.innerHTML = `
-        <tr>
-          ${orderedColumns.map(item => `<th>${escapeHtml(columnHeaderLabel(item))}</th>`).join('')}
-          <th>${t('Status', 'الحالة')}</th>
-          <th>${t('Confirm', 'تأكيد')}</th>
-          <th>${t('Deny', 'رفض')}</th>
-        </tr>
-      `;
+      let headerHtml = `<tr>${orderedColumns.map(item => `<th>${escapeHtml(columnHeaderLabel(item))}</th>`).join('')}<th>${t('Status', 'الحالة')}</th>`;
+      if (isAdmin) {
+        headerHtml += `<th>${t('Confirm', 'تأكيد')}</th><th>${t('Deny', 'رفض')}</th>`;
+      }
+      headerHtml += `</tr>`;
+      tableHead.innerHTML = headerHtml;
 
-      if (!orderedRows.length) {
-        tableBody.innerHTML = `<tr><td colspan="${orderedColumns.length + 3}">${t('No reservations found.', 'لا توجد حجوزات.')}</td></tr>`;
+      if (!rowsToRender.length) {
+        tableBody.innerHTML = `<tr><td colspan="${orderedColumns.length + (isAdmin ? 3 : 1)}">${t('No reservations found.', 'لا توجد حجوزات.')}</td></tr>`;
         return;
       }
 
-      tableBody.innerHTML = orderedRows.map(row => {
+      tableBody.innerHTML = rowsToRender.map(row => {
         const decided = row.isReserved === 'y' || row.isReserved === 'n';
         const valuesHtml = orderedColumns.map(item => {
           let value = row.values[item.index];
@@ -484,18 +503,19 @@
           return `<td>${escapeHtml(value)}</td>`;
         }).join('');
 
-        return `
-          <tr class="${decided ? 'decided' : ''}" data-sheet-row="${row.sheetRow}">
-            ${valuesHtml}
-            <td><span class="status-badge ${escapeHtml(row.isReserved)}">${decisionLabel(row.isReserved)}</span></td>
+        let rowHtml = `<tr class="${decided ? 'decided' : ''}" data-sheet-row="${row.sheetRow}">${valuesHtml}<td><span class="status-badge ${escapeHtml(row.isReserved)}">${decisionLabel(row.isReserved)}</span></td>`;
+        if (isAdmin) {
+          rowHtml += `
             <td class="decision-cell">
               <button class="decision-btn confirm" type="button" data-decision="y" data-sheet-row="${row.sheetRow}" ${decided ? 'disabled' : ''} aria-label="${t('Confirm reservation', 'تأكيد الحجز')}">✅</button>
             </td>
             <td class="decision-cell">
               <button class="decision-btn deny" type="button" data-decision="n" data-sheet-row="${row.sheetRow}" ${decided ? 'disabled' : ''} aria-label="${t('Deny reservation', 'رفض الحجز')}">❌</button>
             </td>
-          </tr>
-        `;
+          `;
+        }
+        rowHtml += `</tr>`;
+        return rowHtml;
       }).join('');
     }
 
@@ -769,9 +789,29 @@
       }
 
       adminPassword.value = '';
+      isAdmin = true;
+      filterPatientId = null;
       setStatus(adminStatus, t('Access granted.', 'تم السماح بالدخول.'));
       resultsPanel.classList.remove('hidden');
       loadClinicSheet();
+    });
+
+    inquiryForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const id = normalizeDigits(patientId.value).trim();
+      if (!id) {
+        setStatus(adminStatus, t('Please enter a patient ID.', 'يرجى إدخال كود الموظف.'), true);
+        return;
+      }
+      filterPatientId = id;
+      setStatus(adminStatus, t('Searching for ID...', 'جارٍ البحث عن الكود...'));
+      resultsPanel.classList.remove('hidden');
+      if (clinicRows.length > 0) {
+        renderClinicsTable();
+        setStatus(adminStatus, t('Filter applied.', 'تم تطبيق التصفية.'));
+      } else {
+        loadClinicSheet();
+      }
     });
 
     tableBody.addEventListener('click', event => {
