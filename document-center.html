@@ -376,14 +376,14 @@
       if (!value) return null;
 
       // Year-first, unambiguous 3-part: yyyy-mm-dd / yyyy/mm/dd / yyyy.mm.dd
-      let m = value.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+      let m = value.match(/^(\d{4})\s*[\/\-\.]\s*(\d{1,2})\s*[\/\-\.]\s*(\d{1,2})$/);
       if (m) {
         const [, y, mo, d] = m;
         return `${Number(d)}/${Number(mo)}/${y}`;
       }
 
       // Numeric with separators 3-part: dd/mm/yyyy, mm/dd/yyyy, d-m-yy, etc.
-      m = value.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+      m = value.match(/^(\d{1,2})\s*[\/\-\.]\s*(\d{1,2})\s*[\/\-\.]\s*(\d{2,4})$/);
       if (m) {
         let [, a, b, y] = m;
         const year = y.length === 2 ? (Number(y) < 50 ? `20${y}` : `19${y}`) : y;
@@ -397,33 +397,22 @@
 
       // Merged day-month with year 2-part: yyyy/dm or dm/yyyy
       // Examples: 2026/224 -> 224/2026, 2026/1224 -> 1224/2026
-      // We only swap if the FIRST part is exactly 4 digits AND the SECOND part is NOT exactly 4 digits,
-      // OR if both are 4 digits but we assume yyyy/dm order (user's request).
-      // However, if the second part is 4 digits (like /2026), it's already in dm/yyyy order.
-      m = value.match(/^(\d{4})[\/\-](\d{1,4})$/);
+      // We handle optional spaces around the separator: "2026 / 224"
+      m = value.match(/^(\d{4})\s*[\/\-]\s*(\d{1,4})$/);
       if (m) {
         const [full, p1, p2] = m;
-        // If it's yyyy/yyyy (e.g. 2026/2026), it's ambiguous, but if second is year, keep it.
-        // The user specifically said: if yyyy/dm convert swap them.
-        // So if we have 2026/1224, it should become 1224/2026.
-        // If we have 1224/2026, it should STAY 1224/2026.
         if (p2.length === 4 && p1.length === 4) {
-          // Both are 4 digits. If the first one looks like a year (e.g. 20xx) 
-          // and the second one also looks like a year, we need to be careful.
-          // But usually, the year is the one that's "correct" in the user's mind.
-          // Let's check if the first one is 20xx and second is not.
           const y1 = parseInt(p1);
           const y2 = parseInt(p2);
           if (y1 >= 1900 && y1 <= 2100 && (y2 < 1900 || y2 > 2100)) {
             return `${p2}/${p1}`;
           }
-          // If 1224/2026, it matches the SECOND rule below.
         } else {
           return `${p2}/${p1}`;
         }
       }
 
-      m = value.match(/^(\d{1,4})[\/\-](\d{4})$/);
+      m = value.match(/^(\d{1,4})\s*[\/\-]\s*(\d{4})$/);
       if (m) return `${m[1]}/${m[2]}`;
 
       // Written month name: "19 July 2026" / "July 19, 2026" (English or Arabic)
