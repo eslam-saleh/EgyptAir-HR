@@ -225,7 +225,7 @@
     <section class="panel-card admin-panel">
       <p class="eyebrow" data-en="Admin access & Inquiry" data-ar="دخول المسؤول والاستعلام">Admin access & Inquiry</p>
       <h2 data-en="Clinic reservation results" data-ar="نتائج حجوزات العيادات">Clinic reservation results</h2>
-      <p data-en="Enter the admin password for full access, or use the inquiry to check specific ID." data-ar="أدخل كلمة مرور المسؤول للدخول الكامل، أو استخدم الاستعلام للبحث عن كود معين.">Enter the admin password for full access, or use the inquiry to check specific ID.</p>
+      <p data-en="Enter the admin password to unlock full access and the patient ID inquiry." data-ar="أدخل كلمة مرور المسؤول لفتح الدخول الكامل واستعلام كود الموظف.">Enter the admin password to unlock full access and the patient ID inquiry.</p>
 
       <form class="admin-form" id="adminForm">
         <div class="admin-field">
@@ -235,7 +235,7 @@
         <button class="primary-btn" type="submit" data-en="Unlock" data-ar="فتح">Unlock</button>
       </form>
 
-      <form class="admin-form" id="inquiryForm" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);">
+      <form class="admin-form hidden" id="inquiryForm" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);">
         <div class="admin-field">
           <label for="patientId" data-en="Patient ID (Inquiry)" data-ar="كود الموظف (استعلام)">Patient ID (Inquiry)</label>
           <input id="patientId" type="text" inputmode="numeric" data-en-placeholder="Enter ID" data-ar-placeholder="أدخل الكود">
@@ -791,6 +791,7 @@
       adminPassword.value = '';
       isAdmin = true;
       filterPatientId = null;
+      inquiryForm.classList.remove('hidden');
       setStatus(adminStatus, t('Access granted.', 'تم السماح بالدخول.'));
       resultsPanel.classList.remove('hidden');
       loadClinicSheet();
@@ -798,6 +799,10 @@
 
     inquiryForm.addEventListener('submit', async event => {
       event.preventDefault();
+      if (!isAdmin) {
+        setStatus(adminStatus, t('Enter the admin password first.', 'يرجى إدخال كلمة مرور المسؤول أولاً.'), true);
+        return;
+      }
       const id = normalizeDigits(patientId.value).trim();
       if (!id) {
         setStatus(adminStatus, t('Please enter a patient ID.', 'يرجى إدخال كود الموظف.'), true);

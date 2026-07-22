@@ -164,9 +164,7 @@
         .replace(/"/g, '&quot;');
     }
 
-    function uniquePlaceholders(values) {
-      return groupPlaceholders(values);
-    }
+
 
     function collectPlaceholdersFromText(text) {
       const found = [];
@@ -254,7 +252,7 @@
       if (isLegacyDoc(doc)) {
         const result = await window.mammoth.convertToHtml({ arrayBuffer: buffer });
         legacyDocHtml = result.value;
-        return uniquePlaceholders(collectPlaceholdersFromText(legacyDocHtml));
+        return groupPlaceholders(collectPlaceholdersFromText(legacyDocHtml));
       }
 
       legacyDocHtml = null;
@@ -371,20 +369,31 @@
     };
 
     // Tries to recognize a typed date in (almost) any common format and
-    // rewrites it as dd/mm/yyyy. Returns null if the text isn't a date,
-    // so the original value is left untouched.
+    // rewrites it as d/m/yyyy (no leading zeros). Returns null if the text
+    // isn't a date, so the original value is left untouched.
     function tryFormatAsDate(raw) {
       const value = arabicDigitsToLatin(raw).trim();
       if (!value) return null;
-      const pad2 = (n) => String(n).padStart(2, '0');
+
+      // Merged day-month with year on the left: yyyy/dm  ->  dm/yyyy
+      // Examples: 2026/224 -> 224/2026, 2026/24 -> 24/2026
+      let m = value.match(/^(\d{4})[\/\-](\d{1,4})$/);
+      if (m) {
+        return `${m[2]}/${m[1]}`;
+      }
+
+      // Merged day-month with year on the right: dm/yyyy  ->  keep as-is
+      // Examples: 224/2026 -> 224/2026, 24/2026 -> 24/2026
+      m = value.match(/^(\d{1,4})[\/\-](\d{4})$/);
+      if (m) {
+        return `${m[1]}/${m[2]}`;
+      }
 
       // Year-first, unambiguous: yyyy-mm-dd / yyyy/mm/dd / yyyy.mm.dd
-      let m = value.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
+      m = value.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/);
       if (m) {
         const [, y, mo, d] = m;
-        if (+mo >= 1 && +mo <= 12 && +d >= 1 && +d <= 31) {
-          return `${pad2(d)}/${pad2(mo)}/${y}`;
-        }
+        return `${Number(d)}/${Number(mo)}/${y}`;
       }
 
       // Numeric with separators: dd/mm/yyyy, mm/dd/yyyy, d-m-yy, etc.
@@ -397,11 +406,7 @@
         if (month > 12 && day <= 12) {
           [day, month] = [month, day]; // was actually mm/dd/yyyy (US style)
         }
-        // if day > 12 it's already unambiguous day-first; if both <= 12 we
-        // keep the typed order (dd/mm), matching local convention
-        if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
-          return `${pad2(day)}/${pad2(month)}/${year}`;
-        }
+        return `${day}/${month}/${year}`;
       }
 
       // Written month name: "19 July 2026" / "July 19, 2026" (English or Arabic)
@@ -415,7 +420,7 @@
       }
       if (m) {
         const month = MONTH_NAMES[monthName.toLowerCase()];
-        if (month) return `${pad2(day)}/${pad2(month)}/${year}`;
+        if (month) return `${Number(day)}/${month}/${year}`;
       }
 
       return null;
@@ -494,14 +499,15 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    function filledDocxFileName(docName) {
-      const base = docName.replace(/\.(docx?|DOCX?)$/, '');
-      return `${base}.docx`;
+    function currentDateFileSuffix() {
+      const now = new Date();
+      return `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
     }
 
-    function pdfFileName(docName) {
+    function getExportFileName(docName, extension, includeDate = false) {
       const base = docName.replace(/\.(docx?|DOCX?)$/, '');
-      return `${base}.pdf`;
+      const dated = includeDate ? ` ${currentDateFileSuffix()}` : '';
+      return `${base}${dated}.${extension}`;
     }
 
     async function renderDocxBlobToHost(docxBlob) {
@@ -545,7 +551,7 @@
           setFormStatus(t('Preparing PDF…', 'جارٍ تجهيز ملف PDF…'));
           const html = replacePlaceholdersInHtml(legacyDocHtml, values, selectedPlaceholders);
           const renderTarget = await renderHtmlToHost(html);
-          await downloadPdfFromElement(renderTarget, pdfFileName(selectedDoc.name));
+          await downloadPdfFromElement(renderTarget, getExportFileName(selectedDoc.name, 'pdf', true));
           docxRenderHost.innerHTML = '';
         } else {
           // Modern .docx: edit the real Word XML directly with docxtemplater.
@@ -553,7 +559,7 @@
           setFormStatus(t('Preparing document…', 'جارٍ تجهيز المستند…'));
           const buffer = await downloadDriveFile(selectedDoc);
           const docxBlob = replacePlaceholdersInDocx(buffer, values);
-          downloadBlob(docxBlob, filledDocxFileName(selectedDoc.name));
+          downloadBlob(docxBlob, getExportFileName(selectedDoc.name, 'docx', true));
         }
 
         hideDocumentForm();
@@ -594,12 +600,12 @@
         if (isLegacyDoc(doc)) {
           const html = replacePlaceholdersInHtml(legacyDocHtml, values, auto, true);
           const renderTarget = await renderHtmlToHost(html);
-          await downloadPdfFromElement(renderTarget, pdfFileName(doc.name));
+          await downloadPdfFromElement(renderTarget, getExportFileName(doc.name, 'pdf', true));
           docxRenderHost.innerHTML = '';
         } else {
           const buffer = await downloadDriveFile(doc);
           const docxBlob = replacePlaceholdersInDocx(buffer, values, true);
-          downloadBlob(docxBlob, filledDocxFileName(doc.name));
+          downloadBlob(docxBlob, getExportFileName(doc.name, 'docx', true));
         }
       } catch (err) {
         window.showToast?.(err.message || t('Could not create the file.', 'تعذر إنشاء الملف.'), 'error');
