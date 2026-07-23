@@ -292,7 +292,8 @@
 
     // Placeholder labels that should always render as a big textarea,
     // regardless of how short the label text itself is.
-    const LONG_TEXT_LABELS = new Set(['subject', 'الموضوع'].map(normalizeKey));
+    // Matches if contains "subject", "الموضوع", or "موضوع" (case-insensitive after normalize)
+    const LONG_TEXT_LABELS = new Set(['subject', 'الموضوع', 'موضوع'].map(normalizeKey));
 
     function renderPlaceholderForm(doc, placeholders) {
       updateFormStaticText();
@@ -304,10 +305,15 @@
 
       formFields.innerHTML = placeholders.map((group, index) => {
         const fieldId = `placeholder-field-${index}`;
-        const useTextarea = group.label.length > 40 || LONG_TEXT_LABELS.has(normalizeKey(group.label));
+        const normalizedLabel = normalizeKey(group.label);
+        const useTextarea = group.label.length > 40 ||
+          LONG_TEXT_LABELS.has(normalizedLabel) ||
+          normalizedLabel.includes('subject') ||
+          normalizedLabel.includes('الموضوع') ||
+          normalizedLabel.includes('موضوع');
         const inputTag = useTextarea
-          ? `<textarea id="${fieldId}" data-placeholder-index="${index}" dir="auto" required></textarea>`
-          : `<input type="text" id="${fieldId}" data-placeholder-index="${index}" dir="auto" required>`;
+          ? `<textarea id="${fieldId}" data-placeholder-index="${index}" dir="auto"></textarea>`
+          : `<input type="text" id="${fieldId}" data-placeholder-index="${index}" dir="auto">`;
 
         return `
           <div class="document-form-field">
