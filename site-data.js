@@ -5,7 +5,7 @@
  {HRHead}
  {inflightHead}
  {penaltiesHead}
- {hiring}
+ {hiringHead}
  */
  
 window.SiteData = {
@@ -14,4 +14,13 @@ window.SiteData = {
   inflightHead: 'سهير موسى',
   penaltiesHead: 'رزق عبدالغنى إبراهيم',
   hiringHead: 'احمد محمد الدمرداش',
+  legalHead: 'احمد يوسف قطب',
+  presentorHead: 'اسامة توفيق عبدالحفيظ',
+  qualitiesHead: 'هشام محمد مهدى',
+  HRHeadID: '00000',
+  penaltiesHeadID: '69560',
+  hiringHeadID: '65732',
+  legalHeadID: '67440',
+  presentorHeadID: '83960',
+  qualitiesHeadID: '23972',
 };
