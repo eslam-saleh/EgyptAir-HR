@@ -17,10 +17,12 @@ window.SiteData = {
   legalHead: 'احمد يوسف قطب',
   presentorHead: 'اسامة توفيق عبدالحفيظ',
   qualitiesHead: 'هشام محمد مهدى',
-  HRHeadID: '00000',
+  secretaryHead: 'شرين منير منقريوس',
+  HRHeadID: '32000',
   penaltiesHeadID: '69560',
   hiringHeadID: '65732',
   legalHeadID: '67440',
   presentorHeadID: '83960',
   qualitiesHeadID: '23972',
+  secretaryHeadID: '68530',
 };

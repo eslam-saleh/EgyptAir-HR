@@ -113,7 +113,11 @@
       Object.keys(src).forEach((key) => {
         map[normalizeKey(key)] = src[key];
       });
-      return map;
+	  map[normalizeKey('تاريخ الاصدار')] = (() => {
+	  const now = new Date();
+	  return `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+		})();
+	  return map;
     }
 
     const list            = document.getElementById('documentList');
