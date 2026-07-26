@@ -517,7 +517,7 @@
 
     function currentDateFileSuffix() {
       const now = new Date();
-      return `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`;
+      return `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
     }
 
     function getExportFileName(docName, extension, includeDate = false) {
