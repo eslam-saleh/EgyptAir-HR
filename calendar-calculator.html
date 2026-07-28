@@ -423,7 +423,8 @@ const calcCopy = {
       bornOn: 'Born on', nextBirthday: 'Next birthday', totalMonths: 'Total months lived',
       workingDays: 'Working days', offDays: 'Off days', workingWeeks: 'Working weeks', offDaysPct: 'Off days %',
       occurrences: 'Occurrences',
-      units: { day: 'Days', week: 'Weeks', month: 'Months', year: 'Years' }
+      units: { day: 'Days', week: 'Weeks', month: 'Months', year: 'Years' },
+      exactUnits: { y: 'y', m: 'm', d: 'd' }
     },
     errors: {
       both: 'Please select both dates.',
@@ -445,7 +446,8 @@ const calcCopy = {
       bornOn: 'تاريخ الميلاد', nextBirthday: 'عيد الميلاد القادم', totalMonths: 'إجمالي الشهور',
       workingDays: 'أيام العمل', offDays: 'أيام العطلة', workingWeeks: 'أسابيع العمل', offDaysPct: 'نسبة العطلات',
       occurrences: 'مرات التكرار',
-      units: { day: 'أيام', week: 'أسابيع', month: 'أشهر', year: 'سنوات' }
+      units: { day: 'أيام', week: 'أسابيع', month: 'أشهر', year: 'سنوات' },
+      exactUnits: { y: 'عام', m: 'شهر', d: 'يوم' }
     },
     errors: {
       both: 'اختر التاريخين من فضلك.',
@@ -569,7 +571,7 @@ function calcDiff() {
   document.getElementById('diff-breakdown').innerHTML = `
     <div class="bd-row"><span class="bd-lbl">${c.labels.from}</span><span class="bd-val">${c.days[start.getDay()]}, ${fmt(start)}</span></div>
     <div class="bd-row"><span class="bd-lbl">${c.labels.to}</span><span class="bd-val">${c.days[end.getDay()]}, ${fmt(end)}</span></div>
-    <div class="bd-row"><span class="bd-lbl">${c.labels.exact}</span><span class="bd-val">${yrs > 0 ? yrs + 'y ' : ''}${mos > 0 ? mos + 'm ' : ''}${dys}d</span></div>
+    <div class="bd-row"><span class="bd-lbl">${c.labels.exact}</span><span class="bd-val">${yrs > 0 ? yrs + c.labels.exactUnits.y + ' ' : ''}${mos > 0 ? mos + c.labels.exactUnits.m + ' ' : ''}${dys}${c.labels.exactUnits.d}</span></div>
   `;
   showResult('diff-result');
 }
