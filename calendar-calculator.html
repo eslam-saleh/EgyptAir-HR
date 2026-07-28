@@ -752,9 +752,9 @@ function buildDateMask(orig) {
     el.autocomplete = 'off';
     el.className = 'dm-part';
   });
-  year.maxLength = 4;  year.placeholder = 'YYYY'; year.className += ' dm-year';
-  month.maxLength = 2; month.placeholder = 'MM';  month.className += ' dm-month';
-  day.maxLength = 2;   day.placeholder = 'DD';    day.className += ' dm-day';
+  year.maxLength = 4;  year.placeholder = 'yyyy'; year.className += ' dm-year';
+  month.maxLength = 2; month.placeholder = 'm';  month.className += ' dm-month';
+  day.maxLength = 2;   day.placeholder = 'dd';    day.className += ' dm-day';
 
   const sep1 = document.createElement('span'); sep1.className = 'dm-sep'; sep1.textContent = '/';
   const sep2 = document.createElement('span'); sep2.className = 'dm-sep'; sep2.textContent = '/';
