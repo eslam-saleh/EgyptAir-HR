@@ -152,6 +152,36 @@
   }
   .field input:focus, .field select:focus { border-color: var(--accent); }
 
+  /* Custom Y-M-D masked date field */
+  .date-mask {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    direction: ltr;
+    background: var(--surface2);
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius-sm);
+    padding: 0 10px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .date-mask:focus-within { border-color: var(--accent); }
+  .date-mask .dm-part {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 15px;
+    padding: 12px 2px;
+    text-align: center;
+    -moz-appearance: textfield;
+  }
+  .date-mask .dm-part::-webkit-outer-spin-button,
+  .date-mask .dm-part::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .date-mask .dm-year { width: 4.4ch; }
+  .date-mask .dm-month, .date-mask .dm-day { width: 2.6ch; }
+  .date-mask .dm-sep { color: var(--text-muted); }
+
   /* Checkbox */
   .check-row {
     display: flex; align-items: center; gap: 10px;
@@ -571,7 +601,7 @@ function calcDiff() {
   document.getElementById('diff-breakdown').innerHTML = `
     <div class="bd-row"><span class="bd-lbl">${c.labels.from}</span><span class="bd-val">${c.days[start.getDay()]}, ${fmt(start)}</span></div>
     <div class="bd-row"><span class="bd-lbl">${c.labels.to}</span><span class="bd-val">${c.days[end.getDay()]}, ${fmt(end)}</span></div>
-    <div class="bd-row"><span class="bd-lbl">${c.labels.exact}</span><span class="bd-val">${yrs > 0 ? yrs + c.labels.exactUnits.y + ' ' : ''}${mos > 0 ? mos + c.labels.exactUnits.m + ' ' : ''}${dys}${c.labels.exactUnits.d}</span></div>
+    <div class="bd-row"><span class="bd-lbl">${c.labels.exact}</span><span class="bd-val">${yrs} ${c.labels.exactUnits.y} - ${mos} ${c.labels.exactUnits.m} - ${dys} ${c.labels.exactUnits.d}</span></div>
   `;
   showResult('diff-result');
 }
@@ -707,6 +737,86 @@ window.addEventListener('portal-language-change', () => {
     if (btn && activePanel.querySelector('.result-card.visible')) btn.click();
   }
 });
+
+function buildDateMask(orig) {
+  const wrap = document.createElement('div');
+  wrap.className = 'date-mask';
+
+  const year  = document.createElement('input');
+  const month = document.createElement('input');
+  const day   = document.createElement('input');
+  [year, month, day].forEach(el => {
+    el.type = 'text';
+    el.inputMode = 'numeric';
+    el.pattern = '[0-9]*';
+    el.autocomplete = 'off';
+    el.className = 'dm-part';
+  });
+  year.maxLength = 4;  year.placeholder = 'YYYY'; year.className += ' dm-year';
+  month.maxLength = 2; month.placeholder = 'MM';  month.className += ' dm-month';
+  day.maxLength = 2;   day.placeholder = 'DD';    day.className += ' dm-day';
+
+  const sep1 = document.createElement('span'); sep1.className = 'dm-sep'; sep1.textContent = '/';
+  const sep2 = document.createElement('span'); sep2.className = 'dm-sep'; sep2.textContent = '/';
+
+  wrap.append(year, sep1, month, sep2, day);
+  orig.insertAdjacentElement('afterend', wrap);
+  orig.style.display = 'none';
+  orig.tabIndex = -1;
+
+  function clamp(el, min, max) {
+    if (!el.value) return;
+    let v = parseInt(el.value, 10);
+    if (isNaN(v)) { el.value = ''; return; }
+    if (v < min) v = min;
+    if (v > max) v = max;
+    el.value = String(v).padStart(el.maxLength, '0');
+  }
+
+  function sync() {
+    if (year.value.length === 4 && month.value && day.value) {
+      const y = year.value;
+      const m = month.value.padStart(2, '0');
+      const d = day.value.padStart(2, '0');
+      orig.value = `${y}-${m}-${d}`;
+    } else {
+      orig.value = '';
+    }
+  }
+
+  function digitsOnly(el, max) {
+    el.value = el.value.replace(/[^0-9]/g, '').slice(0, max);
+  }
+
+  year.addEventListener('input', () => {
+    digitsOnly(year, 4);
+    if (year.value.length === 4) month.focus();
+    sync();
+  });
+  month.addEventListener('input', () => {
+    digitsOnly(month, 2);
+    if (month.value.length === 2) day.focus();
+    sync();
+  });
+  day.addEventListener('input', () => {
+    digitsOnly(day, 2);
+    sync();
+  });
+
+  month.addEventListener('blur', () => { clamp(month, 1, 12); sync(); });
+  day.addEventListener('blur', () => { clamp(day, 1, 31); sync(); });
+
+  month.addEventListener('keydown', e => { if (e.key === 'Backspace' && !month.value) year.focus(); });
+  day.addEventListener('keydown', e => { if (e.key === 'Backspace' && !day.value) month.focus(); });
+
+  if (orig.value) {
+    const [y, m, d] = orig.value.split('-');
+    year.value = y; month.value = m; day.value = d;
+  }
+}
+
+document.querySelectorAll('input[type="date"]').forEach(buildDateMask);
+
 </script>
 
   <footer class="portal-footer">
