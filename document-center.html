@@ -303,6 +303,31 @@
     // Matches if contains "subject", "الموضوع", or "موضوع" (case-insensitive after normalize)
     const LONG_TEXT_LABELS = new Set(['subject', 'الموضوع', 'موضوع'].map(normalizeKey));
 
+    // ========== FIELD VALIDATION FUNCTIONS ==========
+    function setupFieldValidation() {
+        const fields = formFields.querySelectorAll('input, textarea');
+        fields.forEach((field) => {
+            // Remove any existing listeners to avoid duplicates
+            field.removeEventListener('input', handleFieldValidation);
+            field.removeEventListener('change', handleFieldValidation);
+            // Add the validation listener
+            field.addEventListener('input', handleFieldValidation);
+            field.addEventListener('change', handleFieldValidation);
+            // Initial validation
+            handleFieldValidation.call(field);
+        });
+    }
+
+    function handleFieldValidation() {
+        const field = this;
+        const hasValue = field.value.trim().length > 0;
+        // Set border color: green if has value, red if empty
+        field.style.borderColor = hasValue ? 'var(--success, #22c55e)' : 'var(--danger, #ef4444)';
+        // Optional: add a subtle background change
+        field.style.backgroundColor = hasValue ? 'rgba(34, 197, 94, 0.05)' : 'rgba(239, 68, 68, 0.05)';
+    }
+    // ========== END FIELD VALIDATION ==========
+
     function renderPlaceholderForm(doc, placeholders) {
       updateFormStaticText();
       formTitle.textContent = t(`Selected: ${doc.name}`, `المحدد: ${doc.name}`);
@@ -334,6 +359,9 @@
       formPanel.hidden = false;
       generatePdfBtn.disabled = false;
       setFormStatus('');
+      
+      // Setup validation on all fields
+      setupFieldValidation();
     }
 
     async function selectDocument(docId) {
