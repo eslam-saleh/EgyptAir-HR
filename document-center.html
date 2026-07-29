@@ -55,6 +55,9 @@
             <div class="document-form-actions">
               <button class="primary-btn" type="submit" id="generatePdfBtn"></button>
               <button class="ghost-btn" type="button" id="cancelFormBtn"></button>
+              <button class="ghost-btn" type="button" id="saveFieldsBtn" data-en="Save data" data-ar="حفظ البيانات">Save data</button>
+              <button class="ghost-btn" type="button" id="loadFieldsBtn" data-en="Load data" data-ar="نقل البيانات">Load data</button>
+              <input type="file" id="loadFieldsInput" accept="application/json" hidden>
             </div>
             <p class="document-form-status" id="documentFormStatus" hidden></p>
           </form>
@@ -135,6 +138,9 @@
     const cancelFormBtn   = document.getElementById('cancelFormBtn');
     const formStatus      = document.getElementById('documentFormStatus');
     const docxRenderHost  = document.getElementById('docxRenderHost');
+    const saveFieldsBtn   = document.getElementById('saveFieldsBtn');
+    const loadFieldsBtn   = document.getElementById('loadFieldsBtn');
+    const loadFieldsInput = document.getElementById('loadFieldsInput');
 
     function lang() {
       return window.EgyptAirPortal?.language || 'en';
@@ -294,7 +300,7 @@
 
     function updateFormStaticText() {
       const legacy = selectedDoc && isLegacyDoc(selectedDoc);
-      generatePdfBtn.textContent = legacy ? t('Download PDF', 'تحميل PDF') : t('Download Word file', 'تحميل ملف Word');
+      generatePdfBtn.textContent = legacy ? t('Download PDF', 'تحميل PDF') : t('Download Word file', 'انشاء ملف');
       cancelFormBtn.textContent = t('Cancel', 'إلغاء');
     }
 
@@ -363,6 +369,76 @@ function renderPlaceholderForm(doc, placeholders) {
   // Setup validation on all fields
   setupFieldValidation();
 }
+
+    // ========== SAVE / LOAD FIELD DATA ==========
+    // Keyed by the normalized label so saved data can be re-applied to the
+    // same-named field on any document, not just the one it was saved from.
+    function saveFormFieldsToJson() {
+      const fields = Array.from(formFields.querySelectorAll('[data-placeholder-index]'));
+      if (!fields.length) {
+        setFormStatus(t('There are no fields to save.', 'لا توجد حقول لحفظها.'), true);
+        return;
+      }
+
+      const data = {};
+      fields.forEach((field) => {
+        const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
+        const label = group ? group.label : field.previousElementSibling?.textContent || field.id;
+        if (!field.value) return;
+        data[normalizeKey(label)] = { label, value: field.value };
+      });
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+		const kodField = Array.from(formFields.querySelectorAll('[data-placeholder-index]')).find((f) => {
+		  const g = selectedPlaceholders[Number(f.dataset.placeholderIndex)];
+		  return g && normalizeKey(g.label).includes(normalizeKey('كود'));
+		});
+		const safeDocName = (kodField?.value || selectedDoc?.name || 'document-center-fields').replace(/[^\w\-]+/g, '_');
+      a.href = url;
+      a.download = `${safeDocName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setFormStatus(t('Saved field data to a JSON file.', 'تم حفظ بيانات الحقول في ملف JSON.'));
+    }
+
+    function applyLoadedFieldData(data) {
+      const fields = Array.from(formFields.querySelectorAll('[data-placeholder-index]'));
+      let matched = 0;
+      fields.forEach((field) => {
+        const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
+        const label = group ? group.label : '';
+        const key = normalizeKey(label);
+        const entry = data[key];
+        if (entry === undefined) return;
+        field.value = typeof entry === 'object' && entry !== null ? (entry.value ?? '') : entry;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        matched += 1;
+      });
+      return matched;
+    }
+
+    function loadFormFieldsFromFile(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          const matched = applyLoadedFieldData(data);
+          setFormStatus(matched
+            ? t(`Loaded ${matched} field(s) from the file.`, `تم تحميل ${matched} حقل/حقول من الملف.`)
+            : t('No matching fields were found in that file.', 'لم يتم العثور على حقول مطابقة في هذا الملف.'),
+            !matched);
+        } catch (err) {
+          setFormStatus(t('That file is not valid JSON.', 'هذا الملف ليس بصيغة JSON صحيحة.'), true);
+        }
+      };
+      reader.onerror = () => setFormStatus(t('Failed to read the file.', 'فشل في قراءة الملف.'), true);
+      reader.readAsText(file);
+    }
+    // ========== END SAVE / LOAD FIELD DATA ==========
 
     async function selectDocument(docId) {
       const doc = allDocs.find((item) => item.id === docId);
@@ -839,6 +915,13 @@ function renderPlaceholderForm(doc, placeholders) {
 	  }
 	});
     cancelFormBtn.addEventListener('click', hideDocumentForm);
+    saveFieldsBtn.addEventListener('click', saveFormFieldsToJson);
+    loadFieldsBtn.addEventListener('click', () => loadFieldsInput.click());
+    loadFieldsInput.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) loadFormFieldsFromFile(file);
+      loadFieldsInput.value = '';
+    });
 
     searchInput.addEventListener('input', (e) => renderDocuments(e.target.value));
     window.addEventListener('portal-language-change', () => {
