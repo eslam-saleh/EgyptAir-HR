@@ -91,7 +91,29 @@
   <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="site-data.js"></script>
-<script src="portal.js"></script>
+  <script src="portal.js"></script>
+  <script src="orgTree.js"></script>
+  <script>
+    // orgTree.js defines BOTH `const jobTree = {...}` and `const allEmployees = [...]`
+    // and assigns window.jobTree / window.allEmployees directly (loaded as a plain
+    // script, so no fetch/CORS/case-sensitivity issues). Both are required:
+    //  - window.allEmployees: flat array, O(1)-ish lookup by employee code, and the
+    //    authoritative source for job/department/sector/subDepartment per employee.
+    //  - window.jobTree: nested group→sector→department→subdepartment→jobs hierarchy,
+    //    the only place the "group" (المجموعة النوعية) lives, and used to disambiguate
+    //    which subdepartment a job title belongs to.
+    window.jobTree = window.jobTree || {};
+    window.allEmployees = window.allEmployees || [];
+    window.jobTreeError = (window.jobTree && Object.keys(window.jobTree).length)
+      ? null
+      : 'orgTree.js did not define window.jobTree (file missing or empty).';
+    window.allEmployeesError = (window.allEmployees && window.allEmployees.length)
+      ? null
+      : 'orgTree.js did not define window.allEmployees (file missing or empty).';
+    if (window.jobTreeError) console.warn(window.jobTreeError);
+    if (window.allEmployeesError) console.warn(window.allEmployeesError);
+    window.jobTreeReady = Promise.resolve(window.jobTree);
+  </script>
   <script>
     const FOLDER_ID = '1j6DuR_aAvrqJIkbRebdrIGTdUN86Jm8Q';
     const API_KEY   = 'AIzaSyAsl5N735tOpOjkcQK4kEritH6noDBH2eA';
@@ -99,6 +121,14 @@
     const ARABIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
     const PLACEHOLDER_RE = /\{([^{}]+)\}/g;
     const WORD_XML_RE = /^word\/(document|header|footer|footnotes|endnotes)\d*\.xml$/;
+
+    function toArabicDigits(value) {
+      return String(value ?? '').replace(/\d/g, (digit) => ARABIC_DIGITS[Number(digit)]);
+    }
+
+    function arabicDigitsToLatin(str) {
+      return String(str || '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+    }
 
     let allDocs = [];
     let selectedDoc = null;
@@ -108,6 +138,351 @@
 
     function normalizeKey(key) {
       return String(key || '').toLowerCase().replace(/[\s_-]/g, '');
+    }
+
+    /** Stronger Arabic-aware normalize: strip al-/taa marbuta/haa and diacritics for flexible label matching. */
+    function softNormalize(str) {
+      return String(str || '')
+        .normalize('NFKC')
+        .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+        .replace(/[إأآا]/g, 'ا')
+        .replace(/ى/g, 'ي')
+        .replace(/ة/g, 'ه')
+        .replace(/^ال/, '')
+        .replace(/[\s_\-]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function labelContains(label, keyword) {
+      return softNormalize(label).includes(softNormalize(keyword));
+    }
+
+    // ---- Employee lookup by code ----
+    function findEmployeeByCode(rawCode) {
+      const employees = window.allEmployees || [];
+      const codeStr = arabicDigitsToLatin(String(rawCode || '').trim());
+      if (!codeStr) return null;
+      const codeNum = Number(codeStr);
+      return employees.find((e) => String(e.code) === codeStr || e.code === codeNum) || null;
+    }
+
+    /**
+     * Walk Tree.json looking for a job title match.
+     * Returns { group, sector, department, jobTitle } or null.
+     * Tree shape (flexible):
+     *   groupKey: { label, sector?: { label, department?: { label, jobs?: { title } | [{title}] } }, department?: {...} }
+     */
+    /**
+     * Walk the restructured Tree.json:
+     * group → sectors{…} → departments{…} → subdepartments{…} → jobs[]
+     * group → departments{…} → subdepartments{…} → jobs[]
+     * Returns best match: { group, sector, department, subdepartment, jobTitle, score }
+     * Prefer exact job match; when multiple hits, prefer the path whose
+     * department/subdepartment soft-matches employee.department.
+     */
+function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
+  const tree = window.jobTree;
+  if (!tree || !jobTitle) return null;
+  const target = softNormalize(jobTitle);
+  const empDept = softNormalize(employeeDepartment || '');
+  const empSub = softNormalize(employeeSubDepartment || '');
+  const hits = [];
+
+  function jobListMatch(jobs) {
+    if (!Array.isArray(jobs)) return 0;
+    for (const j of jobs) {
+      const t = softNormalize(typeof j === 'string' ? j : (j.title || j.label || ''));
+      if (!t) continue;
+      if (t === target) return 2;
+      if (t.includes(target) || target.includes(t)) return 1;
+    }
+    return 0;
+  }
+
+  function pushHit(score, groupLabel, sectorLabel, deptLabel, subLabel) {
+    if (!score) return;
+    let bonus = 0;
+    const d = softNormalize(deptLabel);
+    const s = softNormalize(subLabel);
+    if (empDept) {
+      if (d && (d === empDept || d.includes(empDept) || empDept.includes(d))) bonus += 2;
+      if (s && (s === empDept || s.includes(empDept) || empDept.includes(s))) bonus += 3;
+    }
+    // Strongest signal: the employee's own recorded sub-department (from the
+    // HR roster) exactly identifies which branch of the department this is.
+    if (empSub) {
+      if (s && (s === empSub || s.includes(empSub) || empSub.includes(s))) {
+        bonus += 100;
+      } else if (s) {
+        // this hit has a sub-department but it's NOT the employee's recorded
+        // one — penalize it so the correct sub-department wins the tie
+        bonus -= 50;
+      }
+    }
+    hits.push({
+      group: groupLabel || '',
+      sector: sectorLabel || '',
+      department: deptLabel || '',
+      subdepartment: subLabel || '',
+      jobTitle,
+      score: score + bonus
+    });
+  }
+
+  for (const groupKey of Object.keys(tree)) {
+    const group = tree[groupKey];
+    if (!group) continue;
+    const groupLabel = group.label || groupKey;
+
+    // Handle the 'sectors' structure (new format)
+    const sectors = group.sectors || {};
+    for (const secKey of Object.keys(sectors)) {
+      const sec = sectors[secKey];
+      if (!sec) continue;
+      const sectorLabel = sec.label || secKey;
+      const departments = sec.departments || {};
+      for (const deptKey of Object.keys(departments)) {
+        const dept = departments[deptKey];
+        if (!dept) continue;
+        const deptLabel = dept.label || deptKey;
+        
+        // Check jobs directly on department
+        pushHit(jobListMatch(dept.jobs), groupLabel, sectorLabel, deptLabel, '');
+        
+        // Check subdepartments
+        const subs = dept.subdepartments || {};
+        for (const subKey of Object.keys(subs)) {
+          const sub = subs[subKey];
+          if (!sub) continue;
+          const subLabel = sub.label || subKey;
+          pushHit(jobListMatch(sub.jobs), groupLabel, sectorLabel, deptLabel, subLabel);
+        }
+      }
+    }
+
+    // Also handle top-level departments (no sector) for backward compatibility
+    const topDepts = group.departments || {};
+    for (const deptKey of Object.keys(topDepts)) {
+      const dept = topDepts[deptKey];
+      if (!dept) continue;
+      const deptLabel = dept.label || deptKey;
+      pushHit(jobListMatch(dept.jobs), groupLabel, '', deptLabel, '');
+      
+      const subs = dept.subdepartments || {};
+      for (const subKey of Object.keys(subs)) {
+        const sub = subs[subKey];
+        if (!sub) continue;
+        const subLabel = sub.label || subKey;
+        pushHit(jobListMatch(sub.jobs), groupLabel, '', deptLabel, subLabel);
+      }
+    }
+  }
+
+  if (!hits.length) return null;
+  hits.sort((a, b) => b.score - a.score);
+  return hits[0];
+}
+
+    /**
+     * Build the long organisational title used in most HR forms, e.g.:
+     * "مجموعة الوظائف التخصصية باداره رقابه الجوده بالاداره العامه للسلامة والجودة"
+     * "مجموعة الوظائف التخصصية باداره تموين الشركات الاجنيه بالاداره العامه للتموين بقطاع التشغيل"
+     *
+     * Order: group → subdepartment (if any) → department → sector
+     *
+     * allEmployees is authoritative for sector / department / subDepartment.
+     * jobTree is only needed for "group" (المجموعة النوعية).
+     * Sector "رئيس مجلس الادارة" is an org umbrella, not a real قطاع — omit it.
+     */
+    function buildGroupPath(info, employee) {
+      const group = (info && info.group) || '';
+      // Prefer HR roster fields; fall back to the tree walk only if missing.
+      const sector = (employee && employee.sector) || (info && info.sector) || '';
+      const department = (employee && employee.department) || (info && info.department) || '';
+      const subdepartment = (employee && employee.subDepartment) || (info && info.subdepartment) || '';
+
+      if (!group && !sector && !department && !subdepartment) return '';
+
+      const parts = [];
+      if (group) parts.push(group);
+
+      if (subdepartment) {
+        parts.push(`ب${subdepartment}`);
+        if (department) parts.push(`ب${department}`);
+      } else if (department) {
+        parts.push(`ب${department}`);
+      }
+
+      // Real sectors only (قطاع التشغيل / الخدمات / الأمن). Omit "رئيس مجلس الادارة".
+      if (sector && !labelContains(sector, 'رئيس مجلس')) {
+        parts.push(`ب${sector}`);
+      }
+
+      return parts.join(' ');
+    }
+
+    /**
+     * Fill form fields from an employee record + optional jobTree match.
+     *
+     * Label rules (first match wins):
+     *   اسم (not كود)          → name
+     *   تعيين / تاريخ التعيين  → hire date (Arabic digits d/m/yyyy)
+     *   وظيفة                  → job title
+     *   مجموعة                 → full path (group + units + sector)
+     *   قطاع (not مجموعة)      → sector ONLY
+     *   ادارة / إدارة / قسم    → department or sub-department ONLY
+     *       · "قسم" / "فرعي"   → prefer subDepartment
+     *       · "عامة" / "عامه"  → prefer department (الادارة العامة)
+     *       · otherwise        → innermost unit
+     */
+    function fillEmployeeFields(employee) {
+      if (!employee) return 0;
+      const fields = Array.from(formFields.querySelectorAll('[data-placeholder-index]'));
+      let filled = 0;
+
+      const hireFormatted = employee.hireDate
+        ? (() => {
+            const [y, m, d] = employee.hireDate.split('-');
+            return toArabicDigits(`${Number(d)}/${Number(m)}/${y}`);
+          })()
+        : '';
+
+      const jobInfo = findJobInTree(employee.job, employee.department, employee.subDepartment);
+      const fullGroupPath = buildGroupPath(jobInfo, employee);
+
+      // Resolved units (HR roster first, tree as fallback)
+      const resolvedSector = employee.sector || (jobInfo && jobInfo.sector) || '';
+      const resolvedDept = employee.department || (jobInfo && jobInfo.department) || '';
+      const resolvedSub = employee.subDepartment || (jobInfo && jobInfo.subdepartment) || '';
+
+      fields.forEach((field) => {
+        const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
+        if (!group) return;
+        const label = group.label || '';
+        let value = null;
+
+        if (labelContains(label, 'اسم') && !labelContains(label, 'كود')) {
+          value = employee.name;
+        } else if (
+          labelContains(label, 'تعيين') ||
+          labelContains(label, 'تاريخالتعيين') ||
+          labelContains(label, 'تاريختعين')
+        ) {
+          value = hireFormatted;
+        } else if (labelContains(label, 'وظيفة') || labelContains(label, 'الوظيفة')) {
+          value = employee.job;
+        } else if (labelContains(label, 'مجموعة')) {
+          // Full combined organisational title (group + sub/dept + sector).
+          value = fullGroupPath || (jobInfo && jobInfo.group) || resolvedDept || '';
+        } else if (labelContains(label, 'قطاع') && !labelContains(label, 'مجموعة')) {
+          // Sector only — never the full path.
+          value = resolvedSector;
+        } else if (
+          (labelContains(label, 'ادارة') || labelContains(label, 'إدارة') || labelContains(label, 'قسم')) &&
+          !labelContains(label, 'مجموعة') &&
+          !labelContains(label, 'قطاع')
+        ) {
+          const wantsSub =
+            labelContains(label, 'قسم') ||
+            labelContains(label, 'فرعي') ||
+            labelContains(label, 'فرعية');
+          const wantsGeneral =
+            labelContains(label, 'عامة') ||
+            labelContains(label, 'عامه') ||
+            labelContains(label, 'العامه') ||
+            labelContains(label, 'العامة');
+
+          if (wantsSub) {
+            value = resolvedSub || resolvedDept || '';
+          } else if (wantsGeneral) {
+            value = resolvedDept || resolvedSub || '';
+          } else {
+            value = resolvedSub || resolvedDept || '';
+          }
+        }
+
+        if (value !== null && value !== '') {
+          field.value = value;
+          field.dispatchEvent(new Event('input', { bubbles: true }));
+          filled += 1;
+        }
+      });
+      return filled;
+    }
+
+    function attachCodeLoadButtons() {
+      const fields = Array.from(formFields.querySelectorAll('[data-placeholder-index]'));
+      fields.forEach((field) => {
+        const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
+        if (!group || !labelContains(group.label, 'كود')) return;
+
+        // Avoid duplicate buttons
+        if (field.parentElement.querySelector('.code-load-btn')) return;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ghost-btn code-load-btn';
+        btn.title = t('Load employee data', 'تحميل بيانات الموظف');
+        btn.setAttribute('aria-label', btn.title);
+        btn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+            <polyline points="21 3 21 9 15 9"/>
+          </svg>
+        `;
+        btn.style.cssText = 'padding:6px 10px;margin-inline-start:6px;display:inline-flex;align-items:center;justify-content:center;min-width:36px;';
+
+        // Put button next to the input inside the field wrapper
+        const wrapper = field.closest('.document-form-field') || field.parentElement;
+        // Make the field row flex so input + button sit side by side
+        if (wrapper && !wrapper.querySelector('.code-field-row')) {
+          const row = document.createElement('div');
+          row.className = 'code-field-row';
+          row.style.cssText = 'display:flex;align-items:center;gap:4px;';
+          field.parentNode.insertBefore(row, field);
+          row.appendChild(field);
+          row.appendChild(btn);
+        } else {
+          field.insertAdjacentElement('afterend', btn);
+        }
+
+        btn.addEventListener('click', async () => {
+          const code = field.value.trim();
+          if (!code) {
+            setFormStatus(t('Enter an employee code first.', 'أدخل كود الموظف أولاً.'), true);
+            return;
+          }
+          btn.disabled = true;
+          btn.style.opacity = '0.6';
+          try {
+            // Ensure job hierarchy is loaded before resolving مجموعة / قطاع / ادارة
+            if (window.jobTreeReady) await window.jobTreeReady;
+            const emp = findEmployeeByCode(code);
+            if (!emp) {
+              setFormStatus(t(`No employee found for code ${code}.`, `لم يتم العثور على موظف بالكود ${code}.`), true);
+            } else {
+              const n = fillEmployeeFields(emp);
+              if (window.jobTreeError) {
+                setFormStatus(t(
+                  `Loaded ${n} field(s) for ${emp.name}, but orgTree.js's job tree could not be loaded — the "مجموعة" (group) field could not be resolved.`,
+                  `تم تحميل ${n} حقل/حقول للموظف ${emp.name}، لكن تعذر تحميل شجرة الوظائف من orgTree.js — لم يتم تحديد "المجموعة".`
+                ), true);
+              } else {
+                setFormStatus(t(
+                  `Loaded ${n} field(s) for ${emp.name}.`,
+                  `تم تحميل ${n} حقل/حقول للموظف ${emp.name}.`
+                ));
+              }
+            }
+          } catch (err) {
+            setFormStatus(err.message || t('Failed to load employee.', 'فشل تحميل بيانات الموظف.'), true);
+          } finally {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+          }
+        });
+      });
     }
 
     function getFixedDataMap() {
@@ -164,10 +539,6 @@
 
     function isLegacyDoc(doc) {
       return doc.name.toLowerCase().endsWith('.doc') && !doc.name.toLowerCase().endsWith('.docx');
-    }
-
-    function toArabicDigits(value) {
-      return String(value ?? '').replace(/\d/g, (digit) => ARABIC_DIGITS[Number(digit)]);
     }
 
     function escapeHtml(value) {
@@ -368,6 +739,8 @@ function renderPlaceholderForm(doc, placeholders) {
   
   // Setup validation on all fields
   setupFieldValidation();
+  // Add load-employee buttons next to any "كود" fields
+  attachCodeLoadButtons();
 }
 
     // ========== SAVE / LOAD FIELD DATA ==========
@@ -472,10 +845,6 @@ function renderPlaceholderForm(doc, placeholders) {
         setFormStatus(err.message || t('Failed to read the document.', 'تعذر قراءة المستند.'), true);
         generatePdfBtn.disabled = true;
       }
-    }
-
-    function arabicDigitsToLatin(str) {
-      return String(str || '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
     }
 
     const MONTH_NAMES = {
