@@ -343,7 +343,7 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
 
       const hireFormatted = employee.hireDate
         ? (() => {
-            const [y, m, d] = employee.hireDate.split('-');
+            const [y, m, d] = employee.hireDate.split('/');
             return toArabicDigits(`${Number(d)}/${Number(m)}/${y}`);
           })()
         : '';
