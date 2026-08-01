@@ -1065,11 +1065,16 @@ function renderPlaceholderForm(doc, placeholders) {
       return `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
     }
 
-    function getExportFileName(docName, extension, includeDate = false) {
-      const base = docName.replace(/\.(docx?|DOCX?)$/, '');
-      const dated = includeDate ? ` ${currentDateFileSuffix()}` : '';
-      return `${base}${dated}.${extension}`;
-    }
+	function getExportFileName(docName, extension, includeDate = false) {
+	  const base = docName.replace(/\.(docx?|DOCX?)$/, '');
+	  const kodField = Array.from(formFields.querySelectorAll('[data-placeholder-index]')).find((f) => {
+		const g = selectedPlaceholders[Number(f.dataset.placeholderIndex)];
+		return g && normalizeKey(g.label).includes(normalizeKey('كود'));
+	  });
+	  const code = (kodField?.value || '').trim();
+	  const suffix = code || (includeDate ? currentDateFileSuffix() : '');
+	  return suffix ? `${base} ${suffix}.${extension}` : `${base}.${extension}`;
+	}
 
     async function renderDocxBlobToHost(docxBlob) {
       const arrayBuffer = await docxBlob.arrayBuffer();
