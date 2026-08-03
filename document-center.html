@@ -348,6 +348,17 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
           })()
         : '';
 
+      // dateOfBirth is stored reversed in the same YYYY/MM/DD style as hireDate
+      const dobFormatted = employee.dateOfBirth
+        ? (() => {
+            const [y, m, d] = String(employee.dateOfBirth).split('/');
+            return toArabicDigits(`${Number(d)}/${Number(m)}/${y}`);
+          })()
+        : '';
+
+      // Names are stored reversed in orgTree as a simple cipher; reverse them back for display.
+      const displayName = employee.name ? String(employee.name).split('').reverse().join('') : '';
+
       const jobInfo = findJobInTree(employee.job, employee.department, employee.subDepartment);
       const fullGroupPath = buildGroupPath(jobInfo, employee);
 
@@ -363,13 +374,16 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
         let value = null;
 
         if (labelContains(label, 'اسم') && !labelContains(label, 'كود')) {
-          value = employee.name;
+          value = displayName;
         } else if (
           labelContains(label, 'تعيين') ||
           labelContains(label, 'تاريخالتعيين') ||
           labelContains(label, 'تاريختعين')
         ) {
           value = hireFormatted;
+        } else if (labelContains(label, 'ميلاد')) {
+          // أي حقل يحتوي على كلمة "ميلاد" (تاريخ الميلاد / ميلاد …)
+          value = dobFormatted;
         } else if (labelContains(label, 'وظيفة') || labelContains(label, 'الوظيفة')) {
           value = employee.job;
         } else if (labelContains(label, 'مجموعة')) {
