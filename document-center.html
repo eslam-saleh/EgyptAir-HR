@@ -372,7 +372,10 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
         if (!group) return;
         const label = group.label || '';
         let value = null;
-
+		
+        if (labelContains(label, 'اسم') && (!labelContains(label, 'متقدم')&& !labelContains(label, 'مذكور'))) {}
+        else if (labelContains(label, 'تاريخ') && (!labelContains(label, 'ميلاد')&& !labelContains(label, 'تعيين'))) {}		
+		else{
         if (labelContains(label, 'اسم') && !labelContains(label, 'كود')) {
           value = displayName;
         } else if (
@@ -415,7 +418,7 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
             value = resolvedSub || resolvedDept || '';
           }
         }
-
+		}
         if (value !== null && value !== '') {
           field.value = value;
           field.dispatchEvent(new Event('input', { bubbles: true }));
