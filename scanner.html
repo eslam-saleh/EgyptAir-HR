@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scanner - EgyptAir Work Tools</title>
+  <link rel="icon" href="egyptair-logo_.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="portal.css">
+  <style>
+    .scanner-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      text-align: center;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 40px;
+      margin-top: 20px;
+    }
+    .scanner-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+    }
+    .scanner-placeholder-text {
+      color: var(--muted);
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <header class="portal-header">
+    <a class="brand" href="index.html" aria-label="EgyptAir home">
+      <img src="egyptair-logo_.png" alt="EgyptAir logo">
+      <span>
+        <strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong>
+        <small data-en="Human Resources Management" data-ar="ادارة الموارد البشرية">ادارة الموارد البشرية</small>
+      </span>
+    </a>
+
+    <nav class="portal-nav" aria-label="Main navigation">
+      <a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a>
+      <a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a>
+      <a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a>
+      <a href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a>
+      <a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a>
+      <a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">الجزاءات والمرتبات</a>
+      <a class="active" href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a>
+    </nav>
+
+    <div class="portal-actions" aria-label="Display controls">
+      <button class="segmented-btn active" type="button" data-lang-option="en">EN</button>
+      <button class="segmented-btn" type="button" data-lang-option="ar">AR</button>
+      <button class="theme-btn" type="button" data-theme-toggle data-en="Dark" data-ar="داكن">Dark</button>
+    </div>
+  </header>
+
+  <main class="portal-shell">
+    <section class="hero-panel">
+      <p class="eyebrow" data-en="Document Digitization" data-ar="رقمنة المستندات">Document Digitization</p>
+      <h1 data-en="Scanner Tool" data-ar="أداة الماسح الضوئي">Scanner Tool</h1>
+      <p data-en="This tool is coming soon. It will allow you to scan and digitize your documents directly from your browser." data-ar="هذه الأداة ستتوفر قريباً. ستسمح لك بمسح مستنداتك ضوئياً ورقمنتها مباشرة من متصفحك.">This tool is coming soon. It will allow you to scan and digitize your documents directly from your browser.</p>
+    </section>
+
+    <div class="scanner-container">
+      <div class="scanner-icon">📷</div>
+      <p class="scanner-placeholder-text" data-en="Scanner feature is under development." data-ar="ميزة الماسح الضوئي قيد التطوير.">Scanner feature is under development.</p>
+    </div>
+  </main>
+
+  <footer class="portal-footer">
+    <div class="footer-content">
+      <div class="footer-info">
+        <span><strong>Contact Us</strong></span>
+        <span><a href="mailto:eslamsaleh1999@gmail.com">eslamsaleh1999@gmail.com</a></span>
+        <span><a href="tel:+201061438871">+201061438871</a></span>
+      </div>
+      <div class="footer-copyright">
+        &copy; 2026 Egyptair inflight services. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <script src="site-data.js"></script>
+  <script src="portal.js"></script>
+</body>
+</html>
