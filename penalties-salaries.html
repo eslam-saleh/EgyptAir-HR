@@ -546,24 +546,45 @@
             <span data-en="Salary & Deductions" data-ar="المرتب والخصومات">المرتب والخصومات</span>
           </h2>
 
-          <!-- Base Salary -->
+          <!-- Basic Salary (الأجر الأساسي) – used for penalty day deductions -->
           <div class="sal-field">
-            <label class="sal-label" for="salNumber" data-en="Base Salary" data-ar="المرتب الأساسي">المرتب الأساسي</label>
+            <label class="sal-label" for="basicNumber" data-en="Basic Salary (أساسي)" data-ar="الأجر الأساسي">الأجر الأساسي</label>
             <div class="sal-input-row">
-              <input type="number" id="salNumber" min="3000" max="50000" step="100" value="15000">
+              <input type="number" id="basicNumber" min="400" max="4000" step="50" value="2000">
               <span class="sal-currency">EGP</span>
-              <input type="range" id="salRange" min="3000" max="50000" step="100" value="15000">
+              <input type="range" id="basicRange" min="400" max="4000" step="50" value="2000">
+            </div>
+            <p class="hint-text" data-en="Penalties in days are calculated from this amount only (per Labour Law)." data-ar="الجزاءات بالأيام تُحسب من هذا المبلغ فقط (حسب قانون العمل).">الجزاءات بالأيام تُحسب من هذا المبلغ فقط (حسب قانون العمل).</p>
+          </div>
+
+          <!-- Incentives / Variable (الحوافز) -->
+          <div class="sal-field">
+            <label class="sal-label" for="incentivesNumber" data-en="Incentives / Variable Pay" data-ar="الحوافز / الأجر المتغير">الحوافز / الأجر المتغير</label>
+            <div class="sal-input-row">
+              <input type="number" id="incentivesNumber" min="0" max="100000" step="50" value="13000">
+              <span class="sal-currency">EGP</span>
+              <input type="range" id="incentivesRange" min="0" max="100000" step="50" value="13000">
+            </div>
+            <p class="hint-text" data-en="Bonuses, allowances, incentives… not used for day-based penalties." data-ar="حوافز، بدلات، مكافآت… لا تُستخدم في حساب الجزاءات بالأيام.">حوافز، بدلات، مكافآت… لا تُستخدم في حساب الجزاءات بالأيام.</p>
+          </div>
+
+          <!-- Total (read-only display) -->
+          <div class="sal-field">
+            <label class="sal-label" data-en="Total Gross Salary" data-ar="إجمالي المرتب (الكلي)">إجمالي المرتب (الكلي)</label>
+            <div class="sal-input-row">
+              <input type="number" id="totalGross" readonly value="15000" style="background:var(--surface); font-weight:800; color:var(--primary);">
+              <span class="sal-currency">EGP</span>
             </div>
           </div>
 
           <!-- Annual Raise -->
           <div class="sal-field">
-            <label class="sal-label" for="raiseAmt" data-en="Annual Raise (علاوة) %7" data-ar="قيمة العلاوة السنوية %7">قيمة العلاوة السنوية %7</label>
+            <label class="sal-label" for="raiseAmt" data-en="Annual Raise value (علاوة)" data-ar="قيمة العلاوة السنوية">قيمة العلاوة السنوية</label>
             <div class="sal-input-row">
-              <input type="number" id="raiseAmt" min="0" max="50000" step="50" value="1050">
+              <input type="number" id="raiseAmt" min="0" max="50000" step="50" value="140">
               <span class="sal-currency">EGP</span>
             </div>
-            <p class="hint-text" data-en="Used when the penalty is a fraction or multiple of the annual raise." data-ar="تُستخدم عند احتساب الجزاء كجزء أو مضاعفات من العلاوة السنوية.">تُستخدم عند احتساب الجزاء كجزء أو مضاعفات من العلاوة السنوية.</p>
+            <p class="hint-text" data-en="Default = 7% of Basic. Used when penalty is “مقدار علاوة” or fraction of it." data-ar="افتراضيًا = 7٪ من الأساسي. تُستخدم عند جزاء «مقدار علاوة» أو جزء منها.">افتراضيًا = 7٪ من الأساسي. تُستخدم عند جزاء «مقدار علاوة» أو جزء منها.</p>
           </div>
 
           <!-- Tax & Insurance toggle -->
@@ -581,13 +602,22 @@
               <label for="insRate" data-en="Insurance Rate (%)" data-ar="نسبة التأمين (%)">نسبة التأمين (%)</label>
               <input type="number" id="insRate" min="0" max="50" step="0.5" value="5">
             </div>
+            <p class="hint-text" style="grid-column:1/-1;" data-en="Tax & insurance are calculated on the Total Gross by default." data-ar="الضريبة والتأمين يُحسبان على الإجمالي افتراضيًا.">الضريبة والتأمين يُحسبان على الإجمالي افتراضيًا.</p>
           </div>
 
           <!-- Summary -->
           <div class="summary-grid">
             <div class="sum-card">
-              <div class="sum-clabel" data-en="Base Salary" data-ar="المرتب الأساسي">المرتب الأساسي</div>
-              <div class="sum-cvalue" id="sBase">15,000.00 EGP</div>
+              <div class="sum-clabel" data-en="Basic" data-ar="الأساسي">الأساسي</div>
+              <div class="sum-cvalue" id="sBasic">2,000.00 EGP</div>
+            </div>
+            <div class="sum-card">
+              <div class="sum-clabel" data-en="Incentives" data-ar="الحوافز">الحوافز</div>
+              <div class="sum-cvalue" id="sIncentives">13,000.00 EGP</div>
+            </div>
+            <div class="sum-card">
+              <div class="sum-clabel" data-en="Total Gross" data-ar="الإجمالي">الإجمالي</div>
+              <div class="sum-cvalue" id="sGross">15,000.00 EGP</div>
             </div>
             <div class="sum-card hidden" id="sTaxCard">
               <div class="sum-clabel" data-en="Tax" data-ar="الضريبة">الضريبة</div>
@@ -642,9 +672,14 @@
     // ── State ─────────────────────────────────────────────────────────────────
     let selectedReg  = null;
     let selectedCrew = null;
-    let salary       = 15000;
+    let basicSalary  = 2000;   // الأجر الأساسي (حد أدنى 400 – أقصى 4000)
+    let incentives   = 13000;  // الحوافز / الأجر المتغير
     let penaltyAmt   = 0;
     let penaltyDesc  = '';
+
+    function getTotalGross() {
+      return basicSalary + incentives;
+    }
 
     // ── Boot ──────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
@@ -664,6 +699,8 @@
       }
 
       bindEvents();
+      updateTotalGross();
+      updateRaise();
       updateSummary();
     });
 
@@ -690,27 +727,46 @@
       // Crew manual amount
       document.getElementById('crewPenaltyAmt').addEventListener('input', onCrewAmtChange);
 
-      // Salary
-      const salNum   = document.getElementById('salNumber');
-      const salRng   = document.getElementById('salRange');
-      const raiseAmt = document.getElementById('raiseAmt');
-      salNum.addEventListener('input', () => {
-        let v = clampSal(+salNum.value);
-        salNum.value = v; salRng.value = v;
-        salary = v;
+      // Basic salary (min 400 – max 4000)
+      const basicNum = document.getElementById('basicNumber');
+      const basicRng = document.getElementById('basicRange');
+      basicNum.addEventListener('input', () => {
+        let v = clampBasic(+basicNum.value);
+        basicNum.value = v; basicRng.value = v;
+        basicSalary = v;
         updateRaise();
+        updateTotalGross();
         recalcPenalty();
         updateSummary();
       });
-      salRng.addEventListener('input', () => {
-        salary = +salRng.value;
-        salNum.value = salary;
+      basicRng.addEventListener('input', () => {
+        basicSalary = +basicRng.value;
+        basicNum.value = basicSalary;
         updateRaise();
+        updateTotalGross();
         recalcPenalty();
         updateSummary();
       });
 
-      // Raise (auto-calculated as 7% of the base salary; still editable manually)
+      // Incentives
+      const incNum = document.getElementById('incentivesNumber');
+      const incRng = document.getElementById('incentivesRange');
+      incNum.addEventListener('input', () => {
+        let v = clampInc(+incNum.value);
+        incNum.value = v; incRng.value = v;
+        incentives = v;
+        updateTotalGross();
+        updateSummary();
+      });
+      incRng.addEventListener('input', () => {
+        incentives = +incRng.value;
+        incNum.value = incentives;
+        updateTotalGross();
+        updateSummary();
+      });
+
+      // Raise (auto = 7% of Basic; still editable manually)
+      const raiseAmt = document.getElementById('raiseAmt');
       raiseAmt.addEventListener('input', () => {
         recalcPenalty();
         updateSummary();
@@ -876,39 +932,40 @@
     }
 
     // ── Penalty calculation (comprehensive) ──────────────────────────────────
+    // IMPORTANT: day-based penalties use Basic Salary only (Labour Law)
     function calcPenalty(text) {
       if (!text || text === '—' || text === '-') return { amount: 0, desc: '', isMonetary: false };
       const t = text.toString();
-      const daily  = salary / 30;
+      const daily  = basicSalary / 30;   // ← من الأجر الأساسي فقط
       const raise  = getRaise();
 
-      // Percentage of daily wage
-      if (t.includes('١٠٪') || t.includes('10%'))                        return { amount: daily * 0.10, desc: fmt(daily)+'÷10', isMonetary: true };
-      if (t.includes('٧٥٪') || t.includes('75%'))                        return { amount: daily * 0.75, desc: fmt(daily)+'×0.75', isMonetary: true };
+      // Percentage of daily wage (basic)
+      if (t.includes('١٠٪') || t.includes('10%'))                        return { amount: daily * 0.10, desc: 'أساسي يومي ÷10', isMonetary: true };
+      if (t.includes('٧٥٪') || t.includes('75%'))                        return { amount: daily * 0.75, desc: 'أساسي يومي ×0.75', isMonetary: true };
 
       // Fractions of a day
-      if (t.includes('ربع اليوم') || t.includes('ربع يوم'))              return { amount: daily * 0.25, desc: fmt(daily)+'÷4', isMonetary: true };
-      if (t.includes('نصف اليوم') || t.includes('نصف يوم'))              return { amount: daily * 0.5,  desc: fmt(daily)+'÷2', isMonetary: true };
-      if (t.includes('ثلاثة أرباع') )                                     return { amount: daily * 0.75, desc: fmt(daily)+'×0.75', isMonetary: true };
+      if (t.includes('ربع اليوم') || t.includes('ربع يوم'))              return { amount: daily * 0.25, desc: 'أساسي يومي ÷4', isMonetary: true };
+      if (t.includes('نصف اليوم') || t.includes('نصف يوم'))              return { amount: daily * 0.5,  desc: 'أساسي يومي ÷2', isMonetary: true };
+      if (t.includes('ثلاثة أرباع') )                                     return { amount: daily * 0.75, desc: 'أساسي يومي ×0.75', isMonetary: true };
 
       // Days (order matters: check longer phrases first)
-      if (t.includes('يوم ونصف'))                                         return { amount: daily * 1.5, desc: fmt(daily)+'×1.5', isMonetary: true };
-      if (t.includes('يومان'))                                            return { amount: daily * 2,   desc: fmt(daily)+'×2',   isMonetary: true };
-      if (t.includes('ثلاثة أيام'))                                       return { amount: daily * 3,   desc: fmt(daily)+'×3',   isMonetary: true };
-      if (t.includes('أربعة أيام'))                                       return { amount: daily * 4,   desc: fmt(daily)+'×4',   isMonetary: true };
-      if (t.includes('خمسة أيام'))                                        return { amount: daily * 5,   desc: fmt(daily)+'×5',   isMonetary: true };
+      if (t.includes('يوم ونصف'))                                         return { amount: daily * 1.5, desc: 'أساسي يومي ×1.5', isMonetary: true };
+      if (t.includes('يومان'))                                            return { amount: daily * 2,   desc: 'أساسي يومي ×2',   isMonetary: true };
+      if (t.includes('ثلاثة أيام'))                                       return { amount: daily * 3,   desc: 'أساسي يومي ×3',   isMonetary: true };
+      if (t.includes('أربعة أيام'))                                       return { amount: daily * 4,   desc: 'أساسي يومي ×4',   isMonetary: true };
+      if (t.includes('خمسة أيام'))                                        return { amount: daily * 5,   desc: 'أساسي يومي ×5',   isMonetary: true };
       if (t === 'يوم' || (t.includes('يوم') && !t.includes('يومان') && !t.includes('يوم ونصف') && !t.includes('أيام')))
-                                                                           return { amount: daily * 1,   desc: fmt(daily)+'×1',   isMonetary: true };
+                                                                           return { amount: daily * 1,   desc: 'أساسي يومي ×1',   isMonetary: true };
 
       // Raise-based
-      if (t.includes('نصف العلاوة') || t.includes('الحرمان من نصف العلاوة')) return { amount: raise * 0.5, desc: fmt(raise)+'÷2', isMonetary: true };
-      if (t.includes('خفض الأجر بمقدار علاوة') || t.includes('خصم من الأجر في حدود علاوة') || t.includes('خفض في حدود علاوة')) return { amount: raise, desc: fmt(raise), isMonetary: true };
-      if (t.includes('خصم من الأجر') || t.includes('الخصم من الأجر'))   return { amount: daily,        desc: fmt(daily)+'×1',   isMonetary: true };
+      if (t.includes('نصف العلاوة') || t.includes('الحرمان من نصف العلاوة')) return { amount: raise * 0.5, desc: 'نصف العلاوة', isMonetary: true };
+      if (t.includes('خفض الأجر بمقدار علاوة') || t.includes('خصم من الأجر في حدود علاوة') || t.includes('خفض في حدود علاوة') || t.includes('خفض الأجر بمقدار علاوة على الأكثر')) return { amount: raise, desc: 'مقدار علاوة', isMonetary: true };
+      if (t.includes('خصم من الأجر') || t.includes('الخصم من الأجر'))   return { amount: daily,        desc: 'أساسي يومي ×1',   isMonetary: true };
 
       // Non-monetary penalties
       if (t.includes('إنذار'))                                            return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('تأجيل'))                                            return { amount: 0, desc: '', isMonetary: false };
-      if (t.includes('الحرمان من العلاوة') && !t.includes('نصف'))        return { amount: raise,        desc: fmt(raise),         isMonetary: true };
+      if (t.includes('الحرمان من العلاوة') && !t.includes('نصف'))        return { amount: raise,        desc: 'قيمة العلاوة',         isMonetary: true };
       if (t.includes('تأجيل الترقية'))                                    return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('الخفض إلى وظيفة'))                                  return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('الفصل'))                                            return { amount: 0, desc: '', isMonetary: false };
@@ -926,15 +983,19 @@
       const enableDed  = document.getElementById('enableDed').checked;
       const taxRate    = parseFloat(document.getElementById('taxRate').value)  || 0;
       const insRate    = parseFloat(document.getElementById('insRate').value)  || 0;
-      const taxAmt     = enableDed ? salary * taxRate / 100 : 0;
-      const insAmt     = enableDed ? salary * insRate / 100 : 0;
-      const net        = Math.max(0, salary - taxAmt - insAmt - penaltyAmt);
+      const gross      = getTotalGross();
+      // الضريبة والتأمين على الإجمالي
+      const taxAmt     = enableDed ? gross * taxRate / 100 : 0;
+      const insAmt     = enableDed ? gross * insRate / 100 : 0;
+      const net        = Math.max(0, gross - taxAmt - insAmt - penaltyAmt);
 
-      document.getElementById('sBase').textContent    = fmtEGP(salary);
-      document.getElementById('sTax').textContent     = '-' + fmtEGP(taxAmt);
-      document.getElementById('sIns').textContent     = '-' + fmtEGP(insAmt);
-      document.getElementById('sPenalty').textContent = '-' + fmtEGP(penaltyAmt);
-      document.getElementById('sNet').textContent     = fmtEGP(net);
+      document.getElementById('sBasic').textContent      = fmtEGP(basicSalary);
+      document.getElementById('sIncentives').textContent = fmtEGP(incentives);
+      document.getElementById('sGross').textContent      = fmtEGP(gross);
+      document.getElementById('sTax').textContent        = '-' + fmtEGP(taxAmt);
+      document.getElementById('sIns').textContent        = '-' + fmtEGP(insAmt);
+      document.getElementById('sPenalty').textContent    = '-' + fmtEGP(penaltyAmt);
+      document.getElementById('sNet').textContent        = fmtEGP(net);
     }
 
     function updatePenaltyExplain() {
@@ -949,18 +1010,30 @@
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+    function updateTotalGross() {
+      const el = document.getElementById('totalGross');
+      if (el) el.value = getTotalGross();
+    }
+
     function updateRaise() {
-      document.getElementById('raiseAmt').value = Math.round(salary * 0.07);
+      // افتراضي 7% من الأجر الأساسي
+      document.getElementById('raiseAmt').value = Math.round(basicSalary * 0.07);
     }
 
     function getRaise() {
       const v = parseFloat(document.getElementById('raiseAmt').value);
-      return (!isNaN(v) && v > 0) ? v : salary * 0.07;
+      return (!isNaN(v) && v > 0) ? v : basicSalary * 0.07;
     }
 
-    function clampSal(v) {
-      if (isNaN(v) || v < 3000) return 3000;
-      if (v > 50000) return 50000;
+    function clampBasic(v) {
+      if (isNaN(v) || v < 400) return 400;
+      if (v > 4000) return 4000;
+      return v;
+    }
+
+    function clampInc(v) {
+      if (isNaN(v) || v < 0) return 0;
+      if (v > 100000) return 100000;
       return v;
     }
 
