@@ -9,27 +9,466 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="portal.css">
+  <!-- OpenCV.js: edge detection & perspective correction -->
+  <script async src="https://docs.opencv.org/4.8.0/opencv.js"></script>
+  <!-- JSZip: Word (.docx) export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Tesseract.js: OCR text extraction -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
-    .scanner-container {
+    /* ── Engine status pill ── */
+    .engine-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin: 20px 0 16px;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .status-dot.ready { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .status-dot.loading { background: var(--accent); animation: scannerPulse 1.5s infinite; }
+    @keyframes scannerPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.45; transform: scale(0.8); }
+    }
+
+    /* ── Stage stepper ── */
+    .scanner-steps {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stage-dot {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 400px;
-      text-align: center;
       background: var(--surface);
+      border: 2px solid var(--line);
+      color: var(--muted);
+      font-weight: 800;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+      transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .stage-dot.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+    }
+    .stage-dot.complete {
+      background: var(--surface);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .stage-line {
+      flex: 1;
+      height: 2px;
+      min-width: 16px;
+      background: var(--line);
+      transition: background 0.25s ease;
+    }
+    .stage-line.complete { background: var(--accent); }
+    .scanner-steps-label {
+      margin-inline-start: 12px;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* ── Layout ── */
+    /* The shared .hero-panel is sized for the homepage's marketing hero
+       (h1 up to 4.2rem, generous card padding). On a tool page that pushes
+       the actual tool below the fold for no benefit — this scopes it down
+       to match the more compact header other tool pages use. */
+    .scanner-hero { padding: 20px clamp(20px, 4vw, 32px); }
+    .scanner-hero h1 { font-size: clamp(1.5rem, 2.6vw, 2.1rem); line-height: 1.2; }
+    .scanner-hero p:last-child { font-size: 0.95rem; }
+
+    .scanner-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+    .scanner-stage-card {
+      display: flex;
+      flex-direction: column;
+      min-height: 560px;
+    }
+    .scanner-view { flex: 1; display: flex; flex-direction: column; }
+    .scanner-view--start { justify-content: center; }
+
+    .scanner-view-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .scanner-view-head h3 { color: var(--primary); font-size: 1.2rem; margin-bottom: 4px; }
+    .scanner-view-head p { color: var(--muted); font-size: 0.88rem; margin: 0; }
+
+    .crop-toolbar { display: flex; gap: 8px; flex-shrink: 0; }
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
       border: 1px solid var(--line);
+      background: var(--surface);
+      color: var(--primary);
+      cursor: pointer;
+    }
+    .icon-btn:hover { background: var(--surface-2); border-color: var(--primary); }
+    .icon-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+    /* ── Dropzone (stage 1) ── */
+    .dropzone {
+      border: 2px dashed var(--line);
+      border-radius: 16px;
+      background: var(--surface-2);
+      padding: clamp(28px, 5vw, 52px) 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface-2));
+    }
+    .dropzone-icon {
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 18px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    }
+    .dropzone h2 { color: var(--primary); font-size: 1.5rem; margin-bottom: 8px; }
+    .dropzone p { color: var(--muted); margin-bottom: 24px; }
+    .dropzone-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .scanner-feature-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      max-width: 560px;
+      margin: 24px auto 0;
+    }
+    .feature-chip {
+      padding: 14px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      text-align: center;
+    }
+    .feature-icon {
+      width: 34px;
+      height: 34px;
+      margin: 0 auto 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--primary);
+    }
+    .feature-chip p { margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--text); }
+
+    /* ── Canvas stages ── */
+    .canvas-container {
+      position: relative;
+      flex: 1;
+      min-height: 420px;
       border-radius: 12px;
-      padding: 40px;
+      overflow: hidden;
+      background-image:
+        linear-gradient(45deg, var(--surface-2) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--surface-2) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--surface-2) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--surface-2) 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+      background-color: var(--surface);
+      border: 1px solid var(--line);
+    }
+    .canvas-container--center { display: flex; align-items: center; justify-content: center; }
+    /* Absolutely positioned + inset:0 (container above is already position:relative) so the
+       canvas is fully removed from normal flow. Without this, a <canvas> is a replaced
+       *inline* element by default — its layout box (and, worse, the huge devicePixelRatio-
+       multiplied width/height attributes the render*Canvas() functions set) can feed into
+       the surrounding CSS Grid's "auto" row-track sizing pass. That's what caused the
+       container — and everything else on the row — to visibly balloon: each redraw nudged
+       the grid's computed row height, which grew the container, which then got read back
+       in as the *new* containerW/H. Pinning every stage canvas to fill its container via
+       absolute positioning breaks that loop — the canvas can never contribute to its
+       parent's intrinsic size, no matter what width/height attributes get set on it. */
+    #cropCanvas,
+    #enhanceCanvas,
+    #finalCanvas {
+      cursor: crosshair;
+      touch-action: none;
+      display: block;
+      position: absolute;
+      inset: 0;
+    }
+    #enhanceCanvas,
+    #finalCanvas { cursor: default; }
+
+    .crop-loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 20, 35, 0.6);
+      backdrop-filter: blur(3px);
+      z-index: 30;
+      color: #fff;
+      text-align: center;
+    }
+    .crop-loading p { margin-top: 12px; font-weight: 700; }
+    .scan-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+    .scan-line {
+      position: absolute;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+      box-shadow: 0 0 24px color-mix(in srgb, var(--accent) 50%, transparent);
+      animation: scannerScan 1.8s ease-in-out infinite;
+    }
+    @keyframes scannerScan {
+      0% { top: 0; opacity: 0; }
+      20% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    /* ── Side panel ── */
+    .scanner-side { display: grid; gap: 14px; }
+    .scanner-side-block { display: grid; gap: 14px; }
+    .scanner-side h4 { color: var(--primary); font-size: 0.95rem; margin-bottom: 10px; }
+
+    /* OCR is a headline capability (per the hero copy), not just another
+       export option — give it a touch more visual weight than the plain
+       white cards around it (Export / Continue / Saved pages) so the
+       sidebar reads as a hierarchy, not a flat repeated list. */
+    .panel-card--featured {
+      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, var(--surface)), var(--surface) 120px);
+      box-shadow: 0 2px 0 var(--accent) inset, 0 12px 30px rgba(18, 59, 115, 0.1);
+    }
+    .scanner-hint { color: var(--muted); font-size: 0.82rem; line-height: 1.6; margin: 0; }
+    .scanner-btn-stack { display: grid; gap: 8px; }
+    .scanner-btn-block { width: 100%; margin-top: 10px; }
+
+    .filter-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-width: 70%;}
+    .filter-card {
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      padding: 6px;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    .filter-card:hover { border-color: var(--primary-2); transform: translateY(-1px); }
+    .filter-card.active { border-color: var(--accent); }
+    .filter-card.active::after {
+      content: '';
+      position: absolute;
+      inset-block-start: 4px;
+      inset-inline-start: 4px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .filter-card:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .filter-thumb {
+      width: 100%;
+      aspect-ratio: 4/3;max-height: 70%;
+      background: var(--surface-2);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .filter-name { font-size: 0.7rem; font-weight: 700; text-align: center; margin-top: 4px; color: var(--muted); }
+	.adjust-row, .adjust-row * { cursor: auto !important; }
+    .adjust-row { margin-bottom: 14px; }
+    .adjust-row:last-of-type { margin-bottom: 0; }
+    .adjust-row-head { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.8rem; }
+    .adjust-row-head label { color: var(--muted); font-weight: 700; }
+    .adjust-row-head span { color: var(--accent); font-weight: 800; }
+    .scanner-side input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--line);
+      border-radius: 2px;
+      outline: none;
+    }
+    .scanner-side input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .scanner-side input[type="range"]::-moz-range-thumb {
+      width: 16px; height: 16px;
+      background: var(--accent);
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+    }
+
+    .scanner-field { margin-bottom: 12px; }
+    .scanner-field label { display: block; margin-bottom: 6px; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+    .scanner-side select,
+    .scanner-side textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      padding: 10px 12px;
+    }
+    .scanner-side textarea { min-height: 130px; resize: vertical; line-height: 1.6; margin-bottom: 8px; }
+    .scanner-side select:focus,
+    .scanner-side textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+    }
+
+    .ocr-progress { margin-top: 14px; }
+    .ocr-progress-head { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 6px; color: var(--muted); }
+    .ocr-progress-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: var(--line);
+      overflow: hidden;
+    }
+    .ocr-progress-bar {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+    .ocr-result { margin-top: 14px; }
+
+    .scanner-side-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .scanner-side-head h4 { margin: 0; }
+    .scanner-side-head span { color: var(--muted); font-size: 0.78rem; font-weight: 700; }
+
+    .page-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .page-thumb {
+      position: relative;
+      aspect-ratio: 3/4;
+      border: 2px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface-2);
+    }
+    .page-thumb.active { border-color: var(--accent); }
+    .page-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .page-thumb-badge {
+      position: absolute;
+      inset-block-end: 4px;
+      inset-inline-end: 4px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+    }
+    .page-thumb-remove {
+      position: absolute;
+      inset-block-start: 4px;
+      inset-inline-start: 4px;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .page-thumb:hover .page-thumb-remove,
+    .page-thumb:focus-within .page-thumb-remove { opacity: 1; }
+
+    /* ── Bottom action bar ── */
+    .scanner-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
       margin-top: 20px;
     }
-    .scanner-icon {
-      font-size: 64px;
-      margin-bottom: 20px;
+    .scanner-actions-right { display: flex; gap: 10px; }
+
+    /* ── Motion & scrollbars scoped to this tool ── */
+    @keyframes scannerFadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    .scanner-placeholder-text {
-      color: var(--muted);
-      font-size: 1.2rem;
+    .fade-in { animation: scannerFadeIn 0.35s ease-out; }
+    @keyframes scannerSpin { to { transform: rotate(360deg); } }
+    .spin { animation: scannerSpin 1s linear infinite; transform-origin: center; }
+
+    .scanner-app ::-webkit-scrollbar { width: 8px; height: 8px; }
+    .scanner-app ::-webkit-scrollbar-track { background: var(--surface-2); }
+    .scanner-app ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+    .scanner-app ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    @media (max-width: 980px) {
+      .scanner-layout { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 640px) {
+      .scanner-feature-grid { grid-template-columns: repeat(2, 1fr); }
+      .dropzone-actions { flex-direction: column; }
+      .dropzone-actions .primary-btn,
+      .dropzone-actions .ghost-btn { width: 100%; }
+      .scanner-actions { flex-wrap: wrap; }
     }
   </style>
 </head>
@@ -61,17 +500,260 @@
   </header>
 
   <main class="portal-shell">
-    <section class="hero-panel">
+    <section class="hero-panel scanner-hero">
       <p class="eyebrow" data-en="Document Digitization" data-ar="رقمنة المستندات">Document Digitization</p>
-      <h1 data-en="Scanner Tool" data-ar="أداة الماسح الضوئي">Scanner Tool</h1>
-      <p data-en="This tool is coming soon. It will allow you to scan and digitize your documents directly from your browser." data-ar="هذه الأداة ستتوفر قريباً. ستسمح لك بمسح مستنداتك ضوئياً ورقمنتها مباشرة من متصفحك.">This tool is coming soon. It will allow you to scan and digitize your documents directly from your browser.</p>
+      <h1 data-en="Scan, enhance &amp; read your documents" data-ar="امسح مستنداتك وحسّنها واقرأ نصوصها">Scan, enhance &amp; read your documents</h1>
+      <p data-en="Capture or upload a document, straighten and clean it up automatically, extract Arabic text with OCR, and export it as an image or Word file." data-ar="التقط مستندًا أو ارفعه، وسيتم تقويمه وتحسينه تلقائيًا، ثم استخرج نصه العربي بتقنية OCR، وصدّره كصورة أو ملف Word.">Capture or upload a document, straighten and clean it up automatically, extract Arabic text with OCR, and export it as an image or Word file.</p>
     </section>
 
-    <div class="scanner-container">
-      <div class="scanner-icon">📷</div>
-      <p class="scanner-placeholder-text" data-en="Scanner feature is under development." data-ar="ميزة الماسح الضوئي قيد التطوير.">Scanner feature is under development.</p>
-    </div>
+    <section class="scanner-app" aria-label="Document scanner">
+      <div class="engine-status" id="engineStatus">
+        <span class="status-dot loading" id="cvStatusDot" aria-hidden="true"></span>
+        <span id="cvStatusText">Loading engine…</span>
+      </div>
+
+      <div class="scanner-steps">
+        <div class="stage-dot active" id="stageDot1">1</div>
+        <div class="stage-line" id="stageLine1"></div>
+        <div class="stage-dot" id="stageDot2">2</div>
+        <div class="stage-line" id="stageLine2"></div>
+        <div class="stage-dot" id="stageDot3">3</div>
+        <div class="stage-line" id="stageLine3"></div>
+        <div class="stage-dot" id="stageDot4">4</div>
+        <span class="scanner-steps-label" id="stageLabel">Capture or upload the document</span>
+      </div>
+
+      <div class="scanner-layout">
+        <div class="panel-card scanner-stage-card">
+          <!-- Stage 1: Upload -->
+          <div id="stage1View" class="scanner-view scanner-view--start">
+            <div class="dropzone" id="dropzone">
+              <div class="dropzone-icon" aria-hidden="true">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 5V19M12 5L7 10M12 5L17 10" stroke="#1a202c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M5 19H19" stroke="#1a202c" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <h2 data-en="Start scanning" data-ar="ابدأ المسح">Start scanning</h2>
+              <p data-en="Drag an image here, or choose one from your device to start the smart scan." data-ar="اسحب صورة هنا أو اختر من جهازك لبدء رحلة المسح الذكي.">Drag an image here, or choose one from your device to start the smart scan.</p>
+              <div class="dropzone-actions">
+                <button type="button" class="primary-btn" onclick="document.getElementById('fileInput').click()">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 16L4 17C4 18.6569 5.34315 20 7 20L17 20C18.6569 20 20 18.6569 20 17L20 16M16 8L12 4M12 4L8 8M12 4L12 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span data-en="Upload image" data-ar="رفع صورة">Upload image</span>
+                </button>
+                <button type="button" class="ghost-btn" onclick="document.getElementById('cameraInput').click()">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 9C3 7.89543 3.89543 7 5 7H7L8.5 5H15.5L17 7H19C20.1046 7 21 7.89543 21 9V17C21 18.1046 20.1046 19 19 19H5C3.89543 19 3 18.1046 3 17V9Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="13" r="3.5" stroke="currentColor" stroke-width="2"/></svg>
+                  <span data-en="Capture with camera" data-ar="التقاط بالكاميرا">Capture with camera</span>
+                </button>
+              </div>
+            </div>
+            <div class="scanner-feature-grid">
+              <div class="feature-chip">
+                <span class="feature-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4L20 20M4 20L20 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg></span>
+                <p data-en="Edge detection" data-ar="كشف الحواف">Edge detection</p>
+              </div>
+              <div class="feature-chip">
+                <span class="feature-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 3L19 17M5 17L19 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+                <p data-en="Perspective correction" data-ar="تصحيح المنظور">Perspective correction</p>
+              </div>
+              <div class="feature-chip">
+                <span class="feature-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 3V12L18 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+                <p data-en="Pro filters" data-ar="فلاتر احترافية">Pro filters</p>
+              </div>
+              <div class="feature-chip">
+                <span class="feature-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7V5C4 4.44772 4.44772 4 5 4H7M17 4H19C19.5523 4 20 4.44772 20 5V7M20 17V19C20 19.5523 19.5523 20 19 20H17M7 20H5C4.44772 20 4 19.5523 4 19V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+                <p data-en="Text extraction" data-ar="استخراج النص">Text extraction</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 2: Crop -->
+          <div id="stage2View" class="scanner-view hidden">
+            <div class="scanner-view-head">
+              <div>
+                <h3 data-en="Adjust the edges" data-ar="ضبط الحواف">Adjust the edges</h3>
+                <p data-en="Drag the gold handles to fine-tune the document boundary." data-ar="اسحب النقاط الذهبية لضبط حدود المستند بدقة.">Drag the gold handles to fine-tune the document boundary.</p>
+              </div>
+              <div class="crop-toolbar">
+                <button type="button" class="icon-btn" onclick="rotateImage(-90)" aria-label="Rotate left">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 14L4 9L9 4M4 9H15C18.866 9 22 12.134 22 16V20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <button type="button" class="icon-btn" onclick="rotateImage(90)" aria-label="Rotate right">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M15 14L20 9L15 4M20 9H9C5.13401 9 2 12.134 2 16V20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+            </div>
+            <div class="canvas-container" id="cropContainer">
+              <canvas id="cropCanvas"></canvas>
+              <div id="cropLoading" class="crop-loading" style="display:none;">
+                <div>
+                  <div class="scan-overlay"><div class="scan-line"></div></div>
+                  <p data-en="Analyzing document…" data-ar="جاري تحليل المستند...">Analyzing document…</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage 3: Enhance -->
+          <div id="stage3View" class="scanner-view hidden">
+            <div class="scanner-view-head">
+              <div>
+                <h3 data-en="Enhance quality" data-ar="تحسين الجودة">Enhance quality</h3>
+                <p data-en="Choose the right filter and fine-tune the settings." data-ar="اختر الفلتر المناسب واضبط الإعدادات بدقة.">Choose the right filter and fine-tune the settings.</p>
+              </div>
+            </div>
+            <div class="canvas-container canvas-container--center" id="enhanceContainer">
+              <canvas id="enhanceCanvas"></canvas>
+            </div>
+          </div>
+
+          <!-- Stage 4: Save & OCR -->
+          <div id="stage4View" class="scanner-view hidden">
+            <div class="scanner-view-head">
+              <div>
+                <h3 data-en="Document ready" data-ar="المستند جاهز">Document ready</h3>
+                <p data-en="Download the document, add pages, or extract text." data-ar="حمّل المستند، أضف صفحات، أو استخرج النص.">Download the document, add pages, or extract text.</p>
+              </div>
+            </div>
+            <div class="canvas-container canvas-container--center" id="finalContainer">
+              <canvas id="finalCanvas"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side panel -->
+        <div class="scanner-side">
+          <div id="stage2Tools" class="scanner-side-block hidden">
+            <div class="panel-card">
+              <h4 data-en="Crop tools" data-ar="أدوات القص">Crop tools</h4>
+              <div class="scanner-btn-stack">
+                <button type="button" class="ghost-btn" onclick="autoDetectCorners()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M12 2V4M12 20V22M2 12H4M20 12H22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  <span data-en="Auto-detect edges" data-ar="كشف تلقائي للحواف">Auto-detect edges</span>
+                </button>
+                <button type="button" class="ghost-btn" onclick="resetCorners()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 12C3 7.02944 7.02944 3 12 3C14.8273 3 17.35 4.30385 19 6.34141M19 6.34141V3M19 6.34141H15.6586" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M21 12C21 16.9706 16.9706 21 12 21C9.17273 21 6.65 19.6962 5 17.6586M5 17.6586V21M5 17.6586H8.34141" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                  <span data-en="Reset" data-ar="إعادة تعيين">Reset</span>
+                </button>
+              </div>
+            </div>
+            <div class="panel-card">
+              <h4 data-en="Tip for best results" data-ar="نصيحة للنتائج المثلى">Tip for best results</h4>
+              <p class="scanner-hint" data-en="For the best results, make sure there's good contrast between the document and the background. Drag the gold handles to fine-tune the edges before applying." data-ar="لتأكد أفضل، تأكد من تباين جيد بين المستند والخلفية. اسحب النقاط الذهبية لضبط الحواف بدقة قبل التطبيق.">For the best results, make sure there's good contrast between the document and the background. Drag the gold handles to fine-tune the edges before applying.</p>
+            </div>
+          </div>
+
+          <div id="stage3Tools" class="scanner-side-block hidden">
+            <div class="panel-card">
+              <h4 data-en="Filters" data-ar="الفلاتر">Filters</h4>
+              <div class="filter-grid" id="filterGrid">
+                <div class="filter-card active" data-filter="magic" onclick="setFilter('magic')">
+                  <div class="filter-thumb"><canvas class="filter-preview" data-filter="magic"></canvas></div>
+                  <div class="filter-name" data-en="Magic" data-ar="سحري">Magic</div>
+                </div>
+                <div class="filter-card" data-filter="original" onclick="setFilter('original')">
+                  <div class="filter-thumb"><canvas class="filter-preview" data-filter="original"></canvas></div>
+                  <div class="filter-name" data-en="Original" data-ar="أصلي">Original</div>
+                </div>
+              </div>
+            </div>
+            <div class="panel-card">
+              <h4 data-en="Fine-tuning" data-ar="ضبط دقيق">Fine-tuning</h4>
+              <div class="adjust-row">
+                <div class="adjust-row-head"><label data-en="Brightness" data-ar="السطوع">Brightness</label><span id="brightnessVal">0</span></div>
+                <input type="range" min="-100" max="100" value="0" id="brightnessSlider" oninput="setAdjustments()">
+              </div>
+              <div class="adjust-row">
+                <div class="adjust-row-head"><label data-en="Contrast" data-ar="التباين">Contrast</label><span id="contrastVal">0</span></div>
+                <input type="range" min="-100" max="100" value="0" id="contrastSlider" oninput="setAdjustments()">
+              </div>
+              <div class="adjust-row">
+                <div class="adjust-row-head"><label data-en="Sharpness" data-ar="الحدة">Sharpness</label><span id="sharpnessVal">0</span></div>
+                <input type="range" min="0" max="100" value="0" id="sharpnessSlider" oninput="setAdjustments()">
+              </div>
+              <button type="button" class="ghost-btn scanner-btn-block" onclick="resetAdjustments()" data-en="Reset adjustments" data-ar="إعادة تعيين الضبط">Reset adjustments</button>
+            </div>
+          </div>
+
+          <div id="stage4Tools" class="scanner-side-block hidden">
+            <div class="panel-card panel-card--featured">
+              <h4 data-en="Text extraction (OCR)" data-ar="استخراج النص (OCR)">Text extraction (OCR)</h4>
+              <p class="scanner-hint" data-en="Extract Arabic text from the current document to copy and paste." data-ar="استخرج النص العربي من المستند الحالي للنسخ واللصق.">Extract Arabic text from the current document to copy and paste.</p>
+              <button type="button" class="primary-btn scanner-btn-block" id="ocrBtn" onclick="runOCR()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7V5C4 4.44772 4.44772 4 5 4H7M17 4H19C19.5523 4 20 4.44772 20 5V7M20 17V19C20 19.5523 19.5523 20 19 20H17M7 20H5C4.44772 20 4 19.5523 4 19V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <span>Extract Arabic text</span>
+              </button>
+
+              <div id="ocrProgressContainer" class="ocr-progress hidden">
+                <div class="ocr-progress-head">
+                  <span id="ocrProgressText">Preparing…</span>
+                  <span id="ocrProgressPercent">0%</span>
+                </div>
+                <div class="ocr-progress-track">
+                  <div id="ocrProgressBar" class="ocr-progress-bar" style="width:0%"></div>
+                </div>
+              </div>
+
+              <div id="ocrResultContainer" class="ocr-result hidden">
+                <textarea id="ocrResult" rows="6" placeholder="The text will appear here…" data-en="The text will appear here…" data-ar="سيظهر النص هنا..."></textarea>
+                <button type="button" class="ghost-btn scanner-btn-block" onclick="copyOCRText()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 9H15M9 13H15M9 17H13M5 5V21H19V5H5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span data-en="Copy text" data-ar="نسخ النص">Copy text</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="panel-card">
+              <h4 data-en="Export options" data-ar="خيارات التصدير">Export options</h4>
+              <div class="scanner-field">
+                <label for="exportFormat" data-en="Download format" data-ar="صيغة التحميل">Download format</label>
+                <select id="exportFormat">
+                  <option value="png" data-en="PNG (high quality)" data-ar="PNG (جودة عالية)">PNG (high quality)</option>
+                  <option value="jpeg" data-en="JPG (smaller size)" data-ar="JPG (حجم أقل)">JPG (smaller size)</option>
+                </select>
+              </div>
+              <button type="button" class="primary-btn scanner-btn-block" onclick="exportFromSave()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4V16M12 16L7 11M12 16L17 11M5 20H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span data-en="Download image" data-ar="تحميل الصورة">Download image</span>
+              </button>
+              <button type="button" class="ghost-btn scanner-btn-block" onclick="exportWordDocx()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 13L10.5 17L12.5 14L15.5 17L16 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span data-en="Download Word — A4 size" data-ar="تحميل Word — مقاس A4">Download Word — A4 size</span>
+              </button>
+            </div>
+
+            <div class="panel-card">
+              <h4 data-en="Continue scanning" data-ar="متابعة المسح">Continue scanning</h4>
+              <p class="scanner-hint" data-en="Add more pages to build a multi-page Word document." data-ar="أضف صفحات أخرى لإنشاء مستند متعدد الصفحات بصيغة Word.">Add more pages to build a multi-page Word document.</p>
+              <button type="button" class="ghost-btn scanner-btn-block" onclick="addPageAndRestart()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                <span data-en="Add new page" data-ar="إضافة صفحة جديدة">Add new page</span>
+              </button>
+            </div>
+          </div>
+
+          <div id="pagesSection" class="panel-card hidden">
+            <div class="scanner-side-head">
+              <h4 data-en="Saved pages" data-ar="الصفحات المحفوظة">Saved pages</h4>
+              <span id="pagesCount">0 pages</span>
+            </div>
+            <div class="page-grid" id="pagesGrid"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="scanner-actions">
+        <button type="button" class="ghost-btn" id="backBtn" onclick="goBack()" data-en="Back" data-ar="رجوع">Back</button>
+        <div class="scanner-actions-right">
+          <button type="button" class="ghost-btn" id="restartBtn" onclick="restart()" style="display:none" data-en="Start new scan" data-ar="بدء مسح جديد">Start new scan</button>
+          <button type="button" class="primary-btn" id="nextBtn" onclick="goNext()" disabled>Continue</button>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" onchange="handleFileSelect(event)">
 
   <footer class="portal-footer">
     <div class="footer-content">
@@ -88,5 +770,1631 @@
 
   <script src="site-data.js"></script>
   <script src="portal.js"></script>
+  <script>
+// ====================================================================
+// STATE
+// ====================================================================
+const state = {
+  cvReady: false,
+  stage: 1,
+  originalImage: null,
+  imageCorners: null,
+  croppedCanvas: null,
+  enhancedCanvas: null,
+  filteredCanvas: null, // Caching the heavy filter
+  currentFilter: 'magic',
+  adjustments: { brightness: 0, contrast: 0, sharpness: 0 },
+  pages: [],
+  displayScale: 1,
+  displayOffsetX: 0,
+  displayOffsetY: 0,
+  dragCorner: -1,
+  previewSource: null,
+  ocrRunning: false,
+};
+
+// ====================================================================
+// TRANSLATIONS for text this tool sets dynamically (everything else is
+// handled automatically by portal.js via data-en/data-ar attributes).
+// ====================================================================
+const SCANNER_STRINGS = {
+  en: {
+    stage: {
+      1: 'Capture or upload the document',
+      2: 'Adjust the edges',
+      3: 'Enhance quality',
+      4: 'Save & extract text',
+    },
+    engineLoading: 'Loading engine…',
+    engineReady: 'Engine ready',
+    nextApplyCrop: 'Apply crop',
+    nextWaitingEngine: 'Waiting for engine…',
+    nextSaveDocument: 'Save document',
+    ocrIdleLabel: 'Extract Arabic text',
+    ocrProcessing: 'Processing…',
+    ocrLoadingLang: 'Loading Arabic language data…',
+    ocrPreparingImage: 'Preparing image for reading…',
+    ocrReadingText: 'Reading text…',
+    current: 'Current',
+    pageCount: (n) => `${n} ${n === 1 ? 'page' : 'pages'}`,
+    toastInvalidFile: 'Invalid file. Please choose an image.',
+    toastNoDocFound: 'No document found. Adjust the edges manually.',
+    toastDetectError: 'Something went wrong. Adjust the edges manually.',
+    toastAreaTooSmall: 'The selected area is too small.',
+    toastNoImageForOcr: 'There is no image to extract text from.',
+    toastOcrSuccess: 'Text extracted successfully.',
+    toastOcrNoText: 'No text was found in the image.',
+    toastOcrFailed: 'Failed to extract text. Try improving the image quality.',
+    toastCopied: 'Text copied to clipboard.',
+    toastImageDownloaded: 'Image downloaded successfully.',
+    toastNoPagesToExport: 'There are no pages to export.',
+    toastWordLibNotLoaded: "The Word export library hasn't loaded yet — try again in a few seconds.",
+    toastWordExported: (n) => `Exported ${n} ${n === 1 ? 'page' : 'pages'} to Word (A4).`,
+    toastWordFailed: 'Failed to create the Word file.',
+    toastPageAdded: 'Page added. Start scanning the next page.',
+  },
+  ar: {
+    stage: {
+      1: 'التقاط أو رفع المستند',
+      2: 'ضبط الحواف',
+      3: 'تحسين الجودة',
+      4: 'حفظ واستخراج النص',
+    },
+    engineLoading: 'جاري تحميل المحرك...',
+    engineReady: 'المحرك جاهز',
+    nextApplyCrop: 'تطبيق القص',
+    nextWaitingEngine: 'بانتظار المحرك...',
+    nextSaveDocument: 'حفظ المستند',
+    ocrIdleLabel: 'قراءة النص العربي',
+    ocrProcessing: 'جاري المعالجة...',
+    ocrLoadingLang: 'تحميل بيانات اللغة العربية...',
+    ocrPreparingImage: 'تجهيز الصورة للقراءة...',
+    ocrReadingText: 'جاري قراءة النص...',
+    current: 'حالية',
+    pageCount: (n) => `${n} صفحة`,
+    toastInvalidFile: 'الملف غير صالح. الرجاء اختيار صورة.',
+    toastNoDocFound: 'لم يتم العثور على مستند. اضبط الحواف يدوياً.',
+    toastDetectError: 'حدث خطأ. اضبط الحواف يدوياً.',
+    toastAreaTooSmall: 'المنطقة المحددة صغيرة جداً.',
+    toastNoImageForOcr: 'لا توجد صورة لاستخراج النص منها.',
+    toastOcrSuccess: 'تم استخراج النص بنجاح.',
+    toastOcrNoText: 'لم يتم العثور على نص في الصورة.',
+    toastOcrFailed: 'فشل في استخراج النص. حاول تحسين جودة الصورة.',
+    toastCopied: 'تم نسخ النص إلى الحافظة.',
+    toastImageDownloaded: 'تم تحميل الصورة بنجاح.',
+    toastNoPagesToExport: 'لا توجد صفحات للتصدير.',
+    toastWordLibNotLoaded: 'مكتبة تصدير Word لم تُحمّل بعد، حاول مجدداً خلال ثوانٍ.',
+    toastWordExported: (n) => `تم تصدير ${n} صفحة إلى Word (A4).`,
+    toastWordFailed: 'فشل إنشاء ملف Word.',
+    toastPageAdded: 'تمت إضافة الصفحة. ابدأ بمسح الصفحة التالية.',
+  },
+};
+
+function currentLang() {
+  return (window.EgyptAirPortal && window.EgyptAirPortal.language) || document.documentElement.lang || 'en';
+}
+function tr() {
+  return SCANNER_STRINGS[currentLang()] || SCANNER_STRINGS.en;
+}
+
+const OCR_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 7V5C4 4.44772 4.44772 4 5 4H7M17 4H19C19.5523 4 20 4.44772 20 5V7M20 17V19C20 19.5523 19.5523 20 19 20H17M7 20H5C4.44772 20 4 19.5523 4 19V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+function setOcrIdleLabel() {
+  const btn = document.getElementById('ocrBtn');
+  if (!btn) return;
+  btn.innerHTML = `${OCR_ICON_SVG}<span>${tr().ocrIdleLabel}</span>`;
+}
+
+function refreshDynamicText() {
+  const s = tr();
+  const cvText = document.getElementById('cvStatusText');
+  if (cvText) cvText.textContent = state.cvReady ? s.engineReady : s.engineLoading;
+  const stageLabelEl = document.getElementById('stageLabel');
+  if (stageLabelEl) stageLabelEl.textContent = s.stage[state.stage];
+  updateNextButton();
+  if (!state.ocrRunning) setOcrIdleLabel();
+  updatePagesSection();
+}
+window.addEventListener('portal-language-change', refreshDynamicText);
+
+// ====================================================================
+// OPENCV LOADING
+// ====================================================================
+// Self-starting poll rather than relying on the <script>'s onload firing:
+// with `async`, the opencv.js load/onload event can fire before this inline
+// script (at the bottom of the page) has even run — especially on a fast
+// connection or a cached script — which would silently drop the readiness
+// signal forever. Polling from here instead works regardless of which
+// finishes first.
+function checkCvReady() {
+  if (typeof cv !== 'undefined' && cv.Mat) setCvReady();
+  else setTimeout(checkCvReady, 100);
+}
+checkCvReady();
+function setCvReady() {
+  if (state.cvReady) return;
+  state.cvReady = true;
+  document.getElementById('cvStatusDot').classList.remove('loading');
+  document.getElementById('cvStatusDot').classList.add('ready');
+  document.getElementById('cvStatusText').textContent = tr().engineReady;
+  updateNextButton();
+}
+
+// ====================================================================
+// FILE HANDLING
+// ====================================================================
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  loadImageFile(file);
+  event.target.value = '';
+}
+
+function loadImageFile(file) {
+  if (!file.type.startsWith('image/')) {
+    showToast(tr().toastInvalidFile, 'error');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      state.originalImage = img;
+      setStage(2);
+      setTimeout(() => autoDetectCorners(), 200);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+const dropzone = document.getElementById('dropzone');
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) loadImageFile(file);
+});
+dropzone.addEventListener('click', (e) => {
+  if (e.target.tagName !== 'BUTTON' && !e.target.closest('button')) {
+    document.getElementById('fileInput').click();
+  }
+});
+
+// ====================================================================
+// EDGE DETECTION
+// ====================================================================
+function autoDetectCorners() {
+  if (!state.cvReady) { showToast('Engine not ready yet', 'error'); return; }
+  if (!state.originalImage) return;
+
+  showCropLoading(true);
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = state.originalImage.naturalWidth;
+  tempCanvas.height = state.originalImage.naturalHeight;
+  tempCanvas.getContext('2d').drawImage(state.originalImage, 0, 0);
+
+  setTimeout(() => {
+    try {
+      const corners = detectDocument(tempCanvas);
+      if (corners) {
+        state.imageCorners = corners;
+      } else {
+        state.imageCorners = defaultCorners(tempCanvas.width, tempCanvas.height);
+        showToast(tr().toastNoDocFound, 'info');
+      }
+      renderCropCanvas();
+    } catch (err) {
+      console.error(err);
+      state.imageCorners = defaultCorners(tempCanvas.width, tempCanvas.height);
+      renderCropCanvas();
+      showToast(tr().toastDetectError, 'error');
+    }
+    showCropLoading(false);
+    updateNextButton();
+  }, 100);
+}
+
+function detectDocument(canvas) {
+  let src = cv.imread(canvas);
+  let workMats = [];
+  let result = null;
+
+  try {
+    // 1000 -> 1400: sharper working resolution for more precise corner localization.
+    const maxDim = 1400;
+    const scale = Math.min(1, maxDim / Math.max(src.cols, src.rows));
+    let workSrc = src;
+    if (scale < 1) {
+      workSrc = new cv.Mat();
+      const dsize = new cv.Size(Math.round(src.cols * scale), Math.round(src.rows * scale));
+      cv.resize(src, workSrc, dsize, 0, 0, cv.INTER_AREA);
+      workMats.push(workSrc);
+    }
+
+    // Three independent detection strategies, scored and combined:
+    // 1) 'canny'      — a visible printed/cut edge against the background.
+    // 2) 'thresh'     — a bright, roughly uniform page against a darker background.
+    // 3) 'saturation' — a near-white/gray page against a background that's a
+    //    SIMILAR brightness but more colorful (skin, wood, cloth, granite, tile).
+    //    This is the case 'thresh' and 'canny' both quietly fail on: they see
+    //    "bright enough" or "textured enough" and swallow the background into
+    //    one big blob. Paper is close to zero saturation almost everywhere;
+    //    most real-world surfaces aren't, so this catches what the other two miss.
+    const candidates = [
+      findDocContour(workSrc, 'canny'),
+      findDocContour(workSrc, 'thresh'),
+      findDocContour(workSrc, 'saturation'),
+    ].filter(Boolean);
+
+    // Rank by (rectangularity score) first, area second — a clean, solid,
+    // well-formed quadrilateral beats a bigger but messier/irregular blob,
+    // which is exactly the failure mode of picking "whole frame minus one
+    // dark corner" instead of the actual document.
+    candidates.sort((a, b) => (b.score - a.score) || (b.area - a.area));
+    const best = candidates[0];
+
+    if (best) {
+      const corners = best.corners.map(p => ({ x: p.x / scale, y: p.y / scale }));
+      result = orderCorners(corners);
+    }
+  } finally {
+    src.delete();
+    workMats.forEach(m => m.delete());
+  }
+  return result;
+}
+
+// Finds the best plausible 4-corner document region in a (already downscaled) image.
+// mode: 'canny' (edges), 'thresh' (Otsu on brightness), or 'saturation' (Otsu on
+// inverted HSV saturation — isolates near-white/gray paper from a colorful backdrop).
+function findDocContour(workSrc, mode) {
+  let gray = new cv.Mat(), work = new cv.Mat();
+  let contours = new cv.MatVector(), hierarchy = new cv.Mat();
+  let result = null;
+  let scratch = []; // mats to clean up unconditionally
+
+  try {
+    if (mode === 'saturation') {
+      const rgb = new cv.Mat(), hsv = new cv.Mat(), channels = new cv.MatVector();
+      scratch.push(rgb, hsv, channels);
+      cv.cvtColor(workSrc, rgb, cv.COLOR_RGBA2RGB);
+      cv.cvtColor(rgb, hsv, cv.COLOR_RGB2HSV);
+      cv.split(hsv, channels);
+      const sat = channels.get(1);
+      scratch.push(sat);
+      cv.bitwise_not(sat, gray); // invert: low-saturation paper becomes bright
+    } else {
+      cv.cvtColor(workSrc, gray, cv.COLOR_RGBA2GRAY);
+    }
+
+    if (mode === 'canny') {
+      // Bilateral filter smooths noise/texture while keeping edges crisp, which gives
+      // Canny a much cleaner signal than a plain Gaussian blur.
+      const smoothed = new cv.Mat();
+      cv.bilateralFilter(gray, smoothed, 9, 60, 60);
+      // Auto-compute Canny thresholds from the image's median intensity instead of
+      // fixed constants, so it adapts to dark/bright photos alike.
+      const meanVal = cv.mean(smoothed)[0];
+      const lower = Math.max(0, 0.66 * meanVal);
+      const upper = Math.min(255, 1.33 * meanVal);
+      cv.Canny(smoothed, work, lower, upper);
+      const kernel = cv.Mat.ones(5, 5, cv.CV_8U);
+      cv.dilate(work, work, kernel, new cv.Point(-1, -1), 2);
+      cv.morphologyEx(work, work, cv.MORPH_CLOSE, kernel);
+      kernel.delete();
+      smoothed.delete();
+    } else {
+      // Shared by 'thresh' and 'saturation': Otsu binarize, then close/open to
+      // tidy up the mask without letting it bleed into surrounding clutter.
+      const blurred = new cv.Mat();
+      cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+      cv.threshold(blurred, work, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+      const kernel = cv.Mat.ones(9, 9, cv.CV_8U);
+      cv.morphologyEx(work, work, cv.MORPH_CLOSE, kernel);
+      cv.morphologyEx(work, work, cv.MORPH_OPEN, kernel);
+      kernel.delete();
+      blurred.delete();
+    }
+
+    cv.findContours(work, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+    let bestScore = -1, bestPts = null, bestArea = 0;
+    // 8% of frame is enough for a document photographed with margin; the old
+    // 10% threshold rejected some valid outdoor shots where the page sat
+    // further from the edges.
+    const minArea = workSrc.cols * workSrc.rows * 0.08;
+    const maxArea = workSrc.cols * workSrc.rows * 0.97;
+    for (let i = 0; i < contours.size(); i++) {
+      const cnt = contours.get(i);
+      const area = cv.contourArea(cnt);
+      if (area < minArea || area > maxArea) { cnt.delete(); continue; }
+
+      // Rectangularity check: how well does this contour fill its own minimum-
+      // area bounding rectangle? A clean sheet of paper scores near 1. A blob
+      // that has swallowed part of the background (a hand, a table edge, wood
+      // grain) is irregular/concave and scores much lower — this is what lets
+      // us reject "whole frame minus one dark corner" even though it's large.
+      const rect = cv.minAreaRect(cnt);
+      const rectArea = rect.size.width * rect.size.height;
+      const extent = rectArea > 0 ? area / rectArea : 0;
+
+      const hull = new cv.Mat();
+      cv.convexHull(cnt, hull);
+      const hullArea = cv.contourArea(hull);
+      const solidity = hullArea > 0 ? area / hullArea : 0;
+      hull.delete();
+
+      // Outdoor shots (asphalt, chrome rails, soft paper edges) often score a
+      // little lower on extent/solidity than a clean desk photo — keep the
+      // bar high enough to reject garbage blobs, but not so strict that a
+      // real page is discarded and we fall back to full-frame corners.
+      if (extent < 0.60 || solidity < 0.85) { cnt.delete(); continue; }
+
+      // Reject the classic "found nothing, grabbed the whole frame" failure
+      // signature specifically: a box that's both axis-aligned (not rotated —
+      // a real held-up document is essentially never perfectly parallel to the
+      // camera frame) AND touches all four raw image edges. A genuinely large,
+      // real document detection is either rotated/perspective-skewed (like a
+      // photographed page) or, if it truly is a clean axis-aligned full-bleed
+      // rectangle, has near-perfect extent/solidity — so that case still passes.
+      // Deliberately conservative (all 4 edges, not 3): rejecting too eagerly
+      // risks trading a safe-but-loose crop (extra background — easy for a
+      // user to spot and drag in) for a tighter one that silently cuts off
+      // real document content, which is the worse failure mode for a
+      // document scanner.
+      const angleFromAxis = Math.min(rect.angle, 90 - rect.angle);
+      const bbox = cv.boundingRect(cnt);
+      const touchesAllEdges =
+        bbox.x < workSrc.cols * 0.015 && bbox.y < workSrc.rows * 0.015 &&
+        (bbox.x + bbox.width) > workSrc.cols * 0.985 && (bbox.y + bbox.height) > workSrc.rows * 0.985;
+      if (angleFromAxis < 3 && touchesAllEdges && Math.min(extent, solidity) < 0.97) {
+        cnt.delete(); continue;
+      }
+
+      const peri = cv.arcLength(cnt, true);
+
+      // Try a few approximation epsilons — outdoor photos with soft paper
+      // edges often need a slightly looser fit to land on exactly 4 points.
+      let pts = null, cleanQuad = false;
+      for (const eps of [0.015, 0.02, 0.025, 0.03, 0.04]) {
+        const approx = new cv.Mat();
+        cv.approxPolyDP(cnt, approx, eps * peri, true);
+        if (approx.rows === 4) {
+          pts = [];
+          for (let j = 0; j < 4; j++) {
+            // Prefer intPtr (works across OpenCV.js builds); fall back to
+            // the packed data32S view when available.
+            let x, y;
+            try {
+              const p = approx.intPtr(j, 0);
+              x = p[0]; y = p[1];
+            } catch (_) {
+              x = approx.data32S[j * 2];
+              y = approx.data32S[j * 2 + 1];
+            }
+            pts.push({ x, y });
+          }
+          cleanQuad = true;
+          approx.delete();
+          break;
+        }
+        approx.delete();
+      }
+
+      if (!pts) {
+        // Contour wasn't a clean quad (rounded corner, partial occlusion,
+        // etc). Fall back to the min-area rotated rect. Compute vertices
+        // manually — cv.RotatedRect.points / cv.boxPoints are missing or
+        // broken in several OpenCV.js builds, and throwing here used to
+        // abort the whole detector and silently fall back to full-frame
+        // corners (which is why enhance still showed the motorcycle).
+        pts = rotatedRectCorners(rect);
+      }
+
+      const score = extent * 0.5 + solidity * 0.4 + (cleanQuad ? 0.1 : 0);
+      if (pts && score > bestScore) {
+        bestScore = score;
+        bestPts = pts;
+        bestArea = area;
+      }
+      cnt.delete();
+    }
+
+    if (bestPts) result = { corners: bestPts, area: bestArea, score: bestScore };
+  } finally {
+    gray.delete(); work.delete();
+    contours.delete(); hierarchy.delete();
+    scratch.forEach(m => m.delete());
+  }
+  return result;
+}
+
+// Vertices of a min-area rotated rect, computed without depending on
+// cv.RotatedRect.points / cv.boxPoints (absent or broken in some OpenCV.js
+// builds). Angle is in degrees, matching OpenCV's minAreaRect convention.
+function rotatedRectCorners(rect) {
+  const cx = rect.center.x, cy = rect.center.y;
+  const w = rect.size.width, h = rect.size.height;
+  const rad = (rect.angle * Math.PI) / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const hw = w / 2, hh = h / 2;
+  return [
+    { x: cx + (-hw) * cos - (-hh) * sin, y: cy + (-hw) * sin + (-hh) * cos },
+    { x: cx + ( hw) * cos - (-hh) * sin, y: cy + ( hw) * sin + (-hh) * cos },
+    { x: cx + ( hw) * cos - ( hh) * sin, y: cy + ( hw) * sin + ( hh) * cos },
+    { x: cx + (-hw) * cos - ( hh) * sin, y: cy + (-hw) * sin + ( hh) * cos },
+  ];
+}
+
+function defaultCorners(w, h) {
+  const inset = 0.05;
+  return orderCorners([
+    { x: w * inset, y: h * inset },
+    { x: w * (1 - inset), y: h * inset },
+    { x: w * (1 - inset), y: h * (1 - inset) },
+    { x: w * inset, y: h * (1 - inset) },
+  ]);
+}
+
+function orderCorners(corners) {
+  const sorted = [...corners].sort((a, b) => (a.x + a.y) - (b.x + b.y));
+  const tl = sorted[0], br = sorted[3];
+  const middle = [sorted[1], sorted[2]].sort((a, b) => (a.x - a.y) - (b.x - b.y));
+  return [tl, middle[1], br, middle[0]];
+}
+
+// ====================================================================
+// CROP CANVAS
+// ====================================================================
+function renderCropCanvas() {
+  const canvas = document.getElementById('cropCanvas');
+  const container = document.getElementById('cropContainer');
+  if (!state.originalImage || !canvas || !container) return;
+
+  const ctx = canvas.getContext('2d');
+  const containerW = container.clientWidth, containerH = container.clientHeight;
+  if (containerW === 0 || containerH === 0) return;
+
+  const imgW = state.originalImage.naturalWidth, imgH = state.originalImage.naturalHeight;
+  const scale = Math.min(containerW / imgW, containerH / imgH);
+  const displayW = imgW * scale, displayH = imgH * scale;
+  const offsetX = (containerW - displayW) / 2, offsetY = (containerH - displayH) / 2;
+
+  state.displayScale = scale;
+  state.displayOffsetX = offsetX;
+  state.displayOffsetY = offsetY;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = containerW * dpr; canvas.height = containerH * dpr;
+  canvas.style.width = containerW + 'px'; canvas.style.height = containerH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  ctx.clearRect(0, 0, containerW, containerH);
+  ctx.drawImage(state.originalImage, offsetX, offsetY, displayW, displayH);
+
+  if (!state.imageCorners) return;
+
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.fillRect(0, 0, containerW, containerH);
+
+  ctx.save();
+  ctx.beginPath();
+  state.imageCorners.forEach((c, i) => {
+    const x = offsetX + c.x * scale, y = offsetY + c.y * scale;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(state.originalImage, offsetX, offsetY, displayW, displayH);
+  ctx.restore();
+
+  ctx.strokeStyle = '#ffb800';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = 'rgba(255, 184, 0, 0.5)';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  state.imageCorners.forEach((c, i) => {
+    const x = offsetX + c.x * scale, y = offsetY + c.y * scale;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  state.imageCorners.forEach((c) => {
+    const x = offsetX + c.x * scale, y = offsetY + c.y * scale;
+    ctx.fillStyle = 'rgba(255, 184, 0, 0.3)';
+    ctx.beginPath(); ctx.arc(x, y, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffb800';
+    ctx.strokeStyle = '#0a0a0a';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#0a0a0a';
+    ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill();
+  });
+}
+
+function segmentsIntersect(p1, p2, p3, p4) {
+  function cross(o, a, b) { return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x); }
+  const d1 = cross(p3, p4, p1);
+  const d2 = cross(p3, p4, p2);
+  const d3 = cross(p1, p2, p3);
+  const d4 = cross(p1, p2, p4);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+         ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+// A quad stays usable as long as its own outline doesn't cross itself — that
+// still allows any shape the actual paper needs: convex, concave/"dog-eared"
+// corner, narrow trapezoid, whatever. It does NOT require the diagonals to
+// cross (that would wrongly reject legitimate concave shapes too), only that
+// opposite EDGES (0-1 vs 2-3, and 1-2 vs 3-0) don't cross each other — that's
+// the actual definition of "bowtie", the one case with no sensible crop or
+// perspective warp.
+function isSimpleQuad(c) {
+  return !segmentsIntersect(c[0], c[1], c[2], c[3]) &&
+         !segmentsIntersect(c[1], c[2], c[3], c[0]);
+}
+
+function setupCropCanvasInteraction() {
+  const canvas = document.getElementById('cropCanvas');
+  let cropRenderQueued = false;
+  function scheduleCropRender() {
+    if (cropRenderQueued) return;
+    cropRenderQueued = true;
+    requestAnimationFrame(() => {
+      cropRenderQueued = false;
+      renderCropCanvas();
+    });
+  }
+  function getEventPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const point = e.touches ? e.touches[0] : e;
+    return { x: point.clientX - rect.left, y: point.clientY - rect.top };
+  }
+  function findCornerAt(x, y) {
+    if (!state.imageCorners) return -1;
+    for (let i = 0; i < state.imageCorners.length; i++) {
+      const c = state.imageCorners[i];
+      const cx = state.displayOffsetX + c.x * state.displayScale;
+      const cy = state.displayOffsetY + c.y * state.displayScale;
+      if (Math.hypot(x - cx, y - cy) < 28) return i;
+    }
+    return -1;
+  }
+  function pointerDown(e) {
+    e.preventDefault();
+    const pos = getEventPos(e);
+    state.dragCorner = findCornerAt(pos.x, pos.y);
+    if (state.dragCorner !== -1) canvas.style.cursor = 'grabbing';
+  }
+  function pointerMove(e) {
+    if (state.dragCorner === -1) {
+      const pos = getEventPos(e);
+      const corner = findCornerAt(pos.x, pos.y);
+      canvas.style.cursor = corner !== -1 ? 'grab' : 'crosshair';
+      return;
+    }
+    e.preventDefault();
+    const pos = getEventPos(e);
+    const imgX = (pos.x - state.displayOffsetX) / state.displayScale;
+    const imgY = (pos.y - state.displayOffsetY) / state.displayScale;
+    const imgW = state.originalImage.naturalWidth, imgH = state.originalImage.naturalHeight;
+    const candidate = state.imageCorners.map((c, i) => i === state.dragCorner ? {
+      x: Math.max(0, Math.min(imgW, imgX)),
+      y: Math.max(0, Math.min(imgH, imgY)),
+    } : c);
+    // Only accept the move if the quad stays a simple (non-self-crossing)
+    // shape. Dragging a corner past its neighbor turns the outline into a
+    // "bowtie" — the clipped preview and the later perspective warp both
+    // render badly distorted from that point on, since neither expects a
+    // self-intersecting polygon. isSimpleQuad() tests that opposite EDGES
+    // don't cross each other, which is the correct definition of "simple" —
+    // a diagonal-crossing test (the old check here) also rejects legitimate
+    // concave/"dog-eared" corner placements, which is exactly the extra
+    // flexibility real paper sometimes needs, so any corner can now go
+    // anywhere as long as the outline itself doesn't cross.
+    if (isSimpleQuad(candidate)) {
+      state.imageCorners = candidate;
+      scheduleCropRender();
+    }
+  }
+  function pointerUp() {
+    state.dragCorner = -1;
+    canvas.style.cursor = 'crosshair';
+  }
+  canvas.addEventListener('mousedown', pointerDown);
+  canvas.addEventListener('mousemove', pointerMove);
+  canvas.addEventListener('mouseup', pointerUp);
+  canvas.addEventListener('mouseleave', pointerUp);
+  canvas.addEventListener('touchstart', pointerDown, { passive: false });
+  canvas.addEventListener('touchmove', pointerMove, { passive: false });
+  canvas.addEventListener('touchend', pointerUp);
+}
+
+function showCropLoading(show) {
+  const el = document.getElementById('cropLoading');
+  if (el) el.style.display = show ? 'flex' : 'none';
+}
+
+function resetCorners() {
+  if (!state.originalImage) return;
+  state.imageCorners = defaultCorners(state.originalImage.naturalWidth, state.originalImage.naturalHeight);
+  renderCropCanvas();
+}
+
+function rotateImage(degrees) {
+  if (!state.originalImage) return;
+  const canvas = document.createElement('canvas');
+  const img = state.originalImage;
+  if (Math.abs(degrees) === 90) {
+    canvas.width = img.naturalHeight; canvas.height = img.naturalWidth;
+  } else {
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(degrees * Math.PI / 180);
+  ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+  const newImg = new Image();
+  newImg.onload = () => {
+    state.originalImage = newImg;
+    autoDetectCorners();
+  };
+  newImg.src = canvas.toDataURL();
+}
+
+// ====================================================================
+// PERSPECTIVE TRANSFORM
+// ====================================================================
+function applyPerspectiveTransform() {
+  if (!state.originalImage || !state.imageCorners) return false;
+
+  const srcCanvas = document.createElement('canvas');
+  srcCanvas.width = state.originalImage.naturalWidth;
+  srcCanvas.height = state.originalImage.naturalHeight;
+  srcCanvas.getContext('2d').drawImage(state.originalImage, 0, 0);
+
+  const [tl, tr2, br, bl] = state.imageCorners;
+  const widthTop = Math.hypot(tr2.x - tl.x, tr2.y - tl.y);
+  const widthBottom = Math.hypot(br.x - bl.x, br.y - bl.y);
+  let maxWidth = Math.max(widthTop, widthBottom);
+  const heightLeft = Math.hypot(bl.x - tl.x, bl.y - tl.y);
+  const heightRight = Math.hypot(br.x - tr2.x, br.y - tr2.y);
+  let maxHeight = Math.max(heightLeft, heightRight);
+
+  if (maxWidth < 10 || maxHeight < 10) {
+    showToast(tr().toastAreaTooSmall, 'error');
+    return false;
+  }
+
+  // Cap output resolution so a full-frame "crop" (or a 12MP phone photo)
+  // doesn't produce an enormous canvas that balloons memory and layout.
+  const MAX_OUT = 2800;
+  const longSide = Math.max(maxWidth, maxHeight);
+  if (longSide > MAX_OUT) {
+    const s = MAX_OUT / longSide;
+    maxWidth *= s;
+    maxHeight *= s;
+  }
+
+  let src = cv.imread(srcCanvas);
+  let dst = new cv.Mat();
+  let M = null, srcTri = null, dstTri = null;
+  try {
+    srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [tl.x, tl.y, tr2.x, tr2.y, br.x, br.y, bl.x, bl.y]);
+    dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, maxWidth - 1, 0, maxWidth - 1, maxHeight - 1, 0, maxHeight - 1]);
+    M = cv.getPerspectiveTransform(srcTri, dstTri);
+    cv.warpPerspective(src, dst, M, new cv.Size(Math.round(maxWidth), Math.round(maxHeight)), cv.INTER_LINEAR);
+    const outCanvas = document.createElement('canvas');
+    outCanvas.width = Math.round(maxWidth);
+    outCanvas.height = Math.round(maxHeight);
+    cv.imshow(outCanvas, dst);
+    state.croppedCanvas = outCanvas;
+    state.filteredCanvas = null; // Invalidate cache because we have a new crop
+    return true;
+  } finally {
+    src.delete(); dst.delete();
+    if (M) M.delete();
+    if (srcTri) srcTri.delete();
+    if (dstTri) dstTri.delete();
+  }
+}
+
+// ====================================================================
+// FILTERS & ADJUSTMENTS
+// ====================================================================
+function setFilter(filter) {
+  state.currentFilter = filter;
+  document.querySelectorAll('.filter-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.filter === filter);
+  });
+  state.filteredCanvas = null; // Invalidate cache so it recalculates with the new filter
+  renderEnhanceCanvas();
+}
+
+let adjustDebounce;
+function setAdjustments() {
+  state.adjustments.brightness = parseInt(document.getElementById('brightnessSlider').value);
+  state.adjustments.contrast = parseInt(document.getElementById('contrastSlider').value);
+  state.adjustments.sharpness = parseInt(document.getElementById('sharpnessSlider').value);
+  document.getElementById('brightnessVal').textContent = state.adjustments.brightness;
+  document.getElementById('contrastVal').textContent = state.adjustments.contrast;
+  document.getElementById('sharpnessVal').textContent = state.adjustments.sharpness;
+  
+  // Debounce heavy OpenCV adjustments to make the slider perfectly smooth
+  clearTimeout(adjustDebounce);
+  adjustDebounce = setTimeout(() => {
+    renderEnhanceCanvas();
+  }, 50);
+}
+
+function resetAdjustments() {
+  document.getElementById('brightnessSlider').value = 0;
+  document.getElementById('contrastSlider').value = 0;
+  document.getElementById('sharpnessSlider').value = 0;
+  setAdjustments();
+}
+
+function applyFilterToCanvas(srcCanvas, filterType) {
+  let src = cv.imread(srcCanvas);
+  let dst = new cv.Mat();
+  try {
+    if (filterType === 'magic') {
+      // CamScanner-style pipeline: remove uneven shadows/illumination, boost local
+      // contrast, stretch the background toward pure white, lift color slightly,
+      // then sharpen text edges. All done in Lab space so luminance work never
+      // shifts color balance.
+      let rgb = new cv.Mat();
+      cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
+      let lab = new cv.Mat();
+      cv.cvtColor(rgb, lab, cv.COLOR_RGB2Lab);
+      const labChannels = new cv.MatVector();
+      cv.split(lab, labChannels);
+      const L = labChannels.get(0);
+      const A = labChannels.get(1);
+      const B = labChannels.get(2);
+
+      // 1) Flat-field the luminance channel to erase shadows/uneven lighting:
+      // estimate the local "white level" and divide it out. Uses a
+      // morphological closing (not a blur) on a downsampled copy — a blur's
+      // average gets dragged down wherever text is dense, systematically
+      // underestimating the true white level and blowing out almost the
+      // whole page toward pure white; closing fills in dark text strokes
+      // with the surrounding paper tone first, so it isn't biased by how
+      // much text sits nearby. This is also far cheaper than a full-resolution
+      // blur large enough to span the shading gradient, and sidesteps a
+      // regular vertical-stripe corruption a very large GaussianBlur kernel
+      // triggered on some big images.
+      const smallW = Math.max(50, Math.round(L.cols / 8));
+      const smallH = Math.max(50, Math.round(L.rows / 8));
+      const small = new cv.Mat();
+      cv.resize(L, small, new cv.Size(smallW, smallH), 0, 0, cv.INTER_AREA);
+      const morphK = Math.max(9, Math.floor(Math.min(smallW, smallH) / 8));
+      const morphKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(morphK, morphK));
+      const smallBg = new cv.Mat();
+      cv.morphologyEx(small, smallBg, cv.MORPH_CLOSE, morphKernel);
+      morphKernel.delete();
+      const smallBgSmooth = new cv.Mat();
+      cv.GaussianBlur(smallBg, smallBgSmooth, new cv.Size(9, 9), 0);
+      const bg = new cv.Mat();
+      cv.resize(smallBgSmooth, bg, new cv.Size(L.cols, L.rows), 0, 0, cv.INTER_LINEAR);
+      small.delete(); smallBg.delete(); smallBgSmooth.delete();
+      const LFloat = new cv.Mat(), bgFloat = new cv.Mat(), flat = new cv.Mat();
+      L.convertTo(LFloat, cv.CV_32F);
+      bg.convertTo(bgFloat, cv.CV_32F, 1, 1);
+      cv.divide(LFloat, bgFloat, flat, 255);
+      flat.convertTo(flat, cv.CV_8U);
+
+      // 2) Local contrast (CLAHE) so text stays crisp even where lighting is uneven.
+      const clahe = new cv.CLAHE(2.5, new cv.Size(8, 8));
+      const LEnhanced = new cv.Mat();
+      clahe.apply(flat, LEnhanced);
+
+      // 3) Percentile histogram stretch: pushes the paper background toward pure
+      // white and dark text toward pure black, the way a real scanner does.
+      stretchHistogram(LEnhanced, 1, 99);
+      LEnhanced.convertTo(LEnhanced, -1, 1.05, 6);
+
+      // 4) White-balance using the brightest ~12% of pixels (the paper itself)
+      // as the "this should be neutral gray" reference, then only mildly lift
+      // remaining chroma. Skipping the white-balance step and just amplifying
+      // whatever tint the source photo already had (old code) visibly dyed the
+      // whole page cyan/blue on any photo with imperfect camera white balance —
+      // amplifying a subtle cast is exactly as wrong as amplifying real color.
+      const wb = highlightWhiteBalance(A, B);
+      const ABoost = new cv.Mat(), BBoost = new cv.Mat();
+      A.convertTo(ABoost, -1, 1, wb.shiftA);
+      B.convertTo(BBoost, -1, 1, wb.shiftB);
+
+      const mergedChannels = new cv.MatVector();
+      mergedChannels.push_back(LEnhanced);
+      mergedChannels.push_back(ABoost);
+      mergedChannels.push_back(BBoost);
+      const mergedLab = new cv.Mat();
+      cv.merge(mergedChannels, mergedLab);
+      cv.cvtColor(mergedLab, dst, cv.COLOR_Lab2RGB);
+
+      // 5) Unsharp mask to make text edges crisp (this is most of what makes a
+      // scan "read" as high quality rather than just a filtered photo).
+      const blurredFinal = new cv.Mat();
+      cv.GaussianBlur(dst, blurredFinal, new cv.Size(0, 0), 2);
+      cv.addWeighted(dst, 1.5, blurredFinal, -0.5, 0, dst);
+
+      cv.cvtColor(dst, dst, cv.COLOR_RGB2RGBA);
+
+      rgb.delete(); lab.delete(); labChannels.delete(); L.delete(); A.delete(); B.delete();
+      bg.delete(); LFloat.delete(); bgFloat.delete(); flat.delete();
+      clahe.delete(); LEnhanced.delete(); ABoost.delete(); BBoost.delete();
+      mergedChannels.delete(); mergedLab.delete(); blurredFinal.delete();
+    } else {
+      src.copyTo(dst);
+    }
+  } finally {
+    src.delete();
+  }
+  return matToCanvas(dst);
+}
+
+function matToCanvas(mat) {
+  const canvas = document.createElement('canvas');
+  canvas.width = mat.cols; canvas.height = mat.rows;
+  cv.imshow(canvas, mat);
+  mat.delete();
+  return canvas;
+}
+
+// In-place percentile histogram stretch on a single-channel CV_8U Mat.
+// Clips the darkest lowPct% to 0 and brightest (100-highPct)% to 255, then
+// linearly rescales everything in between — this is what makes scanned paper
+// look truly white instead of off-white/gray.
+//
+// Deliberately goes through cv.calcHist + mat.convertTo rather than reading
+// or writing mat.data directly with flat linear indexing: some Mats (e.g. the
+// output of CLAHE.apply on a large image) can have row alignment/padding in
+// their underlying buffer, and treating that as a flat packed array produces
+// a very regular, very wrong vertical-stripe corruption across the whole
+// image once the row/column count is large — exactly the kind of silent
+// full-resolution-only bug that's easy to miss testing on small images.
+function stretchHistogram(mat, lowPct, highPct) {
+  const total = mat.rows * mat.cols;
+  if (total === 0) return;
+
+  const srcVec = new cv.MatVector();
+  const histMat = new cv.Mat();
+  const maskMat = new cv.Mat();
+  try {
+    srcVec.push_back(mat);
+    cv.calcHist(srcVec, [0], maskMat, histMat, [256], [0, 256]);
+    const hist = histMat.data32F;
+
+    const lowCount = total * (lowPct / 100);
+    const highCount = total * ((100 - highPct) / 100);
+
+    let cum = 0, lowVal = 0;
+    for (let i = 0; i < 256; i++) {
+      cum += hist[i];
+      if (cum >= lowCount) { lowVal = i; break; }
+    }
+    cum = 0;
+    let highVal = 255;
+    for (let i = 255; i >= 0; i--) {
+      cum += hist[i];
+      if (cum >= highCount) { highVal = i; break; }
+    }
+
+    const range = highVal - lowVal;
+    if (range <= 0) return;
+    const alpha = 255 / range;
+    const beta = -lowVal * alpha;
+    mat.convertTo(mat, -1, alpha, beta);
+  } finally {
+    srcVec.delete(); histMat.delete(); maskMat.delete();
+  }
+}
+
+// Estimates a color-neutrality correction from the brightest pixels of an
+// image (the "this should basically be white paper" region) rather than
+// assuming the source photo's white balance was already correct. Returns the
+// shift to add to the Lab a/b channels so that region becomes neutral gray.
+// White-balance correction using a robust median of the a/b (color) channels
+// across the whole page, not just the brightest pixels. A highlight-only
+// reference turned out to be unreliable — it can lock onto glare/reflection
+// on glossy card plastic or a screen edge instead of the actual paper tone.
+// Median over the whole image is much harder to throw off: a document is
+// overwhelmingly paper-colored by area, so the median a/b value tracks the
+// true paper tone even with some dark text and colored graphics mixed in.
+function medianChannelValue(mat) {
+  const total = mat.rows * mat.cols;
+  const srcVec = new cv.MatVector();
+  const histMat = new cv.Mat();
+  const emptyMask = new cv.Mat();
+  let median = 128;
+  try {
+    srcVec.push_back(mat);
+    cv.calcHist(srcVec, [0], emptyMask, histMat, [256], [0, 256]);
+    const hist = histMat.data32F;
+    const half = total / 2;
+    let cum = 0;
+    for (let i = 0; i < 256; i++) {
+      cum += hist[i];
+      if (cum >= half) { median = i; break; }
+    }
+  } finally {
+    srcVec.delete(); histMat.delete(); emptyMask.delete();
+  }
+  return median;
+}
+
+function highlightWhiteBalance(aMat, bMat) {
+  const medianA = medianChannelValue(aMat);
+  const medianB = medianChannelValue(bMat);
+  // Clamp: a wildly large shift means the page isn't dominantly neutral-toned
+  // (unusual paper color, heavy graphics) — better to under-correct than to
+  // introduce a different, equally wrong cast.
+  const shiftA = Math.max(-45, Math.min(45, 128 - medianA));
+  const shiftB = Math.max(-45, Math.min(45, 128 - medianB));
+  return { shiftA, shiftB };
+}
+
+function applyAdjustmentsToCanvas(srcCanvas, brightness, contrast, sharpness) {
+  let src = cv.imread(srcCanvas);
+  let dst = new cv.Mat();
+  try {
+    if (brightness !== 0 || contrast !== 0) {
+      const alpha = 1 + contrast / 100;
+      src.convertTo(dst, -1, alpha, brightness);
+    } else {
+      src.copyTo(dst);
+    }
+    if (sharpness > 0) {
+      // Scale up the strength and increase the blur radius so the
+      // sharpening effect is actually visible to the naked eye.
+      const amount = (sharpness / 100) * 2.5; 
+      const blurred = new cv.Mat();
+      cv.GaussianBlur(dst, blurred, new cv.Size(0, 0), 5);
+      cv.addWeighted(dst, 1 + amount, blurred, -amount, 0, dst);
+      blurred.delete();
+    }
+  } finally {
+    src.delete();
+  }
+  return matToCanvas(dst);
+}
+function renderEnhanceCanvas() {
+  if (!state.croppedCanvas) return;
+  const canvas = document.getElementById('enhanceCanvas');
+  const container = document.getElementById('enhanceContainer');
+  const ctx = canvas.getContext('2d');
+
+  // OPTIMIZATION: Cache the heavy OpenCV filter so that adjusting sliders 
+  // only applies lightweight brightness/contrast math instead of running 
+  // the entire pipeline from scratch on every single pixel of slider movement.
+  if (!state.filteredCanvas) {
+    try { 
+      state.filteredCanvas = applyFilterToCanvas(state.croppedCanvas, state.currentFilter); 
+    } catch (err) { 
+      console.error(err); 
+      state.filteredCanvas = state.croppedCanvas; 
+    }
+  }
+
+  let finalCanvas;
+  try {
+    finalCanvas = applyAdjustmentsToCanvas(
+      state.filteredCanvas,
+      state.adjustments.brightness,
+      state.adjustments.contrast,
+      state.adjustments.sharpness
+    );
+  } catch (err) { console.error(err); finalCanvas = state.filteredCanvas; }
+
+  state.enhancedCanvas = finalCanvas;
+
+  // Size the canvas to the full container (absolute-positioned, so it never
+  // contributes to layout). Draw the processed image centered & letterboxed.
+  const containerW = container.clientWidth, containerH = container.clientHeight;
+  if (containerW <= 0 || containerH <= 0) return;
+
+  const pad = 16; // visual inset from the checkerboard edges
+  const availW = Math.max(1, containerW - pad * 2);
+  const availH = Math.max(1, containerH - pad * 2);
+  const scale = Math.min(availW / finalCanvas.width, availH / finalCanvas.height, 1);
+  const displayW = finalCanvas.width * scale;
+  const displayH = finalCanvas.height * scale;
+  const offsetX = (containerW - displayW) / 2;
+  const offsetY = (containerH - displayH) / 2;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = containerW * dpr;
+  canvas.height = containerH * dpr;
+  canvas.style.width = containerW + 'px';
+  canvas.style.height = containerH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, containerW, containerH);
+  ctx.drawImage(finalCanvas, offsetX, offsetY, displayW, displayH);
+}
+
+function generatePreviews() {
+  if (!state.croppedCanvas) return;
+  const maxDim = 200;
+  const scale = Math.min(1, maxDim / Math.max(state.croppedCanvas.width, state.croppedCanvas.height));
+  const small = document.createElement('canvas');
+  small.width = Math.max(1, Math.round(state.croppedCanvas.width * scale));
+  small.height = Math.max(1, Math.round(state.croppedCanvas.height * scale));
+  small.getContext('2d').drawImage(state.croppedCanvas, 0, 0, small.width, small.height);
+
+  ['magic', 'original'].forEach(f => {
+    const previewCanvas = document.querySelector(`.filter-preview[data-filter="${f}"]`);
+    if (!previewCanvas) return;
+    const parent = previewCanvas.parentElement;
+    const thumbW = parent.clientWidth, thumbH = parent.clientHeight;
+    if (thumbW === 0) return;
+    try {
+      const filtered = applyFilterToCanvas(small, f);
+      const ctx = previewCanvas.getContext('2d');
+      const sc = Math.max(thumbW / filtered.width, thumbH / filtered.height);
+      const drawW = filtered.width * sc, drawH = filtered.height * sc;
+      previewCanvas.width = thumbW; previewCanvas.height = thumbH;
+      ctx.drawImage(filtered, (thumbW - drawW) / 2, (thumbH - drawH) / 2, drawW, drawH);
+    } catch (err) { console.error(err); }
+  });
+}
+
+// ====================================================================
+// OCR (Optical Character Recognition)
+// ====================================================================
+
+// Builds a dedicated canvas optimized for text recognition rather than for
+// display. Two changes from the old version matter most for Arabic:
+//
+// 1) We no longer force a hard local adaptive-threshold binarization here.
+//    Arabic is a cursive, connected script — adaptive threshold's small
+//    per-pixel window frequently snaps thin connecting strokes and dots to
+//    background, breaking letters apart. Tesseract's LSTM model already does
+//    its own internal binarization and is trained on smooth grayscale input,
+//    so handing it clean grayscale (denoised + local-contrast-boosted)
+//    generally recognizes better than a pre-binarized image.
+// 2) We deskew before recognition. Even a couple of degrees of rotation
+//    (very common after an imperfect perspective crop) noticeably hurts
+//    cursive baseline tracking, which Latin OCR is far more tolerant of.
+function prepareOcrCanvas(srcCanvas) {
+  const targetMinSide = 2200; // higher than before — Arabic diacritics/dots need more resolution
+  const longSide = Math.max(srcCanvas.width, srcCanvas.height);
+  let workCanvas = srcCanvas;
+  if (longSide < targetMinSide) {
+    const scale = targetMinSide / longSide;
+    const upscaled = document.createElement('canvas');
+    upscaled.width = Math.round(srcCanvas.width * scale);
+    upscaled.height = Math.round(srcCanvas.height * scale);
+    const ctx = upscaled.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(srcCanvas, 0, 0, upscaled.width, upscaled.height);
+    workCanvas = upscaled;
+  }
+  try {
+    return deskewAndCleanForOcr(workCanvas);
+  } catch (err) {
+    console.error(err);
+    return workCanvas;
+  }
+}
+
+// Estimates the page's rotation from the overall spread of dark (text) pixels
+// and returns a small corrective angle in degrees. Bounded and conservative
+// on purpose: it only fires for a plausible skew range, so a wrong-sign edge
+// case costs at most a couple of extra degrees rather than making things
+// dramatically worse.
+function estimateSkewAngle(grayMat) {
+  let bin = new cv.Mat(), points = new cv.Mat();
+  let angle = 0;
+  try {
+    cv.threshold(grayMat, bin, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
+    // Merge words into line-like blobs first — gives a far more stable
+    // overall-page angle than fitting to individual character contours.
+    const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(25, 5));
+    cv.dilate(bin, bin, kernel);
+    kernel.delete();
+
+    cv.findNonZero(bin, points);
+    if (points.rows > 200) {
+      const rect = cv.minAreaRect(points);
+      let a = rect.angle;
+      // OpenCV 4.5+ convention: angle is in [0, 90). If the box is "tall"
+      // rather than "wide" the true rotation is (angle - 90).
+      if (rect.size.width < rect.size.height) a -= 90;
+      angle = a;
+    }
+  } finally {
+    bin.delete(); points.delete();
+  }
+  return angle;
+}
+
+function deskewAndCleanForOcr(srcCanvas) {
+  let src = cv.imread(srcCanvas);
+  let gray = new cv.Mat(), denoised = new cv.Mat(), enhanced = new cv.Mat();
+  let rotated = null, dst = new cv.Mat();
+  try {
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    cv.bilateralFilter(gray, denoised, 7, 45, 45);
+    const clahe = new cv.CLAHE(2.0, new cv.Size(8, 8));
+    clahe.apply(denoised, enhanced);
+    clahe.delete();
+
+    const angle = estimateSkewAngle(enhanced);
+    let workGray = enhanced;
+    if (Math.abs(angle) > 0.3 && Math.abs(angle) < 12) {
+      rotated = new cv.Mat();
+      const center = new cv.Point(enhanced.cols / 2, enhanced.rows / 2);
+      const M = cv.getRotationMatrix2D(center, angle, 1);
+      cv.warpAffine(enhanced, rotated, M, new cv.Size(enhanced.cols, enhanced.rows), cv.INTER_CUBIC, cv.BORDER_REPLICATE);
+      M.delete();
+      workGray = rotated;
+    }
+
+    // Gentle percentile stretch (not a hard binary cut) — keeps the smooth
+    // grayscale gradient around letter edges that the LSTM model expects.
+    stretchHistogram(workGray, 2, 98);
+    cv.cvtColor(workGray, dst, cv.COLOR_GRAY2RGBA);
+  } finally {
+    src.delete(); gray.delete(); denoised.delete(); enhanced.delete();
+    if (rotated) rotated.delete();
+  }
+  return matToCanvas(dst);
+}
+
+async function runOCR() {
+  if (!state.enhancedCanvas) {
+    showToast(tr().toastNoImageForOcr, 'error');
+    return;
+  }
+
+  const ocrBtn = document.getElementById('ocrBtn');
+  const progressContainer = document.getElementById('ocrProgressContainer');
+  const progressBar = document.getElementById('ocrProgressBar');
+  const progressText = document.getElementById('ocrProgressText');
+  const progressPercent = document.getElementById('ocrProgressPercent');
+  const resultContainer = document.getElementById('ocrResultContainer');
+
+  state.ocrRunning = true;
+  ocrBtn.disabled = true;
+  ocrBtn.innerHTML = `
+    <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.3"/>
+      <path d="M12 2A10 10 0 0 1 22 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <span>${tr().ocrProcessing}</span>`;
+
+  progressContainer.classList.remove('hidden');
+  resultContainer.classList.add('hidden');
+  progressBar.style.width = '0%';
+  progressText.textContent = tr().ocrLoadingLang;
+
+  try {
+    // Build a text-optimized version of the scan (upscaled + deskewed + denoised,
+    // kept as clean grayscale rather than forced pure black/white) separate from
+    // whatever display filter the user chose.
+    progressText.textContent = tr().ocrPreparingImage;
+    const ocrCanvas = prepareOcrCanvas(state.enhancedCanvas);
+
+    // Create worker with Arabic + English (letterheads/refs often mix in Latin text/numbers).
+    // oem=1 (LSTM-only) makes Tesseract.js fetch its most accurate Arabic model by
+    // default — no need to point at a custom "best" traineddata URL.
+    const worker = await Tesseract.createWorker('ara+eng', 1, {
+      logger: m => {
+        if (m.status === 'recognizing text') {
+          const pct = Math.round(m.progress * 100);
+          progressBar.style.width = `${pct}%`;
+          progressPercent.textContent = `${pct}%`;
+          progressText.textContent = tr().ocrReadingText;
+        } else if (m.status === 'loading tesseract core' || m.status === 'initializing tesseract' || m.status === 'loading language traineddata') {
+          progressText.textContent = tr().ocrLoadingLang;
+        }
+      }
+    });
+
+    // PSM 3 = fully automatic page segmentation (handles mixed logo/paragraph/signature
+    // layouts well); preserve_interword_spaces keeps word boundaries accurate for Arabic;
+    // user_defined_dpi avoids Tesseract's low-DPI warning/degraded accuracy on scans
+    // without embedded DPI metadata.
+    await worker.setParameters({
+      tessedit_pageseg_mode: '3',
+      preserve_interword_spaces: '1',
+      user_defined_dpi: '300',
+    });
+
+    // Run recognition
+    const { data: { text } } = await worker.recognize(ocrCanvas);
+    await worker.terminate();
+
+    // Display result
+    const cleanedText = text.trim();
+    document.getElementById('ocrResult').value = cleanedText;
+    resultContainer.classList.remove('hidden');
+
+    if (cleanedText) {
+      showToast(tr().toastOcrSuccess, 'success');
+    } else {
+      showToast(tr().toastOcrNoText, 'info');
+    }
+  } catch (err) {
+    console.error('OCR Error:', err);
+    showToast(tr().toastOcrFailed, 'error');
+  } finally {
+    state.ocrRunning = false;
+    ocrBtn.disabled = false;
+    setOcrIdleLabel();
+    setTimeout(() => progressContainer.classList.add('hidden'), 1000);
+  }
+}
+
+function copyOCRText() {
+  const textArea = document.getElementById('ocrResult');
+  textArea.select();
+  try {
+    navigator.clipboard.writeText(textArea.value);
+  } catch (err) {
+    document.execCommand('copy');
+  }
+  showToast(tr().toastCopied, 'success');
+}
+
+// ====================================================================
+// STAGE NAVIGATION
+// ====================================================================
+function setStage(stage) {
+  state.stage = stage;
+  ['stage1View', 'stage2View', 'stage3View', 'stage4View'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+  ['stage2Tools', 'stage3Tools', 'stage4Tools'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+
+  const view = document.getElementById(`stage${stage}View`);
+  view.classList.remove('hidden');
+  view.classList.add('fade-in');
+  if (stage >= 2 && stage <= 4) {
+    document.getElementById(`stage${stage}Tools`).classList.remove('hidden');
+  }
+
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById(`stageDot${i}`);
+    dot.classList.remove('active', 'complete');
+    if (i < stage) dot.classList.add('complete');
+    else if (i === stage) dot.classList.add('active');
+  }
+  for (let i = 1; i <= 3; i++) {
+    document.getElementById(`stageLine${i}`).classList.toggle('complete', i < stage);
+  }
+  document.getElementById('stageLabel').textContent = tr().stage[stage];
+
+  const backBtn = document.getElementById('backBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const restartBtn = document.getElementById('restartBtn');
+
+  backBtn.style.display = stage > 1 ? '' : 'none';
+  restartBtn.style.display = stage === 4 ? '' : 'none';
+
+  if (stage === 1 || stage === 4) {
+    nextBtn.style.display = 'none';
+  } else {
+    nextBtn.style.display = '';
+    if (stage === 2) {
+      nextBtn.textContent = state.cvReady ? tr().nextApplyCrop : tr().nextWaitingEngine;
+      nextBtn.disabled = !state.imageCorners || !state.cvReady;
+    } else if (stage === 3) {
+      nextBtn.textContent = tr().nextSaveDocument;
+      nextBtn.disabled = false;
+    }
+  }
+
+  if (stage === 2) setTimeout(() => renderCropCanvas(), 50);
+  else if (stage === 3) {
+    state.filteredCanvas = null; // Reset cache when entering stage 3
+    setTimeout(() => {
+      generatePreviews();
+      renderEnhanceCanvas();
+    }, 50);
+  } else if (stage === 4) {
+    setTimeout(() => renderFinalCanvas(), 50);
+    updatePagesSection();
+  }
+}
+
+function renderFinalCanvas() {
+  if (!state.enhancedCanvas) return;
+  const canvas = document.getElementById('finalCanvas');
+  const container = document.getElementById('finalContainer');
+  const ctx = canvas.getContext('2d');
+
+  // Same absolute-fill + centered-draw approach as crop/enhance so the canvas
+  // never inflates the page layout regardless of source image resolution.
+  const containerW = container.clientWidth, containerH = container.clientHeight;
+  if (containerW <= 0 || containerH <= 0) return;
+
+  const pad = 16;
+  const availW = Math.max(1, containerW - pad * 2);
+  const availH = Math.max(1, containerH - pad * 2);
+  const scale = Math.min(availW / state.enhancedCanvas.width, availH / state.enhancedCanvas.height, 1);
+  const displayW = state.enhancedCanvas.width * scale;
+  const displayH = state.enhancedCanvas.height * scale;
+  const offsetX = (containerW - displayW) / 2;
+  const offsetY = (containerH - displayH) / 2;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = containerW * dpr;
+  canvas.height = containerH * dpr;
+  canvas.style.width = containerW + 'px';
+  canvas.style.height = containerH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, containerW, containerH);
+  ctx.drawImage(state.enhancedCanvas, offsetX, offsetY, displayW, displayH);
+}
+
+function goNext() {
+  if (state.stage === 2) {
+    if (applyPerspectiveTransform()) setStage(3);
+  } else if (state.stage === 3) {
+    setStage(4);
+  }
+}
+
+function goBack() {
+  if (state.stage > 1) setStage(state.stage - 1);
+}
+
+function restart() {
+  state.originalImage = null;
+  state.imageCorners = null;
+  state.croppedCanvas = null;
+  state.enhancedCanvas = null;
+  state.filteredCanvas = null; // clear cache
+  state.currentFilter = 'magic';
+  state.adjustments = { brightness: 0, contrast: 0, sharpness: 0 };
+  document.getElementById('brightnessSlider').value = 0;
+  document.getElementById('contrastSlider').value = 0;
+  document.getElementById('sharpnessSlider').value = 0;
+  document.getElementById('brightnessVal').textContent = '0';
+  document.getElementById('contrastVal').textContent = '0';
+  document.getElementById('sharpnessVal').textContent = '0';
+  document.querySelectorAll('.filter-card').forEach(c => {
+    c.classList.toggle('active', c.dataset.filter === 'magic');
+  });
+  document.getElementById('ocrResultContainer').classList.add('hidden');
+  document.getElementById('ocrProgressContainer').classList.add('hidden');
+  setStage(1);
+}
+
+function updateNextButton() {
+  if (state.stage === 2) {
+    const nextBtn = document.getElementById('nextBtn');
+    nextBtn.textContent = state.cvReady ? tr().nextApplyCrop : tr().nextWaitingEngine;
+    nextBtn.disabled = !state.imageCorners || !state.cvReady;
+  }
+}
+
+// ====================================================================
+// PAGES
+// ====================================================================
+function addPageAndRestart() {
+  if (state.enhancedCanvas) {
+    state.pages.push({
+      canvas: state.enhancedCanvas,
+      filter: state.currentFilter,
+      adjustments: { ...state.adjustments },
+    });
+    updatePagesSection();
+  }
+  restart();
+  showToast(tr().toastPageAdded, 'success');
+}
+
+function removePage(index) {
+  state.pages.splice(index, 1);
+  updatePagesSection();
+}
+
+function updatePagesSection() {
+  const section = document.getElementById('pagesSection');
+  const grid = document.getElementById('pagesGrid');
+  const count = document.getElementById('pagesCount');
+  const total = state.pages.length + (state.enhancedCanvas && state.stage === 4 ? 1 : 0);
+  if (total === 0) {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+  grid.innerHTML = '';
+
+  if (state.enhancedCanvas && state.stage === 4) {
+    const thumb = document.createElement('div');
+    thumb.className = 'page-thumb active';
+    const img = document.createElement('img');
+    img.src = state.enhancedCanvas.toDataURL('image/png');
+    thumb.appendChild(img);
+    const label = document.createElement('div');
+    label.className = 'page-thumb-badge';
+    label.textContent = tr().current;
+    thumb.appendChild(label);
+    grid.appendChild(thumb);
+  }
+
+  state.pages.forEach((page, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'page-thumb';
+    const img = document.createElement('img');
+    img.src = page.canvas.toDataURL('image/png');
+    thumb.appendChild(img);
+    const label = document.createElement('div');
+    label.className = 'page-thumb-badge';
+    label.textContent = `${state.pages.length - i}`;
+    thumb.appendChild(label);
+    const remove = document.createElement('div');
+    remove.className = 'page-thumb-remove';
+    remove.innerHTML = '×';
+    remove.onclick = (e) => { e.stopPropagation(); removePage(i); };
+    thumb.appendChild(remove);
+    grid.appendChild(thumb);
+  });
+
+  count.textContent = tr().pageCount(total);
+}
+
+// ====================================================================
+// EXPORT
+// ====================================================================
+function exportImage(format) {
+  if (!state.enhancedCanvas) return;
+  const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+  const quality = format === 'jpeg' ? 0.92 : undefined;
+  const link = document.createElement('a');
+  link.download = `egyptair-scan-${Date.now()}.${format}`;
+  link.href = state.enhancedCanvas.toDataURL(mime, quality);
+  link.click();
+  showToast(tr().toastImageDownloaded, 'success');
+}
+
+function exportFromSave() {
+  const format = document.getElementById('exportFormat').value;
+  exportImage(format);
+}
+
+// ====================================================================
+// WORD (.docx) EXPORT — image fitted to a printable A4 page
+// ====================================================================
+// A real .docx is just a zip of a few fixed XML parts. We build it directly
+// (rather than pulling in the full docx.js bundle, whose browser build has
+// had inconsistent global-export behavior across CDNs) so the output is
+// small, predictable, and opens cleanly in Word with no "repair" prompt.
+
+const DOCX_CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Default Extension="png" ContentType="image/png"/>
+<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+
+const DOCX_PACKAGE_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+
+const DOCX_DOCUMENT_HEADER = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>`;
+
+const DOCX_DOCUMENT_FOOTER = `</w:body>
+</w:document>`;
+
+function docxImageParagraph(rId, cx, cy, pageBreakBefore) {
+  const id = rId.replace('rId', '');
+  return `<w:p><w:pPr>${pageBreakBefore ? '<w:pageBreakBefore/>' : ''}<w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="${id}" name="Picture ${id}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="${id}" name="Picture ${id}"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+}
+
+function dataURLToUint8Array(dataUrl) {
+  const binary = atob(dataUrl.split(',')[1]);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function exportWordDocx() {
+  if (typeof JSZip === 'undefined') {
+    showToast(tr().toastWordLibNotLoaded, 'error');
+    return;
+  }
+  const allPages = [];
+  if (state.enhancedCanvas) allPages.push(state.enhancedCanvas);
+  state.pages.forEach(p => allPages.push(p.canvas));
+  if (allPages.length === 0) {
+    showToast(tr().toastNoPagesToExport, 'error');
+    return;
+  }
+
+  // Standard A4 in twips (1440 twips = 1 inch), with 0.5" margins on every side —
+  // narrow enough to maximize the image area, wide enough to stay inside the
+  // printable region of virtually any printer (no clipped edges).
+  const PAGE_W_TWIPS = 11906, PAGE_H_TWIPS = 16838, MARGIN_TWIPS = 720;
+  const EMU_PER_TWIP = 635, EMU_PER_PX = 9525;
+  const printableWEmu = (PAGE_W_TWIPS - MARGIN_TWIPS * 2) * EMU_PER_TWIP;
+  const printableHEmu = (PAGE_H_TWIPS - MARGIN_TWIPS * 2) * EMU_PER_TWIP;
+
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', DOCX_CONTENT_TYPES);
+  zip.file('_rels/.rels', DOCX_PACKAGE_RELS);
+
+  const relEntries = [];
+  const paragraphs = [];
+
+  allPages.forEach((canvas, i) => {
+    // Scale to fill as much of the printable area as possible without any
+    // stretching/distortion — one dimension will exactly touch the margin,
+    // the other is centered in the remaining space.
+    const scale = Math.min(
+      printableWEmu / (canvas.width * EMU_PER_PX),
+      printableHEmu / (canvas.height * EMU_PER_PX)
+    );
+    const cx = Math.round(canvas.width * EMU_PER_PX * scale);
+    const cy = Math.round(canvas.height * EMU_PER_PX * scale);
+
+    const rId = `rId${i + 1}`;
+    const imgName = `image${i + 1}.png`;
+    zip.file(`word/media/${imgName}`, dataURLToUint8Array(canvas.toDataURL('image/png')));
+    relEntries.push(`<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${imgName}"/>`);
+    paragraphs.push(docxImageParagraph(rId, cx, cy, i > 0));
+  });
+
+  zip.file(
+    'word/_rels/document.xml.rels',
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${relEntries.join('')}</Relationships>`
+  );
+
+  const sectPr = `<w:sectPr><w:pgSz w:w="${PAGE_W_TWIPS}" w:h="${PAGE_H_TWIPS}"/><w:pgMar w:top="${MARGIN_TWIPS}" w:right="${MARGIN_TWIPS}" w:bottom="${MARGIN_TWIPS}" w:left="${MARGIN_TWIPS}" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>`;
+  zip.file('word/document.xml', DOCX_DOCUMENT_HEADER + paragraphs.join('') + sectPr + DOCX_DOCUMENT_FOOTER);
+
+  try {
+    const blob = await zip.generateAsync({
+      type: 'blob',
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `egyptair-scan-${Date.now()}.docx`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast(tr().toastWordExported(allPages.length), 'success');
+  } catch (err) {
+    console.error(err);
+    showToast(tr().toastWordFailed, 'error');
+  }
+}
+
+// ====================================================================
+// RESIZE & INIT
+// ====================================================================
+let resizeTimeout;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    if (state.stage === 2) renderCropCanvas();
+    else if (state.stage === 3) renderEnhanceCanvas();
+    else if (state.stage === 4) renderFinalCanvas();
+  }, 200);
+});
+
+setupCropCanvasInteraction();
+setStage(1);
+refreshDynamicText();
+  </script>
 </body>
 </html>
