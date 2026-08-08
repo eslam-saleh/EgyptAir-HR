@@ -661,15 +661,15 @@
               <h4 data-en="Fine-tuning" data-ar="ضبط دقيق">Fine-tuning</h4>
               <div class="adjust-row">
                 <div class="adjust-row-head"><label data-en="Brightness" data-ar="السطوع">Brightness</label><span id="brightnessVal">0</span></div>
-                <input type="range" min="-100" max="100" value="0" id="brightnessSlider" oninput="setAdjustments()">
+                <input type="range" min="-100" max="100" value="0" id="brightnessSlider" oninput="setAdjustments()" onchange="commitAdjustments()">
               </div>
               <div class="adjust-row">
                 <div class="adjust-row-head"><label data-en="Contrast" data-ar="التباين">Contrast</label><span id="contrastVal">0</span></div>
-                <input type="range" min="-100" max="100" value="0" id="contrastSlider" oninput="setAdjustments()">
+                <input type="range" min="-100" max="100" value="0" id="contrastSlider" oninput="setAdjustments()" onchange="commitAdjustments()">
               </div>
               <div class="adjust-row">
                 <div class="adjust-row-head"><label data-en="Sharpness" data-ar="الحدة">Sharpness</label><span id="sharpnessVal">0</span></div>
-                <input type="range" min="0" max="100" value="0" id="sharpnessSlider" oninput="setAdjustments()">
+                <input type="range" min="0" max="100" value="0" id="sharpnessSlider" oninput="setAdjustments()" onchange="commitAdjustments()">
               </div>
               <button type="button" class="ghost-btn scanner-btn-block" onclick="resetAdjustments()" data-en="Reset adjustments" data-ar="إعادة تعيين الضبط">Reset adjustments</button>
             </div>
@@ -781,7 +781,10 @@ const state = {
   imageCorners: null,
   croppedCanvas: null,
   enhancedCanvas: null,
-  filteredCanvas: null, // Caching the heavy filter
+  filteredCanvas: null, // Caching the heavy filter (full resolution — used for export/OCR)
+  filteredPreviewCanvas: null, // Small downscaled copy — used for live slider dragging
+  enhanceDirty: false, // true once a slider drag has only updated the cheap preview,
+                       // meaning enhancedCanvas (full-res) is stale until committed
   currentFilter: 'magic',
   adjustments: { brightness: 0, contrast: 0, sharpness: 0 },
   pages: [],
@@ -815,6 +818,9 @@ const SCANNER_STRINGS = {
     ocrLoadingLang: 'Loading Arabic language data…',
     ocrPreparingImage: 'Preparing image for reading…',
     ocrReadingText: 'Reading text…',
+    ocrRefiningNumbers: 'Refining numbers…',
+    ocrLoadingDictionary: 'Loading Arabic dictionary…',
+    ocrValidatingWords: 'Checking Arabic words…',
     current: 'Current',
     pageCount: (n) => `${n} ${n === 1 ? 'page' : 'pages'}`,
     toastInvalidFile: 'Invalid file. Please choose an image.',
@@ -825,6 +831,7 @@ const SCANNER_STRINGS = {
     toastOcrSuccess: 'Text extracted successfully.',
     toastOcrNoText: 'No text was found in the image.',
     toastOcrFailed: 'Failed to extract text. Try improving the image quality.',
+    toastDictUnavailable: 'Arabic dictionary could not be loaded — word validation was skipped.',
     toastCopied: 'Text copied to clipboard.',
     toastImageDownloaded: 'Image downloaded successfully.',
     toastNoPagesToExport: 'There are no pages to export.',
@@ -850,6 +857,9 @@ const SCANNER_STRINGS = {
     ocrLoadingLang: 'تحميل بيانات اللغة العربية...',
     ocrPreparingImage: 'تجهيز الصورة للقراءة...',
     ocrReadingText: 'جاري قراءة النص...',
+    ocrRefiningNumbers: 'تحسين دقة الأرقام...',
+    ocrLoadingDictionary: 'تحميل القاموس العربي...',
+    ocrValidatingWords: 'التحقق من الكلمات العربية...',
     current: 'حالية',
     pageCount: (n) => `${n} صفحة`,
     toastInvalidFile: 'الملف غير صالح. الرجاء اختيار صورة.',
@@ -860,6 +870,7 @@ const SCANNER_STRINGS = {
     toastOcrSuccess: 'تم استخراج النص بنجاح.',
     toastOcrNoText: 'لم يتم العثور على نص في الصورة.',
     toastOcrFailed: 'فشل في استخراج النص. حاول تحسين جودة الصورة.',
+    toastDictUnavailable: 'تعذر تحميل القاموس العربي، تم تخطي التحقق من الكلمات.',
     toastCopied: 'تم نسخ النص إلى الحافظة.',
     toastImageDownloaded: 'تم تحميل الصورة بنجاح.',
     toastNoPagesToExport: 'لا توجد صفحات للتصدير.',
@@ -1131,7 +1142,7 @@ function findDocContour(workSrc, mode) {
       // little lower on extent/solidity than a clean desk photo — keep the
       // bar high enough to reject garbage blobs, but not so strict that a
       // real page is discarded and we fall back to full-frame corners.
-      if (extent < 0.60 || solidity < 0.85) { cnt.delete(); continue; }
+      if (extent < 0.60 || solidity < 0.78) { cnt.delete(); continue; }
 
       // Reject the classic "found nothing, grabbed the whole frame" failure
       // signature specifically: a box that's both axis-aligned (not rotated —
@@ -1495,6 +1506,7 @@ function applyPerspectiveTransform() {
     cv.imshow(outCanvas, dst);
     state.croppedCanvas = outCanvas;
     state.filteredCanvas = null; // Invalidate cache because we have a new crop
+    state.filteredPreviewCanvas = null;
     return true;
   } finally {
     src.delete(); dst.delete();
@@ -1513,10 +1525,16 @@ function setFilter(filter) {
     c.classList.toggle('active', c.dataset.filter === filter);
   });
   state.filteredCanvas = null; // Invalidate cache so it recalculates with the new filter
-  renderEnhanceCanvas();
+  state.filteredPreviewCanvas = null;
+  renderEnhanceCanvas({ preview: false }); // discrete click, not a drag — fine to pay full-res cost once
 }
 
-let adjustDebounce;
+// Live dragging renders against the small filteredPreviewCanvas (see
+// renderEnhanceCanvas), which keeps every single OpenCV pass cheap regardless
+// of the source photo's resolution — so instead of a fixed debounce delay we
+// just coalesce to one render per animation frame, same pattern as the crop
+// corner dragging.
+let adjustPreviewQueued = false;
 function setAdjustments() {
   state.adjustments.brightness = parseInt(document.getElementById('brightnessSlider').value);
   state.adjustments.contrast = parseInt(document.getElementById('contrastSlider').value);
@@ -1524,19 +1542,39 @@ function setAdjustments() {
   document.getElementById('brightnessVal').textContent = state.adjustments.brightness;
   document.getElementById('contrastVal').textContent = state.adjustments.contrast;
   document.getElementById('sharpnessVal').textContent = state.adjustments.sharpness;
-  
-  // Debounce heavy OpenCV adjustments to make the slider perfectly smooth
-  clearTimeout(adjustDebounce);
-  adjustDebounce = setTimeout(() => {
-    renderEnhanceCanvas();
-  }, 50);
+
+  if (adjustPreviewQueued) return;
+  adjustPreviewQueued = true;
+  requestAnimationFrame(() => {
+    adjustPreviewQueued = false;
+    renderEnhanceCanvas({ preview: true });
+  });
+}
+
+// Fires once when a slider is released (the 'change' event), or right after
+// Reset — does the one full-resolution pass so state.enhancedCanvas (what
+// export/OCR/stage 4 actually use) reflects the final values. This is the
+// only place the heavy OpenCV work runs on the full photo, so it happens
+// once per adjustment, not on every pixel of drag movement.
+function commitAdjustments() {
+  renderEnhanceCanvas({ preview: false });
+}
+
+function commitEnhanceIfDirty() {
+  if (state.enhanceDirty) renderEnhanceCanvas({ preview: false });
 }
 
 function resetAdjustments() {
   document.getElementById('brightnessSlider').value = 0;
   document.getElementById('contrastSlider').value = 0;
   document.getElementById('sharpnessSlider').value = 0;
-  setAdjustments();
+  state.adjustments.brightness = 0;
+  state.adjustments.contrast = 0;
+  state.adjustments.sharpness = 0;
+  document.getElementById('brightnessVal').textContent = '0';
+  document.getElementById('contrastVal').textContent = '0';
+  document.getElementById('sharpnessVal').textContent = '0';
+  commitAdjustments();
 }
 
 function applyFilterToCanvas(srcCanvas, filterType) {
@@ -1751,11 +1789,18 @@ function applyAdjustmentsToCanvas(srcCanvas, brightness, contrast, sharpness) {
       src.copyTo(dst);
     }
     if (sharpness > 0) {
-      // Scale up the strength and increase the blur radius so the
-      // sharpening effect is actually visible to the naked eye.
-      const amount = (sharpness / 100) * 2.5; 
+      // A fixed 5px blur radius is basically invisible once a 3000-4000px
+      // photo gets displayed shrunk down to fit the screen — the unsharp
+      // mask was operating at a spatial frequency too fine to survive the
+      // scale-down. Tie the radius to the image's own size instead, so the
+      // effect looks the same whether this runs on the small live-preview
+      // canvas or the full-resolution export, and push the max strength up
+      // so sharpness=100 is a clearly "maxed out" look, not a subtle one.
+      const longSide = Math.max(dst.cols, dst.rows);
+      const sigma = Math.max(1.2, longSide / 350);
+      const amount = (sharpness / 100) * 4;
       const blurred = new cv.Mat();
-      cv.GaussianBlur(dst, blurred, new cv.Size(0, 0), 5);
+      cv.GaussianBlur(dst, blurred, new cv.Size(0, 0), sigma);
       cv.addWeighted(dst, 1 + amount, blurred, -amount, 0, dst);
       blurred.delete();
     }
@@ -1764,35 +1809,64 @@ function applyAdjustmentsToCanvas(srcCanvas, brightness, contrast, sharpness) {
   }
   return matToCanvas(dst);
 }
-function renderEnhanceCanvas() {
+
+// Downscale a canvas for cheap live-preview work; returns the original
+// canvas unchanged if it's already small enough.
+function makeDownscaledCanvas(srcCanvas, maxDim) {
+  const scale = Math.min(1, maxDim / Math.max(srcCanvas.width, srcCanvas.height));
+  if (scale === 1) return srcCanvas;
+  const small = document.createElement('canvas');
+  small.width = Math.max(1, Math.round(srcCanvas.width * scale));
+  small.height = Math.max(1, Math.round(srcCanvas.height * scale));
+  small.getContext('2d').drawImage(srcCanvas, 0, 0, small.width, small.height);
+  return small;
+}
+const ENHANCE_PREVIEW_MAX_DIM = 1100;
+
+function renderEnhanceCanvas({ preview = false } = {}) {
   if (!state.croppedCanvas) return;
   const canvas = document.getElementById('enhanceCanvas');
   const container = document.getElementById('enhanceContainer');
   const ctx = canvas.getContext('2d');
 
-  // OPTIMIZATION: Cache the heavy OpenCV filter so that adjusting sliders 
-  // only applies lightweight brightness/contrast math instead of running 
-  // the entire pipeline from scratch on every single pixel of slider movement.
+  // Cache the heavy per-filter OpenCV pass (full res) plus a small downscaled
+  // copy for live dragging — both only recomputed when the filter changes.
   if (!state.filteredCanvas) {
-    try { 
-      state.filteredCanvas = applyFilterToCanvas(state.croppedCanvas, state.currentFilter); 
-    } catch (err) { 
-      console.error(err); 
-      state.filteredCanvas = state.croppedCanvas; 
+    try {
+      state.filteredCanvas = applyFilterToCanvas(state.croppedCanvas, state.currentFilter);
+    } catch (err) {
+      console.error(err);
+      state.filteredCanvas = state.croppedCanvas;
     }
+    state.filteredPreviewCanvas = null;
+  }
+  if (!state.filteredPreviewCanvas) {
+    state.filteredPreviewCanvas = makeDownscaledCanvas(state.filteredCanvas, ENHANCE_PREVIEW_MAX_DIM);
   }
 
+  // Live slider dragging (preview:true) runs brightness/contrast/sharpen on
+  // the small downscaled copy — cheap no matter how large the source photo
+  // is, which is what actually makes dragging feel smooth. The full-size
+  // photo is only ever processed once the drag settles: preview:false is
+  // triggered by a slider's 'change' event, a filter click, Reset, or right
+  // before stage 4 needs the real export-quality image.
+  const source = preview ? state.filteredPreviewCanvas : state.filteredCanvas;
   let finalCanvas;
   try {
     finalCanvas = applyAdjustmentsToCanvas(
-      state.filteredCanvas,
+      source,
       state.adjustments.brightness,
       state.adjustments.contrast,
       state.adjustments.sharpness
     );
-  } catch (err) { console.error(err); finalCanvas = state.filteredCanvas; }
+  } catch (err) { console.error(err); finalCanvas = source; }
 
-  state.enhancedCanvas = finalCanvas;
+  if (preview) {
+    state.enhanceDirty = true; // full-res enhancedCanvas no longer matches the sliders
+  } else {
+    state.enhancedCanvas = finalCanvas;
+    state.enhanceDirty = false;
+  }
 
   // Size the canvas to the full container (absolute-positioned, so it never
   // contributes to layout). Draw the processed image centered & letterboxed.
@@ -1948,6 +2022,204 @@ function deskewAndCleanForOcr(srcCanvas) {
   return matToCanvas(dst);
 }
 
+// ====================================================================
+// ARABIC DICTIONARY VALIDATION
+// ====================================================================
+// Tesseract's Arabic model still misreads enough letters that raw output
+// can contain "words" that aren't real Arabic at all — plausible-looking
+// shapes with no actual meaning. Rather than hand that straight to the
+// user, every Arabic token gets checked against a real Arabic word list
+// (AyaSpell — the open-source Hunspell Arabic dictionary also used by
+// LibreOffice/Firefox), fetched once from GitHub and cached for the
+// session. A small prefix/suffix stripper handles common inflections
+// (ال، و، ها، ون، ات...) that the raw word list alone wouldn't match. If
+// a token still isn't found, we look for the closest real word within a
+// small edit-distance budget — that's the "guess" instead of a scan.
+// If nothing close enough exists, the token is dropped rather than shown
+// as-is: never printing a keyword that isn't a correct keyword.
+
+const ARABIC_DICT_SOURCES = [
+  'https://raw.githubusercontent.com/titoBouzout/Dictionaries/master/Arabic.dic',
+  'https://cdn.jsdelivr.net/gh/titoBouzout/Dictionaries@master/Arabic.dic',
+];
+
+const AR_DIACRITICS_RE = /[\u064B-\u0652\u0670\u0640]/g; // tashkeel + tatweel
+
+// Used only to decide dictionary matches — never to alter what's shown.
+function normalizeArabic(word) {
+  return word
+    .replace(AR_DIACRITICS_RE, '')
+    .replace(/[إأآا]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .trim();
+}
+
+// Longest-first so e.g. "بال" is tried before "ب" alone.
+const AR_PREFIXES = ['بال', 'كال', 'فال', 'وال', 'لل', 'ال', 'و', 'ف', 'ب', 'ك', 'ل'];
+const AR_SUFFIXES = ['تين', 'ية', 'ات', 'ون', 'ين', 'ها', 'هم', 'هن', 'كم', 'كن', 'تم', 'تن', 'نا', 'وا', 'ة', 'ه', 'ك', 'ي', 'ا', 'ن'];
+
+function candidateStems(word) {
+  const out = new Set([word]);
+  for (const p of AR_PREFIXES) {
+    if (word.startsWith(p) && word.length - p.length >= 2) out.add(word.slice(p.length));
+  }
+  for (const w of Array.from(out)) {
+    for (const s of AR_SUFFIXES) {
+      if (w.endsWith(s) && w.length - s.length >= 2) out.add(w.slice(0, w.length - s.length));
+    }
+  }
+  return Array.from(out);
+}
+
+let arabicDictPromise = null;
+// Loads once per session; every call after the first reuses the same promise.
+function loadArabicDictionary() {
+  if (arabicDictPromise) return arabicDictPromise;
+  arabicDictPromise = (async () => {
+    for (const url of ARABIC_DICT_SOURCES) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const raw = await res.text();
+        const set = new Set();
+        const buckets = new Map(); // first-letter -> candidate words, for fast fuzzy lookup
+        const lines = raw.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          if (i === 0 && /^\d+$/.test(line)) continue; // hunspell .dic word-count header
+          const word = normalizeArabic(line.split('/')[0].trim());
+          if (!word || /[^\u0600-\u06FF]/.test(word) || set.has(word)) continue;
+          set.add(word);
+          const key = word[0];
+          if (!buckets.has(key)) buckets.set(key, []);
+          buckets.get(key).push(word);
+        }
+        if (set.size > 1000) return { set, buckets };
+      } catch (err) {
+        console.warn('Arabic dictionary source failed:', url, err);
+      }
+    }
+    console.warn('Could not load an Arabic dictionary from any source — word validation will be skipped.');
+    return null;
+  })();
+  return arabicDictPromise;
+}
+
+function isValidArabicWord(word, dict) {
+  if (word.length <= 1) return true; // too short to safely judge either way
+  for (const stem of candidateStems(word)) {
+    if (dict.set.has(normalizeArabic(stem))) return true;
+  }
+  return false;
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = new Array(n + 1);
+  for (let j = 0; j <= n; j++) dp[j] = j;
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = tmp;
+    }
+  }
+  return dp[n];
+}
+
+// Finds the closest real dictionary word to an unrecognized token, but only
+// returns it when close enough to be trustworthy — otherwise the caller
+// drops the token instead of showing an unreliable "correction".
+function suggestArabicWord(word, dict) {
+  const norm = normalizeArabic(word);
+  const maxDist = norm.length <= 3 ? 1 : (norm.length <= 6 ? 2 : 3);
+  const pool = dict.buckets.get(norm[0]);
+  if (!pool) return null;
+  let best = null, bestDist = Infinity;
+  for (const candidate of pool) {
+    if (Math.abs(candidate.length - norm.length) > maxDist) continue;
+    const dist = levenshtein(norm, candidate);
+    if (dist < bestDist) { bestDist = dist; best = candidate; }
+    if (bestDist === 0) break;
+  }
+  return bestDist <= maxDist ? best : null;
+}
+
+const AR_EDGE_PUNCT_RE = /^([\s،؛؟.,!:;"'()\[\]{}«»\-ـ]*)([\s\S]*?)([\s،؛؟.,!:;"'()\[\]{}«»\-ـ]*)$/;
+function stripEdgePunctuation(token) {
+  const match = token.match(AR_EDGE_PUNCT_RE);
+  return match ? { lead: match[1], core: match[2], trail: match[3] } : { lead: '', core: token, trail: '' };
+}
+
+// Validates every Arabic-only token in the OCR output against the dictionary,
+// correcting close misreads and silently dropping tokens with no confident
+// correct reading. Numbers, Latin text, and mixed tokens (flight/ref codes)
+// pass through untouched.
+function validateAndCorrectArabic(text, dict) {
+  if (!dict) return text;
+  return text.split('\n').map(line => {
+    const tokens = line.split(/(\s+)/); // keep separators so spacing survives drops
+    const kept = [];
+    for (const tok of tokens) {
+      if (/^\s*$/.test(tok)) { kept.push(tok); continue; }
+      const { lead, core, trail } = stripEdgePunctuation(tok);
+      const isArabicOnly = core && /[\u0600-\u06FF]/.test(core) && !/[A-Za-z0-9]/.test(core);
+      if (!isArabicOnly) { kept.push(tok); continue; }
+      if (isValidArabicWord(core, dict)) { kept.push(tok); continue; }
+      const guess = suggestArabicWord(core, dict);
+      if (guess) kept.push(lead + guess + trail);
+      // else: drop — no confident correct reading exists for this token
+    }
+    return kept.join('').replace(/[ \t]{2,}/g, ' ').trim();
+  }).join('\n');
+}
+
+// ====================================================================
+// NUMBER REFINEMENT
+// ====================================================================
+// Digits inside Arabic paragraphs are exactly what the Arabic model is
+// weakest at — it's tuned for letter shapes, not digit shapes, and
+// regularly confuses ٦/٧, 0/6/8, etc. This re-reads the same prepared
+// image with the character set locked to digits only (nothing else to
+// mistake a digit for), then swaps in the cleaner reading wherever both
+// passes found the same number of digit groups in the same order. If
+// the counts don't match — meaning the two passes segmented the page
+// differently — the merge is skipped rather than risking a mismatched
+// substitution.
+const DIGIT_CLUSTER_RE = /[0-9\u0660-\u0669]+(?:[.,:\/\-][0-9\u0660-\u0669]+)*/g;
+
+async function refineNumbers(worker, ocrCanvas, mainText) {
+  const mainMatches = [...mainText.matchAll(DIGIT_CLUSTER_RE)];
+  if (mainMatches.length === 0) return mainText;
+
+  try {
+    await worker.setParameters({
+      tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩.,:/-',
+    });
+    const { data: digitData } = await worker.recognize(ocrCanvas);
+    await worker.setParameters({ tessedit_char_whitelist: '' });
+
+    const digitMatches = digitData.text.match(DIGIT_CLUSTER_RE) || [];
+    if (digitMatches.length !== mainMatches.length) return mainText;
+
+    let result = '', cursor = 0;
+    mainMatches.forEach((m, i) => {
+      result += mainText.slice(cursor, m.index);
+      result += digitMatches[i] || m[0];
+      cursor = m.index + m[0].length;
+    });
+    result += mainText.slice(cursor);
+    return result;
+  } catch (err) {
+    console.error('Number refinement error:', err);
+    return mainText;
+  }
+}
+
 async function runOCR() {
   if (!state.enhancedCanvas) {
     showToast(tr().toastNoImageForOcr, 'error');
@@ -1976,6 +2248,10 @@ async function runOCR() {
   progressText.textContent = tr().ocrLoadingLang;
 
   try {
+    // Kick the dictionary fetch off immediately so it's ready (or close to
+    // it) by the time word validation needs it — no reason to wait to start it.
+    const dictPromise = loadArabicDictionary();
+
     // Build a text-optimized version of the scan (upscaled + deskewed + denoised,
     // kept as clean grayscale rather than forced pure black/white) separate from
     // whatever display filter the user chose.
@@ -2008,12 +2284,26 @@ async function runOCR() {
       user_defined_dpi: '300',
     });
 
-    // Run recognition
+    // Main recognition pass.
     const { data: { text } } = await worker.recognize(ocrCanvas);
+
+    // Second pass on the same image, digits only — see refineNumbers() above.
+    progressText.textContent = tr().ocrRefiningNumbers;
+    const numberRefinedText = await refineNumbers(worker, ocrCanvas, text);
+
     await worker.terminate();
 
+    // Validate every Arabic word against a real dictionary so nothing that
+    // isn't an actual word makes it into the result — correcting close
+    // misreads, dropping anything with no confident correct reading.
+    progressText.textContent = tr().ocrLoadingDictionary;
+    const dict = await dictPromise;
+    if (!dict) showToast(tr().toastDictUnavailable, 'info');
+    progressText.textContent = tr().ocrValidatingWords;
+    const validatedText = validateAndCorrectArabic(numberRefinedText, dict);
+
     // Display result
-    const cleanedText = text.trim();
+    const cleanedText = validatedText.trim();
     document.getElementById('ocrResult').value = cleanedText;
     resultContainer.classList.remove('hidden');
 
@@ -2097,11 +2387,13 @@ function setStage(stage) {
   if (stage === 2) setTimeout(() => renderCropCanvas(), 50);
   else if (stage === 3) {
     state.filteredCanvas = null; // Reset cache when entering stage 3
+    state.filteredPreviewCanvas = null;
     setTimeout(() => {
       generatePreviews();
       renderEnhanceCanvas();
     }, 50);
   } else if (stage === 4) {
+    commitEnhanceIfDirty(); // safety net — sliders normally commit on 'change'
     setTimeout(() => renderFinalCanvas(), 50);
     updatePagesSection();
   }
@@ -2155,6 +2447,8 @@ function restart() {
   state.croppedCanvas = null;
   state.enhancedCanvas = null;
   state.filteredCanvas = null; // clear cache
+  state.filteredPreviewCanvas = null;
+  state.enhanceDirty = false;
   state.currentFilter = 'magic';
   state.adjustments = { brightness: 0, contrast: 0, sharpness: 0 };
   document.getElementById('brightnessSlider').value = 0;
