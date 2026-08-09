@@ -43,28 +43,45 @@
             <div class="header-copy">
                 <p class="eyebrow" data-en="Egypt full-year planner" data-ar="مخطط السنة الكاملة لمصر">Egypt full-year planner</p>
                 <h1 data-en="Employee Holiday Planner" data-ar="مخطط إجازات الموظفين">Employee Holiday Planner</h1>
-                <p class="intro" data-en="Choose personal leave days from January 1 to December 31 of the current year." data-ar="اختر أيام الإجازة الشخصية من 1 يناير إلى 31 ديسمبر من العام الحالي.">Choose personal leave days from January 1 to December 31 of the current year.</p>
+                <p class="intro" data-en="Choose personal leave days from January 1 to December 31 of the current year. Annual leave is used first, then emergency (عارضة), then absence (غياب)." data-ar="اختر أيام الإجازة الشخصية من العام الحالي. تُستخدم الإجازة السنوية أولاً ثم العارضة ثم الغياب.">Choose personal leave days from January 1 to December 31 of the current year. Annual leave is used first, then emergency (عارضة), then absence (غياب).</p>
             </div>
         </header>
 
         <section class="controls-panel" aria-label="Holiday controls">
             <div class="balance-card">
-                <label for="balanceSelect" data-en="Annual holiday balance" data-ar="رصيد الإجازات السنوي">Annual holiday balance</label>
-                <div class="balance-row">
-                    <select id="balanceSelect" aria-label="Annual holiday balance"></select>
-                    <input id="balanceInput" type="number" min="0" max="365" step="1" value="14" aria-label="Custom annual holiday balance">
+                <label for="balanceInput" data-en="Annual holiday balance" data-ar="رصيد الإجازات السنوي">Annual holiday balance</label>
+                <div class="balance-row balance-row-single">
+                    <input id="balanceInput" type="number" min="0" max="365" step="1" value="14" aria-label="Annual holiday balance">
                 </div>
-                <p class="hint" data-en="Pick from the list or type a custom number." data-ar="اختر من القائمة أو اكتب رقماً مخصصاً.">Pick from the list or type a custom number.</p>
+                <p class="hint" data-en="Type your annual leave days." data-ar="اكتب عدد الرصيد السنوي.">Type your annual leave days.</p>
+            </div>
+
+            <div class="balance-card">
+                <label for="emergencyInput" data-en="Emergency leave (عارضة)" data-ar="رصيد العارضة">Emergency leave (عارضة)</label>
+                <div class="balance-row balance-row-single">
+                    <input id="emergencyInput" type="number" min="0" max="365" step="1" value="7" aria-label="Emergency leave balance">
+                </div>
+                <p class="hint" data-en="Used after annual leave is finished." data-ar="تُستخدم بعد الرصيد.">Used after annual leave is finished.</p>
             </div>
 
             <div class="stat-card">
-                <span data-en="Days selected" data-ar="الأيام المختارة">Days selected</span>
+                <span data-en="Annual used" data-ar="الإجازة المستخدمة">Annual used</span>
                 <strong id="calculatorValue">0</strong>
             </div>
 
             <div class="stat-card">
-                <span data-en="Remaining balance" data-ar="الرصيد المتبقي">Remaining balance</span>
+                <span data-en="Annual remaining" data-ar="رصيد الإجازة المتبقي">Annual remaining</span>
                 <strong id="currentBalance">14</strong>
+            </div>
+
+            <div class="stat-card">
+                <span data-en="Emergency remaining" data-ar="رصيد العارضة المتبقي">Emergency remaining</span>
+                <strong id="emergencyRemaining">7</strong>
+            </div>
+
+            <div class="stat-card">
+                <span data-en="Absence (غياب)" data-ar="الغياب">Absence (غياب)</span>
+                <strong id="absenceCount">0</strong>
             </div>
 
             <button id="resetBtn" class="btn-secondary" type="button" data-en="Reset selection" data-ar="إعادة تعيين">Reset selection</button>
@@ -81,7 +98,15 @@
             </div>
             <div class="legend-item">
                 <span class="legend-color personal-holiday"></span>
-                <span data-en="Personal holiday" data-ar="إجازة شخصية">Personal holiday</span>
+                <span data-en="Annual leave" data-ar="إجازة سنوية">Annual leave</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color emergency-leave"></span>
+                <span data-en="Emergency (عارضة)" data-ar="عارضة">Emergency (عارضة)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-color absence-day"></span>
+                <span data-en="Absence (غياب)" data-ar="غياب">Absence (غياب)</span>
             </div>
             <div class="legend-item">
                 <span class="legend-color weekend"></span>
@@ -96,8 +121,11 @@
         <main class="calendar-container" id="calendarContainer" aria-live="polite"></main>
 
         <section class="summary-panel">
-            <label for="summaryText" data-en="Employee leave summary" data-ar="ملخص إجازات الموظف">Employee leave summary</label>
-            <textarea id="summaryText" readonly rows="8"></textarea>
+            <div class="summary-header-row">
+                <label for="summaryText" data-en="Employee leave summary" data-ar="ملخص إجازات الموظف">Employee leave summary</label>
+                <button id="downloadSummaryBtn" class="btn-secondary btn-download" type="button" data-en="Download as text" data-ar="تحميل كنص">Download as text</button>
+            </div>
+            <textarea id="summaryText" readonly rows="10"></textarea>
         </section>
     </div>
 

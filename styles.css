@@ -15,6 +15,8 @@
     --regular: #f8fafc;
     --holiday: #dc2626;
     --personal: #0891b2;
+    --emergency: #7c3aed;
+    --absence: #ea580c;
     --weekend: #facc15;
     --today: #16a34a;
     color-scheme: light;
@@ -29,6 +31,8 @@
     --primary: #74b8ff;
     --primary-dark: #88d6e9;
     --regular: #202d42;
+    --emergency: #a78bfa;
+    --absence: #fb923c;
     --weekend: #8a6b13;
 }
 
@@ -127,10 +131,34 @@ h1 {
 
 .controls-panel {
     display: grid;
-    grid-template-columns: minmax(260px, 1.4fr) repeat(2, minmax(160px, 0.7fr)) auto;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 14px;
     align-items: stretch;
     margin-bottom: 18px;
+}
+
+.balance-row-single {
+    grid-template-columns: 1fr;
+}
+
+.summary-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.summary-header-row label {
+    margin-bottom: 0;
+}
+
+.btn-download {
+    min-width: auto;
+    min-height: 36px;
+    padding: 0 14px;
+    font-size: 0.85rem;
 }
 
 .balance-card,
@@ -253,6 +281,14 @@ input {
     background: var(--personal);
 }
 
+.legend-color.emergency-leave {
+    background: var(--emergency);
+}
+
+.legend-color.absence-day {
+    background: var(--absence);
+}
+
 .legend-color.weekend {
     background: var(--weekend);
 }
@@ -352,6 +388,18 @@ input {
     color: white;
 }
 
+.day.emergency-leave {
+    background: var(--emergency);
+    border-color: #5b21b6;
+    color: white;
+}
+
+.day.absence-day {
+    background: var(--absence);
+    border-color: #c2410c;
+    color: white;
+}
+
 .day.disabled {
     background: transparent;
     cursor: default;
@@ -375,7 +423,9 @@ input {
 }
 
 .day.today.official-holiday::after,
-.day.today.personal-holiday::after {
+.day.today.personal-holiday::after,
+.day.today.emergency-leave::after,
+.day.today.absence-day::after {
     color: white;
 }
 

@@ -2328,18 +2328,38 @@ function stripEdgePunctuation(token) {
 
 // Validates every Arabic-only token in the OCR output against the dictionary,
 // correcting close misreads and silently dropping tokens with no confident
-// correct reading. Numbers, Latin text, and mixed tokens (flight/ref codes)
-// pass through untouched.
+// correct reading. ALL Latin/English letters are stripped or dropped —
+// never printed into the Arabic OCR result. Digits and Arabic punctuation
+// are preserved.
+function stripLatinLetters(text) {
+  // Remove every A–Z / a–z character; keep digits, Arabic, punctuation, whitespace.
+  return text.replace(/[A-Za-z]+/g, '');
+}
+
 function validateAndCorrectArabic(text, dict) {
-  if (!dict) return text;
+  // First hard-strip any Latin letters from the whole text so nothing English
+  // can survive into the final result (even mixed tokens / codes).
+  text = stripLatinLetters(text);
+  if (!dict) {
+    return text.split('\n').map(line => line.replace(/[ \t]{2,}/g, ' ').trim()).join('\n');
+  }
   return text.split('\n').map(line => {
     const tokens = line.split(/(\s+)/); // keep separators so spacing survives drops
     const kept = [];
     for (const tok of tokens) {
       if (/^\s*$/.test(tok)) { kept.push(tok); continue; }
       const { lead, core, trail } = stripEdgePunctuation(tok);
-      const isArabicOnly = core && /[\u0600-\u06FF]/.test(core) && !/[A-Za-z0-9]/.test(core);
-      if (!isArabicOnly) { kept.push(tok); continue; }
+      // After stripLatinLetters, core should never contain A-Za-z.
+      // Keep pure digits / punctuation; validate pure Arabic words.
+      const hasArabic = core && /[\u0600-\u06FF]/.test(core);
+      const hasLatin = core && /[A-Za-z]/.test(core);
+      if (hasLatin) continue; // drop — user forbids English letters in OCR output
+      if (!hasArabic) {
+        // digits / pure punctuation — keep
+        kept.push(tok);
+        continue;
+      }
+      // Arabic (possibly mixed with digits) — validate the Arabic part
       if (isValidArabicWord(core, dict)) { kept.push(tok); continue; }
       const guess = suggestArabicWord(core, dict);
       if (guess) kept.push(lead + guess + trail);
@@ -2473,8 +2493,8 @@ async function runOCR() {
     progressText.textContent = tr().ocrValidatingWords;
     const validatedText = validateAndCorrectArabic(numberRefinedText, dict);
 
-    // Display result
-    const cleanedText = validatedText.trim();
+    // Display result — final safety strip so no English letters ever appear
+    const cleanedText = stripLatinLetters(validatedText).trim().replace(/[ \t]{2,}/g, ' ');
     document.getElementById('ocrResult').value = cleanedText;
     resultContainer.classList.remove('hidden');
 

@@ -1,34 +1,47 @@
 const CALENDAR_YEAR = new Date().getFullYear();
 const DEFAULT_BALANCE = 14;
+const DEFAULT_EMERGENCY = 7;
 const STORAGE_KEY = `holidayPlanner:${CALENDAR_YEAR}`;
 
 let currentLanguage = localStorage.getItem('egyptairPortal:language') || localStorage.getItem('holidayPlanner:language') || 'en';
 let annualBalance = DEFAULT_BALANCE;
-let selectedDays = new Set();
+let emergencyBalance = DEFAULT_EMERGENCY;
+/** @type {Map<string, 'annual'|'emergency'|'absence'>} */
+let selectedDays = new Map();
 
 const translations = {
   en: {
     appTitle: 'Employee Holiday Planner',
     eyebrow: 'Egypt full-year planner',
     title: 'Employee Holiday Planner',
-    intro: 'Choose personal leave days from January 1 to December 31 of the current year.',
+    intro: 'Choose personal leave days from January 1 to December 31 of the current year. Annual leave is used first, then emergency (عارضة), then absence (غياب).',
     balanceLabel: 'Annual holiday balance',
-    balanceHint: 'Pick from the list or type a custom number.',
-    takenLabel: 'Days selected',
-    remainingLabel: 'Remaining balance',
+    balanceHint: 'Type your annual leave days.',
+    emergencyLabel: 'Emergency leave (عارضة)',
+    emergencyHint: 'Used after annual leave is finished.',
+    takenLabel: 'Annual used',
+    remainingLabel: 'Annual remaining',
+    emergencyRemainingLabel: 'Emergency remaining',
+    absenceLabel: 'Absence (غياب)',
     reset: 'Reset selection',
     regularDay: 'Regular day',
     officialHoliday: 'Official holiday',
-    personalHoliday: 'Personal holiday',
+    personalHoliday: 'Annual leave',
+    emergencyLeave: 'Emergency (عارضة)',
+    absenceDay: 'Absence (غياب)',
     weekend: 'Weekend',
     today: 'Today',
     summaryLabel: 'Leave summary',
-    noDays: 'No personal holidays selected.',
-    selectedSummary: count => `Selected personal holidays (${count}):`,
-    balanceSummary: (taken, total, remaining) => `Taken: ${taken} day(s) | Balance: ${total} day(s) | Remaining: ${remaining} day(s)`,
+    downloadSummary: 'Download as text',
+    noDays: 'No leave days selected.',
+    selectedSummary: count => `Selected leave days (${count}):`,
+    annualSection: 'Annual leave:',
+    emergencySection: 'Emergency (عارضة):',
+    absenceSection: 'Absence (غياب):',
+    balanceSummary: (annualTaken, annualTotal, annualRem, emergTaken, emergTotal, emergRem, absence) =>
+      `Annual: ${annualTaken}/${annualTotal} (remaining ${annualRem}) | Emergency: ${emergTaken}/${emergTotal} (remaining ${emergRem}) | Absence: ${absence}`,
     blockedHoliday: name => `You cannot select this day because it is an official holiday: ${name}.`,
-    blockedWeekend: 'You cannot select personal holidays on Friday or Saturday.',
-    limitReached: total => `You have reached your annual balance of ${total} day(s).`,
+    blockedWeekend: 'You cannot select leave on Friday or Saturday.',
     resetConfirm: 'Are you sure you want to reset all selected days?',
     dateLocale: 'en-GB',
     months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
@@ -61,24 +74,34 @@ const translations = {
     appTitle: 'مخطط إجازات الموظفين',
     eyebrow: 'مخطط سنوي كامل لمصر',
     title: 'مخطط إجازات الموظفين',
-    intro: 'اختر أيام الإجازة الشخصية من 1 يناير إلى 31 ديسمبر في السنة الحالية.',
+    intro: 'اختر أيام الإجازة الشخصية من 1 يناير إلى 31 ديسمبر في السنة الحالية. تُستخدم الإجازة السنوية أولاً ثم العارضة ثم الغياب.',
     balanceLabel: 'رصيد الإجازات السنوي',
-    balanceHint: 'اختر من القائمة أو اكتب رقما مخصصا.',
-    takenLabel: 'الأيام المختارة',
-    remainingLabel: 'الرصيد المتبقي',
+    balanceHint: 'اكتب عدد أيام الإجازة السنوية.',
+    emergencyLabel: 'رصيد العارضة',
+    emergencyHint: 'تُستخدم بعد انتهاء الإجازة السنوية.',
+    takenLabel: 'الإجازة المستخدمة',
+    remainingLabel: 'رصيد الإجازة المتبقي',
+    emergencyRemainingLabel: 'رصيد العارضة المتبقي',
+    absenceLabel: 'الغياب',
     reset: 'إعادة ضبط الاختيار',
     regularDay: 'يوم عادي',
     officialHoliday: 'إجازة رسمية',
-    personalHoliday: 'إجازة شخصية',
+    personalHoliday: 'إجازة سنوية',
+    emergencyLeave: 'عارضة',
+    absenceDay: 'غياب',
     weekend: 'عطلة نهاية الأسبوع',
     today: 'اليوم',
     summaryLabel: 'ملخص الإجازات',
-    noDays: 'لا توجد إجازات شخصية مختارة.',
-    selectedSummary: count => `الإجازات الشخصية المختارة (${count}):`,
-    balanceSummary: (taken, total, remaining) => `المستخدم: ${taken} يوم | الرصيد: ${total} يوم | المتبقي: ${remaining} يوم`,
+    downloadSummary: 'تحميل كنص',
+    noDays: 'لا توجد أيام إجازة مختارة.',
+    selectedSummary: count => `أيام الإجازة المختارة (${count}):`,
+    annualSection: 'الإجازة السنوية:',
+    emergencySection: 'العارضة:',
+    absenceSection: 'الغياب:',
+    balanceSummary: (annualTaken, annualTotal, annualRem, emergTaken, emergTotal, emergRem, absence) =>
+      `السنوية: ${annualTaken}/${annualTotal} (متبقي ${annualRem}) | العارضة: ${emergTaken}/${emergTotal} (متبقي ${emergRem}) | الغياب: ${absence}`,
     blockedHoliday: name => `لا يمكن اختيار هذا اليوم لأنه إجازة رسمية: ${name}.`,
-    blockedWeekend: 'لا يمكن اختيار إجازة شخصية يوم الجمعة أو السبت.',
-    limitReached: total => `لقد وصلت إلى رصيدك السنوي وهو ${total} يوم.`,
+    blockedWeekend: 'لا يمكن اختيار إجازة يوم الجمعة أو السبت.',
     resetConfirm: 'هل تريد إعادة ضبط كل الأيام المختارة؟',
     dateLocale: 'ar-EG',
     months: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
@@ -182,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadState();
   initializeBalanceControls();
   initializeResetButton();
+  initializeDownloadButton();
   applyLanguage(currentLanguage);
   generateCalendar();
   updateAll();
@@ -231,8 +255,8 @@ function getFixedHolidayDefinitions(year) {
     const [y, m, d] = dateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d);
     const day = date.getDay();
-    if (day === 5 || day === 6) { // Friday or Saturday
-      const offset = day === 5 ? 2 : 1; // next Sunday
+    if (day === 5 || day === 6) {
+      const offset = day === 5 ? 2 : 1;
       const observedDate = new Date(y, m - 1, d + offset);
       const oy = observedDate.getFullYear();
       const om = String(observedDate.getMonth() + 1).padStart(2, '0');
@@ -245,23 +269,14 @@ function getFixedHolidayDefinitions(year) {
 }
 
 function initializeBalanceControls() {
-  const select = document.getElementById('balanceSelect');
-  const input = document.getElementById('balanceInput');
-  const balanceOptions = [7, 10, 14, 15, 18, 21, 24, 30];
+  const annualInput = document.getElementById('balanceInput');
+  const emergencyInput = document.getElementById('emergencyInput');
 
-  select.innerHTML = '';
-  balanceOptions.forEach(value => {
-    const option = document.createElement('option');
-    option.value = value;
-    option.textContent = value;
-    select.appendChild(option);
-  });
+  annualInput.value = annualBalance;
+  emergencyInput.value = emergencyBalance;
 
-  select.value = balanceOptions.includes(annualBalance) ? String(annualBalance) : '';
-  input.value = annualBalance;
-
-  select.addEventListener('change', () => setAnnualBalance(Number(select.value)));
-  input.addEventListener('input', () => setAnnualBalance(Number(input.value)));
+  annualInput.addEventListener('input', () => setAnnualBalance(Number(annualInput.value)));
+  emergencyInput.addEventListener('input', () => setEmergencyBalance(Number(emergencyInput.value)));
 }
 
 function initializeResetButton() {
@@ -275,22 +290,53 @@ function initializeResetButton() {
   });
 }
 
+function initializeDownloadButton() {
+  const btn = document.getElementById('downloadSummaryBtn');
+  if (!btn) return;
+  btn.addEventListener('click', downloadSummary);
+}
+
 function setAnnualBalance(value) {
   annualBalance = Math.max(0, Math.min(365, Number.isFinite(value) ? Math.floor(value) : 0));
   document.getElementById('balanceInput').value = annualBalance;
-  const select = document.getElementById('balanceSelect');
-  if (select) {
-    select.value = [...select.options].some(o => o.value === String(annualBalance)) ? String(annualBalance) : '';
-  }
+  reclassifySelections();
   saveState();
+  generateCalendar();
   updateAll();
+}
+
+function setEmergencyBalance(value) {
+  emergencyBalance = Math.max(0, Math.min(365, Number.isFinite(value) ? Math.floor(value) : 0));
+  document.getElementById('emergencyInput').value = emergencyBalance;
+  reclassifySelections();
+  saveState();
+  generateCalendar();
+  updateAll();
+}
+
+/** Re-assign day types when balances change (chronological order). */
+function reclassifySelections() {
+  const keys = [...selectedDays.keys()].sort();
+  selectedDays.clear();
+  let annualUsed = 0;
+  let emergUsed = 0;
+  for (const key of keys) {
+    if (annualUsed < annualBalance) {
+      selectedDays.set(key, 'annual');
+      annualUsed++;
+    } else if (emergUsed < emergencyBalance) {
+      selectedDays.set(key, 'emergency');
+      emergUsed++;
+    } else {
+      selectedDays.set(key, 'absence');
+    }
+  }
 }
 
 function applyLanguage(language) {
   currentLanguage = language === 'ar' ? 'ar' : 'en';
   localStorage.setItem('holidayPlanner:language', currentLanguage);
   const dictionary = translations[currentLanguage];
-  // document.title = dictionary.appTitle; // Handled by portal header
 
   document.querySelectorAll('[data-i18n]').forEach(element => {
     element.textContent = dictionary[element.dataset.i18n];
@@ -349,7 +395,7 @@ function createDayButton(year, month, day) {
   const holidayMap = getHolidayMap();
   const holidayKey = holidayMap[dateKey];
   const isWeekend = date.getDay() === 5 || date.getDay() === 6;
-  const isSelected = selectedDays.has(dateKey);
+  const dayType = selectedDays.get(dateKey);
   const isToday = toDateKey(new Date()) === dateKey;
   const button = document.createElement('button');
   button.type = 'button';
@@ -363,8 +409,18 @@ function createDayButton(year, month, day) {
   } else if (isWeekend) {
     button.classList.add('weekend');
   }
-  
-  if (isSelected) button.classList.add('personal-holiday');
+
+  if (dayType === 'annual') {
+    button.classList.add('personal-holiday');
+    button.title = t('personalHoliday');
+  } else if (dayType === 'emergency') {
+    button.classList.add('emergency-leave');
+    button.title = t('emergencyLeave');
+  } else if (dayType === 'absence') {
+    button.classList.add('absence-day');
+    button.title = t('absenceDay');
+  }
+
   if (isToday) {
     button.classList.add('today');
     button.setAttribute('data-today', t('today'));
@@ -372,6 +428,14 @@ function createDayButton(year, month, day) {
 
   button.addEventListener('click', () => toggleDay(dateKey, holidayKey, isWeekend));
   return button;
+}
+
+function countByType(type) {
+  let n = 0;
+  for (const t of selectedDays.values()) {
+    if (t === type) n++;
+  }
+  return n;
 }
 
 function toggleDay(dateKey, holidayKey, isWeekend) {
@@ -386,12 +450,17 @@ function toggleDay(dateKey, holidayKey, isWeekend) {
 
   if (selectedDays.has(dateKey)) {
     selectedDays.delete(dateKey);
+    reclassifySelections();
   } else {
-    if (selectedDays.size >= annualBalance) {
-      window.showToast(t('limitReached')(annualBalance), 'warning');
-      return;
+    const annualUsed = countByType('annual');
+    const emergUsed = countByType('emergency');
+    if (annualUsed < annualBalance) {
+      selectedDays.set(dateKey, 'annual');
+    } else if (emergUsed < emergencyBalance) {
+      selectedDays.set(dateKey, 'emergency');
+    } else {
+      selectedDays.set(dateKey, 'absence');
     }
-    selectedDays.add(dateKey);
   }
 
   saveState();
@@ -400,52 +469,130 @@ function toggleDay(dateKey, holidayKey, isWeekend) {
 }
 
 function updateAll() {
-  const taken = selectedDays.size;
-  const remaining = Math.max(annualBalance - taken, 0);
+  const annualTaken = countByType('annual');
+  const emergTaken = countByType('emergency');
+  const absenceTaken = countByType('absence');
+  const annualRem = Math.max(annualBalance - annualTaken, 0);
+  const emergRem = Math.max(emergencyBalance - emergTaken, 0);
+
   const calcVal = document.getElementById('calculatorValue');
   const currBal = document.getElementById('currentBalance');
-  
-  if (calcVal) calcVal.textContent = taken;
+  const emergEl = document.getElementById('emergencyRemaining');
+  const absEl = document.getElementById('absenceCount');
+
+  if (calcVal) calcVal.textContent = annualTaken;
   if (currBal) {
-    currBal.textContent = remaining;
-    currBal.classList.toggle('low', remaining === 0);
+    currBal.textContent = annualRem;
+    currBal.classList.toggle('low', annualRem === 0);
   }
-  updateSummary(taken, remaining);
+  if (emergEl) {
+    emergEl.textContent = emergRem;
+    emergEl.classList.toggle('low', emergRem === 0);
+  }
+  if (absEl) {
+    absEl.textContent = absenceTaken;
+    absEl.classList.toggle('low', absenceTaken > 0);
+  }
+  updateSummary(annualTaken, annualRem, emergTaken, emergRem, absenceTaken);
 }
 
-function updateSummary(taken, remaining) {
+function updateSummary(annualTaken, annualRem, emergTaken, emergRem, absenceTaken) {
   const summary = document.getElementById('summaryText');
   if (!summary) return;
-  const selected = [...selectedDays].sort();
-  if (!selected.length) {
-    summary.value = `${t('noDays')}\n${t('balanceSummary')(taken, annualBalance, remaining)}`;
+
+  const annualKeys = [];
+  const emergKeys = [];
+  const absKeys = [];
+  for (const [key, type] of selectedDays) {
+    if (type === 'annual') annualKeys.push(key);
+    else if (type === 'emergency') emergKeys.push(key);
+    else absKeys.push(key);
+  }
+  annualKeys.sort();
+  emergKeys.sort();
+  absKeys.sort();
+
+  const total = annualKeys.length + emergKeys.length + absKeys.length;
+  if (total === 0) {
+    summary.value = `${t('noDays')}\n${t('balanceSummary')(0, annualBalance, annualRem, 0, emergencyBalance, emergRem, 0)}`;
     return;
   }
 
-  const lines = [
-    t('selectedSummary')(selected.length),
-    ...selected.map(dateKey => formatDate(dateKey)),
-    '',
-    t('balanceSummary')(taken, annualBalance, remaining)
-  ];
+  const lines = [t('selectedSummary')(total), ''];
+
+  if (annualKeys.length) {
+    lines.push(t('annualSection'));
+    annualKeys.forEach(k => lines.push('  ' + formatDate(k)));
+    lines.push('');
+  }
+  if (emergKeys.length) {
+    lines.push(t('emergencySection'));
+    emergKeys.forEach(k => lines.push('  ' + formatDate(k)));
+    lines.push('');
+  }
+  if (absKeys.length) {
+    lines.push(t('absenceSection'));
+    absKeys.forEach(k => lines.push('  ' + formatDate(k)));
+    lines.push('');
+  }
+
+  lines.push(t('balanceSummary')(annualTaken, annualBalance, annualRem, emergTaken, emergencyBalance, emergRem, absenceTaken));
   summary.value = lines.join('\n');
+}
+
+function downloadSummary() {
+  const summary = document.getElementById('summaryText');
+  if (!summary) return;
+  const text = summary.value || '';
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const d = now.getDate();
+  const filename = `رصيد-${y}-${m}-${d}.txt`;
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 function loadState() {
   try {
     const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     annualBalance = Number.isFinite(state.annualBalance) ? state.annualBalance : DEFAULT_BALANCE;
-    selectedDays = new Set(Array.isArray(state.selectedDays) ? state.selectedDays : []);
+    emergencyBalance = Number.isFinite(state.emergencyBalance) ? state.emergencyBalance : DEFAULT_EMERGENCY;
+
+    selectedDays = new Map();
+    if (Array.isArray(state.selectedDays)) {
+      // Legacy: plain array of date keys → treat as annual first
+      state.selectedDays.forEach(key => {
+        if (typeof key === 'string') selectedDays.set(key, 'annual');
+      });
+      reclassifySelections();
+    } else if (state.selectedDays && typeof state.selectedDays === 'object') {
+      Object.entries(state.selectedDays).forEach(([key, type]) => {
+        if (type === 'annual' || type === 'emergency' || type === 'absence') {
+          selectedDays.set(key, type);
+        }
+      });
+      reclassifySelections();
+    }
   } catch {
     annualBalance = DEFAULT_BALANCE;
-    selectedDays = new Set();
+    emergencyBalance = DEFAULT_EMERGENCY;
+    selectedDays = new Map();
   }
 }
 
 function saveState() {
+  const obj = {};
+  for (const [k, v] of selectedDays) obj[k] = v;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     annualBalance,
-    selectedDays: [...selectedDays]
+    emergencyBalance,
+    selectedDays: obj
   }));
 }
 
