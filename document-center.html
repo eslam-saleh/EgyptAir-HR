@@ -42,7 +42,7 @@
       <div class="panel-card">
         <p class="eyebrow" data-en="Document center" data-ar="مركز المستندات">Document center</p>
         <h1 data-en="Search and download work documents." data-ar="ابحث وحمل مستندات العمل.">Search and download work documents.</h1>
-        <p data-en="Access official Word and Excel templates. Use the search bar to find specific files quickly." data-ar="الوصول إلى نماذج Word وExcel الرسمية. استخدم شريط البحث للعثور على ملفات محددة بسرعة.">Access official Word and Excel templates. Use the search bar to find specific files quickly.</p>
+        <p data-en="Access official Word and Excel templates. Use the search bar to find specific files quickly." data-ar="استخدم شريط البحث للعثور على الملفات .">Access official Word and Excel templates. Use the search bar to find specific files quickly.</p>
 
         <div class="search-zone" style="margin-top: 20px;">
           <input type="text" id="documentSearch" class="search-input" data-en="Search documents..." data-ar="ابحث عن المستندات..." placeholder="Search documents...">
@@ -483,13 +483,13 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
               const n = fillEmployeeFields(emp);
               if (window.jobTreeError) {
                 setFormStatus(t(
-                  `Loaded ${n} field(s) for ${emp.name}, but orgTree.js's job tree could not be loaded — the "مجموعة" (group) field could not be resolved.`,
-                  `تم تحميل ${n} حقل/حقول للموظف ${emp.name}، لكن تعذر تحميل شجرة الوظائف من orgTree.js — لم يتم تحديد "المجموعة".`
+                  `Loaded ${n} field(s) for ${String(emp.name).split('').reverse().join('')}, but orgTree.js's job tree could not be loaded — the "مجموعة" (group) field could not be resolved.`,
+                  `تم تحميل ${n} حقل/حقول للموظف ${String(emp.name).split('').reverse().join('')}، لكن تعذر تحميل شجرة الوظائف من orgTree.js — لم يتم تحديد "المجموعة".`
                 ), true);
               } else {
                 setFormStatus(t(
-                  `Loaded ${n} field(s) for ${emp.name}.`,
-                  `تم تحميل ${n} حقل/حقول للموظف ${emp.name}.`
+                  `Loaded ${n} field(s) for ${String(emp.name).split('').reverse().join('')}.`,
+                  `تم تحميل ${n} حقل/حقول للموظف ${String(emp.name).split('').reverse().join('')}.`
                 ));
               }
             }
