@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en" dir="ltr" data-theme="light">
 <head>
   <meta charset="UTF-8">
@@ -668,8 +668,8 @@
                 <input type="range" min="-100" max="100" value="0" id="contrastSlider" oninput="setAdjustments()" onchange="commitAdjustments()">
               </div>
               <div class="adjust-row">
-                <div class="adjust-row-head"><label data-en="Sharpness" data-ar="الحدة">Sharpness</label><span id="sharpnessVal">0</span></div>
-                <input type="range" min="0" max="100" value="0" id="sharpnessSlider" oninput="setAdjustments()" onchange="commitAdjustments()">
+                <div class="adjust-row-head"><label data-en="Sharpness" data-ar="الحدة">Sharpness</label><span id="sharpnessVal">30</span></div>
+                <input type="range" min="0" max="100" value="30" id="sharpnessSlider" oninput="setAdjustments()" onchange="commitAdjustments()">
               </div>
               <button type="button" class="ghost-btn scanner-btn-block" onclick="resetAdjustments()" data-en="Reset adjustments" data-ar="إعادة تعيين الضبط">Reset adjustments</button>
             </div>
@@ -786,7 +786,7 @@ const state = {
   enhanceDirty: false, // true once a slider drag has only updated the cheap preview,
                        // meaning enhancedCanvas (full-res) is stale until committed
   currentFilter: 'magic',
-  adjustments: { brightness: 0, contrast: 0, sharpness: 0 },
+  adjustments: { brightness: 0, contrast: 0, sharpness: 30 },
   pages: [],
   displayScale: 1,
   displayOffsetX: 0,
@@ -1567,14 +1567,73 @@ function commitEnhanceIfDirty() {
 function resetAdjustments() {
   document.getElementById('brightnessSlider').value = 0;
   document.getElementById('contrastSlider').value = 0;
-  document.getElementById('sharpnessSlider').value = 0;
+  document.getElementById('sharpnessSlider').value = 30;
   state.adjustments.brightness = 0;
   state.adjustments.contrast = 0;
-  state.adjustments.sharpness = 0;
+  state.adjustments.sharpness = 30;
   document.getElementById('brightnessVal').textContent = '0';
   document.getElementById('contrastVal').textContent = '0';
-  document.getElementById('sharpnessVal').textContent = '0';
+  document.getElementById('sharpnessVal').textContent = '30';
   commitAdjustments();
+}
+
+// Clamped linear map from [inMin,inMax] to [outMin,outMax]. Used throughout
+// the Magic filter to scale each processing stage's strength to what the
+// source photo actually needs, instead of one fixed setting for every photo.
+function mapRange(value, inMin, inMax, outMin, outMax) {
+  const t = Math.max(0, Math.min(1, (value - inMin) / (inMax - inMin)));
+  return outMin + t * (outMax - outMin);
+}
+
+// Mean + std-dev of a single-channel Mat — std-dev doubles as a cheap,
+// resolution-independent contrast estimate.
+function measureLuminanceStats(mat) {
+  const meanMat = new cv.Mat(), stdMat = new cv.Mat();
+  cv.meanStdDev(mat, meanMat, stdMat);
+  const mean = meanMat.data64F[0];
+  const std = stdMat.data64F[0];
+  meanMat.delete(); stdMat.delete();
+  return { mean, std };
+}
+
+// Variance of the Laplacian — a standard, cheap blur estimate: a sharp photo
+// has strong high-frequency edges (high variance), a blurry one doesn't.
+// Downsamples first since this only needs to be a rough relative signal,
+// not measured at full resolution.
+function measureBlurVariance(grayMat) {
+  const targetW = 600;
+  const scale = Math.min(1, targetW / grayMat.cols);
+  const small = new cv.Mat();
+  const lap = new cv.Mat();
+  let variance = 0;
+  try {
+    cv.resize(grayMat, small, new cv.Size(
+      Math.max(1, Math.round(grayMat.cols * scale)),
+      Math.max(1, Math.round(grayMat.rows * scale))
+    ), 0, 0, cv.INTER_AREA);
+    cv.Laplacian(small, lap, cv.CV_64F, 1, 1, 0, cv.BORDER_DEFAULT);
+    const stats = measureLuminanceStats(lap);
+    variance = stats.std * stats.std;
+  } finally {
+    small.delete(); lap.delete();
+  }
+  return variance;
+}
+
+// A center-cropped view of a Mat, used only for measurement (never for the
+// actual pixel processing). When the page fills most of the frame this is
+// harmless — just a subset of the same page. When it doesn't (a hand-held
+// photo with visible background, or auto-crop couldn't cleanly isolate the
+// page) this keeps that extraneous content from skewing the stats that
+// decide how strongly to enhance — a dark background sitting next to a
+// bright page reads as "already high contrast" and was making the Magic
+// filter go easy on photos that actually needed more help, not less.
+function centralRoi(mat, marginFrac) {
+  const mx = Math.round(mat.cols * marginFrac);
+  const my = Math.round(mat.rows * marginFrac);
+  const w = Math.max(1, mat.cols - 2 * mx);
+  const h = Math.max(1, mat.rows - 2 * my);
+  return mat.roi(new cv.Rect(mx, my, w, h));
 }
 
 function applyFilterToCanvas(srcCanvas, filterType) {
@@ -1586,6 +1645,15 @@ function applyFilterToCanvas(srcCanvas, filterType) {
       // contrast, stretch the background toward pure white, lift color slightly,
       // then sharpen text edges. All done in Lab space so luminance work never
       // shifts color balance.
+      //
+      // Every stage below used to run with one fixed set of constants for every
+      // photo. That's fine for a clean, evenly-lit scan but falls visibly short
+      // on harder photos — washed-out/hazy shots, heavy shadow, a soft/blurry
+      // capture — which is exactly where a phone photo needs the most help.
+      // Each stage now measures something cheap about the image first (contrast,
+      // shadow severity, sharpness) and scales its own strength to match, the
+      // way a tuned commercial scanner's "auto enhance" does, instead of
+      // applying a one-size-fits-all recipe.
       let rgb = new cv.Mat();
       cv.cvtColor(src, rgb, cv.COLOR_RGBA2RGB);
       let lab = new cv.Mat();
@@ -1595,6 +1663,11 @@ function applyFilterToCanvas(srcCanvas, filterType) {
       const L = labChannels.get(0);
       const A = labChannels.get(1);
       const B = labChannels.get(2);
+
+      // How blurry was the original capture? Measured once, up front, on the
+      // untouched luminance channel — every later stage adds or removes local
+      // contrast in ways that would bias this if measured afterward.
+      const blurVariance = measureBlurVariance(L);
 
       // 1) Flat-field the luminance channel to erase shadows/uneven lighting:
       // estimate the local "white level" and divide it out. Uses a
@@ -1611,7 +1684,29 @@ function applyFilterToCanvas(srcCanvas, filterType) {
       const smallH = Math.max(50, Math.round(L.rows / 8));
       const small = new cv.Mat();
       cv.resize(L, small, new cv.Size(smallW, smallH), 0, 0, cv.INTER_AREA);
-      const morphK = Math.max(9, Math.floor(Math.min(smallW, smallH) / 8));
+
+      // Std-dev of this downsampled copy is dominated by large-scale shading
+      // (fine text detail is mostly averaged away at 1/8 scale) — a cheap
+      // proxy for how severe the shadow/lighting gradient is. Measured on the
+      // center of the frame only, so a hand or background at the edges
+      // doesn't get mistaken for part of the shading gradient. A more uneven
+      // page needs a bigger structuring element to bridge across the shadow;
+      // a flat, evenly-lit page can use a smaller one and preserve more
+      // subtle printed contrast (light letterhead tints, faint stamps).
+      const smallCenter = centralRoi(small, 0.15);
+      const shadowSeverity = measureLuminanceStats(smallCenter).std;
+      smallCenter.delete();
+      // Pulled back from (min/8, scale 0.8-1.6) — that kernel got large enough
+      // on evenly-lit photos to close clean over fine background artwork
+      // (security-pattern watermarks, faint letterhead tints) and divide it
+      // out along with real shadow, which is why those details were fading
+      // to near-white instead of surviving the way they do in CamScanner's
+      // output. Smaller kernel = still bridges genuine shading gradients,
+      // but no longer mistakes fine printed texture for shading.
+      const baseMorphK = Math.max(7, Math.floor(Math.min(smallW, smallH) / 10));
+      const morphScale = mapRange(shadowSeverity, 10, 50, 0.7, 1.3);
+      const morphK = Math.max(7, Math.round(baseMorphK * morphScale));
+
       const morphKernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(morphK, morphK));
       const smallBg = new cv.Mat();
       cv.morphologyEx(small, smallBg, cv.MORPH_CLOSE, morphKernel);
@@ -1627,26 +1722,83 @@ function applyFilterToCanvas(srcCanvas, filterType) {
       cv.divide(LFloat, bgFloat, flat, 255);
       flat.convertTo(flat, cv.CV_8U);
 
+      // Smooth out photographic/paper-grain noise before boosting local
+      // contrast — CLAHE amplifies whatever's already there, and skipping
+      // this is a big reason the old output read as a "processed photo"
+      // rather than the flat, clean look a real scan has. Bilateral
+      // filtering smooths flat regions (paper texture, card backgrounds)
+      // while still respecting real edges (text strokes, card borders),
+      // unlike a plain blur which would soften the text along with it.
+      // Pulled back from (7, 55, 55) — that sigmaColor was wide enough to
+      // treat real tonal variation (a face's soft shading, fine watermark
+      // linework, small print) as "noise" and smooth it away, which is
+      // exactly the muddy/blurry look this was meant to fix. A smaller
+      // diameter and lower sigmas still knock down paper grain and JPEG
+      // artifacts but leave genuine detail alone.
+      const denoised = new cv.Mat();
+      cv.bilateralFilter(flat, denoised, 5, 22, 22, cv.BORDER_DEFAULT);
+      flat.delete();
+
+      // Overall contrast after flat-fielding: a washed-out/hazy photo still
+      // reads as low-contrast even once shadows are gone, and needs a
+      // stronger push in both the CLAHE and percentile-stretch stages below
+      // than an already-crisp scan does — which needs a gentler touch so
+      // noise/JPEG artifacts don't get amplified into visible speckling.
+      // Measured on the center of the frame only — see centralRoi() above.
+      const contrastCenter = centralRoi(denoised, 0.1);
+      const contrastStd = measureLuminanceStats(contrastCenter).std;
+      contrastCenter.delete();
+
       // 2) Local contrast (CLAHE) so text stays crisp even where lighting is uneven.
-      const clahe = new cv.CLAHE(2.5, new cv.Size(8, 8));
+      // Toned down from (4.0, 1.5) — that range was punching local contrast up
+      // hard enough to make skin tones and card backgrounds look gritty/harsh
+      // next to CamScanner's smoother output, which leans on gentler local
+      // contrast and lets the global stretch below do more of the work.
+      const claheClip = mapRange(contrastStd, 15, 70, 2.2, 1.1);
+      const clahe = new cv.CLAHE(claheClip, new cv.Size(8, 8));
       const LEnhanced = new cv.Mat();
-      clahe.apply(flat, LEnhanced);
+      clahe.apply(denoised, LEnhanced);
 
       // 3) Percentile histogram stretch: pushes the paper background toward pure
       // white and dark text toward pure black, the way a real scanner does.
-      stretchHistogram(LEnhanced, 1, 99);
-      LEnhanced.convertTo(LEnhanced, -1, 1.05, 6);
+      // Low-contrast/hazy input gets a more aggressive clip (more of the
+      // washed-out midtones get pushed to the extremes); already-good-contrast
+      // input gets a gentler one so real midtone detail isn't clipped away
+      // unnecessarily.
+      // Pulled back from (2.0, 0.3) — that clip was crushing enough of the
+      // low/high tails to make the background go flat and lose the soft
+      // gradation CamScanner keeps, especially on ID-card photos.
+      const stretchPct = mapRange(contrastStd, 15, 70, 1.0, 0.2);
+      stretchHistogram(LEnhanced, stretchPct, 100 - stretchPct);
+      // Pulled back from (14, 6) — that lift plus a 1.05 gain was over-
+      // brightening the background into a harsh, blotchy white instead of
+      // CamScanner's softer near-white, and was pushing midtones (skin,
+      // photo) along with it.
+      const liftAmount = mapRange(contrastStd, 15, 70, 7, 3);
+      LEnhanced.convertTo(LEnhanced, -1, 1.02, liftAmount);
 
-      // 4) White-balance using the brightest ~12% of pixels (the paper itself)
-      // as the "this should be neutral gray" reference, then only mildly lift
-      // remaining chroma. Skipping the white-balance step and just amplifying
-      // whatever tint the source photo already had (old code) visibly dyed the
-      // whole page cyan/blue on any photo with imperfect camera white balance —
-      // amplifying a subtle cast is exactly as wrong as amplifying real color.
-      const wb = highlightWhiteBalance(A, B);
+      // 4) White-balance using the median color of the page/card itself (not
+      // the whole frame — see centralRoi() above) as the "this should be
+      // neutral" reference, then mute the remaining chroma. Skipping
+      // the white-balance step and just amplifying whatever tint the source
+      // photo already had (old code) visibly dyed the whole page cyan/blue on
+      // any photo with imperfect camera white balance — amplifying a subtle
+      // cast is exactly as wrong as amplifying real color.
+      const ACenter = centralRoi(A, 0.1), BCenter = centralRoi(B, 0.1);
+      const wb = highlightWhiteBalance(ACenter, BCenter);
+      ACenter.delete(); BCenter.delete();
+      // The white-balance shift above only re-centers color, it doesn't
+      // touch saturation — so decorative background art (security-pattern
+      // watermarks, colored letterhead) kept its full original vividness,
+      // reading as a bold golden/tan print instead of CamScanner's soft
+      // pastel wash. Damping chroma toward neutral after the shift mutes
+      // exactly that: text and paper are already near-neutral (a/b ≈ 128)
+      // so they're barely affected, while saturated background art gets
+      // pulled most of the way toward gray.
+      const CHROMA = 0.5;
       const ABoost = new cv.Mat(), BBoost = new cv.Mat();
-      A.convertTo(ABoost, -1, 1, wb.shiftA);
-      B.convertTo(BBoost, -1, 1, wb.shiftB);
+      A.convertTo(ABoost, -1, CHROMA, 128 * (1 - CHROMA) + wb.shiftA * CHROMA);
+      B.convertTo(BBoost, -1, CHROMA, 128 * (1 - CHROMA) + wb.shiftB * CHROMA);
 
       const mergedChannels = new cv.MatVector();
       mergedChannels.push_back(LEnhanced);
@@ -1657,15 +1809,34 @@ function applyFilterToCanvas(srcCanvas, filterType) {
       cv.cvtColor(mergedLab, dst, cv.COLOR_Lab2RGB);
 
       // 5) Unsharp mask to make text edges crisp (this is most of what makes a
-      // scan "read" as high quality rather than just a filtered photo).
+      // scan "read" as high quality rather than just a filtered photo). A
+      // photo that was already soft/blurry on capture (low Laplacian variance,
+      // measured at the top) gets pulled harder; an already-sharp photo gets a
+      // lighter touch so text edges don't grow visible white halos. Capped a
+      // bit lower than before (was up to 2.0) — the denoise step above already
+      // does most of the work of making this look "clean" rather than
+      // "photographed," so it doesn't need as much sharpening on top to get
+      // there, and a lower cap keeps this from looking artificially harsh.
+      // Range lowered again from (1.7, 1.25) — that was still leaving visible
+      // edge halos and a "crunchy" look on text/card borders that CamScanner's
+      // output doesn't have; the gentler denoise+contrast stages above already
+      // carry most of the perceived sharpness now.
+      // Blur radius pulled back from sigma 2 to 1.1 — a wide radius unsharp
+      // mask softens fine detail before it ever compares it against the
+      // original, so it was working against the "keep it crisp" goal as
+      // much as for it. A tighter radius targets actual edges (text
+      // strokes, card borders) instead of blurring across them first, so
+      // the same or slightly higher amount reads as sharper without the
+      // soft/waxy look or visible white halos.
+      const sharpenAmount = mapRange(blurVariance, 30, 300, 1.5, 1.2);
       const blurredFinal = new cv.Mat();
-      cv.GaussianBlur(dst, blurredFinal, new cv.Size(0, 0), 2);
-      cv.addWeighted(dst, 1.5, blurredFinal, -0.5, 0, dst);
+      cv.GaussianBlur(dst, blurredFinal, new cv.Size(0, 0), 1.1);
+      cv.addWeighted(dst, sharpenAmount, blurredFinal, -(sharpenAmount - 1), 0, dst);
 
       cv.cvtColor(dst, dst, cv.COLOR_RGB2RGBA);
 
       rgb.delete(); lab.delete(); labChannels.delete(); L.delete(); A.delete(); B.delete();
-      bg.delete(); LFloat.delete(); bgFloat.delete(); flat.delete();
+      bg.delete(); LFloat.delete(); bgFloat.delete(); denoised.delete();
       clahe.delete(); LEnhanced.delete(); ABoost.delete(); BBoost.delete();
       mergedChannels.delete(); mergedLab.delete(); blurredFinal.delete();
     } else {
@@ -2450,13 +2621,13 @@ function restart() {
   state.filteredPreviewCanvas = null;
   state.enhanceDirty = false;
   state.currentFilter = 'magic';
-  state.adjustments = { brightness: 0, contrast: 0, sharpness: 0 };
+  state.adjustments = { brightness: 0, contrast: 0, sharpness: 30 };
   document.getElementById('brightnessSlider').value = 0;
   document.getElementById('contrastSlider').value = 0;
-  document.getElementById('sharpnessSlider').value = 0;
+  document.getElementById('sharpnessSlider').value = 30;
   document.getElementById('brightnessVal').textContent = '0';
   document.getElementById('contrastVal').textContent = '0';
-  document.getElementById('sharpnessVal').textContent = '0';
+  document.getElementById('sharpnessVal').textContent = '30';
   document.querySelectorAll('.filter-card').forEach(c => {
     c.classList.toggle('active', c.dataset.filter === 'magic');
   });
@@ -2548,7 +2719,7 @@ function exportImage(format) {
   const mime = format === 'png' ? 'image/png' : 'image/jpeg';
   const quality = format === 'jpeg' ? 0.92 : undefined;
   const link = document.createElement('a');
-  link.download = `egyptair-scan-${Date.now()}.${format}`;
+  link.download = `scan-image.${format}`;
   link.href = state.enhancedCanvas.toDataURL(mime, quality);
   link.click();
   showToast(tr().toastImageDownloaded, 'success');
@@ -2663,7 +2834,7 @@ async function exportWordDocx() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `egyptair-scan-${Date.now()}.docx`;
+    link.download = `scan-word.docx`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     showToast(tr().toastWordExported(allPages.length), 'success');
