@@ -2100,323 +2100,279 @@ function generatePreviews() {
 // ====================================================================
 // OCR (Optical Character Recognition)
 // ====================================================================
-
-// Builds a dedicated canvas optimized for text recognition rather than for
-// display. Two changes from the old version matter most for Arabic:
+// Arabic OCR strategy:
+//   1) Use several image variants instead of trusting one preprocessing path.
+//   2) Run Arabic+English OCR more than once with different page segmentation.
+//   3) Run a dedicated digit pass with an Arabic + English digit whitelist.
+//   4) Keep only high-confidence words, or words independently supported by
+//      multiple OCR passes. Low-confidence Arabic is only allowed through a
+//      conservative dictionary correction step; otherwise it is discarded.
+//   5) Numbers are treated as first-class data and are preserved in both
+//      Western (0-9) and Arabic-Indic (٠-٩) forms.
 //
-// 1) We no longer force a hard local adaptive-threshold binarization here.
-//    Arabic is a cursive, connected script — adaptive threshold's small
-//    per-pixel window frequently snaps thin connecting strokes and dots to
-//    background, breaking letters apart. Tesseract's LSTM model already does
-//    its own internal binarization and is trained on smooth grayscale input,
-//    so handing it clean grayscale (denoised + local-contrast-boosted)
-//    generally recognizes better than a pre-binarized image.
-// 2) We deskew before recognition. Even a couple of degrees of rotation
-//    (very common after an imperfect perspective crop) noticeably hurts
-//    cursive baseline tracking, which Latin OCR is far more tolerant of.
-function prepareOcrCanvas(srcCanvas) {
-  const targetMinSide = 2200; // higher than before — Arabic diacritics/dots need more resolution
-  const longSide = Math.max(srcCanvas.width, srcCanvas.height);
-  let workCanvas = srcCanvas;
-  if (longSide < targetMinSide) {
-    const scale = targetMinSide / longSide;
-    const upscaled = document.createElement('canvas');
-    upscaled.width = Math.round(srcCanvas.width * scale);
-    upscaled.height = Math.round(srcCanvas.height * scale);
-    const ctx = upscaled.getContext('2d');
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(srcCanvas, 0, 0, upscaled.width, upscaled.height);
-    workCanvas = upscaled;
-  }
-  try {
-    return deskewAndCleanForOcr(workCanvas);
-  } catch (err) {
-    console.error(err);
-    return workCanvas;
-  }
-}
+// This is intentionally conservative: missing a doubtful Arabic word is much
+// better than displaying a plausible-looking hallucinated word.
 
-// Estimates the page's rotation from the overall spread of dark (text) pixels
-// and returns a small corrective angle in degrees. Bounded and conservative
-// on purpose: it only fires for a plausible skew range, so a wrong-sign edge
-// case costs at most a couple of extra degrees rather than making things
-// dramatically worse.
-function estimateSkewAngle(grayMat) {
-  let bin = new cv.Mat(), points = new cv.Mat();
-  let angle = 0;
-  try {
-    cv.threshold(grayMat, bin, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU);
-    // Merge words into line-like blobs first — gives a far more stable
-    // overall-page angle than fitting to individual character contours.
-    const kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(25, 5));
-    cv.dilate(bin, bin, kernel);
-    kernel.delete();
+const ARABIC_DICTIONARY = new Set((`
+اختبار اختبارات الاختبار الاختبارات نتيجة النتائج الموقع الإلكتروني إلكتروني
+وظائف الوظيفة الوظائف إعلان إعلاناً اعلان إعلانات الخاص خاصة العامة عام إدارة الإدارة
+قسم أقسام شؤون شئون الموارد البشرية موظف موظفين التوظيف تعيين تعيينات
+شركة الشركات مؤسسة المؤسسات هيئة الهيئات جهاز أجهزة مركز مراكز فرع فروع دور الدور
+الأول الثانية الثاني الثالث الرابع الخامس السادس السابع الثامن التاسع العاشر
+اليوم أمس غداً الأحد الاثنين الثلاثاء الأربعاء الخميس الجمعة السبت الموافق تاريخ
+ساعة صباحاً صباح مساء مساءً الساعة يوم شهر سنة سنوات عام أعوام فترة مدة موعد مواعيد
+رقم أرقام كود أكواد ملف ملفات مستند مستندات ورقة أوراق صفحة صفحات خطاب خطابات طلب طلبات
+قرار قرارات مذكرة مذكرات إفادة إفادات شهادة شهادات إقرار إقرارات تعهد تعهدات توقيع
+اسم الوظيفة العنوان العناوين رقم الهاتف هاتف تليفون اتصال اتصالات بريد بريد إلكتروني
+الموقع الرابط رابط البيانات بيانات معلومات معلومة التفاصيل تفصيل
+عمل العمل يعمل خدمة خدمات خدمة عامة خدمات عامة العميل العملاء المستخدم المستخدمين
+شركة مصر للطيران للطيران المصرية مصر للطيران الجوية الخدمات الجوية للخدمات الجوية
+مطار المطارات طيران الطائرة الطائرات رحلة الرحلات صالة الصالات مبنى المباني
+المسافر المسافرين كوبري بجوار أمام خلف داخل خارج بالقرب دار المعاشات التأمينات
+المعاش معاش التأمين التأمينات الاجتماعية اجتماعية الهيئة القومية وزارة الوزارات
+وزارة العمل القوى العاملة القوى الموارد التنمية الشئون القانونية القانون القوانين
+مجلس المجالس مدير مديرية مدير الإدارة رئيس نائب نائب الرئيس رئيس مجلس الإدارة
+الموافقة موافقة اعتماد معتمد معتمدة صادر وارد صادره واردة تسليم استلام تسلم
+إنهاء إنهاء الخدمة خدمة الخدمة فصل الفصل ترك ترك العمل انقطاع الانقطاع
+إجازة الإجازة بدون بأجر أجر مرتب المرتب مرتبات الأجر الأجور راتب رواتب
+مستحق مستحقات استحقاق مستحقات مالية مالي المالية معاش معاشات مكافأة مكافآت
+مدة مدد اعتباراً اعتبارا من حتى خلال خلاله لمدة بتاريخ بتاریخ بناء بناءً بناء على
+بسبب حيث وذلك لذلك التي الذي الذين اللاتي الذي هي هو هم هن هذا هذه ذلك تلك
+من إلى عن على في مع و أو ثم إذا إن أن لا ما ليس نعم قد لقد سوف تم يتم كان كانت
+يكون تكون توجد يوجد يوجدون جميع بعض أكثر أقل فقط أيضاً ايضا جداً حيث كما مثل مثلًا
+لكن ولكن لأن بسبب قبل بعد عند أثناء خلال دون بين تحت فوق حول نحو لدى لدىه منها منه
+به بها بهم فيها فيه لهم لها له عليه عليها عليهم عنهم عنها إليك إليه إليها إليهم
+أقوم يقوم تقوم تمثل يمثل تخص خاص يتضمن تتضمن يشمل تشمل يخص بشأن بخصوص فيما حيث
+المذكور المذكورة السابق السابقة التالي التالية الحالي الحالية الجديد الجديدة
+القديم القديمة المطلوب المطلوبة المتاح المتاحة المرفق المرفقة المرفقات
+صورة صور نسخ نسخة أصل أصول أصلية أصلية طبقاً طبقا وفق وفقاً وفقا حسب
+مرفق مرفقات مرفقاً مرفقا المرفقات المرفقة المذكور أعلاه أعلاه أدناه أدناه
+الحضور حاضر حضور انصراف غياب غائب مقابلة مقابلات اختبار اختبارات لجنة لجان
+تقديم يقدم تقدم استلام إرسال يرسل أرسل مرفوع مرفوعة مراجعة مراجعات فحص فحوص
+اعتماد رفض قبول مقبول غير صحيح صحيحة صحيح خطأ أخطاء تصحيح تعديل تعديلات
+ملاحظة ملاحظات تنبيه تنبيهات هام هامة مهم مهمة عاجل عاجلة يرجى برجاء فضلاً فضلا
+يرجى التكرم يرجى العلم نحيطكم علماً علما نود نفيد يفيد نفيدكم نحيط
+اسم أسماء رقم أرقام تاريخ تواريخ مكان أماكن عنوان عناوين محافظة محافظات مدينة مدن
+القاهرة الجيزة الإسكندرية القليوبية الشرقية الغربية الدقهلية البحيرة المنوفية
+الفيوم بني سويف المنيا أسيوط سوهاج قنا الأقصر أسوان بورسعيد السويس الإسماعيلية
+دمياط مطروح شمال سيناء جنوب سيناء الوادي الجديد
+مهندس مهندسين مهندسة أخصائي أخصائية أخصائيين فني فنيين موظف موظفة عامل عمال
+نظم نظام اتصالات اتصال كهرباء ميكانيكا حاسب حاسوب برمجيات برمجة شبكات شبكة
+تقنية تكنولوجيا معلومات أمن سلامة جودة تشغيل صيانة دعم فني مشروع مشاريع
+بيانات بياناته قاعدة قواعد مستخدم حساب حسابات كلمة كلمات رمز رموز سرية
+تحقق التحقق تسجيل الدخول خروج دخول كلمة المرور رمز التحقق
+مسؤول مسئول مسؤولة مديرية قسم وحدة وحدات قطاع قطاعات فرع فروع مكتب مكاتب
+موافقة موافقات قرار قرارات تعليمات لائحة لوائح سياسة سياسات إجراءات إجراء
+إجراءات شروط شرط شروط متطلبات متطلب مستندات مستند أصل صورة صور بطاقة بطاقات
+رقم قومي قومية شخصية شخص الأشخاص ميلاد مواليد شهادة الميلاد
+` + `
+الطيران الطيران المدني المدني الجوية الجوي الجويّة الخدمات خدمات المطار المطارات
+الطيار الطيارين العامل العاملين العاملون الوظائف التعيينات التعيين إنهاء الخدمة
+الاستقالة الاستقالة استقالة إخلاء إخلاء طرف طرف عهدة العهدة تسليم العهدة
+` + `
+واحد اثنان ثلاثة أربعة خمسة ستة سبعة ثمانية تسعة عشرة عشر عشرون ثلاثون أربعون خمسون
+ستون سبعون ثمانون تسعون مئة مائة ألف آلاف مليون ملايين نصف ربع
+`).split(/\s+/).filter(Boolean));
 
-    cv.findNonZero(bin, points);
-    if (points.rows > 200) {
-      const rect = cv.minAreaRect(points);
-      let a = rect.angle;
-      // OpenCV 4.5+ convention: angle is in [0, 90). If the box is "tall"
-      // rather than "wide" the true rotation is (angle - 90).
-      if (rect.size.width < rect.size.height) a -= 90;
-      angle = a;
-    }
-  } finally {
-    bin.delete(); points.delete();
-  }
-  return angle;
-}
-
-function deskewAndCleanForOcr(srcCanvas) {
-  let src = cv.imread(srcCanvas);
-  let gray = new cv.Mat(), denoised = new cv.Mat(), enhanced = new cv.Mat();
-  let rotated = null, dst = new cv.Mat();
-  try {
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-    cv.bilateralFilter(gray, denoised, 7, 45, 45);
-    const clahe = new cv.CLAHE(2.0, new cv.Size(8, 8));
-    clahe.apply(denoised, enhanced);
-    clahe.delete();
-
-    const angle = estimateSkewAngle(enhanced);
-    let workGray = enhanced;
-    if (Math.abs(angle) > 0.3 && Math.abs(angle) < 12) {
-      rotated = new cv.Mat();
-      const center = new cv.Point(enhanced.cols / 2, enhanced.rows / 2);
-      const M = cv.getRotationMatrix2D(center, angle, 1);
-      cv.warpAffine(enhanced, rotated, M, new cv.Size(enhanced.cols, enhanced.rows), cv.INTER_CUBIC, cv.BORDER_REPLICATE);
-      M.delete();
-      workGray = rotated;
-    }
-
-    // Gentle percentile stretch (not a hard binary cut) — keeps the smooth
-    // grayscale gradient around letter edges that the LSTM model expects.
-    stretchHistogram(workGray, 2, 98);
-    cv.cvtColor(workGray, dst, cv.COLOR_GRAY2RGBA);
-  } finally {
-    src.delete(); gray.delete(); denoised.delete(); enhanced.delete();
-    if (rotated) rotated.delete();
-  }
-  return matToCanvas(dst);
-}
-
-// ====================================================================
-// ARABIC DICTIONARY VALIDATION
-// ====================================================================
-// Tesseract's Arabic model still misreads enough letters that raw output
-// can contain "words" that aren't real Arabic at all — plausible-looking
-// shapes with no actual meaning. Rather than hand that straight to the
-// user, every Arabic token gets checked against a real Arabic word list
-// (AyaSpell — the open-source Hunspell Arabic dictionary also used by
-// LibreOffice/Firefox), fetched once from GitHub and cached for the
-// session. A small prefix/suffix stripper handles common inflections
-// (ال، و، ها، ون، ات...) that the raw word list alone wouldn't match. If
-// a token still isn't found, we look for the closest real word within a
-// small edit-distance budget — that's the "guess" instead of a scan.
-// If nothing close enough exists, the token is dropped rather than shown
-// as-is: never printing a keyword that isn't a correct keyword.
-
-const ARABIC_DICT_SOURCES = [
-  'https://raw.githubusercontent.com/titoBouzout/Dictionaries/master/Arabic.dic',
-  'https://cdn.jsdelivr.net/gh/titoBouzout/Dictionaries@master/Arabic.dic',
-];
-
-const AR_DIACRITICS_RE = /[\u064B-\u0652\u0670\u0640]/g; // tashkeel + tatweel
-
-// Used only to decide dictionary matches — never to alter what's shown.
-function normalizeArabic(word) {
-  return word
-    .replace(AR_DIACRITICS_RE, '')
-    .replace(/[إأآا]/g, 'ا')
+function normalizeArabicWord(word) {
+  return String(word || '')
+    .replace(/[ًٌٍَُِّْـ]/g, '')
+    .replace(/[إأآٱ]/g, 'ا')
     .replace(/ى/g, 'ي')
+    .replace(/ؤ/g, 'و')
+    .replace(/ئ/g, 'ي')
     .replace(/ة/g, 'ه')
+    .replace(/[\u200f\u200e]/g, '')
     .trim();
 }
 
-// Longest-first so e.g. "بال" is tried before "ب" alone.
-const AR_PREFIXES = ['بال', 'كال', 'فال', 'وال', 'لل', 'ال', 'و', 'ف', 'ب', 'ك', 'ل'];
-const AR_SUFFIXES = ['تين', 'ية', 'ات', 'ون', 'ين', 'ها', 'هم', 'هن', 'كم', 'كن', 'تم', 'تن', 'نا', 'وا', 'ة', 'ه', 'ك', 'ي', 'ا', 'ن'];
-
-function candidateStems(word) {
-  const out = new Set([word]);
-  for (const p of AR_PREFIXES) {
-    if (word.startsWith(p) && word.length - p.length >= 2) out.add(word.slice(p.length));
-  }
-  for (const w of Array.from(out)) {
-    for (const s of AR_SUFFIXES) {
-      if (w.endsWith(s) && w.length - s.length >= 2) out.add(w.slice(0, w.length - s.length));
-    }
-  }
-  return Array.from(out);
+const NORMALIZED_ARABIC_DICTIONARY = new Map();
+for (const w of ARABIC_DICTIONARY) {
+  const n = normalizeArabicWord(w);
+  if (n.length >= 2) NORMALIZED_ARABIC_DICTIONARY.set(n, w);
 }
 
-let arabicDictPromise = null;
-// Loads once per session; every call after the first reuses the same promise.
-function loadArabicDictionary() {
-  if (arabicDictPromise) return arabicDictPromise;
-  arabicDictPromise = (async () => {
-    for (const url of ARABIC_DICT_SOURCES) {
-      try {
-        const res = await fetch(url);
-        if (!res.ok) continue;
-        const raw = await res.text();
-        const set = new Set();
-        const buckets = new Map(); // first-letter -> candidate words, for fast fuzzy lookup
-        const lines = raw.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          if (i === 0 && /^\d+$/.test(line)) continue; // hunspell .dic word-count header
-          const word = normalizeArabic(line.split('/')[0].trim());
-          if (!word || /[^\u0600-\u06FF]/.test(word) || set.has(word)) continue;
-          set.add(word);
-          const key = word[0];
-          if (!buckets.has(key)) buckets.set(key, []);
-          buckets.get(key).push(word);
-        }
-        if (set.size > 1000) return { set, buckets };
-      } catch (err) {
-        console.warn('Arabic dictionary source failed:', url, err);
-      }
-    }
-    console.warn('Could not load an Arabic dictionary from any source — word validation will be skipped.');
-    return null;
-  })();
-  return arabicDictPromise;
+function isArabicToken(s) {
+  return /[\u0600-\u06FF]/.test(s || '');
 }
-
-function isValidArabicWord(word, dict) {
-  if (word.length <= 1) return true; // too short to safely judge either way
-  for (const stem of candidateStems(word)) {
-    if (dict.set.has(normalizeArabic(stem))) return true;
-  }
-  return false;
+function isNumberToken(s) {
+  return /^[0-9٠-٩۰-۹][0-9٠-٩۰-۹.,:/()\-]*$/.test(String(s || '').replace(/\s/g, ''));
 }
-
+function normalizeNumberToken(s) {
+  return String(s || '').replace(/[۰-۹]/g, ch => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(ch))).trim();
+}
 function levenshtein(a, b) {
-  const m = a.length, n = b.length;
-  const dp = new Array(n + 1);
-  for (let j = 0; j <= n; j++) dp[j] = j;
-  for (let i = 1; i <= m; i++) {
-    let prev = dp[0];
-    dp[0] = i;
-    for (let j = 1; j <= n; j++) {
-      const tmp = dp[j];
-      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
-      prev = tmp;
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const prev = new Array(b.length + 1);
+  const cur = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      cur[j] = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
     }
+    for (let j = 0; j <= b.length; j++) prev[j] = cur[j];
   }
-  return dp[n];
+  return prev[b.length];
 }
 
-// Finds the closest real dictionary word to an unrecognized token, but only
-// returns it when close enough to be trustworthy — otherwise the caller
-// drops the token instead of showing an unreliable "correction".
-function suggestArabicWord(word, dict) {
-  const norm = normalizeArabic(word);
-  const maxDist = norm.length <= 3 ? 1 : (norm.length <= 6 ? 2 : 3);
-  const pool = dict.buckets.get(norm[0]);
-  if (!pool) return null;
-  let best = null, bestDist = Infinity;
-  for (const candidate of pool) {
-    if (Math.abs(candidate.length - norm.length) > maxDist) continue;
-    const dist = levenshtein(norm, candidate);
-    if (dist < bestDist) { bestDist = dist; best = candidate; }
-    if (bestDist === 0) break;
+// Only correct a doubtful Arabic token when it is close to a real dictionary
+// word. Never invent a new word from an arbitrary OCR hallucination.
+function dictionaryCorrectArabic(raw, confidence) {
+  const clean = String(raw || '').replace(/[^\u0600-\u06FF]/g, '');
+  if (clean.length < 2) return null;
+  const normalized = normalizeArabicWord(clean);
+  if (NORMALIZED_ARABIC_DICTIONARY.has(normalized)) {
+    return NORMALIZED_ARABIC_DICTIONARY.get(normalized);
   }
-  return bestDist <= maxDist ? best : null;
-}
+  if (confidence >= 72) return clean; // trusted OCR; don't "correct" good text.
+  if (normalized.length < 3 || normalized.length > 18) return null;
 
-const AR_EDGE_PUNCT_RE = /^([\s،؛؟.,!:;"'()\[\]{}«»\-ـ]*)([\s\S]*?)([\s،؛؟.,!:;"'()\[\]{}«»\-ـ]*)$/;
-function stripEdgePunctuation(token) {
-  const match = token.match(AR_EDGE_PUNCT_RE);
-  return match ? { lead: match[1], core: match[2], trail: match[3] } : { lead: '', core: token, trail: '' };
-}
-
-// Validates every Arabic-only token in the OCR output against the dictionary,
-// correcting close misreads and silently dropping tokens with no confident
-// correct reading. ALL Latin/English letters are stripped or dropped —
-// never printed into the Arabic OCR result. Digits and Arabic punctuation
-// are preserved.
-function stripLatinLetters(text) {
-  // Remove every A–Z / a–z character; keep digits, Arabic, punctuation, whitespace.
-  return text.replace(/[A-Za-z]+/g, '');
-}
-
-function validateAndCorrectArabic(text, dict) {
-  // First hard-strip any Latin letters from the whole text so nothing English
-  // can survive into the final result (even mixed tokens / codes).
-  text = stripLatinLetters(text);
-  if (!dict) {
-    return text.split('\n').map(line => line.replace(/[ \t]{2,}/g, ' ').trim()).join('\n');
+  let best = null, bestDist = Infinity, second = Infinity;
+  for (const [dictWord, original] of NORMALIZED_ARABIC_DICTIONARY) {
+    if (Math.abs(dictWord.length - normalized.length) > 2) continue;
+    const d = levenshtein(normalized, dictWord);
+    if (d < bestDist) { second = bestDist; bestDist = d; best = original; }
+    else if (d < second) second = d;
   }
-  return text.split('\n').map(line => {
-    const tokens = line.split(/(\s+)/); // keep separators so spacing survives drops
-    const kept = [];
-    for (const tok of tokens) {
-      if (/^\s*$/.test(tok)) { kept.push(tok); continue; }
-      const { lead, core, trail } = stripEdgePunctuation(tok);
-      // After stripLatinLetters, core should never contain A-Za-z.
-      // Keep pure digits / punctuation; validate pure Arabic words.
-      const hasArabic = core && /[\u0600-\u06FF]/.test(core);
-      const hasLatin = core && /[A-Za-z]/.test(core);
-      if (hasLatin) continue; // drop — user forbids English letters in OCR output
-      if (!hasArabic) {
-        // digits / pure punctuation — keep
-        kept.push(tok);
-        continue;
-      }
-      // Arabic (possibly mixed with digits) — validate the Arabic part
-      if (isValidArabicWord(core, dict)) { kept.push(tok); continue; }
-      const guess = suggestArabicWord(core, dict);
-      if (guess) kept.push(lead + guess + trail);
-      // else: drop — no confident correct reading exists for this token
-    }
-    return kept.join('').replace(/[ \t]{2,}/g, ' ').trim();
-  }).join('\n');
+  // Require a very close match and a clear winner. This deliberately drops
+  // ambiguous garbage instead of guessing between several Arabic words.
+  const maxDist = normalized.length <= 4 ? 1 : normalized.length <= 8 ? 2 : 3;
+  if (best && bestDist <= maxDist && bestDist + 1 < second) return best;
+  return null;
 }
 
-// ====================================================================
-// NUMBER REFINEMENT
-// ====================================================================
-// Digits inside Arabic paragraphs are exactly what the Arabic model is
-// weakest at — it's tuned for letter shapes, not digit shapes, and
-// regularly confuses ٦/٧, 0/6/8, etc. This re-reads the same prepared
-// image with the character set locked to digits only (nothing else to
-// mistake a digit for), then swaps in the cleaner reading wherever both
-// passes found the same number of digit groups in the same order. If
-// the counts don't match — meaning the two passes segmented the page
-// differently — the merge is skipped rather than risking a mismatched
-// substitution.
-const DIGIT_CLUSTER_RE = /[0-9\u0660-\u0669]+(?:[.,:\/\-][0-9\u0660-\u0669]+)*/g;
+function createOcrVariants(srcCanvas) {
+  const targetLongSide = 3200;
+  const longSide = Math.max(srcCanvas.width, srcCanvas.height);
+  let base = srcCanvas;
+  if (longSide < targetLongSide) {
+    const scale = targetLongSide / longSide;
+    const c = document.createElement('canvas');
+    c.width = Math.round(srcCanvas.width * scale);
+    c.height = Math.round(srcCanvas.height * scale);
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(srcCanvas, 0, 0, c.width, c.height);
+    base = c;
+  }
 
-async function refineNumbers(worker, ocrCanvas, mainText) {
-  const mainMatches = [...mainText.matchAll(DIGIT_CLUSTER_RE)];
-  if (mainMatches.length === 0) return mainText;
-
+  const out = [base];
+  // NOTE: unlike matToCanvas() elsewhere in this file, matToCanvasKeep() does
+  // NOT delete the source Mat — several variants below are derived from the
+  // same `clahe` Mat, so it has to stay alive until every variant that reads
+  // it has been produced. Every Mat allocated here is deleted exactly once,
+  // in the finally block below.
+  let src = null, gray = null, clahe = null, otsu = null, adaptive = null, denoise = null;
   try {
-    await worker.setParameters({
-      tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩.,:/-',
-    });
-    const { data: digitData } = await worker.recognize(ocrCanvas);
-    await worker.setParameters({ tessedit_char_whitelist: '' });
+    src = cv.imread(base);
+    gray = new cv.Mat();
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    denoise = new cv.Mat();
+    cv.bilateralFilter(gray, denoise, 7, 45, 45);
+    clahe = new cv.Mat();
+    const c = new cv.CLAHE(2.2, new cv.Size(8, 8));
+    c.apply(denoise, clahe); c.delete();
 
-    const digitMatches = digitData.text.match(DIGIT_CLUSTER_RE) || [];
-    if (digitMatches.length !== mainMatches.length) return mainText;
+    // Keep smooth grayscale first; it is usually best for Arabic cursive.
+    out.push(matToCanvasKeep(clahe));
 
-    let result = '', cursor = 0;
-    mainMatches.forEach((m, i) => {
-      result += mainText.slice(cursor, m.index);
-      result += digitMatches[i] || m[0];
-      cursor = m.index + m[0].length;
-    });
-    result += mainText.slice(cursor);
-    return result;
-  } catch (err) {
-    console.error('Number refinement error:', err);
-    return mainText;
+    otsu = new cv.Mat();
+    cv.threshold(clahe, otsu, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+    out.push(matToCanvasKeep(otsu));
+
+    adaptive = new cv.Mat();
+    cv.adaptiveThreshold(clahe, adaptive, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+      cv.THRESH_BINARY, 31, 11);
+    out.push(matToCanvasKeep(adaptive));
+  } catch (e) {
+    console.warn('OCR variant generation failed:', e);
+  } finally {
+    [src, gray, clahe, otsu, adaptive, denoise].forEach(m => { if (m) m.delete(); });
   }
+  return out;
+}
+
+// Like matToCanvas() but leaves the source Mat alive — use this whenever the
+// Mat is still needed after the conversion. Caller is responsible for
+// deleting it exactly once.
+function matToCanvasKeep(mat) {
+  const canvas = document.createElement('canvas');
+  canvas.width = mat.cols; canvas.height = mat.rows;
+  cv.imshow(canvas, mat);
+  return canvas;
+}
+
+function wordRecords(data, passIndex) {
+  const words = Array.isArray(data?.words) ? data.words : [];
+  return words.map((w, i) => ({
+    text: String(w.text || '').trim(),
+    conf: Number(w.confidence ?? w.conf ?? 0),
+    pass: passIndex,
+    order: i,
+    bbox: w.bbox || null,
+  })).filter(w => w.text);
+}
+
+function lineRecords(data) {
+  if (!Array.isArray(data?.lines)) return [];
+  return data.lines.map(l => String(l.text || '').trim()).filter(Boolean);
+}
+
+function extractTrustedText(records, numberRecords) {
+  const groups = new Map();
+  for (const r of [...records, ...numberRecords]) {
+    const raw = r.text.replace(/\s+/g, ' ').trim();
+    if (!raw) continue;
+    const number = isNumberToken(raw);
+    const arabic = isArabicToken(raw);
+    const key = number ? `N:${normalizeNumberToken(raw)}` : arabic ? `A:${normalizeArabicWord(raw)}` : `L:${raw.toLowerCase()}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  }
+
+  const accepted = [];
+  for (const list of groups.values()) {
+    list.sort((a, b) => b.conf - a.conf);
+    const best = list[0];
+    const support = list.filter(x => x.conf >= 45).length;
+    const text = best.text;
+    if (isNumberToken(text)) {
+      if (best.conf >= 42 || support >= 2) accepted.push({ ...best, text: normalizeNumberToken(text), priority: 3 });
+      continue;
+    }
+    if (isArabicToken(text)) {
+      const corrected = dictionaryCorrectArabic(text, best.conf);
+      // High confidence OCR is accepted; uncertain OCR must be a dictionary
+      // word or independently repeated. Otherwise it is discarded.
+      if (corrected && (best.conf >= 58 || support >= 2)) {
+        accepted.push({ ...best, text: corrected, priority: best.conf >= 75 ? 2 : 1 });
+      }
+      continue;
+    }
+    // English/Latin is secondary. Only keep reasonably confident tokens.
+    if (best.conf >= 72 && /[A-Za-z]/.test(text)) accepted.push({ ...best, priority: 0 });
+  }
+
+  // Sort approximately in reading order using the strongest available bbox.
+  accepted.sort((a, b) => {
+    if (a.bbox && b.bbox) {
+      const dy = a.bbox.y0 - b.bbox.y0;
+      if (Math.abs(dy) > 24) return dy;
+      return a.bbox.x0 - b.bbox.x0;
+    }
+    return a.order - b.order;
+  });
+  return accepted.map(x => x.text);
+}
+
+function extractNumbers(text) {
+  const matches = String(text || '').match(/[0-9٠-٩۰-۹]+(?:[.,:/\\-][0-9٠-٩۰-۹]+)*/g) || [];
+  return [...new Set(matches.map(normalizeNumberToken))];
 }
 
 async function runOCR() {
@@ -2434,33 +2390,18 @@ async function runOCR() {
 
   state.ocrRunning = true;
   ocrBtn.disabled = true;
-  ocrBtn.innerHTML = `
-    <svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.3"/>
-      <path d="M12 2A10 10 0 0 1 22 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
-    </svg>
-    <span>${tr().ocrProcessing}</span>`;
-
+  ocrBtn.innerHTML = `<svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.3"/><path d="M12 2A10 10 0 0 1 22 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span>${tr().ocrProcessing}</span>`;
   progressContainer.classList.remove('hidden');
   resultContainer.classList.add('hidden');
   progressBar.style.width = '0%';
   progressText.textContent = tr().ocrLoadingLang;
 
+  let worker = null;
   try {
-    // Kick the dictionary fetch off immediately so it's ready (or close to
-    // it) by the time word validation needs it — no reason to wait to start it.
-    const dictPromise = loadArabicDictionary();
-
-    // Build a text-optimized version of the scan (upscaled + deskewed + denoised,
-    // kept as clean grayscale rather than forced pure black/white) separate from
-    // whatever display filter the user chose.
     progressText.textContent = tr().ocrPreparingImage;
-    const ocrCanvas = prepareOcrCanvas(state.enhancedCanvas);
+    const variants = createOcrVariants(state.enhancedCanvas);
 
-    // Create worker with Arabic + English (letterheads/refs often mix in Latin text/numbers).
-    // oem=1 (LSTM-only) makes Tesseract.js fetch its most accurate Arabic model by
-    // default — no need to point at a custom "best" traineddata URL.
-    const worker = await Tesseract.createWorker('ara+eng', 1, {
+    worker = await Tesseract.createWorker('ara+eng', 1, {
       logger: m => {
         if (m.status === 'recognizing text') {
           const pct = Math.round(m.progress * 100);
@@ -2473,48 +2414,70 @@ async function runOCR() {
       }
     });
 
-    // PSM 3 = fully automatic page segmentation (handles mixed logo/paragraph/signature
-    // layouts well); preserve_interword_spaces keeps word boundaries accurate for Arabic;
-    // user_defined_dpi avoids Tesseract's low-DPI warning/degraded accuracy on scans
-    // without embedded DPI metadata.
     await worker.setParameters({
-      tessedit_pageseg_mode: '3',
       preserve_interword_spaces: '1',
       user_defined_dpi: '300',
+      tessedit_enable_dict_correction: '1',
+      load_system_dawg: '1',
+      load_freq_dawg: '1',
+      language_model_penalty_non_dict_word: '1.2',
+      language_model_penalty_non_freq_dict_word: '0.8',
+      tessedit_char_blacklist: '|<>[]{}~`^',
     });
 
-    // Main recognition pass.
-    const { data: { text } } = await worker.recognize(ocrCanvas);
+    const allRecords = [];
+    const allLines = [];
+    let pass = 0;
+    // Two segmentation modes on the best grayscale variants.
+    for (const canvas of variants.slice(0, 3)) {
+      for (const psm of ['6', '11']) {
+        await worker.setParameters({ tessedit_pageseg_mode: psm });
+        const { data } = await worker.recognize(canvas);
+        allRecords.push(...wordRecords(data, pass++));
+        allLines.push(...lineRecords(data));
+      }
+    }
 
-    // Second pass on the same image, digits only — see refineNumbers() above.
-    progressText.textContent = tr().ocrRefiningNumbers;
-    const numberRefinedText = await refineNumbers(worker, ocrCanvas, text);
+    // Dedicated numeric pass: this is intentionally separate from Arabic OCR.
+    // It catches Arabic-Indic and Western digits even when surrounding Arabic is
+    // too degraded to recognize.
+    await worker.setParameters({
+      tessedit_pageseg_mode: '11',
+      tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹-/:.,()',
+    });
+    const numericRecords = [];
+    for (const canvas of variants.slice(0, 3)) {
+      const { data } = await worker.recognize(canvas);
+      numericRecords.push(...wordRecords(data, pass++));
+    }
 
-    await worker.terminate();
+    const trusted = extractTrustedText(allRecords, numericRecords);
+    const rawNumbers = [...new Set([
+      ...numericRecords.filter(r => r.conf >= 42).map(r => normalizeNumberToken(r.text)),
+      ...extractNumbers(trusted.join(' ')),
+    ])].filter(x => /\d/.test(x));
 
-    // Validate every Arabic word against a real dictionary so nothing that
-    // isn't an actual word makes it into the result — correcting close
-    // misreads, dropping anything with no confident correct reading.
-    progressText.textContent = tr().ocrLoadingDictionary;
-    const dict = await dictPromise;
-    if (!dict) showToast(tr().toastDictUnavailable, 'info');
-    progressText.textContent = tr().ocrValidatingWords;
-    const validatedText = validateAndCorrectArabic(numberRefinedText, dict);
+    // Remove duplicate numbers already present in the trusted text, but append
+    // numbers that were only found by the dedicated numeric recognizer.
+    const present = new Set(extractNumbers(trusted.join(' ')));
+    for (const n of rawNumbers) if (!present.has(n)) trusted.push(n);
 
-    // Display result — final safety strip so no English letters ever appear
-    const cleanedText = stripLatinLetters(validatedText).trim().replace(/[ \t]{2,}/g, ' ');
+    // If the conservative word filter rejects everything except numbers, still
+    // return the numbers. Never display a made-up Arabic word just to avoid an
+    // empty result.
+    const cleanedText = trusted.join(' ').replace(/\s+([،؛,.])/g, '$1').trim();
     document.getElementById('ocrResult').value = cleanedText;
     resultContainer.classList.remove('hidden');
 
-    if (cleanedText) {
-      showToast(tr().toastOcrSuccess, 'success');
-    } else {
-      showToast(tr().toastOcrNoText, 'info');
-    }
+    if (cleanedText) showToast(tr().toastOcrSuccess, 'success');
+    else showToast(tr().toastOcrNoText, 'info');
   } catch (err) {
     console.error('OCR Error:', err);
     showToast(tr().toastOcrFailed, 'error');
   } finally {
+    if (worker) {
+      try { await worker.terminate(); } catch (_) {}
+    }
     state.ocrRunning = false;
     ocrBtn.disabled = false;
     setOcrIdleLabel();
