@@ -668,8 +668,8 @@
                 <input type="range" min="-100" max="100" value="0" id="contrastSlider" oninput="setAdjustments()" onchange="commitAdjustments()">
               </div>
               <div class="adjust-row">
-                <div class="adjust-row-head"><label data-en="Sharpness" data-ar="الحدة">Sharpness</label><span id="sharpnessVal">30</span></div>
-                <input type="range" min="0" max="100" value="30" id="sharpnessSlider" oninput="setAdjustments()" onchange="commitAdjustments()">
+                <div class="adjust-row-head"><label data-en="Sharpness" data-ar="الحدة">Sharpness</label><span id="sharpnessVal">20</span></div>
+                <input type="range" min="0" max="100" value="20" id="sharpnessSlider" oninput="setAdjustments()" onchange="commitAdjustments()">
               </div>
               <button type="button" class="ghost-btn scanner-btn-block" onclick="resetAdjustments()" data-en="Reset adjustments" data-ar="إعادة تعيين الضبط">Reset adjustments</button>
             </div>
@@ -786,7 +786,7 @@ const state = {
   enhanceDirty: false, // true once a slider drag has only updated the cheap preview,
                        // meaning enhancedCanvas (full-res) is stale until committed
   currentFilter: 'magic',
-  adjustments: { brightness: 0, contrast: 0, sharpness: 30 },
+  adjustments: { brightness: 0, contrast: 0, sharpness: 20 },
   pages: [],
   displayScale: 1,
   displayOffsetX: 0,
@@ -1526,6 +1526,13 @@ function setFilter(filter) {
   });
   state.filteredCanvas = null; // Invalidate cache so it recalculates with the new filter
   state.filteredPreviewCanvas = null;
+
+  // Original has no sharpening applied by default; Magic uses the default sharpness.
+  const sharpnessDefault = filter === 'original' ? 0 : 20;
+  state.adjustments.sharpness = sharpnessDefault;
+  document.getElementById('sharpnessSlider').value = sharpnessDefault;
+  document.getElementById('sharpnessVal').textContent = String(sharpnessDefault);
+
   renderEnhanceCanvas({ preview: false }); // discrete click, not a drag — fine to pay full-res cost once
 }
 
@@ -1565,15 +1572,16 @@ function commitEnhanceIfDirty() {
 }
 
 function resetAdjustments() {
+  const sharpnessDefault = state.currentFilter === 'original' ? 0 : 20;
   document.getElementById('brightnessSlider').value = 0;
   document.getElementById('contrastSlider').value = 0;
-  document.getElementById('sharpnessSlider').value = 30;
+  document.getElementById('sharpnessSlider').value = sharpnessDefault;
   state.adjustments.brightness = 0;
   state.adjustments.contrast = 0;
-  state.adjustments.sharpness = 30;
+  state.adjustments.sharpness = sharpnessDefault;
   document.getElementById('brightnessVal').textContent = '0';
   document.getElementById('contrastVal').textContent = '0';
-  document.getElementById('sharpnessVal').textContent = '30';
+  document.getElementById('sharpnessVal').textContent = String(sharpnessDefault);
   commitAdjustments();
 }
 
@@ -2641,13 +2649,13 @@ function restart() {
   state.filteredPreviewCanvas = null;
   state.enhanceDirty = false;
   state.currentFilter = 'magic';
-  state.adjustments = { brightness: 0, contrast: 0, sharpness: 30 };
+  state.adjustments = { brightness: 0, contrast: 0, sharpness: 20 };
   document.getElementById('brightnessSlider').value = 0;
   document.getElementById('contrastSlider').value = 0;
-  document.getElementById('sharpnessSlider').value = 30;
+  document.getElementById('sharpnessSlider').value = 20;
   document.getElementById('brightnessVal').textContent = '0';
   document.getElementById('contrastVal').textContent = '0';
-  document.getElementById('sharpnessVal').textContent = '30';
+  document.getElementById('sharpnessVal').textContent = '20';
   document.querySelectorAll('.filter-card').forEach(c => {
     c.classList.toggle('active', c.dataset.filter === 'magic');
   });

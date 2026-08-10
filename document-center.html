@@ -426,6 +426,19 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
           filled += 1;
         }
       });
+
+      // For any date field ("تاريخ") that is still empty after loading, add a
+      // "currentYear//" placeholder so it's quicker to complete manually.
+      const currentYear = new Date().getFullYear();
+      fields.forEach((field) => {
+        const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
+        if (!group) return;
+        const label = group.label || '';
+        if (labelContains(label, 'تاريخ') && !field.value) {
+          field.placeholder = `${currentYear}//`;
+        }
+      });
+
       return filled;
     }
 

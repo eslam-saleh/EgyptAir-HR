@@ -810,6 +810,29 @@ function buildDateMask(orig) {
   month.addEventListener('keydown', e => { if (e.key === 'Backspace' && !month.value) year.focus(); });
   day.addEventListener('keydown', e => { if (e.key === 'Backspace' && !day.value) month.focus(); });
 
+  function focusEnd(el) {
+    el.focus();
+    const len = el.value.length;
+    el.setSelectionRange(len, len);
+  }
+  function focusStart(el) {
+    el.focus();
+    el.setSelectionRange(0, 0);
+  }
+
+  const order = [year, month, day];
+  order.forEach((el, idx) => {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'ArrowLeft' && el.selectionStart === 0 && el.selectionEnd === 0) {
+        const prev = order[idx - 1];
+        if (prev) { e.preventDefault(); focusEnd(prev); }
+      } else if (e.key === 'ArrowRight' && el.selectionStart === el.value.length && el.selectionEnd === el.value.length) {
+        const next = order[idx + 1];
+        if (next) { e.preventDefault(); focusStart(next); }
+      }
+    });
+  });
+
   if (orig.value) {
     const [y, m, d] = orig.value.split('-');
     year.value = y; month.value = m; day.value = d;

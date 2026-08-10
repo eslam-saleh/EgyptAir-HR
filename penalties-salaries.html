@@ -561,9 +561,9 @@
           <div class="sal-field">
             <label class="sal-label" for="incentivesNumber" data-en="Incentives / Variable Pay" data-ar="الحوافز / الأجر المتغير">الحوافز / الأجر المتغير</label>
             <div class="sal-input-row">
-              <input type="number" id="incentivesNumber" min="0" max="100000" step="50" value="13000">
+              <input type="number" id="incentivesNumber" min="0" max="50000" step="50" value="13000">
               <span class="sal-currency">EGP</span>
-              <input type="range" id="incentivesRange" min="0" max="100000" step="50" value="13000">
+              <input type="range" id="incentivesRange" min="0" max="50000" step="50" value="13000">
             </div>
             <p class="hint-text" data-en="Bonuses, allowances, incentives… not used for day-based penalties." data-ar="حوافز، بدلات، مكافآت… لا تُستخدم في حساب الجزاءات بالأيام.">حوافز، بدلات، مكافآت… لا تُستخدم في حساب الجزاءات بالأيام.</p>
           </div>
@@ -1033,7 +1033,7 @@
 
     function clampInc(v) {
       if (isNaN(v) || v < 0) return 0;
-      if (v > 100000) return 100000;
+      if (v > 50000) return 50000;
       return v;
     }
 
