@@ -1,11 +1,13 @@
 const CALENDAR_YEAR = new Date().getFullYear();
-const DEFAULT_BALANCE = 14;
+const DEFAULT_BALANCE = 21;
 const DEFAULT_EMERGENCY = 7;
 const STORAGE_KEY = `holidayPlanner:${CALENDAR_YEAR}`;
 
 let currentLanguage = localStorage.getItem('egyptairPortal:language') || localStorage.getItem('holidayPlanner:language') || 'en';
 let annualBalance = DEFAULT_BALANCE;
 let emergencyBalance = DEFAULT_EMERGENCY;
+/** Day-of-week indices (0=Sun..6=Sat) treated as the weekend. Egypt default: Fri & Sat. */
+let weekendDays = [5, 6];
 /** @type {Map<string, 'annual'|'emergency'|'absence'>} */
 let selectedDays = new Map();
 
@@ -41,11 +43,13 @@ const translations = {
     balanceSummary: (annualTaken, annualTotal, annualRem, emergTaken, emergTotal, emergRem, absence) =>
       `Annual: ${annualTaken}/${annualTotal} (remaining ${annualRem}) | Emergency: ${emergTaken}/${emergTotal} (remaining ${emergRem}) | Absence: ${absence}`,
     blockedHoliday: name => `You cannot select this day because it is an official holiday: ${name}.`,
-    blockedWeekend: 'You cannot select leave on Friday or Saturday.',
+    blockedWeekend: names => `You cannot select leave on ${names}.`,
+    weekendDayJoiner: ' or ',
     resetConfirm: 'Are you sure you want to reset all selected days?',
     dateLocale: 'en-GB',
     months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
     weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    fullWeekdays: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
     holidayNames: {
       copticChristmas: 'Coptic Christmas',
       policeDay: 'January 25 Revolution / Police Day',
@@ -101,11 +105,13 @@ const translations = {
     balanceSummary: (annualTaken, annualTotal, annualRem, emergTaken, emergTotal, emergRem, absence) =>
       `السنوية: ${annualTaken}/${annualTotal} (متبقي ${annualRem}) | العارضة: ${emergTaken}/${emergTotal} (متبقي ${emergRem}) | الغياب: ${absence}`,
     blockedHoliday: name => `لا يمكن اختيار هذا اليوم لأنه إجازة رسمية: ${name}.`,
-    blockedWeekend: 'لا يمكن اختيار إجازة يوم الجمعة أو السبت.',
+    blockedWeekend: names => `لا يمكن اختيار إجازة يوم ${names}.`,
+    weekendDayJoiner: ' أو ',
     resetConfirm: 'هل تريد إعادة ضبط كل الأيام المختارة؟',
     dateLocale: 'ar-EG',
     months: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
     weekdays: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
+    fullWeekdays: ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'],
     holidayNames: {
       copticChristmas: 'عيد الميلاد المجيد',
       policeDay: 'ثورة 25 يناير / عيد الشرطة',
@@ -207,12 +213,14 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeResetButton();
   initializeDownloadButton();
   applyLanguage(currentLanguage);
+  initializeWeekendControls();
   generateCalendar();
   updateAll();
 });
 
 window.addEventListener('portal-language-change', event => {
   applyLanguage(event.detail.language);
+  initializeWeekendControls();
   generateCalendar();
   updateAll();
 });
@@ -254,10 +262,11 @@ function getFixedHolidayDefinitions(year) {
   fixed.forEach(([dateStr, key]) => {
     const [y, m, d] = dateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d);
-    const day = date.getDay();
-    if (day === 5 || day === 6) {
-      const offset = day === 5 ? 2 : 1;
-      const observedDate = new Date(y, m - 1, d + offset);
+    if (weekendDays.includes(date.getDay())) {
+      const observedDate = new Date(y, m - 1, d);
+      do {
+        observedDate.setDate(observedDate.getDate() + 1);
+      } while (weekendDays.includes(observedDate.getDay()));
       const oy = observedDate.getFullYear();
       const om = String(observedDate.getMonth() + 1).padStart(2, '0');
       const od = String(observedDate.getDate()).padStart(2, '0');
@@ -294,6 +303,37 @@ function initializeDownloadButton() {
   const btn = document.getElementById('downloadSummaryBtn');
   if (!btn) return;
   btn.addEventListener('click', downloadSummary);
+}
+
+/** Populates/refreshes the two weekend-day selects and wires their change handler. */
+function initializeWeekendControls() {
+  const day1Select = document.getElementById('weekendDay1');
+  const day2Select = document.getElementById('weekendDay2');
+  if (!day1Select || !day2Select) return;
+
+  function populate(select, selectedIndex) {
+    select.innerHTML = '';
+    t('fullWeekdays').forEach((name, index) => {
+      const option = document.createElement('option');
+      option.value = String(index);
+      option.textContent = name;
+      if (index === selectedIndex) option.selected = true;
+      select.appendChild(option);
+    });
+  }
+
+  populate(day1Select, weekendDays[0] ?? 5);
+  populate(day2Select, weekendDays[1] ?? weekendDays[0] ?? 6);
+
+  day1Select.onchange = day2Select.onchange = () => {
+    const d1 = Number(day1Select.value);
+    const d2 = Number(day2Select.value);
+    weekendDays = d1 === d2 ? [d1] : [d1, d2].sort((a, b) => a - b);
+    holidayMapCache = null;
+    saveState();
+    generateCalendar();
+    updateAll();
+  };
 }
 
 function setAnnualBalance(value) {
@@ -394,7 +434,7 @@ function createDayButton(year, month, day) {
   const dateKey = toDateKey(date);
   const holidayMap = getHolidayMap();
   const holidayKey = holidayMap[dateKey];
-  const isWeekend = date.getDay() === 5 || date.getDay() === 6;
+  const isWeekend = weekendDays.includes(date.getDay());
   const dayType = selectedDays.get(dateKey);
   const isToday = toDateKey(new Date()) === dateKey;
   const button = document.createElement('button');
@@ -444,7 +484,8 @@ function toggleDay(dateKey, holidayKey, isWeekend) {
     return;
   }
   if (isWeekend) {
-    window.showToast(t('blockedWeekend'), 'warning');
+    const names = [...weekendDays].sort((a, b) => a - b).map(d => t('fullWeekdays')[d]).join(t('weekendDayJoiner'));
+    window.showToast(t('blockedWeekend')(names), 'warning');
     return;
   }
 
@@ -563,6 +604,10 @@ function loadState() {
     const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     annualBalance = Number.isFinite(state.annualBalance) ? state.annualBalance : DEFAULT_BALANCE;
     emergencyBalance = Number.isFinite(state.emergencyBalance) ? state.emergencyBalance : DEFAULT_EMERGENCY;
+    weekendDays = Array.isArray(state.weekendDays) && state.weekendDays.length
+      ? state.weekendDays.filter(d => Number.isInteger(d) && d >= 0 && d <= 6)
+      : [5, 6];
+    if (!weekendDays.length) weekendDays = [5, 6];
 
     selectedDays = new Map();
     if (Array.isArray(state.selectedDays)) {
@@ -592,6 +637,7 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     annualBalance,
     emergencyBalance,
+    weekendDays,
     selectedDays: obj
   }));
 }

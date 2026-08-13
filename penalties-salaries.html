@@ -590,19 +590,23 @@
           <!-- Tax & Insurance toggle -->
           <label class="ded-toggle" for="enableDed">
             <input type="checkbox" id="enableDed">
-            <span data-en="Apply Tax & Insurance Deductions" data-ar="تطبيق خصومات الضرائب والتأمين">تطبيق خصومات الضرائب والتأمين</span>
+            <span data-en="Apply Tax & Social Insurance (Egypt Law 2026)" data-ar="تطبيق الضرائب والتأمينات الاجتماعية (قانون مصر 2026)">تطبيق الضرائب والتأمينات الاجتماعية (قانون مصر 2026)</span>
           </label>
 
           <div class="ded-grid hidden" id="dedGrid">
-            <div class="ded-field">
-              <label for="taxRate" data-en="Tax Rate (%)" data-ar="نسبة الضريبة (%)">نسبة الضريبة (%)</label>
-              <input type="number" id="taxRate" min="0" max="50" step="0.5" value="10">
+            <div class="ded-field" style="grid-column:1/-1;">
+              <p class="hint-text" style="margin:0;">
+                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 16,700 EGP). Tax: progressive brackets after SI + personal exemption (20,000 EGP/year)." data-ar="التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات + الإعفاء الشخصي (20,000 جنيه/سنة).">التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات + الإعفاء الشخصي (20,000 جنيه/سنة).</span>
+              </p>
             </div>
             <div class="ded-field">
-              <label for="insRate" data-en="Insurance Rate (%)" data-ar="نسبة التأمين (%)">نسبة التأمين (%)</label>
-              <input type="number" id="insRate" min="0" max="50" step="0.5" value="5">
+              <label data-en="Insurable Wage (auto)" data-ar="الأجر التأميني (تلقائي)">الأجر التأميني (تلقائي)</label>
+              <input type="text" id="insurableWageDisp" readonly value="—" style="background:var(--surface); font-weight:700;">
             </div>
-            <p class="hint-text" style="grid-column:1/-1;" data-en="Tax & insurance are calculated on the Total Gross by default." data-ar="الضريبة والتأمين يُحسبان على الإجمالي افتراضيًا.">الضريبة والتأمين يُحسبان على الإجمالي افتراضيًا.</p>
+            <div class="ded-field">
+              <label data-en="Taxable Base (monthly)" data-ar="وعاء الضريبة (شهري)">وعاء الضريبة (شهري)</label>
+              <input type="text" id="taxableBaseDisp" readonly value="—" style="background:var(--surface); font-weight:700;">
+            </div>
           </div>
 
           <!-- Summary -->
@@ -619,13 +623,13 @@
               <div class="sum-clabel" data-en="Total Gross" data-ar="الإجمالي">الإجمالي</div>
               <div class="sum-cvalue" id="sGross">15,000.00 EGP</div>
             </div>
-            <div class="sum-card hidden" id="sTaxCard">
-              <div class="sum-clabel" data-en="Tax" data-ar="الضريبة">الضريبة</div>
-              <div class="sum-cvalue neg" id="sTax">-0.00 EGP</div>
-            </div>
             <div class="sum-card hidden" id="sInsCard">
-              <div class="sum-clabel" data-en="Insurance" data-ar="التأمين">التأمين</div>
+              <div class="sum-clabel" data-en="Social Insurance (11%)" data-ar="التأمينات (11%)">التأمينات (11%)</div>
               <div class="sum-cvalue neg" id="sIns">-0.00 EGP</div>
+            </div>
+            <div class="sum-card hidden" id="sTaxCard">
+              <div class="sum-clabel" data-en="Income Tax" data-ar="ضريبة الدخل">ضريبة الدخل</div>
+              <div class="sum-cvalue neg" id="sTax">-0.00 EGP</div>
             </div>
             <div class="sum-card">
               <div class="sum-clabel" data-en="Penalty Deduction" data-ar="خصم الجزاء">خصم الجزاء</div>
@@ -727,12 +731,43 @@
       // Crew manual amount
       document.getElementById('crewPenaltyAmt').addEventListener('input', onCrewAmtChange);
 
+      // Debounce timers so keyboard typing is not interrupted by clamp
+      let basicDebounce = null;
+      let incDebounce = null;
+
       // Basic salary (min 400 – max 4000)
       const basicNum = document.getElementById('basicNumber');
       const basicRng = document.getElementById('basicRange');
       basicNum.addEventListener('input', () => {
+        // Live-update range + state without clamping while typing
+        const raw = basicNum.value;
+        if (raw === '' || raw === '-') return;
+        const n = +raw;
+        if (!isNaN(n)) {
+          basicRng.value = Math.min(4000, Math.max(400, n));
+          basicSalary = n; // temporary unclamped while typing
+          updateRaise();
+          updateTotalGross();
+          recalcPenalty();
+          updateSummary();
+        }
+        clearTimeout(basicDebounce);
+        basicDebounce = setTimeout(() => {
+          let v = clampBasic(+basicNum.value);
+          basicNum.value = v;
+          basicRng.value = v;
+          basicSalary = v;
+          updateRaise();
+          updateTotalGross();
+          recalcPenalty();
+          updateSummary();
+        }, 900);
+      });
+      basicNum.addEventListener('blur', () => {
+        clearTimeout(basicDebounce);
         let v = clampBasic(+basicNum.value);
-        basicNum.value = v; basicRng.value = v;
+        basicNum.value = v;
+        basicRng.value = v;
         basicSalary = v;
         updateRaise();
         updateTotalGross();
@@ -752,8 +787,30 @@
       const incNum = document.getElementById('incentivesNumber');
       const incRng = document.getElementById('incentivesRange');
       incNum.addEventListener('input', () => {
+        const raw = incNum.value;
+        if (raw === '' || raw === '-') return;
+        const n = +raw;
+        if (!isNaN(n)) {
+          incRng.value = Math.min(50000, Math.max(0, n));
+          incentives = n;
+          updateTotalGross();
+          updateSummary();
+        }
+        clearTimeout(incDebounce);
+        incDebounce = setTimeout(() => {
+          let v = clampInc(+incNum.value);
+          incNum.value = v;
+          incRng.value = v;
+          incentives = v;
+          updateTotalGross();
+          updateSummary();
+        }, 900);
+      });
+      incNum.addEventListener('blur', () => {
+        clearTimeout(incDebounce);
         let v = clampInc(+incNum.value);
-        incNum.value = v; incRng.value = v;
+        incNum.value = v;
+        incRng.value = v;
         incentives = v;
         updateTotalGross();
         updateSummary();
@@ -779,8 +836,6 @@
         document.getElementById('sInsCard').classList.toggle('hidden', !this.checked);
         updateSummary();
       });
-      document.getElementById('taxRate').addEventListener('input', updateSummary);
-      document.getElementById('insRate').addEventListener('input', updateSummary);
     }
 
     // ── Employee type switch ───────────────────────────────────────────────────
@@ -978,16 +1033,73 @@
       // Crew: penalty is manual, no recalc needed
     }
 
+    // ── Egypt 2026 Social Insurance & Income Tax ──────────────────────────────
+    // SI: employee 11% of insurable wage (min 2,700 – max 16,700 EGP)
+    // Tax: progressive annual brackets after deducting SI + personal exemption (20,000 EGP/year)
+    const SI_MIN = 2700;
+    const SI_MAX = 16700;
+    const SI_RATE = 0.11;
+    const PERSONAL_EXEMPTION_ANNUAL = 20000;
+
+    // Annual tax brackets (EGP) – Law 7 of 2024 / current 2026
+    const TAX_BRACKETS = [
+      { upTo: 40000,   rate: 0 },
+      { upTo: 55000,   rate: 0.10 },
+      { upTo: 70000,   rate: 0.15 },
+      { upTo: 200000,  rate: 0.20 },
+      { upTo: 400000,  rate: 0.225 },
+      { upTo: 1200000, rate: 0.25 },
+      { upTo: Infinity, rate: 0.275 }
+    ];
+
+    function getInsurableWage(gross) {
+      // الأجر التأميني = الإجمالي ضمن الحدين الأدنى والأقصى
+      return Math.min(SI_MAX, Math.max(SI_MIN, gross));
+    }
+
+    function calcSocialInsurance(gross) {
+      return getInsurableWage(gross) * SI_RATE;
+    }
+
+    function calcAnnualIncomeTax(annualGross, annualSI) {
+      // وعاء الضريبة السنوي = إجمالي سنوي − حصة التأمينات − الإعفاء الشخصي
+      let taxable = Math.max(0, annualGross - annualSI - PERSONAL_EXEMPTION_ANNUAL);
+      let tax = 0;
+      let prev = 0;
+      for (const b of TAX_BRACKETS) {
+        if (taxable <= prev) break;
+        const slice = Math.min(taxable, b.upTo) - prev;
+        tax += slice * b.rate;
+        prev = b.upTo;
+      }
+      return tax;
+    }
+
+    function calcMonthlyTax(gross, monthlySI) {
+      const annualGross = gross * 12;
+      const annualSI = monthlySI * 12;
+      return calcAnnualIncomeTax(annualGross, annualSI) / 12;
+    }
+
     // ── Salary summary ────────────────────────────────────────────────────────
     function updateSummary() {
       const enableDed  = document.getElementById('enableDed').checked;
-      const taxRate    = parseFloat(document.getElementById('taxRate').value)  || 0;
-      const insRate    = parseFloat(document.getElementById('insRate').value)  || 0;
       const gross      = getTotalGross();
-      // الضريبة والتأمين على الإجمالي
-      const taxAmt     = enableDed ? gross * taxRate / 100 : 0;
-      const insAmt     = enableDed ? gross * insRate / 100 : 0;
-      const net        = Math.max(0, gross - taxAmt - insAmt - penaltyAmt);
+
+      let insAmt = 0;
+      let taxAmt = 0;
+      let insurable = 0;
+      let taxableMonthly = 0;
+
+      if (enableDed) {
+        insurable = getInsurableWage(gross);
+        insAmt = calcSocialInsurance(gross);
+        taxAmt = calcMonthlyTax(gross, insAmt);
+        // وعاء الضريبة الشهري التقريبي للعرض
+        taxableMonthly = Math.max(0, gross - insAmt - (PERSONAL_EXEMPTION_ANNUAL / 12));
+      }
+
+      const net = Math.max(0, gross - taxAmt - insAmt - penaltyAmt);
 
       document.getElementById('sBasic').textContent      = fmtEGP(basicSalary);
       document.getElementById('sIncentives').textContent = fmtEGP(incentives);
@@ -996,6 +1108,11 @@
       document.getElementById('sIns').textContent        = '-' + fmtEGP(insAmt);
       document.getElementById('sPenalty').textContent    = '-' + fmtEGP(penaltyAmt);
       document.getElementById('sNet').textContent        = fmtEGP(net);
+
+      const insDisp = document.getElementById('insurableWageDisp');
+      const taxDisp = document.getElementById('taxableBaseDisp');
+      if (insDisp) insDisp.value = enableDed ? fmtEGP(insurable) : '—';
+      if (taxDisp) taxDisp.value = enableDed ? fmtEGP(taxableMonthly) : '—';
     }
 
     function updatePenaltyExplain() {

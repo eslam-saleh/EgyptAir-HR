@@ -78,6 +78,19 @@
       color: var(--danger);
     }
 
+    .results-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .export-btn {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
     .table-wrap {
       margin-top: 18px;
       overflow-x: auto;
@@ -248,10 +261,13 @@
     </section>
 
     <section class="panel-card results-panel hidden" id="resultsPanel">
-      <div>
-        <p class="eyebrow" data-en="Admin table" data-ar="جدول المسؤول">Admin table</p>
-        <h2 data-en="Reservations" data-ar="الحجوزات">Reservations</h2>
-        <p data-en="Latest submissions appear first. Decided rows are greyed out." data-ar="تظهر أحدث الطلبات أولاً. الصفوف التي تم اتخاذ قرار بشأنها تظهر باللون الرمادي.">Latest submissions appear first. Decided rows are greyed out.</p>
+      <div class="results-header-row">
+        <div>
+          <p class="eyebrow" data-en="Admin table" data-ar="جدول المسؤول">Admin table</p>
+          <h2 data-en="Reservations" data-ar="الحجوزات">Reservations</h2>
+          <p data-en="Latest submissions appear first. Decided rows are greyed out." data-ar="تظهر أحدث الطلبات أولاً. الصفوف التي تم اتخاذ قرار بشأنها تظهر باللون الرمادي.">Latest submissions appear first. Decided rows are greyed out.</p>
+        </div>
+        <button class="ghost-btn export-btn" id="exportExcelBtn" type="button" data-en="Download Excel" data-ar="تحميل إكسل">Download Excel</button>
       </div>
 
       <div class="table-wrap">
@@ -279,6 +295,7 @@
 
   <script src="site-data.js"></script>
 <script src="portal.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
     const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
     const ADMIN_PASSWORD_HASH = 'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64';
@@ -327,6 +344,7 @@
     const tableHead = document.getElementById('clinicTableHead');
     const tableBody = document.getElementById('clinicTableBody');
     const tableStatus = document.getElementById('tableStatus');
+    const exportExcelBtn = document.getElementById('exportExcelBtn');
 
     function lang() {
       return window.EgyptAirPortal?.language === 'ar' ? 'ar' : 'en';
@@ -599,6 +617,34 @@ async function sha256Hex(value) {
         return rowHtml;
       }).join('');
     }
+
+    // Exports exactly what's currently rendered in the results table — the
+    // full reservation list, or the filtered single-row inquiry result —
+    // whichever is showing. Admin-only action columns (Confirm/Deny) are
+    // dropped since they're buttons, not data.
+    function exportTableToExcel() {
+      const table = document.querySelector('.clinics-table');
+      if (!table || !window.XLSX) {
+        window.showToast?.(t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.'), 'warning');
+        return;
+      }
+
+      const clone = table.cloneNode(true);
+      if (isAdmin) {
+        clone.querySelectorAll('tr').forEach(tr => {
+          for (let i = 0; i < 2; i++) {
+            if (tr.lastElementChild) tr.removeChild(tr.lastElementChild);
+          }
+        });
+      }
+
+      const workbook = XLSX.utils.table_to_book(clone, { sheet: t('Reservations', 'الحجوزات') });
+      const today = new Date();
+      const fileName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    }
+
+    exportExcelBtn.addEventListener('click', exportTableToExcel);
 
     function handleSheetResponse(response, requestId) {
       // If a newer load has started since this request went out, drop this

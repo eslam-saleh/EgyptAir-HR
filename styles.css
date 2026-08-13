@@ -141,6 +141,10 @@ h1 {
     grid-template-columns: 1fr;
 }
 
+.balance-row-two {
+    grid-template-columns: 1fr 1fr;
+}
+
 .summary-header-row {
     display: flex;
     align-items: center;

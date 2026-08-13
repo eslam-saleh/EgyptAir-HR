@@ -59,9 +59,18 @@
             <div class="balance-card">
                 <label for="emergencyInput" data-en="Emergency leave (عارضة)" data-ar="رصيد العارضة">Emergency leave (عارضة)</label>
                 <div class="balance-row balance-row-single">
-                    <input id="emergencyInput" type="number" min="0" max="365" step="1" value="6" aria-label="Emergency leave balance">
+                    <input id="emergencyInput" type="number" min="0" max="365" step="1" value="7" aria-label="Emergency leave balance">
                 </div>
                 <p class="hint" data-en="Used after annual leave is finished." data-ar="تُستخدم بعد الرصيد.">Used after annual leave is finished.</p>
+            </div>
+
+            <div class="balance-card">
+                <label data-en="Weekend days" data-ar="أيام عطلة نهاية الأسبوع">Weekend days</label>
+                <div class="balance-row balance-row-two">
+                    <select id="weekendDay1" aria-label="First weekend day"></select>
+                    <select id="weekendDay2" aria-label="Second weekend day"></select>
+                </div>
+                <p class="hint" data-en="Default: Friday &amp; Saturday (Egypt)." data-ar="الافتراضي: الجمعة والسبت (مصر).">Default: Friday &amp; Saturday (Egypt).</p>
             </div>
 
             <div class="stat-card">
@@ -76,7 +85,7 @@
 
             <div class="stat-card">
                 <span data-en="Emergency remaining" data-ar="رصيد العارضة المتبقي">Emergency remaining</span>
-                <strong id="emergencyRemaining">6</strong>
+                <strong id="emergencyRemaining">7</strong>
             </div>
 
             <div class="stat-card">

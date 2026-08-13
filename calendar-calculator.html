@@ -311,6 +311,7 @@
     <button class="tab-btn" onclick="switchTab('age')" data-en="Age Calculator" data-ar="حساب العمر">Age Calculator</button>
     <button class="tab-btn" onclick="switchTab('work')" data-en="Work Days" data-ar="أيام العمل">Work Days</button>
     <button class="tab-btn" onclick="switchTab('count')" data-en="Day Counter" data-ar="عداد الأيام">Day Counter</button>
+    <button class="tab-btn" onclick="switchTab('hijri')" data-en="Hijri / Gregorian" data-ar="الهجري والميلادي">Hijri / Gregorian</button>
   </div>
 
   <!-- DIFF -->
@@ -436,6 +437,42 @@
       <div id="count-output"></div>
     </div>
   </div>
+
+  <!-- HIJRI -->
+  <div id="panel-hijri" class="panel">
+    <div class="card">
+      <div class="form-row">
+        <div class="field"><label data-en="Gregorian date" data-ar="التاريخ الميلادي">Gregorian date</label><input type="date" id="hijri-greg" /></div>
+      </div>
+      <button class="calc-btn" onclick="calcGregToHijri()">
+        <span data-en="Convert to Hijri" data-ar="تحويل إلى هجري">Convert to Hijri</span>
+      </button>
+      <div class="error" id="hijri-greg-err"></div>
+    </div>
+    <div class="result-card" id="hijri-greg-result">
+      <div class="result-label" data-en="Result" data-ar="النتيجة">Result</div>
+      <div id="hijri-greg-output"></div>
+    </div>
+
+    <div class="card">
+      <div class="form-row">
+        <div class="field"><label data-en="Hijri year" data-ar="السنة الهجرية">Hijri year</label><input type="number" id="hijri-year" inputmode="numeric" min="1" max="1600" placeholder="1447" /></div>
+        <div class="field">
+          <label data-en="Hijri month" data-ar="الشهر الهجري">Hijri month</label>
+          <select id="hijri-month"></select>
+        </div>
+        <div class="field"><label data-en="Hijri day" data-ar="اليوم الهجري">Hijri day</label><input type="number" id="hijri-day" inputmode="numeric" min="1" max="30" placeholder="1" /></div>
+      </div>
+      <button class="calc-btn" onclick="calcHijriToGreg()">
+        <span data-en="Convert to Gregorian" data-ar="تحويل إلى ميلادي">Convert to Gregorian</span>
+      </button>
+      <div class="error" id="hijri-err"></div>
+    </div>
+    <div class="result-card" id="hijri-result">
+      <div class="result-label" data-en="Result" data-ar="النتيجة">Result</div>
+      <div id="hijri-output"></div>
+    </div>
+  </div>
 </div>
 
 <script src="site-data.js"></script>
@@ -445,6 +482,7 @@ const calcCopy = {
   en: {
     days: ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
     months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+    hijriMonths: ['Muharram','Safar',"Rabi' al-Awwal","Rabi' al-Thani",'Jumada al-Awwal','Jumada al-Thani','Rajab',"Sha'ban",'Ramadan','Shawwal','Dhu al-Qi\'dah','Dhu al-Hijjah'],
     labels: {
       days: 'Days', weeks: 'Weeks', months: 'Months', years: 'Years', weekdays: 'Weekdays', weekends: 'Weekends',
       breakdown: 'Breakdown', from: 'From', to: 'To', exact: 'Exact duration', weekdaysWeekends: 'Weekdays / Weekends',
@@ -453,7 +491,8 @@ const calcCopy = {
       totalDays: 'Total days', totalWeeks: 'Total weeks', lastBirthday: 'Last birthday', next: 'Next',
       bornOn: 'Born on', nextBirthday: 'Next birthday', totalMonths: 'Total months lived',
       workingDays: 'Working days', offDays: 'Off days', workingWeeks: 'Working weeks', offDaysPct: 'Off days %',
-      occurrences: 'Occurrences',
+      occurrences: 'Occurrences', gregorianDate: 'Gregorian date', hijriDate: 'Hijri date',
+      hijriYear: 'Hijri year', hijriMonth: 'Hijri month', hijriDay: 'Hijri day', approxNote: 'Calculated using the tabular Islamic calendar; may differ by a day from moon-sighting announcements.',
       units: { day: 'Days', week: 'Weeks', month: 'Months', year: 'Years' },
       exactUnits: { y: 'y', m: 'm', d: 'd' }
     },
@@ -462,12 +501,14 @@ const calcCopy = {
       start: 'Please select a start date.',
       days: 'Please enter a valid number.',
       dob: 'Please enter a date of birth.',
-      futureDob: 'Date of birth cannot be in the future.'
+      futureDob: 'Date of birth cannot be in the future.',
+      hijriDate: 'Please enter a valid Hijri date.'
     }
   },
   ar: {
     days: ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'],
     months: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
+    hijriMonths: ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'],
     labels: {
       days: 'الأيام', weeks: 'الأسابيع', months: 'الشهور', years: 'السنوات', weekdays: 'أيام العمل', weekends: 'نهاية الأسبوع',
       breakdown: 'التفاصيل', from: 'من', to: 'إلى', exact: 'المدة الدقيقة', weekdaysWeekends: 'أيام العمل / العطلات',
@@ -476,7 +517,8 @@ const calcCopy = {
       totalDays: 'إجمالي الأيام', totalWeeks: 'إجمالي الأسابيع', lastBirthday: 'آخر عيد ميلاد', next: 'التالي',
       bornOn: 'تاريخ الميلاد', nextBirthday: 'عيد الميلاد القادم', totalMonths: 'إجمالي الشهور',
       workingDays: 'أيام العمل', offDays: 'أيام العطلة', workingWeeks: 'أسابيع العمل', offDaysPct: 'نسبة العطلات',
-      occurrences: 'مرات التكرار',
+      occurrences: 'مرات التكرار', gregorianDate: 'التاريخ الميلادي', hijriDate: 'التاريخ الهجري',
+      hijriYear: 'السنة الهجرية', hijriMonth: 'الشهر الهجري', hijriDay: 'اليوم الهجري', approxNote: 'يُحسب بالتقويم الهجري الحسابي (الجدولي)؛ قد يختلف بيوم عن إعلانات رؤية الهلال.',
       units: { day: 'أيام', week: 'أسابيع', month: 'أشهر', year: 'سنوات' },
       exactUnits: { y: 'عام', m: 'شهر', d: 'يوم' }
     },
@@ -485,7 +527,8 @@ const calcCopy = {
       start: 'اختر تاريخ البداية من فضلك.',
       days: 'اكتب رقما صحيحا.',
       dob: 'اكتب تاريخ الميلاد من فضلك.',
-      futureDob: 'لا يمكن أن يكون تاريخ الميلاد في المستقبل.'
+      futureDob: 'لا يمكن أن يكون تاريخ الميلاد في المستقبل.',
+      hijriDate: 'اكتب تاريخا هجريا صحيحا من فضلك.'
     }
   }
 };
@@ -528,10 +571,61 @@ function isOfficialHoliday(d) {
 }
 
 function switchTab(id) {
-  const ids = ['diff','add','age','work','count'];
+  const ids = ['diff','add','age','work','count','hijri'];
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + id).classList.add('active');
+}
+
+// ---- Gregorian <-> Hijri conversion (tabular/civil Islamic calendar via Julian Day Number) ----
+function gregorianToJD(y, m, d) {
+  const a = Math.floor((14 - m) / 12);
+  const y2 = y + 4800 - a;
+  const m2 = m + 12 * a - 3;
+  return d + Math.floor((153 * m2 + 2) / 5) + 365 * y2 + Math.floor(y2 / 4) - Math.floor(y2 / 100) + Math.floor(y2 / 400) - 32045;
+}
+
+function jdToGregorian(jd) {
+  const a = jd + 32044;
+  const b = Math.floor((4 * a + 3) / 146097);
+  const c = a - Math.floor((146097 * b) / 4);
+  const d2 = Math.floor((4 * c + 3) / 1461);
+  const e = c - Math.floor((1461 * d2) / 4);
+  const m2 = Math.floor((5 * e + 2) / 153);
+  const day = e - Math.floor((153 * m2 + 2) / 5) + 1;
+  const month = m2 + 3 - 12 * Math.floor(m2 / 10);
+  const year = 100 * b + d2 - 4800 + Math.floor(m2 / 10);
+  return { year, month, day };
+}
+
+function hijriToJD(y, m, d) {
+  return Math.floor((11 * y + 3) / 30) + 354 * y + 30 * m - Math.floor((m - 1) / 2) + d + 1948440 - 385;
+}
+
+function jdToHijri(jd) {
+  let n = jd - 1948440 + 10632;
+  const cycleIndex = Math.floor((n - 1) / 10631);
+  n = n - 10631 * cycleIndex + 354;
+  const j = Math.floor((10985 - n) / 5316) * Math.floor((50 * n) / 17719) +
+            Math.floor(n / 5670) * Math.floor((43 * n) / 15238);
+  n = n - Math.floor((30 - j) / 15) * Math.floor((17719 * j) / 50) -
+          Math.floor(j / 16) * Math.floor((15238 * j) / 43) + 29;
+  const month = Math.floor((24 * n) / 709);
+  const day = n - Math.floor((709 * month) / 24);
+  const year = 30 * cycleIndex + j - 30;
+  return { year, month, day };
+}
+
+function gregorianToHijri(y, m, d) { return jdToHijri(gregorianToJD(y, m, d)); }
+function hijriToGregorianDate(y, m, d) { return jdToGregorian(hijriToJD(y, m, d)); }
+
+function populateHijriMonths() {
+  const select = document.getElementById('hijri-month');
+  if (!select) return;
+  const current = select.value;
+  const c = copy();
+  select.innerHTML = c.hijriMonths.map((name, i) => `<option value="${i + 1}">${name}</option>`).join('');
+  if (current) select.value = current;
 }
 
 function parseLocal(s) {
@@ -730,13 +824,55 @@ function calcCount() {
   showResult('count-result');
 }
 
+function calcGregToHijri() {
+  hideErr('hijri-greg-err'); hideResult('hijri-greg-result');
+  const greg = parseLocal(document.getElementById('hijri-greg').value);
+  if (!greg) return showErr('hijri-greg-err', 'start');
+
+  const h = gregorianToHijri(greg.getFullYear(), greg.getMonth() + 1, greg.getDate());
+  const c = copy();
+  const eraLabel = lang() === 'ar' ? 'هـ' : 'AH';
+  document.getElementById('hijri-greg-output').innerHTML = `
+    <div class="big-date">${h.day} ${c.hijriMonths[h.month - 1]} ${h.year} ${eraLabel}</div>
+    <div class="big-sub">${c.days[greg.getDay()]}, ${fmt(greg)}</div>
+    <div class="big-sub">${c.labels.approxNote}</div>
+  `;
+  showResult('hijri-greg-result');
+}
+
+function calcHijriToGreg() {
+  hideErr('hijri-err'); hideResult('hijri-result');
+  const y = parseInt(document.getElementById('hijri-year').value);
+  const m = parseInt(document.getElementById('hijri-month').value);
+  const d = parseInt(document.getElementById('hijri-day').value);
+  if (!y || !m || !d || d < 1 || d > 30 || y < 1) return showErr('hijri-err', 'hijriDate');
+
+  const g = hijriToGregorianDate(y, m, d);
+  const gregDate = new Date(g.year, g.month - 1, g.day);
+  const c = copy();
+  const eraLabel = lang() === 'ar' ? 'هـ' : 'AH';
+  document.getElementById('hijri-output').innerHTML = `
+    <div class="big-date">${c.days[gregDate.getDay()]}, ${fmt(gregDate)}</div>
+    <div class="big-sub">${d} ${c.hijriMonths[m - 1]} ${y} ${eraLabel}</div>
+    <div class="breakdown">
+      <div class="bd-row"><span class="bd-lbl">${c.labels.weekNumber}</span><span class="bd-val">W${getWeekNum(gregDate)}</span></div>
+    </div>
+  `;
+  showResult('hijri-result');
+}
+
 window.addEventListener('portal-language-change', () => {
-  // Re-run current active calculation if results are visible
-  const activePanel = document.querySelector('.panel.active');
-  if (activePanel) {
-    const btn = activePanel.querySelector('.calc-btn');
-    if (btn && activePanel.querySelector('.result-card.visible')) btn.click();
-  }
+  populateHijriMonths();
+  // Re-run any calculation whose result is currently visible, across all
+  // panels (a panel may hold more than one independent form, as with the
+  // Hijri tab's two converters).
+  document.querySelectorAll('.calc-btn').forEach(btn => {
+    const card = btn.closest('.card');
+    const resultCard = card ? card.nextElementSibling : null;
+    if (resultCard && resultCard.classList.contains('result-card') && resultCard.classList.contains('visible')) {
+      btn.click();
+    }
+  });
 });
 
 function buildDateMask(orig) {
@@ -840,6 +976,7 @@ function buildDateMask(orig) {
 }
 
 document.querySelectorAll('input[type="date"]').forEach(buildDateMask);
+populateHijriMonths();
 
 </script>
 
