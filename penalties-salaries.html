@@ -610,10 +610,10 @@
           <div class="ded-grid hidden" id="dedGrid">
             <div class="ded-field" style="grid-column:1/-1;">
               <p class="hint-text" style="margin:0;">
-                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 16,700 EGP). Tax: progressive brackets after SI. Total fully tax-exempt income = 60,000 EGP/year (personal exemption 20,000 + 0% bracket 40,000). No tax calculated/withheld on the penalty deduction day wage." data-ar="التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات.">التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات.</span>
-              </p>              
-			  <p class="hint-text" style="margin:0;">
-                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 16,700 EGP). Tax: progressive brackets after SI. Total fully tax-exempt income = 60,000 EGP/year (personal exemption 20,000 + 0% bracket 40,000). No tax calculated/withheld on the penalty deduction day wage." data-ar=" إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000). لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم."> إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000). لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم.</span>
+                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 16,700 EGP). Tax: progressive brackets after SI. Total fully tax-exempt income = 60,000 EGP/year (personal exemption 20,000 + 0% bracket 40,000). No tax calculated/withheld on the penalty deduction day wage." data-ar="التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000). لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم.">التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000). لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم.</span>
+
+
+
               </p>
             </div>
             <div class="ded-field">
@@ -653,20 +653,24 @@
               <div class="sum-cvalue neg" id="sTax">-0.00 EGP</div>
             </div>
             <div class="sum-card">
-              <div class="sum-clabel" data-en="Penalty Deduction" data-ar="خصم الجزاء">خصم الجزاء</div>
-              <div class="sum-cvalue neg" id="sPenalty">-0.00 EGP</div>
-            </div>
-            <div class="sum-card">
               <div class="sum-clabel" data-en="Meal Tax (10%)" data-ar="ضريبة الوجبة (10%)">ضريبة الوجبة (10%)</div>
               <div class="sum-cvalue neg" id="sMealTax">-0.00 EGP</div>
             </div>
+            <div class="sum-card">
+              <div class="sum-clabel" data-en="Penalty Deduction" data-ar="خصم الجزاء">خصم الجزاء</div>
+              <div class="sum-cvalue neg" id="sPenalty">-0.00 EGP</div>
+            </div>
+
+
+
+
             <div class="sum-card highlight">
               <div class="sum-clabel" data-en="Net Salary" data-ar="المرتب الصافي">المرتب الصافي</div>
               <div class="sum-cvalue pos" id="sNet">15,000.00 EGP</div>
-            </div>
-			<div class="sum-card highlight">
-              <div class="sum-clabel" data-en="Meals (net) + Net Salary" data-ar="الوجبات  + المرتب">الوجبات  + المرتب</div>
-              <div class="sum-cvalue pos" id="sTotalWithMeals">15,000.00 EGP</div>
+
+
+
+
             </div>
           </div>
 
@@ -1194,8 +1198,8 @@
       if (sMealTax) sMealTax.textContent = '-' + fmtEGP(mealTax);
       document.getElementById('sPenalty').textContent    = '-' + fmtEGP(penaltyAmt);
       document.getElementById('sNet').textContent        = fmtEGP(net);
-      const sTotalWithMeals = document.getElementById('sTotalWithMeals');
-      if (sTotalWithMeals) sTotalWithMeals.textContent = fmtEGP(net);
+
+
       const insDisp = document.getElementById('insurableWageDisp');
       const taxDisp = document.getElementById('taxableBaseDisp');
       if (insDisp) insDisp.value = enableDed ? fmtEGP(insurable) : '—';
@@ -1285,4 +1289,3 @@
   }());
   </script>
 </body>
-</html>
