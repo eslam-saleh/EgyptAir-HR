@@ -550,9 +550,9 @@
           <div class="sal-field">
             <label class="sal-label" for="basicNumber" data-en="Basic Salary (أساسي)" data-ar="الأجر الأساسي">الأجر الأساسي</label>
             <div class="sal-input-row">
-              <input type="number" id="basicNumber" min="400" max="4000" step="50" value="2000">
+              <input type="number" id="basicNumber" min="0" max="4000" step="50" value="2000">
               <span class="sal-currency">EGP</span>
-              <input type="range" id="basicRange" min="400" max="4000" step="50" value="2000">
+              <input type="range" id="basicRange" min="0" max="4000" step="50" value="2000">
             </div>
             <p class="hint-text" data-en="Part of total gross salary. Day-based penalties use total gross (basic + incentives)." data-ar="جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).">جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).</p>
           </div>
@@ -573,40 +573,31 @@
             <label class="sal-label" for="mealsNumber" data-en="Meal Allowance (وجبة)" data-ar="بدل الوجبة">بدل الوجبة</label>
             <div class="sal-input-row">
               <input type="number" id="mealsNumber" min="0" max="30" step="1" value="0" style="width:90px;">
-              <span class="sal-currency">× 60 EGP</span>
-              <input type="number" id="mealTotalDisp" readonly value="0" style="width:120px; background:var(--surface); font-weight:800; color:var(--primary);">
-              <span class="sal-currency">EGP</span>
+              <span class="sal-currency" data-en="meals" data-ar="وجبة">وجبة</span>
+              <input type="range" id="mealsRange" min="0" max="30" step="1" value="0">
             </div>
-            <p class="hint-text" data-en="0–30 meals/month. Flat 10% tax only (no progressive tax / no SI on meals)." data-ar="من 0 إلى 30 وجبة شهرياً. ضريبة ثابتة 10٪ فقط (بدون شرائح ولا تأمينات على الوجبة).">من 0 إلى 30 وجبة شهرياً. ضريبة ثابتة 10٪ فقط (بدون شرائح ولا تأمينات على الوجبة).</p>
+            <p class="hint-text" style="margin-top:6px;">
+              <span data-en="60 EGP × meals − 10% tax → " data-ar="60 جنيه × عدد الوجبات − 10٪ ضريبة → ">60 جنيه × عدد الوجبات − 10٪ ضريبة → </span>
+              <strong id="mealsNetDisp" style="color:var(--primary);">0.00 EGP</strong>
+            </p>
           </div>
 
-          <!-- Total (read-only display) -->
-          <div class="sal-field">
-            <label class="sal-label" data-en="Total Gross Salary" data-ar="إجمالي المرتب (الكلي)">إجمالي المرتب (الكلي)</label>
-            <div class="sal-input-row">
-              <input type="number" id="totalGross" readonly value="15000" style="background:var(--surface); font-weight:800; color:var(--primary);">
-              <span class="sal-currency">EGP</span>
-            </div>
-            <p class="hint-text" data-en="Basic + Incentives + Meal allowance." data-ar="الأساسي + الحوافز + بدل الوجبة.">الأساسي + الحوافز + بدل الوجبة.</p>
-          </div>
-
-          <!-- Annual Raise (reference) + Prior disciplinary deductions — side by side -->
+          <!-- Total Gross + Annual Raise side by side -->
           <div class="ded-grid" style="margin-bottom:16px;">
             <div class="sal-field" style="margin-bottom:0;">
-              <label class="sal-label" for="raiseAmt" data-en="Annual Raise (reference only)" data-ar="العلاوة السنوية (للمرجع فقط)">العلاوة السنوية (للمرجع فقط)</label>
+              <label class="sal-label" data-en="Total Gross Salary" data-ar="إجمالي المرتب (الكلي)">إجمالي المرتب (الكلي)</label>
               <div class="sal-input-row">
-                <input type="number" id="raiseAmt" min="0" max="50000" step="50" value="140">
+                <input type="number" id="totalGross" readonly value="15000" style="background:var(--surface); font-weight:800; color:var(--primary); width:100%;">
                 <span class="sal-currency">EGP</span>
               </div>
-              <p class="hint-text" data-en="Default = 7% of Basic. Used for “مقدار علاوة” penalties." data-ar="افتراضيًا = 7٪ من الأساسي. تُستخدم عند جزاء «مقدار علاوة».">افتراضيًا = 7٪ من الأساسي. تُستخدم عند جزاء «مقدار علاوة».</p>
             </div>
             <div class="sal-field" style="margin-bottom:0;">
-              <label class="sal-label" for="priorDedAmt" data-en="Prior disciplinary deductions this month" data-ar="خصومات جزاءات سابقة هذا الشهر">خصومات جزاءات سابقة هذا الشهر</label>
+              <label class="sal-label" for="raiseAmt" data-en="Annual Raise (reference only)" data-ar="العلاوة السنوية (مرجعي فقط)">العلاوة السنوية (مرجعي فقط)</label>
               <div class="sal-input-row">
-                <input type="number" id="priorDedAmt" min="0" max="100000" step="50" value="0">
+                <input type="number" id="raiseAmt" min="0" max="50000" step="50" value="140" style="width:100%;">
                 <span class="sal-currency">EGP</span>
               </div>
-              <p class="hint-text" data-en="Other penalty amounts already deducted in the current month." data-ar="مبالغ جزاءات أخرى تم خصمها بالفعل خلال الشهر الحالي.">مبالغ جزاءات أخرى تم خصمها بالفعل خلال الشهر الحالي.</p>
+              <p class="hint-text" data-en="Default = 7% of Basic. Used for «مقدار علاوة» penalties." data-ar="افتراضيًا = 7٪ من الأساسي. تُستخدم عند جزاء «مقدار علاوة».">افتراضيًا = 7٪ من الأساسي. تُستخدم عند جزاء «مقدار علاوة».</p>
             </div>
           </div>
 
@@ -643,8 +634,8 @@
               <div class="sum-cvalue" id="sIncentives">13,000.00 EGP</div>
             </div>
             <div class="sum-card">
-              <div class="sum-clabel" data-en="Meals" data-ar="الوجبات">الوجبات</div>
-              <div class="sum-cvalue" id="sMeals">0.00 EGP</div>
+              <div class="sum-clabel" data-en="Meals (net)" data-ar="الوجبات (صافي)">الوجبات (صافي)</div>
+              <div class="sum-cvalue pos" id="sMeals">0.00 EGP</div>
             </div>
             <div class="sum-card">
               <div class="sum-clabel" data-en="Total Gross" data-ar="الإجمالي">الإجمالي</div>
@@ -658,17 +649,13 @@
               <div class="sum-clabel" data-en="Income Tax" data-ar="ضريبة الدخل">ضريبة الدخل</div>
               <div class="sum-cvalue neg" id="sTax">-0.00 EGP</div>
             </div>
-            <div class="sum-card hidden" id="sMealTaxCard">
+            <div class="sum-card">
               <div class="sum-clabel" data-en="Meal Tax (10%)" data-ar="ضريبة الوجبة (10%)">ضريبة الوجبة (10%)</div>
               <div class="sum-cvalue neg" id="sMealTax">-0.00 EGP</div>
             </div>
             <div class="sum-card">
               <div class="sum-clabel" data-en="Penalty Deduction" data-ar="خصم الجزاء">خصم الجزاء</div>
               <div class="sum-cvalue neg" id="sPenalty">-0.00 EGP</div>
-            </div>
-            <div class="sum-card">
-              <div class="sum-clabel" data-en="Prior Deductions" data-ar="خصومات سابقة">خصومات سابقة</div>
-              <div class="sum-cvalue neg" id="sPrior">-0.00 EGP</div>
             </div>
             <div class="sum-card highlight">
               <div class="sum-clabel" data-en="Net Salary" data-ar="المرتب الصافي">المرتب الصافي</div>
@@ -711,26 +698,28 @@
     // ── State ─────────────────────────────────────────────────────────────────
     let selectedReg  = null;
     let selectedCrew = null;
-    let basicSalary  = 2000;   // الأجر الأساسي (حد أدنى 400 – أقصى 4000)
+    let basicSalary  = 2000;   // الأجر الأساسي (حد أدنى 0 – أقصى 4000)
     let incentives   = 13000;  // الحوافز / الأجر المتغير
     let mealCount    = 0;      // عدد الوجبات (0–30)
     const MEAL_UNIT  = 60;     // قيمة الوجبة الواحدة
-    let priorDed     = 0;      // خصومات جزاءات سابقة هذا الشهر
+    const MEAL_TAX_RATE = 0.10; // ضريبة 10% على بدل الوجبة
     let penaltyAmt   = 0;
     let penaltyDesc  = '';
 
-    function getMealAmt() {
-      return mealCount * MEAL_UNIT;
-    }
-
-    // Base gross used for day-based penalties (basic + incentives only)
-    function getPenaltyBase() {
+    function getTotalGross() {
       return basicSalary + incentives;
     }
 
-    // Full gross including meals
-    function getTotalGross() {
-      return basicSalary + incentives + getMealAmt();
+    function getMealGross() {
+      return mealCount * MEAL_UNIT;
+    }
+
+    function getMealTax() {
+      return getMealGross() * MEAL_TAX_RATE;
+    }
+
+    function getMealNet() {
+      return getMealGross() - getMealTax();
     }
 
     // ── Boot ──────────────────────────────────────────────────────────────────
@@ -753,6 +742,7 @@
       bindEvents();
       updateTotalGross();
       updateRaise();
+      updateMealsDisp();
       updateSummary();
     });
 
@@ -792,7 +782,7 @@
         if (raw === '' || raw === '-') return;
         const n = +raw;
         if (!isNaN(n)) {
-          basicRng.value = Math.min(4000, Math.max(400, n));
+          basicRng.value = Math.min(4000, Math.max(0, n));
           basicSalary = n; // temporary unclamped while typing
           updateRaise();
           updateTotalGross();
@@ -831,6 +821,25 @@
         updateSummary();
       });
 
+      // Meals (0–30) — instant 10% tax display
+      const mealsNum = document.getElementById('mealsNumber');
+      const mealsRng = document.getElementById('mealsRange');
+      function applyMeals(v) {
+        mealCount = clampMeals(v);
+        mealsNum.value = mealCount;
+        mealsRng.value = mealCount;
+        updateMealsDisp();
+        updateSummary();
+      }
+      mealsNum.addEventListener('input', () => {
+        const raw = mealsNum.value;
+        if (raw === '' || raw === '-') return;
+        const n = +raw;
+        if (!isNaN(n)) applyMeals(n);
+      });
+      mealsNum.addEventListener('blur', () => applyMeals(+mealsNum.value));
+      mealsRng.addEventListener('input', () => applyMeals(+mealsRng.value));
+
       // Incentives
       const incNum = document.getElementById('incentivesNumber');
       const incRng = document.getElementById('incentivesRange');
@@ -842,7 +851,6 @@
           incRng.value = Math.min(50000, Math.max(0, n));
           incentives = n;
           updateTotalGross();
-          recalcPenalty();
           updateSummary();
         }
         clearTimeout(incDebounce);
@@ -852,7 +860,6 @@
           incRng.value = v;
           incentives = v;
           updateTotalGross();
-          recalcPenalty();
           updateSummary();
         }, 900);
       });
@@ -863,60 +870,19 @@
         incRng.value = v;
         incentives = v;
         updateTotalGross();
-        recalcPenalty();
         updateSummary();
       });
       incRng.addEventListener('input', () => {
         incentives = +incRng.value;
         incNum.value = incentives;
         updateTotalGross();
-        recalcPenalty();
         updateSummary();
       });
 
-      // Raise (auto = 7% of Basic; still editable manually — reference for raise-based penalties)
+      // Raise (auto = 7% of Basic; still editable manually)
       const raiseAmt = document.getElementById('raiseAmt');
       raiseAmt.addEventListener('input', () => {
         recalcPenalty();
-        updateSummary();
-      });
-
-      // Meals (0–30)
-      const mealsNum = document.getElementById('mealsNumber');
-      mealsNum.addEventListener('input', () => {
-        let v = parseInt(mealsNum.value, 10);
-        if (isNaN(v) || v < 0) v = 0;
-        if (v > 30) v = 30;
-        mealsNum.value = v;
-        mealCount = v;
-        document.getElementById('mealTotalDisp').value = getMealAmt();
-        updateTotalGross();
-        updateSummary();
-      });
-      mealsNum.addEventListener('blur', () => {
-        let v = parseInt(mealsNum.value, 10);
-        if (isNaN(v) || v < 0) v = 0;
-        if (v > 30) v = 30;
-        mealsNum.value = v;
-        mealCount = v;
-        document.getElementById('mealTotalDisp').value = getMealAmt();
-        updateTotalGross();
-        updateSummary();
-      });
-
-      // Prior disciplinary deductions this month
-      const priorEl = document.getElementById('priorDedAmt');
-      priorEl.addEventListener('input', () => {
-        let v = parseFloat(priorEl.value);
-        if (isNaN(v) || v < 0) v = 0;
-        priorDed = v;
-        updateSummary();
-      });
-      priorEl.addEventListener('blur', () => {
-        let v = parseFloat(priorEl.value);
-        if (isNaN(v) || v < 0) v = 0;
-        priorEl.value = v;
-        priorDed = v;
         updateSummary();
       });
 
@@ -925,7 +891,6 @@
         document.getElementById('dedGrid').classList.toggle('hidden', !this.checked);
         document.getElementById('sTaxCard').classList.toggle('hidden', !this.checked);
         document.getElementById('sInsCard').classList.toggle('hidden', !this.checked);
-        document.getElementById('sMealTaxCard').classList.toggle('hidden', !this.checked);
         updateSummary();
       });
     }
@@ -1087,7 +1052,7 @@
     function calcPenalty(text) {
       if (!text || text === '—' || text === '-') return { amount: 0, desc: '', isMonetary: false };
       const t = text.toString();
-      const daily  = getPenaltyBase() / 30;   // ← من الأجر الشامل (أساسي + حوافز) بدون الوجبات
+      const daily  = getTotalGross() / 30;   // ← من الأجر الشامل (أساسي + حوافز)
       const raise  = getRaise();
 
       // Percentage of daily wage (total gross)
@@ -1179,40 +1144,48 @@
       return calcAnnualIncomeTax(annualGross, annualSI) / 12;
     }
 
+    function updateMealsDisp() {
+      const el = document.getElementById('mealsNetDisp');
+      if (el) el.textContent = fmtEGP(getMealNet());
+    }
+
     // ── Salary summary ────────────────────────────────────────────────────────
     function updateSummary() {
       const enableDed  = document.getElementById('enableDed').checked;
-      const mealAmt    = getMealAmt();
-      const baseGross  = getPenaltyBase();          // basic + incentives (for SI & progressive tax)
-      const gross      = getTotalGross();           // includes meals
+      const gross      = getTotalGross();
+      const mealGross  = getMealGross();
+      const mealTax    = getMealTax();
+      const mealNet    = getMealNet();
 
       let insAmt = 0;
-      let taxAmt = 0;       // progressive tax on base (excl. meals)
-      let mealTax = 0;      // flat 10% on meal allowance only
+      let taxAmt = 0;
       let insurable = 0;
       let taxableMonthly = 0;
 
       if (enableDed) {
-        // لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم → الوعاء = (أساسي+حوافز) − الجزاء
-        const baseForTax = Math.max(0, baseGross - penaltyAmt);
-        insurable = getInsurableWage(baseGross); // SI on basic+incentives only
-        insAmt = calcSocialInsurance(baseGross);
-        taxAmt = calcMonthlyTax(baseForTax, insAmt);
-        mealTax = mealAmt * 0.10;                 // flat 10% on meals only
-        taxableMonthly = Math.max(0, baseForTax - insAmt - (PERSONAL_EXEMPTION_ANNUAL / 12));
+        // لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم → الوعاء الضريبي = الإجمالي − مبلغ الجزاء
+        // ضريبة الوجبة منفصلة (10%) ولا تدخل في وعاء ضريبة الدخل التصاعدية
+        const grossForTax = Math.max(0, gross - penaltyAmt);
+        insurable = getInsurableWage(gross); // التأمينات تبقى على الإجمالي التأميني
+        insAmt = calcSocialInsurance(gross);
+        taxAmt = calcMonthlyTax(grossForTax, insAmt);
+        // وعاء الضريبة الشهري التقريبي للعرض (بعد خصم يوم الجزاء)
+        taxableMonthly = Math.max(0, grossForTax - insAmt - (PERSONAL_EXEMPTION_ANNUAL / 12));
       }
 
-      const net = Math.max(0, gross - taxAmt - mealTax - insAmt - penaltyAmt - priorDed);
+      // الصافي = (أساسي + حوافز) − تأمينات − ضريبة دخل − جزاء + صافي الوجبات
+      const net = Math.max(0, gross - taxAmt - insAmt - penaltyAmt) + mealNet;
 
       document.getElementById('sBasic').textContent      = fmtEGP(basicSalary);
       document.getElementById('sIncentives').textContent = fmtEGP(incentives);
-      document.getElementById('sMeals').textContent      = fmtEGP(mealAmt);
+      const sMeals = document.getElementById('sMeals');
+      if (sMeals) sMeals.textContent = fmtEGP(mealNet);
       document.getElementById('sGross').textContent      = fmtEGP(gross);
       document.getElementById('sTax').textContent        = '-' + fmtEGP(taxAmt);
-      document.getElementById('sMealTax').textContent    = '-' + fmtEGP(mealTax);
       document.getElementById('sIns').textContent        = '-' + fmtEGP(insAmt);
+      const sMealTax = document.getElementById('sMealTax');
+      if (sMealTax) sMealTax.textContent = '-' + fmtEGP(mealTax);
       document.getElementById('sPenalty').textContent    = '-' + fmtEGP(penaltyAmt);
-      document.getElementById('sPrior').textContent      = '-' + fmtEGP(priorDed);
       document.getElementById('sNet').textContent        = fmtEGP(net);
 
       const insDisp = document.getElementById('insurableWageDisp');
@@ -1249,9 +1222,15 @@
     }
 
     function clampBasic(v) {
-      if (isNaN(v) || v < 400) return 400;
+      if (isNaN(v) || v < 0) return 0;
       if (v > 4000) return 4000;
       return v;
+    }
+
+    function clampMeals(v) {
+      if (isNaN(v) || v < 0) return 0;
+      if (v > 30) return 30;
+      return Math.round(v);
     }
 
     function clampInc(v) {
