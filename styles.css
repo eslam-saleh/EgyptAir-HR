@@ -142,7 +142,14 @@ h1 {
 }
 
 .balance-row-two {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.summary-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .summary-header-row {

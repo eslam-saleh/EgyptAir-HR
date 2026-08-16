@@ -13,8 +13,6 @@
   <script async src="https://docs.opencv.org/4.8.0/opencv.js"></script>
   <!-- JSZip: Word (.docx) export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <!-- Tesseract.js: OCR text extraction -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <style>
     /* ── Engine status pill ── */
     .engine-status {
@@ -280,15 +278,6 @@
     .scanner-side-block { display: grid; gap: 14px; }
     .scanner-side h4 { color: var(--primary); font-size: 0.95rem; margin-bottom: 10px; }
 
-    /* OCR is a headline capability (per the hero copy), not just another
-       export option — give it a touch more visual weight than the plain
-       white cards around it (Export / Continue / Saved pages) so the
-       sidebar reads as a hierarchy, not a flat repeated list. */
-    .panel-card--featured {
-      border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
-      background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 6%, var(--surface)), var(--surface) 120px);
-      box-shadow: 0 2px 0 var(--accent) inset, 0 12px 30px rgba(18, 59, 115, 0.1);
-    }
     .scanner-hint { color: var(--muted); font-size: 0.82rem; line-height: 1.6; margin: 0; }
     .scanner-btn-stack { display: grid; gap: 8px; }
     .scanner-btn-block { width: 100%; margin-top: 10px; }
@@ -354,8 +343,7 @@
 
     .scanner-field { margin-bottom: 12px; }
     .scanner-field label { display: block; margin-bottom: 6px; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
-    .scanner-side select,
-    .scanner-side textarea {
+    .scanner-side select {
       width: 100%;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -364,31 +352,11 @@
       font: inherit;
       padding: 10px 12px;
     }
-    .scanner-side textarea { min-height: 130px; resize: vertical; line-height: 1.6; margin-bottom: 8px; }
-    .scanner-side select:focus,
-    .scanner-side textarea:focus {
+    .scanner-side select:focus {
       outline: none;
       border-color: var(--primary);
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
     }
-
-    .ocr-progress { margin-top: 14px; }
-    .ocr-progress-head { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 6px; color: var(--muted); }
-    .ocr-progress-track {
-      width: 100%;
-      height: 8px;
-      border-radius: 4px;
-      background: var(--line);
-      overflow: hidden;
-    }
-    .ocr-progress-bar {
-      height: 100%;
-      border-radius: 4px;
-      background: linear-gradient(90deg, var(--accent), var(--accent-2));
-      transition: width 0.3s ease;
-      width: 0%;
-    }
-    .ocr-result { margin-top: 14px; }
 
     .scanner-side-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .scanner-side-head h4 { margin: 0; }
@@ -503,7 +471,7 @@
     <section class="hero-panel scanner-hero">
       <p class="eyebrow" data-en="Document Digitization" data-ar="رقمنة المستندات">Document Digitization</p>
       <h1 data-en="Scan, enhance &amp; read your documents" data-ar="امسح مستنداتك وحسّنها واقرأ نصوصها">Scan, enhance &amp; read your documents</h1>
-      <p data-en="Capture or upload a document, straighten and clean it up automatically, extract Arabic text with OCR, and export it as an image or Word file." data-ar="التقط مستندًا أو ارفعه، وسيتم تقويمه وتحسينه تلقائيًا، ثم استخرج نصه العربي بتقنية OCR، وصدّره كصورة أو ملف Word.">Capture or upload a document, straighten and clean it up automatically, extract Arabic text with OCR, and export it as an image or Word file.</p>
+      <p data-en="Capture or upload a document, straighten and clean it up automatically, and export it as an image or Word file." data-ar="التقط مستندًا أو ارفعه، وسيتم تقويمه وتحسينه تلقائيًا، وصدّره كصورة أو ملف Word.">Capture or upload a document, straighten and clean it up automatically, and export it as an image or Word file.</p>
     </section>
 
     <section class="scanner-app" aria-label="Document scanner">
@@ -607,12 +575,12 @@
             </div>
           </div>
 
-          <!-- Stage 4: Save & OCR -->
+          <!-- Stage 4: Save -->
           <div id="stage4View" class="scanner-view hidden">
             <div class="scanner-view-head">
               <div>
                 <h3 data-en="Document ready" data-ar="المستند جاهز">Document ready</h3>
-                <p data-en="Download the document, add pages, or extract text." data-ar="حمّل المستند، أضف صفحات، أو استخرج النص.">Download the document, add pages, or extract text.</p>
+                <p data-en="Download the document or add pages." data-ar="حمّل المستند أو أضف صفحات.">Download the document or add pages.</p>
               </div>
             </div>
             <div class="canvas-container canvas-container--center" id="finalContainer">
@@ -676,33 +644,6 @@
           </div>
 
           <div id="stage4Tools" class="scanner-side-block hidden">
-            <div class="panel-card panel-card--featured">
-              <h4 data-en="Text extraction (OCR)" data-ar="استخراج النص (OCR)">Text extraction (OCR)</h4>
-              <p class="scanner-hint" data-en="Extract Arabic text from the current document to copy and paste." data-ar="استخرج النص العربي من المستند الحالي للنسخ واللصق.">Extract Arabic text from the current document to copy and paste.</p>
-              <button type="button" class="primary-btn scanner-btn-block" id="ocrBtn" onclick="runOCR()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7V5C4 4.44772 4.44772 4 5 4H7M17 4H19C19.5523 4 20 4.44772 20 5V7M20 17V19C20 19.5523 19.5523 20 19 20H17M7 20H5C4.44772 20 4 19.5523 4 19V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                <span>Extract Arabic text</span>
-              </button>
-
-              <div id="ocrProgressContainer" class="ocr-progress hidden">
-                <div class="ocr-progress-head">
-                  <span id="ocrProgressText">Preparing…</span>
-                  <span id="ocrProgressPercent">0%</span>
-                </div>
-                <div class="ocr-progress-track">
-                  <div id="ocrProgressBar" class="ocr-progress-bar" style="width:0%"></div>
-                </div>
-              </div>
-
-              <div id="ocrResultContainer" class="ocr-result hidden">
-                <textarea id="ocrResult" rows="6" placeholder="The text will appear here…" data-en="The text will appear here…" data-ar="سيظهر النص هنا..."></textarea>
-                <button type="button" class="ghost-btn scanner-btn-block" onclick="copyOCRText()">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 9H15M9 13H15M9 17H13M5 5V21H19V5H5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  <span data-en="Copy text" data-ar="نسخ النص">Copy text</span>
-                </button>
-              </div>
-            </div>
-
             <div class="panel-card">
               <h4 data-en="Export options" data-ar="خيارات التصدير">Export options</h4>
               <div class="scanner-field">
@@ -781,7 +722,7 @@ const state = {
   imageCorners: null,
   croppedCanvas: null,
   enhancedCanvas: null,
-  filteredCanvas: null, // Caching the heavy filter (full resolution — used for export/OCR)
+  filteredCanvas: null, // Caching the heavy filter (full resolution — used for export)
   filteredPreviewCanvas: null, // Small downscaled copy — used for live slider dragging
   enhanceDirty: false, // true once a slider drag has only updated the cheap preview,
                        // meaning enhancedCanvas (full-res) is stale until committed
@@ -793,7 +734,6 @@ const state = {
   displayOffsetY: 0,
   dragCorner: -1,
   previewSource: null,
-  ocrRunning: false,
 };
 
 // ====================================================================
@@ -813,25 +753,12 @@ const SCANNER_STRINGS = {
     nextApplyCrop: 'Apply crop',
     nextWaitingEngine: 'Waiting for engine…',
     nextSaveDocument: 'Save document',
-    ocrIdleLabel: 'Extract Arabic text',
-    ocrProcessing: 'Processing…',
-    ocrLoadingLang: 'Loading Arabic language data…',
-    ocrPreparingImage: 'Preparing image for reading…',
-    ocrReadingText: 'Reading text…',
-    ocrRefiningNumbers: 'Refining numbers…',
-    ocrLoadingDictionary: 'Loading Arabic dictionary…',
-    ocrValidatingWords: 'Checking Arabic words…',
     current: 'Current',
     pageCount: (n) => `${n} ${n === 1 ? 'page' : 'pages'}`,
     toastInvalidFile: 'Invalid file. Please choose an image.',
     toastNoDocFound: 'No document found. Adjust the edges manually.',
     toastDetectError: 'Something went wrong. Adjust the edges manually.',
     toastAreaTooSmall: 'The selected area is too small.',
-    toastNoImageForOcr: 'There is no image to extract text from.',
-    toastOcrSuccess: 'Text extracted successfully.',
-    toastOcrNoText: 'No text was found in the image.',
-    toastOcrFailed: 'Failed to extract text. Try improving the image quality.',
-    toastDictUnavailable: 'Arabic dictionary could not be loaded — word validation was skipped.',
     toastCopied: 'Text copied to clipboard.',
     toastImageDownloaded: 'Image downloaded successfully.',
     toastNoPagesToExport: 'There are no pages to export.',
@@ -852,25 +779,12 @@ const SCANNER_STRINGS = {
     nextApplyCrop: 'تطبيق القص',
     nextWaitingEngine: 'بانتظار المحرك...',
     nextSaveDocument: 'حفظ المستند',
-    ocrIdleLabel: 'قراءة النص العربي',
-    ocrProcessing: 'جاري المعالجة...',
-    ocrLoadingLang: 'تحميل بيانات اللغة العربية...',
-    ocrPreparingImage: 'تجهيز الصورة للقراءة...',
-    ocrReadingText: 'جاري قراءة النص...',
-    ocrRefiningNumbers: 'تحسين دقة الأرقام...',
-    ocrLoadingDictionary: 'تحميل القاموس العربي...',
-    ocrValidatingWords: 'التحقق من الكلمات العربية...',
     current: 'حالية',
     pageCount: (n) => `${n} صفحة`,
     toastInvalidFile: 'الملف غير صالح. الرجاء اختيار صورة.',
     toastNoDocFound: 'لم يتم العثور على مستند. اضبط الحواف يدوياً.',
     toastDetectError: 'حدث خطأ. اضبط الحواف يدوياً.',
     toastAreaTooSmall: 'المنطقة المحددة صغيرة جداً.',
-    toastNoImageForOcr: 'لا توجد صورة لاستخراج النص منها.',
-    toastOcrSuccess: 'تم استخراج النص بنجاح.',
-    toastOcrNoText: 'لم يتم العثور على نص في الصورة.',
-    toastOcrFailed: 'فشل في استخراج النص. حاول تحسين جودة الصورة.',
-    toastDictUnavailable: 'تعذر تحميل القاموس العربي، تم تخطي التحقق من الكلمات.',
     toastCopied: 'تم نسخ النص إلى الحافظة.',
     toastImageDownloaded: 'تم تحميل الصورة بنجاح.',
     toastNoPagesToExport: 'لا توجد صفحات للتصدير.',
@@ -888,14 +802,6 @@ function tr() {
   return SCANNER_STRINGS[currentLang()] || SCANNER_STRINGS.en;
 }
 
-const OCR_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 7V5C4 4.44772 4.44772 4 5 4H7M17 4H19C19.5523 4 20 4.44772 20 5V7M20 17V19C20 19.5523 19.5523 20 19 20H17M7 20H5C4.44772 20 4 19.5523 4 19V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
-
-function setOcrIdleLabel() {
-  const btn = document.getElementById('ocrBtn');
-  if (!btn) return;
-  btn.innerHTML = `${OCR_ICON_SVG}<span>${tr().ocrIdleLabel}</span>`;
-}
-
 function refreshDynamicText() {
   const s = tr();
   const cvText = document.getElementById('cvStatusText');
@@ -903,7 +809,6 @@ function refreshDynamicText() {
   const stageLabelEl = document.getElementById('stageLabel');
   if (stageLabelEl) stageLabelEl.textContent = s.stage[state.stage];
   updateNextButton();
-  if (!state.ocrRunning) setOcrIdleLabel();
   updatePagesSection();
 }
 window.addEventListener('portal-language-change', refreshDynamicText);
@@ -1560,7 +1465,7 @@ function setAdjustments() {
 
 // Fires once when a slider is released (the 'change' event), or right after
 // Reset — does the one full-resolution pass so state.enhancedCanvas (what
-// export/OCR/stage 4 actually use) reflects the final values. This is the
+// export/stage 4 actually use) reflects the final values. This is the
 // only place the heavy OpenCV work runs on the full photo, so it happens
 // once per adjustment, not on every pixel of drag movement.
 function commitAdjustments() {
@@ -2098,421 +2003,6 @@ function generatePreviews() {
 }
 
 // ====================================================================
-// OCR (Optical Character Recognition)
-// ====================================================================
-// Arabic OCR strategy:
-//   1) Use several image variants instead of trusting one preprocessing path.
-//   2) Run Arabic+English OCR more than once with different page segmentation.
-//   3) Run a dedicated digit pass with an Arabic + English digit whitelist.
-//   4) Keep only high-confidence words, or words independently supported by
-//      multiple OCR passes. Low-confidence Arabic is only allowed through a
-//      conservative dictionary correction step; otherwise it is discarded.
-//   5) Numbers are treated as first-class data and are preserved in both
-//      Western (0-9) and Arabic-Indic (٠-٩) forms.
-//
-// This is intentionally conservative: missing a doubtful Arabic word is much
-// better than displaying a plausible-looking hallucinated word.
-
-const ARABIC_DICTIONARY = new Set((`
-اختبار اختبارات الاختبار الاختبارات نتيجة النتائج الموقع الإلكتروني إلكتروني
-وظائف الوظيفة الوظائف إعلان إعلاناً اعلان إعلانات الخاص خاصة العامة عام إدارة الإدارة
-قسم أقسام شؤون شئون الموارد البشرية موظف موظفين التوظيف تعيين تعيينات
-شركة الشركات مؤسسة المؤسسات هيئة الهيئات جهاز أجهزة مركز مراكز فرع فروع دور الدور
-الأول الثانية الثاني الثالث الرابع الخامس السادس السابع الثامن التاسع العاشر
-اليوم أمس غداً الأحد الاثنين الثلاثاء الأربعاء الخميس الجمعة السبت الموافق تاريخ
-ساعة صباحاً صباح مساء مساءً الساعة يوم شهر سنة سنوات عام أعوام فترة مدة موعد مواعيد
-رقم أرقام كود أكواد ملف ملفات مستند مستندات ورقة أوراق صفحة صفحات خطاب خطابات طلب طلبات
-قرار قرارات مذكرة مذكرات إفادة إفادات شهادة شهادات إقرار إقرارات تعهد تعهدات توقيع
-اسم الوظيفة العنوان العناوين رقم الهاتف هاتف تليفون اتصال اتصالات بريد بريد إلكتروني
-الموقع الرابط رابط البيانات بيانات معلومات معلومة التفاصيل تفصيل
-عمل العمل يعمل خدمة خدمات خدمة عامة خدمات عامة العميل العملاء المستخدم المستخدمين
-شركة مصر للطيران للطيران المصرية مصر للطيران الجوية الخدمات الجوية للخدمات الجوية
-مطار المطارات طيران الطائرة الطائرات رحلة الرحلات صالة الصالات مبنى المباني
-المسافر المسافرين كوبري بجوار أمام خلف داخل خارج بالقرب دار المعاشات التأمينات
-المعاش معاش التأمين التأمينات الاجتماعية اجتماعية الهيئة القومية وزارة الوزارات
-وزارة العمل القوى العاملة القوى الموارد التنمية الشئون القانونية القانون القوانين
-مجلس المجالس مدير مديرية مدير الإدارة رئيس نائب نائب الرئيس رئيس مجلس الإدارة
-الموافقة موافقة اعتماد معتمد معتمدة صادر وارد صادره واردة تسليم استلام تسلم
-إنهاء إنهاء الخدمة خدمة الخدمة فصل الفصل ترك ترك العمل انقطاع الانقطاع
-إجازة الإجازة بدون بأجر أجر مرتب المرتب مرتبات الأجر الأجور راتب رواتب
-مستحق مستحقات استحقاق مستحقات مالية مالي المالية معاش معاشات مكافأة مكافآت
-مدة مدد اعتباراً اعتبارا من حتى خلال خلاله لمدة بتاريخ بتاریخ بناء بناءً بناء على
-بسبب حيث وذلك لذلك التي الذي الذين اللاتي الذي هي هو هم هن هذا هذه ذلك تلك
-من إلى عن على في مع و أو ثم إذا إن أن لا ما ليس نعم قد لقد سوف تم يتم كان كانت
-يكون تكون توجد يوجد يوجدون جميع بعض أكثر أقل فقط أيضاً ايضا جداً حيث كما مثل مثلًا
-لكن ولكن لأن بسبب قبل بعد عند أثناء خلال دون بين تحت فوق حول نحو لدى لدىه منها منه
-به بها بهم فيها فيه لهم لها له عليه عليها عليهم عنهم عنها إليك إليه إليها إليهم
-أقوم يقوم تقوم تمثل يمثل تخص خاص يتضمن تتضمن يشمل تشمل يخص بشأن بخصوص فيما حيث
-المذكور المذكورة السابق السابقة التالي التالية الحالي الحالية الجديد الجديدة
-القديم القديمة المطلوب المطلوبة المتاح المتاحة المرفق المرفقة المرفقات
-صورة صور نسخ نسخة أصل أصول أصلية أصلية طبقاً طبقا وفق وفقاً وفقا حسب
-مرفق مرفقات مرفقاً مرفقا المرفقات المرفقة المذكور أعلاه أعلاه أدناه أدناه
-الحضور حاضر حضور انصراف غياب غائب مقابلة مقابلات اختبار اختبارات لجنة لجان
-تقديم يقدم تقدم استلام إرسال يرسل أرسل مرفوع مرفوعة مراجعة مراجعات فحص فحوص
-اعتماد رفض قبول مقبول غير صحيح صحيحة صحيح خطأ أخطاء تصحيح تعديل تعديلات
-ملاحظة ملاحظات تنبيه تنبيهات هام هامة مهم مهمة عاجل عاجلة يرجى برجاء فضلاً فضلا
-يرجى التكرم يرجى العلم نحيطكم علماً علما نود نفيد يفيد نفيدكم نحيط
-اسم أسماء رقم أرقام تاريخ تواريخ مكان أماكن عنوان عناوين محافظة محافظات مدينة مدن
-القاهرة الجيزة الإسكندرية القليوبية الشرقية الغربية الدقهلية البحيرة المنوفية
-الفيوم بني سويف المنيا أسيوط سوهاج قنا الأقصر أسوان بورسعيد السويس الإسماعيلية
-دمياط مطروح شمال سيناء جنوب سيناء الوادي الجديد
-مهندس مهندسين مهندسة أخصائي أخصائية أخصائيين فني فنيين موظف موظفة عامل عمال
-نظم نظام اتصالات اتصال كهرباء ميكانيكا حاسب حاسوب برمجيات برمجة شبكات شبكة
-تقنية تكنولوجيا معلومات أمن سلامة جودة تشغيل صيانة دعم فني مشروع مشاريع
-بيانات بياناته قاعدة قواعد مستخدم حساب حسابات كلمة كلمات رمز رموز سرية
-تحقق التحقق تسجيل الدخول خروج دخول كلمة المرور رمز التحقق
-مسؤول مسئول مسؤولة مديرية قسم وحدة وحدات قطاع قطاعات فرع فروع مكتب مكاتب
-موافقة موافقات قرار قرارات تعليمات لائحة لوائح سياسة سياسات إجراءات إجراء
-إجراءات شروط شرط شروط متطلبات متطلب مستندات مستند أصل صورة صور بطاقة بطاقات
-رقم قومي قومية شخصية شخص الأشخاص ميلاد مواليد شهادة الميلاد
-` + `
-الطيران الطيران المدني المدني الجوية الجوي الجويّة الخدمات خدمات المطار المطارات
-الطيار الطيارين العامل العاملين العاملون الوظائف التعيينات التعيين إنهاء الخدمة
-الاستقالة الاستقالة استقالة إخلاء إخلاء طرف طرف عهدة العهدة تسليم العهدة
-` + `
-واحد اثنان ثلاثة أربعة خمسة ستة سبعة ثمانية تسعة عشرة عشر عشرون ثلاثون أربعون خمسون
-ستون سبعون ثمانون تسعون مئة مائة ألف آلاف مليون ملايين نصف ربع
-` + `
-السيد الاستاذ الاستاذة السيدة للسيد سيادتكم لسيادتكم المنتدب والعضو تحية طيبة وبعد
-الاحترام بقبول فائق وتفضلوا خالص التقدير القطاع الامر التنفيذي الاصدار الجزاء الجزاءات
-جزاء جزاءات بجزاء بالجزاء والجزاءات محو تأجيل الادارية الاداري تنظيم صدر الصادر
-الصادرة نوع الشركة للشركة بالشركة لشركة بشركة شركات والشركات وشركات القابضة قابضة
-الجمعية العمومية الجمهورية الوزراء وزير معالى بالقانون قانون بالتوقيع التوقيع بالهيكل التنظيمي
-بتحويل بتشكيل تشكيل المحدودة المسئولية المساهمة بالأسهم التنفيذية والتنفيذية والمعدل وتعديلاته
-ولائحته ذات مادة المادة للشئون الجهات المعنية اللجنة التوصية توصية الموضوع المدة
-المقدم المتقدم الكود الوارد الاسم السبب سبب القيد التعديلات الخطاب كتاب للموارد
-اجتماع الاجتماع الاجتماعات المنعقدة المنعقد محضر مستخرج مقرر عضو عضوا عضوية بعضوية
-نقابية النقابية استعرضت البحث المناقشة والمناقشة أوصت يعتمد المعتمد والمعتمد جدول أعمال
-الأعمال اولا ثانيا ثالثا رابعا خامسا تجديد جوازية وجوبية منح الاجازات والاجازات
-تنتهي بداية نهاية النهاية البداية الفترة التظلم التظلمات تظلم بيان بحث إيقاف
-لصالح تحقيق التحقيق حفظ سلبية ايجابية العينة تعاطي المخدر إنذار التأخر التأخير
-خصم الخصم خفض العلاوة الحرمان الدرجة الأدنى مباشرة الترقية الترقيات ترقية نقل
-التوظف ثلاث ثالثة أشهر أيام يوما لسنة
-`).split(/\s+/).filter(Boolean));
-
-function normalizeArabicWord(word) {
-  return String(word || '')
-    .replace(/[ًٌٍَُِّْـ]/g, '')
-    .replace(/[إأآٱ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/ؤ/g, 'و')
-    .replace(/ئ/g, 'ي')
-    .replace(/ة/g, 'ه')
-    .replace(/[\u200f\u200e]/g, '')
-    .trim();
-}
-
-const NORMALIZED_ARABIC_DICTIONARY = new Map();
-for (const w of ARABIC_DICTIONARY) {
-  const n = normalizeArabicWord(w);
-  if (n.length >= 2) NORMALIZED_ARABIC_DICTIONARY.set(n, w);
-}
-
-function isArabicToken(s) {
-  return /[\u0600-\u06FF]/.test(s || '');
-}
-function isNumberToken(s) {
-  return /^[0-9٠-٩۰-۹][0-9٠-٩۰-۹.,:/()\-]*$/.test(String(s || '').replace(/\s/g, ''));
-}
-function normalizeNumberToken(s) {
-  return String(s || '').replace(/[۰-۹]/g, ch => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(ch))).trim();
-}
-function levenshtein(a, b) {
-  if (a === b) return 0;
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
-  const prev = new Array(b.length + 1);
-  const cur = new Array(b.length + 1);
-  for (let j = 0; j <= b.length; j++) prev[j] = j;
-  for (let i = 1; i <= a.length; i++) {
-    cur[0] = i;
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      cur[j] = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
-    }
-    for (let j = 0; j <= b.length; j++) prev[j] = cur[j];
-  }
-  return prev[b.length];
-}
-
-// Only correct a doubtful Arabic token when it is close to a real dictionary
-// word. Never invent a new word from an arbitrary OCR hallucination.
-function dictionaryCorrectArabic(raw, confidence) {
-  const clean = String(raw || '').replace(/[^\u0600-\u06FF]/g, '');
-  if (clean.length < 2) return null;
-  const normalized = normalizeArabicWord(clean);
-  if (NORMALIZED_ARABIC_DICTIONARY.has(normalized)) {
-    return NORMALIZED_ARABIC_DICTIONARY.get(normalized);
-  }
-  if (confidence >= 72) return clean; // trusted OCR; don't "correct" good text.
-  if (normalized.length < 3 || normalized.length > 18) return null;
-
-  let best = null, bestDist = Infinity, second = Infinity;
-  for (const [dictWord, original] of NORMALIZED_ARABIC_DICTIONARY) {
-    if (Math.abs(dictWord.length - normalized.length) > 2) continue;
-    const d = levenshtein(normalized, dictWord);
-    if (d < bestDist) { second = bestDist; bestDist = d; best = original; }
-    else if (d < second) second = d;
-  }
-  // Require a very close match and a clear winner. This deliberately drops
-  // ambiguous garbage instead of guessing between several Arabic words.
-  const maxDist = normalized.length <= 4 ? 1 : normalized.length <= 8 ? 2 : 3;
-  if (best && bestDist <= maxDist && bestDist + 1 < second) return best;
-  return null;
-}
-
-function createOcrVariants(srcCanvas) {
-  const targetLongSide = 3200;
-  const longSide = Math.max(srcCanvas.width, srcCanvas.height);
-  let base = srcCanvas;
-  if (longSide < targetLongSide) {
-    const scale = targetLongSide / longSide;
-    const c = document.createElement('canvas');
-    c.width = Math.round(srcCanvas.width * scale);
-    c.height = Math.round(srcCanvas.height * scale);
-    const ctx = c.getContext('2d');
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(srcCanvas, 0, 0, c.width, c.height);
-    base = c;
-  }
-
-  const out = [base];
-  // NOTE: unlike matToCanvas() elsewhere in this file, matToCanvasKeep() does
-  // NOT delete the source Mat — several variants below are derived from the
-  // same `clahe` Mat, so it has to stay alive until every variant that reads
-  // it has been produced. Every Mat allocated here is deleted exactly once,
-  // in the finally block below.
-  let src = null, gray = null, clahe = null, otsu = null, adaptive = null, denoise = null;
-  try {
-    src = cv.imread(base);
-    gray = new cv.Mat();
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-    denoise = new cv.Mat();
-    cv.bilateralFilter(gray, denoise, 7, 45, 45);
-    clahe = new cv.Mat();
-    const c = new cv.CLAHE(2.2, new cv.Size(8, 8));
-    c.apply(denoise, clahe); c.delete();
-
-    // Keep smooth grayscale first; it is usually best for Arabic cursive.
-    out.push(matToCanvasKeep(clahe));
-
-    otsu = new cv.Mat();
-    cv.threshold(clahe, otsu, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
-    out.push(matToCanvasKeep(otsu));
-
-    adaptive = new cv.Mat();
-    cv.adaptiveThreshold(clahe, adaptive, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-      cv.THRESH_BINARY, 31, 11);
-    out.push(matToCanvasKeep(adaptive));
-  } catch (e) {
-    console.warn('OCR variant generation failed:', e);
-  } finally {
-    [src, gray, clahe, otsu, adaptive, denoise].forEach(m => { if (m) m.delete(); });
-  }
-  return out;
-}
-
-// Like matToCanvas() but leaves the source Mat alive — use this whenever the
-// Mat is still needed after the conversion. Caller is responsible for
-// deleting it exactly once.
-function matToCanvasKeep(mat) {
-  const canvas = document.createElement('canvas');
-  canvas.width = mat.cols; canvas.height = mat.rows;
-  cv.imshow(canvas, mat);
-  return canvas;
-}
-
-function wordRecords(data, passIndex) {
-  const words = Array.isArray(data?.words) ? data.words : [];
-  return words.map((w, i) => ({
-    text: String(w.text || '').trim(),
-    conf: Number(w.confidence ?? w.conf ?? 0),
-    pass: passIndex,
-    order: i,
-    bbox: w.bbox || null,
-  })).filter(w => w.text);
-}
-
-function lineRecords(data) {
-  if (!Array.isArray(data?.lines)) return [];
-  return data.lines.map(l => String(l.text || '').trim()).filter(Boolean);
-}
-
-function extractTrustedText(records, numberRecords) {
-  const groups = new Map();
-  for (const r of [...records, ...numberRecords]) {
-    const raw = r.text.replace(/\s+/g, ' ').trim();
-    if (!raw) continue;
-    const number = isNumberToken(raw);
-    const arabic = isArabicToken(raw);
-    const key = number ? `N:${normalizeNumberToken(raw)}` : arabic ? `A:${normalizeArabicWord(raw)}` : `L:${raw.toLowerCase()}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(r);
-  }
-
-  const accepted = [];
-  for (const list of groups.values()) {
-    list.sort((a, b) => b.conf - a.conf);
-    const best = list[0];
-    const support = list.filter(x => x.conf >= 45).length;
-    const text = best.text;
-    if (isNumberToken(text)) {
-      if (best.conf >= 42 || support >= 2) accepted.push({ ...best, text: normalizeNumberToken(text), priority: 3 });
-      continue;
-    }
-    if (isArabicToken(text)) {
-      const corrected = dictionaryCorrectArabic(text, best.conf);
-      // High confidence OCR is accepted; uncertain OCR must be a dictionary
-      // word or independently repeated. Otherwise it is discarded.
-      if (corrected && (best.conf >= 58 || support >= 2)) {
-        accepted.push({ ...best, text: corrected, priority: best.conf >= 75 ? 2 : 1 });
-      }
-      continue;
-    }
-    // English/Latin is secondary. Only keep reasonably confident tokens.
-    if (best.conf >= 72 && /[A-Za-z]/.test(text)) accepted.push({ ...best, priority: 0 });
-  }
-
-  // Sort approximately in reading order using the strongest available bbox.
-  accepted.sort((a, b) => {
-    if (a.bbox && b.bbox) {
-      const dy = a.bbox.y0 - b.bbox.y0;
-      if (Math.abs(dy) > 24) return dy;
-      return a.bbox.x0 - b.bbox.x0;
-    }
-    return a.order - b.order;
-  });
-  return accepted.map(x => x.text);
-}
-
-function extractNumbers(text) {
-  const matches = String(text || '').match(/[0-9٠-٩۰-۹]+(?:[.,:/\\-][0-9٠-٩۰-۹]+)*/g) || [];
-  return [...new Set(matches.map(normalizeNumberToken))];
-}
-
-async function runOCR() {
-  if (!state.enhancedCanvas) {
-    showToast(tr().toastNoImageForOcr, 'error');
-    return;
-  }
-
-  const ocrBtn = document.getElementById('ocrBtn');
-  const progressContainer = document.getElementById('ocrProgressContainer');
-  const progressBar = document.getElementById('ocrProgressBar');
-  const progressText = document.getElementById('ocrProgressText');
-  const progressPercent = document.getElementById('ocrProgressPercent');
-  const resultContainer = document.getElementById('ocrResultContainer');
-
-  state.ocrRunning = true;
-  ocrBtn.disabled = true;
-  ocrBtn.innerHTML = `<svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity="0.3"/><path d="M12 2A10 10 0 0 1 22 12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg><span>${tr().ocrProcessing}</span>`;
-  progressContainer.classList.remove('hidden');
-  resultContainer.classList.add('hidden');
-  progressBar.style.width = '0%';
-  progressText.textContent = tr().ocrLoadingLang;
-
-  let worker = null;
-  try {
-    progressText.textContent = tr().ocrPreparingImage;
-    const variants = createOcrVariants(state.enhancedCanvas);
-
-    worker = await Tesseract.createWorker('ara+eng', 1, {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          const pct = Math.round(m.progress * 100);
-          progressBar.style.width = `${pct}%`;
-          progressPercent.textContent = `${pct}%`;
-          progressText.textContent = tr().ocrReadingText;
-        } else if (m.status === 'loading tesseract core' || m.status === 'initializing tesseract' || m.status === 'loading language traineddata') {
-          progressText.textContent = tr().ocrLoadingLang;
-        }
-      }
-    });
-
-    await worker.setParameters({
-      preserve_interword_spaces: '1',
-      user_defined_dpi: '300',
-      tessedit_enable_dict_correction: '1',
-      load_system_dawg: '1',
-      load_freq_dawg: '1',
-      language_model_penalty_non_dict_word: '1.2',
-      language_model_penalty_non_freq_dict_word: '0.8',
-      tessedit_char_blacklist: '|<>[]{}~`^',
-    });
-
-    const allRecords = [];
-    const allLines = [];
-    let pass = 0;
-    // Two segmentation modes on the best grayscale variants.
-    for (const canvas of variants.slice(0, 3)) {
-      for (const psm of ['6', '11']) {
-        await worker.setParameters({ tessedit_pageseg_mode: psm });
-        const { data } = await worker.recognize(canvas);
-        allRecords.push(...wordRecords(data, pass++));
-        allLines.push(...lineRecords(data));
-      }
-    }
-
-    // Dedicated numeric pass: this is intentionally separate from Arabic OCR.
-    // It catches Arabic-Indic and Western digits even when surrounding Arabic is
-    // too degraded to recognize.
-    await worker.setParameters({
-      tessedit_pageseg_mode: '11',
-      tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹-/:.,()',
-    });
-    const numericRecords = [];
-    for (const canvas of variants.slice(0, 3)) {
-      const { data } = await worker.recognize(canvas);
-      numericRecords.push(...wordRecords(data, pass++));
-    }
-
-    const trusted = extractTrustedText(allRecords, numericRecords);
-    const rawNumbers = [...new Set([
-      ...numericRecords.filter(r => r.conf >= 42).map(r => normalizeNumberToken(r.text)),
-      ...extractNumbers(trusted.join(' ')),
-    ])].filter(x => /\d/.test(x));
-
-    // Remove duplicate numbers already present in the trusted text, but append
-    // numbers that were only found by the dedicated numeric recognizer.
-    const present = new Set(extractNumbers(trusted.join(' ')));
-    for (const n of rawNumbers) if (!present.has(n)) trusted.push(n);
-
-    // If the conservative word filter rejects everything except numbers, still
-    // return the numbers. Never display a made-up Arabic word just to avoid an
-    // empty result.
-    const cleanedText = trusted.join(' ').replace(/\s+([،؛,.])/g, '$1').trim();
-    document.getElementById('ocrResult').value = cleanedText;
-    resultContainer.classList.remove('hidden');
-
-    if (cleanedText) showToast(tr().toastOcrSuccess, 'success');
-    else showToast(tr().toastOcrNoText, 'info');
-  } catch (err) {
-    console.error('OCR Error:', err);
-    showToast(tr().toastOcrFailed, 'error');
-  } finally {
-    if (worker) {
-      try { await worker.terminate(); } catch (_) {}
-    }
-    state.ocrRunning = false;
-    ocrBtn.disabled = false;
-    setOcrIdleLabel();
-    setTimeout(() => progressContainer.classList.add('hidden'), 1000);
-  }
-}
-
-function copyOCRText() {
-  const textArea = document.getElementById('ocrResult');
-  textArea.select();
-  try {
-    navigator.clipboard.writeText(textArea.value);
-  } catch (err) {
-    document.execCommand('copy');
-  }
-  showToast(tr().toastCopied, 'success');
-}
-
-// ====================================================================
 // STAGE NAVIGATION
 // ====================================================================
 function setStage(stage) {
@@ -2638,8 +2128,6 @@ function restart() {
   document.querySelectorAll('.filter-card').forEach(c => {
     c.classList.toggle('active', c.dataset.filter === 'magic');
   });
-  document.getElementById('ocrResultContainer').classList.add('hidden');
-  document.getElementById('ocrProgressContainer').classList.add('hidden');
   setStage(1);
 }
 
@@ -2661,9 +2149,9 @@ function addPageAndRestart() {
       filter: state.currentFilter,
       adjustments: { ...state.adjustments },
     });
-    updatePagesSection();
   }
   restart();
+  updatePagesSection();
   showToast(tr().toastPageAdded, 'success');
 }
 

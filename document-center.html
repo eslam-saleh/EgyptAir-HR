@@ -848,6 +848,8 @@ function renderPlaceholderForm(doc, placeholders) {
       const doc = allDocs.find((item) => item.id === docId);
       if (!doc) return;
 
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
       selectedDoc = doc;
       selectedPlaceholders = [];
       autoPlaceholders = [];

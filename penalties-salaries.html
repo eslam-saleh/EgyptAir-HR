@@ -965,8 +965,12 @@
     }
 
     function onCrewAmtChange() {
-      let v = parseInt(document.getElementById('crewPenaltyAmt').value, 10);
-      if (isNaN(v) || v < 0) v = 0;
+      const input = document.getElementById('crewPenaltyAmt');
+      const max = Number(input.max) || Infinity;
+      let v = parseInt(input.value, 10);
+      if (isNaN(v)) v = 0;
+      v = Math.min(Math.max(v, 0), max);
+      input.value = v; // keep the field in sync with the clamped value that's actually used
       penaltyAmt  = v;
       penaltyDesc = getLang()==='ar' ? 'إدخال يدوي' : 'Manual entry';
       updatePenaltyExplain();

@@ -182,6 +182,37 @@
       color: var(--danger);
     }
 
+    .nearest-time-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 150px;
+    }
+
+    .nearest-time-label {
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .nearest-time-input {
+      min-height: 34px;
+      padding: 4px 8px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.85rem;
+    }
+
+    .nearest-time-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
+    }
+
     .hidden {
       display: none !important;
     }
@@ -334,6 +365,9 @@
     let latestSheetRequestId = 0;
     let isAdmin = false;
     let filterPatientId = null;
+    // When a patient's submitted date is "اقرب وقت" (nearest available time),
+    // the admin picks an actual date here before confirming; keyed by sheetRow.
+    let nearestTimeDates = {};
 
     const adminForm = document.getElementById('adminForm');
     const inquiryForm = document.getElementById('inquiryForm');
@@ -535,6 +569,26 @@ async function sha256Hex(value) {
       return t('Pending', 'قيد الانتظار');
     }
 
+    // The Google Form lets a patient submit "اقرب وقت" (nearest available
+    // time) instead of a specific date when they have no preference.
+    const NEAREST_TIME_VALUE = 'اقرب وقت';
+    function isNearestTimeValue(value) {
+      return String(value ?? '').trim() === NEAREST_TIME_VALUE;
+    }
+
+    const ARABIC_WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    // Formats an admin-picked date (YYYY-MM-DD, from <input type="date">) to
+    // match the existing "day name next to the date" convention already used
+    // for clinic dates, e.g. "الأحد 16/8/2026".
+    function formatArabicDateWithWeekday(isoDateStr) {
+      const parts = String(isoDateStr || '').split('-').map(Number);
+      if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return '';
+      const [year, month, day] = parts;
+      const dateObj = new Date(year, month - 1, day);
+      const weekday = ARABIC_WEEKDAYS[dateObj.getDay()];
+      return `${weekday} ${day}/${month}/${year}`;
+    }
+
     // Sheet header text is whatever was literally typed in row 1 (mixed
     // languages, since Google Forms auto-names the Timestamp/Email columns
     // in English regardless of form language). Translate by column key
@@ -586,27 +640,43 @@ async function sha256Hex(value) {
 
       if (!rowsToRender.length) {
         tableBody.innerHTML = `<tr><td colspan="${orderedColumns.length + (isAdmin ? 3 : 1)}">${t('No reservations found.', 'لا توجد حجوزات.')}</td></tr>`;
-        return;
+        return 0;
       }
 
       tableBody.innerHTML = rowsToRender.map(row => {
         const decided = row.isReserved === 'y' || row.isReserved === 'n';
+        const dateIndex = getColumnIndexByKey('date');
+        const needsDatePick = isNearestTimeValue(row.values[dateIndex]);
         const valuesHtml = orderedColumns.map(item => {
           let value = row.values[item.index];
-          
+
           // Apply formatting based on column type
           if (item.key === 'timestamp') {
             value = formatTimestamp(value);
           }
-          
+
+          if (item.key === 'date' && needsDatePick) {
+            const chosen = nearestTimeDates[row.sheetRow] || '';
+            return `<td>
+              <div class="nearest-time-cell">
+                <span class="nearest-time-label">${escapeHtml(NEAREST_TIME_VALUE)}</span>
+                <input type="date" class="nearest-time-input" data-sheet-row="${row.sheetRow}" value="${escapeHtml(chosen)}" ${decided ? 'disabled' : ''} aria-label="${t('Pick a date for this patient', 'اختر تاريخاً لهذا المريض')}">
+              </div>
+            </td>`;
+          }
+
           return `<td>${escapeHtml(value)}</td>`;
         }).join('');
+
+        const confirmBlocked = needsDatePick && !nearestTimeDates[row.sheetRow];
+        const confirmDisabled = decided || confirmBlocked;
+        const confirmTitle = confirmBlocked ? t('Pick a date for this patient first', 'اختر تاريخاً لهذا المريض أولاً') : '';
 
         let rowHtml = `<tr class="${decided ? 'decided' : ''}" data-sheet-row="${row.sheetRow}">${valuesHtml}<td><span class="status-badge ${escapeHtml(row.isReserved)}">${decisionLabel(row.isReserved)}</span></td>`;
         if (isAdmin) {
           rowHtml += `
             <td class="decision-cell">
-              <button class="decision-btn confirm" type="button" data-decision="y" data-sheet-row="${row.sheetRow}" ${decided ? 'disabled' : ''} aria-label="${t('Confirm reservation', 'تأكيد الحجز')}">✅</button>
+              <button class="decision-btn confirm" type="button" data-decision="y" data-sheet-row="${row.sheetRow}" ${confirmDisabled ? 'disabled' : ''} title="${escapeHtml(confirmTitle)}" aria-label="${t('Confirm reservation', 'تأكيد الحجز')}">✅</button>
             </td>
             <td class="decision-cell">
               <button class="decision-btn deny" type="button" data-decision="n" data-sheet-row="${row.sheetRow}" ${decided ? 'disabled' : ''} aria-label="${t('Deny reservation', 'رفض الحجز')}">❌</button>
@@ -616,6 +686,8 @@ async function sha256Hex(value) {
         rowHtml += `</tr>`;
         return rowHtml;
       }).join('');
+
+      return rowsToRender.length;
     }
 
     // Exports exactly what's currently rendered in the results table — the
@@ -638,7 +710,37 @@ async function sha256Hex(value) {
         });
       }
 
-      const workbook = XLSX.utils.table_to_book(clone, { sheet: t('Reservations', 'الحجوزات') });
+      // A "nearest available time" date cell holds a live <input>, which has
+      // no visible text of its own — replace it with plain text (the chosen
+      // date if the admin picked one, otherwise the original placeholder) so
+      // the exported cell isn't blank.
+      clone.querySelectorAll('.nearest-time-cell').forEach(cell => {
+        const input = cell.querySelector('.nearest-time-input');
+        const chosen = input?.value ? formatArabicDateWithWeekday(input.value) : '';
+        const td = cell.closest('td');
+        if (td) td.textContent = chosen || NEAREST_TIME_VALUE;
+      });
+
+      // raw: true keeps every cell as plain text instead of letting SheetJS
+      // auto-detect date-looking strings and convert them to Excel's numeric
+      // date format — that numeric format is what showed up as "###" once
+      // a column was too narrow to display it.
+      const workbook = XLSX.utils.table_to_book(clone, { sheet: t('Reservations', 'الحجوزات'), raw: true });
+
+      // Auto-fit column widths from the actual cell content (character
+      // count), with a comfortable minimum/maximum so nothing is clipped.
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const headerCells = Array.from(clone.querySelectorAll('thead th'));
+      const bodyRows = Array.from(clone.querySelectorAll('tbody tr'));
+      sheet['!cols'] = headerCells.map((th, colIndex) => {
+        let maxLen = String(th.textContent || '').trim().length;
+        bodyRows.forEach(tr => {
+          const cell = tr.children[colIndex];
+          if (cell) maxLen = Math.max(maxLen, String(cell.textContent || '').trim().length);
+        });
+        return { wch: Math.min(Math.max(maxLen + 2, 12), 45) };
+      });
+
       const today = new Date();
       const fileName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`;
       XLSX.writeFile(workbook, fileName);
@@ -678,8 +780,8 @@ async function sha256Hex(value) {
           };
         });
 
-        renderClinicsTable();
-        setStatus(tableStatus, t(`${clinicRows.length} reservation(s) loaded.`, `تم تحميل ${clinicRows.length} حجز.`));
+        const renderedCount = renderClinicsTable();
+        setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
       } catch (error) {
         setStatus(tableStatus, t('Could not read the clinic sheet.', 'تعذر قراءة جدول العيادات.'), true);
       } finally {
@@ -730,7 +832,10 @@ async function sha256Hex(value) {
       const name = getRowValue(row, ['الاسم', 'name']) || t('employee', 'الموظف');
       const clinic = getRowValue(row, ['العيادة', 'clinic']);
       const shift = getRowValue(row, ['ميعاد', 'النوبة', 'shift']);
-      const date = getRowValue(row, ['التاريخ', 'date']);
+      let date = getRowValue(row, ['التاريخ', 'date']);
+      if (isNearestTimeValue(date) && nearestTimeDates[row.sheetRow]) {
+        date = formatArabicDateWithWeekday(nearestTimeDates[row.sheetRow]);
+      }
 
       if (decision === 'y') {
         return {
@@ -879,6 +984,12 @@ async function sha256Hex(value) {
       const row = clinicRows.find(item => item.sheetRow === rowNumber);
       if (!row || row.isReserved === 'y' || row.isReserved === 'n') return;
 
+      const dateIndex = getColumnIndexByKey('date');
+      if (decision === 'y' && isNearestTimeValue(row.values[dateIndex]) && !nearestTimeDates[rowNumber]) {
+        setStatus(tableStatus, t('Pick a date for this patient first.', 'اختر تاريخاً لهذا المريض أولاً.'), true);
+        return;
+      }
+
       const rowButtons = tableBody.querySelectorAll(`[data-sheet-row="${rowNumber}"] .decision-btn`);
       rowButtons.forEach(item => { item.disabled = true; });
       setStatus(tableStatus, decision === 'y'
@@ -950,6 +1061,18 @@ async function sha256Hex(value) {
       const button = event.target.closest('.decision-btn');
       if (!button) return;
       decideReservation(button);
+    });
+
+    tableBody.addEventListener('change', event => {
+      const input = event.target.closest('.nearest-time-input');
+      if (!input) return;
+      const sheetRow = Number(input.dataset.sheetRow);
+      if (input.value) {
+        nearestTimeDates[sheetRow] = input.value;
+      } else {
+        delete nearestTimeDates[sheetRow];
+      }
+      renderClinicsTable();
     });
 
     window.addEventListener('portal-language-change', () => {

@@ -132,7 +132,11 @@
         <section class="summary-panel">
             <div class="summary-header-row">
                 <label for="summaryText" data-en="Employee leave summary" data-ar="ملخص إجازات الموظف">Employee leave summary</label>
-                <button id="downloadSummaryBtn" class="btn-secondary btn-download" type="button" data-en="Download as text" data-ar="تحميل كنص">Download as text</button>
+                <div class="summary-header-actions">
+                    <button id="importSummaryBtn" class="btn-secondary btn-download" type="button" data-en="Import from text" data-ar="استيراد من ملف نصي">Import from text</button>
+                    <button id="downloadSummaryBtn" class="btn-secondary btn-download" type="button" data-en="Download as text" data-ar="تحميل كنص">Download as text</button>
+                </div>
+                <input type="file" id="importSummaryFile" accept=".txt,text/plain" hidden>
             </div>
             <textarea id="summaryText" readonly rows="10"></textarea>
         </section>

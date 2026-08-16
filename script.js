@@ -35,6 +35,9 @@ const translations = {
     today: 'Today',
     summaryLabel: 'Leave summary',
     downloadSummary: 'Download as text',
+    importSummary: 'Import from text',
+    importSuccess: 'Data imported successfully.',
+    importInvalid: 'This file could not be read. Please choose a file exported from this page.',
     noDays: 'No leave days selected.',
     selectedSummary: count => `Selected leave days (${count}):`,
     annualSection: 'Annual leave:',
@@ -97,6 +100,9 @@ const translations = {
     today: 'اليوم',
     summaryLabel: 'ملخص الإجازات',
     downloadSummary: 'تحميل كنص',
+    importSummary: 'استيراد من ملف نصي',
+    importSuccess: 'تم استيراد البيانات بنجاح.',
+    importInvalid: 'تعذّرت قراءة هذا الملف. يرجى اختيار ملف تم تصديره من هذه الصفحة.',
     noDays: 'لا توجد أيام إجازة مختارة.',
     selectedSummary: count => `أيام الإجازة المختارة (${count}):`,
     annualSection: 'الإجازة السنوية:',
@@ -212,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeBalanceControls();
   initializeResetButton();
   initializeDownloadButton();
+  initializeImportButton();
   applyLanguage(currentLanguage);
   initializeWeekendControls();
   generateCalendar();
@@ -479,6 +486,18 @@ function countByType(type) {
 }
 
 function toggleDay(dateKey, holidayKey, isWeekend) {
+  // Removing an existing selection must always be allowed, even if this date
+  // has since become an official holiday or a configured weekend day —
+  // otherwise a day picked before a weekend-rule change gets stuck forever.
+  if (selectedDays.has(dateKey)) {
+    selectedDays.delete(dateKey);
+    reclassifySelections();
+    saveState();
+    generateCalendar();
+    updateAll();
+    return;
+  }
+
   if (holidayKey) {
     window.showToast(t('blockedHoliday')(holidayName(holidayKey)), 'warning');
     return;
@@ -489,19 +508,14 @@ function toggleDay(dateKey, holidayKey, isWeekend) {
     return;
   }
 
-  if (selectedDays.has(dateKey)) {
-    selectedDays.delete(dateKey);
-    reclassifySelections();
+  const annualUsed = countByType('annual');
+  const emergUsed = countByType('emergency');
+  if (annualUsed < annualBalance) {
+    selectedDays.set(dateKey, 'annual');
+  } else if (emergUsed < emergencyBalance) {
+    selectedDays.set(dateKey, 'emergency');
   } else {
-    const annualUsed = countByType('annual');
-    const emergUsed = countByType('emergency');
-    if (annualUsed < annualBalance) {
-      selectedDays.set(dateKey, 'annual');
-    } else if (emergUsed < emergencyBalance) {
-      selectedDays.set(dateKey, 'emergency');
-    } else {
-      selectedDays.set(dateKey, 'absence');
-    }
+    selectedDays.set(dateKey, 'absence');
   }
 
   saveState();
@@ -581,22 +595,109 @@ function updateSummary(annualTaken, annualRem, emergTaken, emergRem, absenceTake
   summary.value = lines.join('\n');
 }
 
+const IMPORT_DATA_MARKER = '---DATA (auto-generated, do not edit below this line)---';
+
+function buildExportPayload() {
+  const obj = {};
+  for (const [k, v] of selectedDays) obj[k] = v;
+  return {
+    year: CALENDAR_YEAR,
+    annualBalance,
+    emergencyBalance,
+    weekendDays,
+    selectedDays: obj
+  };
+}
+
 function downloadSummary() {
   const summary = document.getElementById('summaryText');
   if (!summary) return;
   const text = summary.value || '';
+  const dataBlock = `${IMPORT_DATA_MARKER}\n${JSON.stringify(buildExportPayload())}`;
+  const fullText = `${text}\n\n${dataBlock}`;
   const now = new Date();
   const y = now.getFullYear();
   const m = now.getMonth() + 1;
   const d = now.getDate();
   const filename = `رصيد-${y}-${m}-${d}.txt`;
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function initializeImportButton() {
+  const btn = document.getElementById('importSummaryBtn');
+  const fileInput = document.getElementById('importSummaryFile');
+  if (!btn || !fileInput) return;
+
+  btn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files && fileInput.files[0];
+    fileInput.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => importFromText(String(reader.result || ''));
+    reader.onerror = () => window.showToast(t('importInvalid'), 'error');
+    reader.readAsText(file);
+  });
+}
+
+function importFromText(text) {
+  const markerIndex = text.indexOf(IMPORT_DATA_MARKER);
+  const jsonStart = markerIndex === -1 ? -1 : text.indexOf('{', markerIndex);
+  if (jsonStart === -1) {
+    window.showToast(t('importInvalid'), 'error');
+    return;
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(text.slice(jsonStart).trim());
+  } catch {
+    window.showToast(t('importInvalid'), 'error');
+    return;
+  }
+  if (!payload || typeof payload !== 'object') {
+    window.showToast(t('importInvalid'), 'error');
+    return;
+  }
+
+  annualBalance = Number.isFinite(payload.annualBalance)
+    ? Math.max(0, Math.min(365, Math.floor(payload.annualBalance)))
+    : DEFAULT_BALANCE;
+  emergencyBalance = Number.isFinite(payload.emergencyBalance)
+    ? Math.max(0, Math.min(365, Math.floor(payload.emergencyBalance)))
+    : DEFAULT_EMERGENCY;
+  weekendDays = Array.isArray(payload.weekendDays) && payload.weekendDays.length
+    ? payload.weekendDays.filter(d => Number.isInteger(d) && d >= 0 && d <= 6)
+    : [5, 6];
+  if (!weekendDays.length) weekendDays = [5, 6];
+
+  selectedDays = new Map();
+  if (payload.selectedDays && typeof payload.selectedDays === 'object') {
+    Object.entries(payload.selectedDays).forEach(([key, type]) => {
+      if (type === 'annual' || type === 'emergency' || type === 'absence') {
+        selectedDays.set(key, type);
+      }
+    });
+  }
+  reclassifySelections();
+  holidayMapCache = null;
+
+  const annualInput = document.getElementById('balanceInput');
+  const emergencyInput = document.getElementById('emergencyInput');
+  if (annualInput) annualInput.value = annualBalance;
+  if (emergencyInput) emergencyInput.value = emergencyBalance;
+
+  saveState();
+  initializeWeekendControls();
+  generateCalendar();
+  updateAll();
+  window.showToast(t('importSuccess'), 'info');
 }
 
 function loadState() {
