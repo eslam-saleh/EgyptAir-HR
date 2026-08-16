@@ -554,7 +554,7 @@
               <span class="sal-currency">EGP</span>
               <input type="range" id="basicRange" min="400" max="4000" step="50" value="2000">
             </div>
-            <p class="hint-text" data-en="Penalties in days are calculated from this amount only (per Labour Law)." data-ar="الجزاءات بالأيام تُحسب من هذا المبلغ فقط (حسب قانون العمل).">الجزاءات بالأيام تُحسب من هذا المبلغ فقط (حسب قانون العمل).</p>
+            <p class="hint-text" data-en="Part of total gross salary. Day-based penalties use total gross (basic + incentives)." data-ar="جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).">جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).</p>
           </div>
 
           <!-- Incentives / Variable (الحوافز) -->
@@ -565,7 +565,7 @@
               <span class="sal-currency">EGP</span>
               <input type="range" id="incentivesRange" min="0" max="50000" step="50" value="13000">
             </div>
-            <p class="hint-text" data-en="Bonuses, allowances, incentives… not used for day-based penalties." data-ar="حوافز، بدلات، مكافآت… لا تُستخدم في حساب الجزاءات بالأيام.">حوافز، بدلات، مكافآت… لا تُستخدم في حساب الجزاءات بالأيام.</p>
+            <p class="hint-text" data-en="Included in total gross used for day-based penalty calculation." data-ar="تُدرج ضمن الأجر الشامل المستخدم في حساب الجزاءات بالأيام.">تُدرج ضمن الأجر الشامل المستخدم في حساب الجزاءات بالأيام.</p>
           </div>
 
           <!-- Total (read-only display) -->
@@ -596,7 +596,7 @@
           <div class="ded-grid hidden" id="dedGrid">
             <div class="ded-field" style="grid-column:1/-1;">
               <p class="hint-text" style="margin:0;">
-                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 16,700 EGP). Tax: progressive brackets after SI + personal exemption (20,000 EGP/year)." data-ar="التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات + الإعفاء الشخصي (20,000 جنيه/سنة).">التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات + الإعفاء الشخصي (20,000 جنيه/سنة).</span>
+                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 16,700 EGP). Tax: progressive brackets after SI. Total fully tax-exempt income = 60,000 EGP/year (personal exemption 20,000 + 0% bracket 40,000). No tax calculated/withheld on the penalty deduction day wage." data-ar="التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000). لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم.">التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000). لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم.</span>
               </p>
             </div>
             <div class="ded-field">
@@ -991,40 +991,40 @@
     }
 
     // ── Penalty calculation (comprehensive) ──────────────────────────────────
-    // IMPORTANT: day-based penalties use Basic Salary only (Labour Law)
+    // IMPORTANT: day-based penalties use Total Gross (basic + incentives) as directed
     function calcPenalty(text) {
       if (!text || text === '—' || text === '-') return { amount: 0, desc: '', isMonetary: false };
       const t = text.toString();
-      const daily  = basicSalary / 30;   // ← من الأجر الأساسي فقط
+      const daily  = getTotalGross() / 30;   // ← من الأجر الشامل (أساسي + حوافز)
       const raise  = getRaise();
 
-      // Percentage of daily wage (basic)
-      if (t.includes('١٠٪') || t.includes('10%'))                        return { amount: daily * 0.10, desc: 'أساسي يومي ÷10', isMonetary: true };
-      if (t.includes('٧٥٪') || t.includes('75%'))                        return { amount: daily * 0.75, desc: 'أساسي يومي ×0.75', isMonetary: true };
+      // Percentage of daily wage (total gross)
+      if (t.includes('١٠٪') || t.includes('10%'))                        return { amount: daily * 0.10, desc: 'شامل يومي ×0.10', isMonetary: true };
+      if (t.includes('٧٥٪') || t.includes('75%'))                        return { amount: daily * 0.75, desc: 'شامل يومي ×0.75', isMonetary: true };
 
       // Fractions of a day
-      if (t.includes('ربع اليوم') || t.includes('ربع يوم'))              return { amount: daily * 0.25, desc: 'أساسي يومي ÷4', isMonetary: true };
-      if (t.includes('نصف اليوم') || t.includes('نصف يوم'))              return { amount: daily * 0.5,  desc: 'أساسي يومي ÷2', isMonetary: true };
-      if (t.includes('ثلاثة أرباع') )                                     return { amount: daily * 0.75, desc: 'أساسي يومي ×0.75', isMonetary: true };
+      if (t.includes('ربع اليوم') || t.includes('ربع يوم'))              return { amount: daily * 0.25, desc: 'شامل يومي ÷4', isMonetary: true };
+      if (t.includes('نصف اليوم') || t.includes('نصف يوم'))              return { amount: daily * 0.5,  desc: 'شامل يومي ÷2', isMonetary: true };
+      if (t.includes('ثلاثة أرباع') )                                     return { amount: daily * 0.75, desc: 'شامل يومي ×0.75', isMonetary: true };
 
       // Days (order matters: check longer phrases first)
-      if (t.includes('يوم ونصف'))                                         return { amount: daily * 1.5, desc: 'أساسي يومي ×1.5', isMonetary: true };
-      if (t.includes('يومان'))                                            return { amount: daily * 2,   desc: 'أساسي يومي ×2',   isMonetary: true };
-      if (t.includes('ثلاثة أيام'))                                       return { amount: daily * 3,   desc: 'أساسي يومي ×3',   isMonetary: true };
-      if (t.includes('أربعة أيام'))                                       return { amount: daily * 4,   desc: 'أساسي يومي ×4',   isMonetary: true };
-      if (t.includes('خمسة أيام'))                                        return { amount: daily * 5,   desc: 'أساسي يومي ×5',   isMonetary: true };
+      if (t.includes('يوم ونصف'))                                         return { amount: daily * 1.5, desc: 'شامل يومي ×1.5', isMonetary: true };
+      if (t.includes('يومان'))                                            return { amount: daily * 2,   desc: 'شامل يومي ×2',   isMonetary: true };
+      if (t.includes('ثلاثة أيام'))                                       return { amount: daily * 3,   desc: 'شامل يومي ×3',   isMonetary: true };
+      if (t.includes('أربعة أيام'))                                       return { amount: daily * 4,   desc: 'شامل يومي ×4',   isMonetary: true };
+      if (t.includes('خمسة أيام'))                                        return { amount: daily * 5,   desc: 'شامل يومي ×5',   isMonetary: true };
       if (t === 'يوم' || (t.includes('يوم') && !t.includes('يومان') && !t.includes('يوم ونصف') && !t.includes('أيام')))
-                                                                           return { amount: daily * 1,   desc: 'أساسي يومي ×1',   isMonetary: true };
+                                                                           return { amount: daily * 1,   desc: 'شامل يومي ×1',   isMonetary: true };
 
       // Raise-based
       if (t.includes('نصف العلاوة') || t.includes('الحرمان من نصف العلاوة')) return { amount: raise * 0.5, desc: 'نصف العلاوة', isMonetary: true };
       if (t.includes('خفض الأجر بمقدار علاوة') || t.includes('خصم من الأجر في حدود علاوة') || t.includes('خفض في حدود علاوة') || t.includes('خفض الأجر بمقدار علاوة على الأكثر')) return { amount: raise, desc: 'مقدار علاوة', isMonetary: true };
-      if (t.includes('خصم من الأجر') || t.includes('الخصم من الأجر'))   return { amount: daily,        desc: 'أساسي يومي ×1',   isMonetary: true };
+      if (t.includes('خصم من الأجر') || t.includes('الخصم من الأجر'))   return { amount: daily,        desc: 'شامل يومي ×1',   isMonetary: true };
 
       // Non-monetary penalties
       if (t.includes('إنذار'))                                            return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('تأجيل'))                                            return { amount: 0, desc: '', isMonetary: false };
-      if (t.includes('الحرمان من العلاوة') && !t.includes('نصف'))        return { amount: raise,        desc: 'قيمة العلاوة',         isMonetary: true };
+      if (t.includes('الحرمان من العلاوة') && !t.includes('نصف'))        return { amount: raise,        desc: 'قيمة العلاوة', isMonetary: true };
       if (t.includes('تأجيل الترقية'))                                    return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('الخفض إلى وظيفة'))                                  return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('الفصل'))                                            return { amount: 0, desc: '', isMonetary: false };
@@ -1040,10 +1040,12 @@
     // ── Egypt 2026 Social Insurance & Income Tax ──────────────────────────────
     // SI: employee 11% of insurable wage (min 2,700 – max 16,700 EGP)
     // Tax: progressive annual brackets after deducting SI + personal exemption (20,000 EGP/year)
+    // Total fully tax-exempt income = 60,000 EGP/year (personal 20k + first bracket 0% up to 40k)
+    // No tax is calculated or withheld on the wage of the penalty deduction day
     const SI_MIN = 2700;
     const SI_MAX = 16700;
     const SI_RATE = 0.11;
-    const PERSONAL_EXEMPTION_ANNUAL = 20000;
+    const PERSONAL_EXEMPTION_ANNUAL = 20000; // + 40,000 at 0% = 60,000 total fully exempt
 
     // Annual tax brackets (EGP) – Law 7 of 2024 / current 2026
     const TAX_BRACKETS = [
@@ -1096,11 +1098,13 @@
       let taxableMonthly = 0;
 
       if (enableDed) {
-        insurable = getInsurableWage(gross);
+        // لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم → الوعاء الضريبي = الإجمالي − مبلغ الجزاء
+        const grossForTax = Math.max(0, gross - penaltyAmt);
+        insurable = getInsurableWage(gross); // التأمينات تبقى على الإجمالي التأميني
         insAmt = calcSocialInsurance(gross);
-        taxAmt = calcMonthlyTax(gross, insAmt);
-        // وعاء الضريبة الشهري التقريبي للعرض
-        taxableMonthly = Math.max(0, gross - insAmt - (PERSONAL_EXEMPTION_ANNUAL / 12));
+        taxAmt = calcMonthlyTax(grossForTax, insAmt);
+        // وعاء الضريبة الشهري التقريبي للعرض (بعد خصم يوم الجزاء)
+        taxableMonthly = Math.max(0, grossForTax - insAmt - (PERSONAL_EXEMPTION_ANNUAL / 12));
       }
 
       const net = Math.max(0, gross - taxAmt - insAmt - penaltyAmt);
