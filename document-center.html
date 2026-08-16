@@ -873,6 +873,14 @@ function renderPlaceholderForm(doc, placeholders) {
         const fixedMap = getFixedDataMap();
         autoPlaceholders = placeholders.filter((group) => normalizeKey(group.label) in fixedMap);
         selectedPlaceholders = placeholders.filter((group) => !(normalizeKey(group.label) in fixedMap));
+        // Keep any field whose label contains "كود" at the top of the form
+        selectedPlaceholders.sort((a, b) => {
+          const aIsCode = labelContains(a.label, 'كود');
+          const bIsCode = labelContains(b.label, 'كود');
+          if (aIsCode && !bIsCode) return -1;
+          if (!aIsCode && bIsCode) return 1;
+          return 0;
+        });
         renderPlaceholderForm(doc, selectedPlaceholders);
       } catch (err) {
         setFormStatus(err.message || t('Failed to read the document.', 'تعذر قراءة المستند.'), true);
