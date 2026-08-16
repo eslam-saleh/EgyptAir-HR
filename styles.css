@@ -137,11 +137,11 @@ h1 {
     margin-bottom: 18px;
 }
 
-.balance-row-single {
+.balance-row.balance-row-single {
     grid-template-columns: 1fr;
 }
 
-.balance-row-two {
+.balance-row.balance-row-two {
     grid-template-columns: 1fr;
     gap: 8px;
 }
