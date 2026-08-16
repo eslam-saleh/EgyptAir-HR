@@ -631,6 +631,9 @@ async function sha256Hex(value) {
     }
 
     function renderClinicsTable() {
+      // Newest first overall. Within that, keep pending reservations above
+      // decided ones so confirming/denying a row moves it into the greyed
+      // section below the still-open requests.
       let rowsToRender = [...clinicRows].reverse();
 
       if (filterPatientId) {
@@ -640,6 +643,13 @@ async function sha256Hex(value) {
           return rowCode === filterPatientId;
         });
       }
+
+      rowsToRender.sort((a, b) => {
+        const aDecided = a.isReserved === 'y' || a.isReserved === 'n';
+        const bDecided = b.isReserved === 'y' || b.isReserved === 'n';
+        if (aDecided !== bDecided) return aDecided ? 1 : -1; // pending first
+        return 0; // preserve reverse-chronological order within each group
+      });
 
       // Build ordered column list based on COLUMN_ORDER
       const orderedColumns = [];
@@ -677,6 +687,11 @@ async function sha256Hex(value) {
 
           if (item.key === 'date' && needsDatePick) {
             const chosen = nearestTimeDates[row.sheetRow] || '';
+            // After a decision, show the final chosen date as plain text
+            // (same format as regular clinic dates) instead of the picker.
+            if (decided && chosen) {
+              return `<td>${escapeHtml(formatArabicDateWithWeekday(chosen))}</td>`;
+            }
             const { min, max } = getDateRestrictions();
             return `<td>
               <div class="nearest-time-cell">
@@ -958,7 +973,7 @@ async function sha256Hex(value) {
       throw lastError || new Error(t('Email could not be sent.', 'تعذر إرسال البريد الإلكتروني.'));
     }
 
-    async function updateSheetDecision(row, decision) {
+    async function updateSheetDecision(row, decision, chosenDateIso) {
       if (!SHEET_UPDATE_WEB_APP_URL) {
         throw new Error(t(
           'Sheet update endpoint is not configured yet.',
@@ -972,6 +987,11 @@ async function sha256Hex(value) {
         const url = new URL(SHEET_UPDATE_WEB_APP_URL);
         url.searchParams.set('rowNumber', row.sheetRow);
         url.searchParams.set('isReserved', decision);
+        // When the patient chose "اقرب وقت", also write the admin-picked
+        // date into the sheet so later inquiries see the real date.
+        if (chosenDateIso) {
+          url.searchParams.set('date', formatArabicDateWithWeekday(chosenDateIso));
+        }
         url.searchParams.set('callback', callbackName);
         url.searchParams.set('t', Date.now());
 
@@ -1006,7 +1026,9 @@ async function sha256Hex(value) {
       if (!row || row.isReserved === 'y' || row.isReserved === 'n') return;
 
       const dateIndex = getColumnIndexByKey('date');
-      if (decision === 'y' && isNearestTimeValue(row.values[dateIndex]) && !nearestTimeDates[rowNumber]) {
+      const isNearest = isNearestTimeValue(row.values[dateIndex]);
+      const chosenIso = nearestTimeDates[rowNumber] || '';
+      if (decision === 'y' && isNearest && !chosenIso) {
         setStatus(tableStatus, t('Pick a date for this patient first.', 'اختر تاريخاً لهذا المريض أولاً.'), true);
         return;
       }
@@ -1020,8 +1042,14 @@ async function sha256Hex(value) {
 
       try {
         await sendDecisionEmail(row, decision);
-        await updateSheetDecision(row, decision);
+        // Persist the admin-picked date for "اقرب وقت" rows so inquiries
+        // after a reload still show the real date instead of the placeholder.
+        await updateSheetDecision(row, decision, isNearest && chosenIso ? chosenIso : null);
         row.isReserved = decision;
+        if (isNearest && chosenIso && dateIndex >= 0) {
+          row.values[dateIndex] = formatArabicDateWithWeekday(chosenIso);
+          delete nearestTimeDates[rowNumber];
+        }
         renderClinicsTable();
         setStatus(tableStatus, decision === 'y'
           ? t('Reservation confirmed and email sent.', 'تم تأكيد الحجز وإرسال البريد الإلكتروني.')

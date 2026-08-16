@@ -67,6 +67,8 @@ function updateDecision(params) {
   try {
     const rowNumber = Number(params.rowNumber);
     const decision = String(params.isReserved || '').toLowerCase();
+    // Optional: admin-picked date for rows that originally had "اقرب وقت"
+    const dateValue = params.date ? String(params.date).trim() : '';
 
     if (!rowNumber || !['y', 'n'].includes(decision)) {
       return { ok: false, error: 'Invalid row or decision.' };
@@ -81,6 +83,20 @@ function updateDecision(params) {
     }
 
     sheet.getRange(rowNumber, reservedColumn).setValue(decision);
+
+    // When confirming/denying an "اقرب وقت" row, also replace the placeholder
+    // with the real date so later inquiries and reloads show the chosen date.
+    if (dateValue) {
+      const dateColumn = headers.findIndex(header => {
+        const label = String(header).trim().toLowerCase();
+        return label.includes('date') || label.includes('التاريخ');
+      }) + 1;
+
+      if (dateColumn > 0) {
+        sheet.getRange(rowNumber, dateColumn).setValue(dateValue);
+      }
+    }
+
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error.message };
@@ -91,4 +107,49 @@ function jsonResponse(payload) {
   return ContentService
     .createTextOutput(JSON.stringify(payload))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ==========================================================
+// AUTOMATIC PURGE FUNCTION (UPDATED FOR TEXT DATE FORMATS)
+// ==========================================================
+function deleteOldRecords() {
+  try {
+    const ss = SpreadsheetApp.openById(CLINIC_SHEET_ID);
+    const sheet = ss.getSheets()[0];
+    const DATE_COLUMN_INDEX = 1; // 1 = Column A, 2 = Column B, etc. Change if your date isn't in Column A.
+    
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    
+    if (lastRow < 2 || lastCol < 1) return; // Empty sheet or header only
+    
+    const range = sheet.getRange(2, 1, lastRow - 1, lastCol);
+    const values = range.getValues();
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize time to midnight for accurate comparison
+    const cutoffTime = today.getTime() - (40 * 24 * 60 * 60 * 1000); // 40 days ago in milliseconds
+    
+    // Loop backwards so row deletions don't skip rows or break indices
+    for (let i = values.length - 1; i >= 0; i--) {
+      let cellValue = String(values[i][DATE_COLUMN_INDEX - 1]).trim();
+      
+      // Skip "اقرب وقت" and empty cells
+      if (cellValue === "اقرب وقت" || cellValue === "") continue;
+      
+      // Extract the YYYY-MM-DD part before the dash (e.g., "2026-08-16 - الأحد" becomes "2026-08-16")
+      let dateString = cellValue.split(" - ")[0];
+      let parsedDate = new Date(dateString);
+      
+      if (!isNaN(parsedDate.getTime())) {
+        if (parsedDate.getTime() < cutoffTime) {
+          let rowToDelete = i + 2; // +2 for 0-index offset and header row
+          sheet.deleteRow(rowToDelete);
+        }
+      }
+    }
+    Logger.log("Cleanup check completed successfully.");
+  } catch (error) {
+    Logger.log("Error running cleanup: " + error.message);
+  }
 }
