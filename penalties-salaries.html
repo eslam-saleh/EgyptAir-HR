@@ -268,6 +268,16 @@
     }
     .sal-currency { font-weight: 800; color: var(--primary); font-size: 0.9rem; }
 
+    /* Side-by-side salary fields */
+    .sal-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 520px) { .sal-pair { grid-template-columns: 1fr; } }
+    .sal-pair .sal-field { margin-bottom: 0; }
+
     /* ── Deductions toggle ── */
     .ded-toggle {
       display: flex;
@@ -522,12 +532,12 @@
                 <ul class="plist" id="crewPunishments"></ul>
               </div>
               <div class="crew-penalty-wrap">
-                <div class="vp-label" data-en="Enter Deduction Amount" data-ar="أدخل مبلغ الخصم من المرتب">أدخل مبلغ الخصم من المرتب</div>
+                <div class="vp-label" data-en="Enter Wage-Deduction Penalty" data-ar="أدخل جزاء الخصم من الأجر">أدخل جزاء الخصم من الأجر</div>
                 <div class="sal-input-row mt-6">
-                  <input type="number" id="crewPenaltyAmt" min="0" max="100000" step="50" value="0" style="width:150px;">
+                  <input type="number" id="crewPenaltyAmt" min="0" step="0.01" value="0" style="width:150px;">
                   <span class="sal-currency">EGP</span>
                 </div>
-                <p class="hint-text" data-en="Enter the exact penalty amount decided by management." data-ar="أدخل مبلغ الجزاء المحدد من الإدارة.">أدخل مبلغ الجزاء المحدد من الإدارة.</p>
+                <p class="hint-text" data-en="The amount is limited to the remaining legal cap: five daily basic wages in the month, after prior disciplinary deductions." data-ar="يُقيَّد المبلغ بالحد القانوني المتبقي: أجر أساسي خمسة أيام في الشهر بعد خصم الجزاءات التأديبية السابقة.">يُقيَّد المبلغ بالحد القانوني المتبقي: أجر أساسي خمسة أيام في الشهر بعد خصم الجزاءات التأديبية السابقة.</p>
               </div>
             </div>
             <button class="clear-btn" id="clearCrew" type="button">
@@ -546,15 +556,15 @@
             <span data-en="Salary & Deductions" data-ar="المرتب والخصومات">المرتب والخصومات</span>
           </h2>
 
-          <!-- Basic Salary (الأجر الأساسي) – used for penalty day deductions -->
+          <!-- Basic Salary (الأجر الأساسي) – statutory basis for wage-deduction penalties -->
           <div class="sal-field">
             <label class="sal-label" for="basicNumber" data-en="Basic Salary (أساسي)" data-ar="الأجر الأساسي">الأجر الأساسي</label>
             <div class="sal-input-row">
-              <input type="number" id="basicNumber" min="400" max="4000" step="50" value="2000">
+              <input type="number" id="basicNumber" min="0" max="100000" step="50" value="2000">
               <span class="sal-currency">EGP</span>
-              <input type="range" id="basicRange" min="400" max="4000" step="50" value="2000">
+              <input type="range" id="basicRange" min="0" max="100000" step="50" value="2000">
             </div>
-            <p class="hint-text" data-en="Part of total gross salary. Day-based penalties use total gross (basic + incentives)." data-ar="جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).">جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).</p>
+            <p class="hint-text" data-en="Disciplinary wage deductions are calculated from the daily basic wage (basic ÷ 30), not total gross salary." data-ar="تُحسب جزاءات الخصم من أجر اليوم الأساسي (الأساسي ÷ ٣٠)، وليس من إجمالي الأجر الشامل.">تُحسب جزاءات الخصم من أجر اليوم الأساسي (الأساسي ÷ ٣٠)، وليس من إجمالي الأجر الشامل.</p>
           </div>
 
           <!-- Incentives / Variable (الحوافز) -->
@@ -565,43 +575,65 @@
               <span class="sal-currency">EGP</span>
               <input type="range" id="incentivesRange" min="0" max="50000" step="50" value="13000">
             </div>
-            <p class="hint-text" data-en="Included in total gross used for day-based penalty calculation." data-ar="تُدرج ضمن الأجر الشامل المستخدم في حساب الجزاءات بالأيام.">تُدرج ضمن الأجر الشامل المستخدم في حساب الجزاءات بالأيام.</p>
+            <p class="hint-text" data-en="Included in gross pay and the optional estimates below; it is not used to calculate a disciplinary wage-deduction penalty." data-ar="تُدرج ضمن الإجمالي والتقديرات الاختيارية أدناه، ولا تدخل في حساب جزاء الخصم من الأجر.">تُدرج ضمن الإجمالي والتقديرات الاختيارية أدناه، ولا تدخل في حساب جزاء الخصم من الأجر.</p>
           </div>
 
-          <!-- Total (read-only display) -->
-          <div class="sal-field">
-            <label class="sal-label" data-en="Total Gross Salary" data-ar="إجمالي المرتب (الكلي)">إجمالي المرتب (الكلي)</label>
-            <div class="sal-input-row">
-              <input type="number" id="totalGross" readonly value="15000" style="background:var(--surface); font-weight:800; color:var(--primary);">
-              <span class="sal-currency">EGP</span>
+          <!-- Total Gross + Meal Allowance (side by side) -->
+          <div class="sal-pair">
+            <div class="sal-field">
+              <label class="sal-label" data-en="Total Gross Salary" data-ar="إجمالي المرتب (الكلي)">إجمالي المرتب (الكلي)</label>
+              <div class="sal-input-row">
+                <input type="number" id="totalGross" readonly value="15000" style="background:var(--surface); font-weight:800; color:var(--primary); width:100%;">
+                <span class="sal-currency">EGP</span>
+              </div>
+            </div>
+            <div class="sal-field">
+              <label class="sal-label" for="mealsNumber" data-en="Meal Allowance (وجبة)" data-ar="بدل الوجبة">بدل الوجبة</label>
+              <div class="sal-input-row">
+                <input type="number" id="mealsNumber" min="0" max="30" step="1" value="0" style="width:70px;">
+                <span class="sal-currency" style="font-size:0.82rem;" data-en="meals × 60" data-ar="وجبة × ٦٠">وجبة × ٦٠</span>
+                <input type="number" id="mealMoneyDisp" readonly value="0" style="background:var(--surface); font-weight:800; color:var(--primary); width:90px;">
+                <span class="sal-currency">EGP</span>
+              </div>
+              <p class="hint-text" data-en="0–30 meals/month. Taxed at a flat 10% only (not progressive income tax)." data-ar="من ٠ إلى ٣٠ وجبة شهريًا. تُفرض عليها ضريبة ١٠٪ فقط (ليست ضمن الضريبة التصاعدية).">من ٠ إلى ٣٠ وجبة شهريًا. تُفرض عليها ضريبة ١٠٪ فقط (ليست ضمن الضريبة التصاعدية).</p>
             </div>
           </div>
 
-          <!-- Annual Raise -->
-          <div class="sal-field">
-            <label class="sal-label" for="raiseAmt" data-en="Annual Raise value (علاوة)" data-ar="قيمة العلاوة السنوية">قيمة العلاوة السنوية</label>
-            <div class="sal-input-row">
-              <input type="number" id="raiseAmt" min="0" max="50000" step="50" value="140">
-              <span class="sal-currency">EGP</span>
+          <!-- Annual Raise + Prior disciplinary (side by side) -->
+          <div class="sal-pair">
+            <div class="sal-field">
+              <label class="sal-label" for="raiseAmt" data-en="Annual Raise (reference only)" data-ar="العلاوة السنوية (للمرجع فقط)">العلاوة السنوية (للمرجع فقط)</label>
+              <div class="sal-input-row">
+                <input type="number" id="raiseAmt" min="0" max="50000" step="50" value="0" style="width:100%;">
+                <span class="sal-currency">EGP</span>
+              </div>
+              <p class="hint-text" data-en="Reference only. Not converted to a one-off deduction." data-ar="للمرجع فقط. لا تُحوَّل إلى خصم لمرة واحدة.">للمرجع فقط. لا تُحوَّل إلى خصم لمرة واحدة.</p>
             </div>
-            <p class="hint-text" data-en="Default = 7% of Basic. Used when penalty is “مقدار علاوة” or fraction of it." data-ar="افتراضيًا = 7٪ من الأساسي. تُستخدم عند جزاء «مقدار علاوة» أو جزء منها.">افتراضيًا = 7٪ من الأساسي. تُستخدم عند جزاء «مقدار علاوة» أو جزء منها.</p>
+            <div class="sal-field">
+              <label class="sal-label" for="priorPenaltyAmt" data-en="Prior disciplinary deductions this month" data-ar="جزاءات الخصم السابقة هذا الشهر">جزاءات الخصم السابقة هذا الشهر</label>
+              <div class="sal-input-row">
+                <input type="number" id="priorPenaltyAmt" min="0" step="0.01" value="0" style="width:100%;">
+                <span class="sal-currency">EGP</span>
+              </div>
+              <p class="hint-text" id="penaltyCapHint" data-en="Remaining cap: five daily basic wages for the month." data-ar="الحد المتبقي: أجر أساسي خمسة أيام للشهر.">الحد المتبقي: أجر أساسي خمسة أيام للشهر.</p>
+            </div>
           </div>
 
           <!-- Tax & Insurance toggle -->
           <label class="ded-toggle" for="enableDed">
             <input type="checkbox" id="enableDed">
-            <span data-en="Apply Tax & Social Insurance (Egypt Law 2026)" data-ar="تطبيق الضرائب والتأمينات الاجتماعية (قانون مصر 2026)">تطبيق الضرائب والتأمينات الاجتماعية (قانون مصر 2026)</span>
+            <span data-en="Show estimated tax & social insurance" data-ar="عرض تقدير الضريبة والتأمينات الاجتماعية">عرض تقدير الضريبة والتأمينات الاجتماعية</span>
           </label>
 
           <div class="ded-grid hidden" id="dedGrid">
             <div class="ded-field" style="grid-column:1/-1;">
               <p class="hint-text" style="margin:0;">
-                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 16,700 EGP). Tax: progressive brackets after SI. Total fully tax-exempt income = 60,000 EGP/year (personal exemption 20,000 + 0% bracket 40,000). No tax calculated/withheld on the penalty deduction day wage." data-ar="التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000). لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم.">التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000). لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم.</span>
+                <span data-en="Estimate only: Social Insurance is 11% of the entered insurable wage, limited to 2,700–16,700 EGP. Income-tax withholding must be computed cumulatively from payroll records, including personal deductions and year-to-date pay; this screen therefore cannot be used as a payroll withholding result." data-ar="تقدير فقط: التأمينات ١١٪ من الأجر التأميني المُدخل ضمن ٢,٧٠٠–١٦,٧٠٠ جنيه. يجب احتساب ضريبة المرتبات تراكميًا من سجلات الأجور، بما يشمل الخصومات الشخصية وأجور السنة السابقة؛ لذا لا تستخدم هذه الشاشة كنتيجة استقطاع ضريبي نهائية.">تقدير فقط: التأمينات ١١٪ من الأجر التأميني المُدخل ضمن ٢,٧٠٠–١٦,٧٠٠ جنيه. يجب احتساب ضريبة المرتبات تراكميًا من سجلات الأجور، بما يشمل الخصومات الشخصية وأجور السنة السابقة؛ لذا لا تستخدم هذه الشاشة كنتيجة استقطاع ضريبي نهائية.</span>
               </p>
             </div>
             <div class="ded-field">
-              <label data-en="Insurable Wage (auto)" data-ar="الأجر التأميني (تلقائي)">الأجر التأميني (تلقائي)</label>
-              <input type="text" id="insurableWageDisp" readonly value="—" style="background:var(--surface); font-weight:700;">
+              <label for="insurableWageDisp" data-en="Registered insurable wage" data-ar="أجر الاشتراك التأميني المسجل">أجر الاشتراك التأميني المسجل</label>
+              <input type="number" id="insurableWageDisp" min="0" step="0.01" value="15000" style="background:var(--surface); font-weight:700;">
             </div>
             <div class="ded-field">
               <label data-en="Taxable Base (monthly)" data-ar="وعاء الضريبة (شهري)">وعاء الضريبة (شهري)</label>
@@ -623,6 +655,10 @@
               <div class="sum-clabel" data-en="Total Gross" data-ar="الإجمالي">الإجمالي</div>
               <div class="sum-cvalue" id="sGross">15,000.00 EGP</div>
             </div>
+            <div class="sum-card">
+              <div class="sum-clabel" data-en="Meal Allowance" data-ar="بدل الوجبة">بدل الوجبة</div>
+              <div class="sum-cvalue" id="sMeal">0.00 EGP</div>
+            </div>
             <div class="sum-card hidden" id="sInsCard">
               <div class="sum-clabel" data-en="Social Insurance (11%)" data-ar="التأمينات (11%)">التأمينات (11%)</div>
               <div class="sum-cvalue neg" id="sIns">-0.00 EGP</div>
@@ -630,6 +666,10 @@
             <div class="sum-card hidden" id="sTaxCard">
               <div class="sum-clabel" data-en="Income Tax" data-ar="ضريبة الدخل">ضريبة الدخل</div>
               <div class="sum-cvalue neg" id="sTax">-0.00 EGP</div>
+            </div>
+            <div class="sum-card hidden" id="sMealTaxCard">
+              <div class="sum-clabel" data-en="Meal Tax (10%)" data-ar="ضريبة الوجبة (10%)">ضريبة الوجبة (10%)</div>
+              <div class="sum-cvalue neg" id="sMealTax">-0.00 EGP</div>
             </div>
             <div class="sum-card">
               <div class="sum-clabel" data-en="Penalty Deduction" data-ar="خصم الجزاء">خصم الجزاء</div>
@@ -678,11 +718,48 @@
     let selectedCrew = null;
     let basicSalary  = 2000;   // الأجر الأساسي (حد أدنى 400 – أقصى 4000)
     let incentives   = 13000;  // الحوافز / الأجر المتغير
+    let numMeals     = 0;      // 0–30 وجبة
+    let mealMoney    = 0;      // numMeals × 60
     let penaltyAmt   = 0;
     let penaltyDesc  = '';
+    let priorPenaltyAmt = 0;
+
+    const MEAL_UNIT = 60;      // EGP per meal
+    const MEAL_TAX_RATE = 0.10;
 
     function getTotalGross() {
       return basicSalary + incentives;
+    }
+
+    function getMealMoney() {
+      return numMeals * MEAL_UNIT;
+    }
+
+    function getDailyBasicWage() {
+      return basicSalary / 30;
+    }
+
+    function getMonthlyPenaltyCap() {
+      return getDailyBasicWage() * 5;
+    }
+
+    function getRemainingPenaltyCap() {
+      return Math.max(0, getMonthlyPenaltyCap() - priorPenaltyAmt);
+    }
+
+    function capDisciplinaryDeduction(proposed, desc) {
+      const amount = Math.min(Math.max(0, proposed), getRemainingPenaltyCap());
+      const wasCapped = proposed > amount + 0.000001;
+      return {
+        amount,
+        desc,
+        isMonetary: true,
+        legalNote: wasCapped
+          ? (getLang()==='ar'
+            ? `تم تقييد الخصم إلى ${fmtEGP(amount)}: الحد الشهري المتبقي هو أجر أساسي خمسة أيام.`
+            : `Deduction limited to ${fmtEGP(amount)}: this is the remaining monthly cap of five daily basic wages.`)
+          : ''
+      };
     }
 
     // ── Boot ──────────────────────────────────────────────────────────────────
@@ -731,11 +808,17 @@
       // Crew manual amount
       document.getElementById('crewPenaltyAmt').addEventListener('input', onCrewAmtChange);
 
+      // Amount already deducted for disciplinary penalties this month
+      document.getElementById('priorPenaltyAmt').addEventListener('input', onPriorPenaltyAmtChange);
+
+      // Meal allowance (0–30 × 60 EGP)
+      document.getElementById('mealsNumber').addEventListener('input', onMealsChange);
+
       // Debounce timers so keyboard typing is not interrupted by clamp
       let basicDebounce = null;
       let incDebounce = null;
 
-      // Basic salary (min 400 – max 4000)
+      // Basic salary
       const basicNum = document.getElementById('basicNumber');
       const basicRng = document.getElementById('basicRange');
       basicNum.addEventListener('input', () => {
@@ -744,11 +827,12 @@
         if (raw === '' || raw === '-') return;
         const n = +raw;
         if (!isNaN(n)) {
-          basicRng.value = Math.min(4000, Math.max(400, n));
+          basicRng.value = Math.min(100000, Math.max(0, n));
           basicSalary = n; // temporary unclamped while typing
           updateRaise();
           updateTotalGross();
           recalcPenalty();
+          recalcCrewPenalty();
           updateSummary();
         }
         clearTimeout(basicDebounce);
@@ -760,6 +844,7 @@
           updateRaise();
           updateTotalGross();
           recalcPenalty();
+          recalcCrewPenalty();
           updateSummary();
         }, 900);
       });
@@ -772,6 +857,7 @@
         updateRaise();
         updateTotalGross();
         recalcPenalty();
+        recalcCrewPenalty();
         updateSummary();
       });
       basicRng.addEventListener('input', () => {
@@ -780,6 +866,7 @@
         updateRaise();
         updateTotalGross();
         recalcPenalty();
+        recalcCrewPenalty();
         updateSummary();
       });
 
@@ -825,17 +912,30 @@
       // Raise (auto = 7% of Basic; still editable manually)
       const raiseAmt = document.getElementById('raiseAmt');
       raiseAmt.addEventListener('input', () => {
-        recalcPenalty();
         updateSummary();
       });
+
+      document.getElementById('insurableWageDisp').addEventListener('input', updateSummary);
 
       // Deductions
       document.getElementById('enableDed').addEventListener('change', function() {
         document.getElementById('dedGrid').classList.toggle('hidden', !this.checked);
         document.getElementById('sTaxCard').classList.toggle('hidden', !this.checked);
         document.getElementById('sInsCard').classList.toggle('hidden', !this.checked);
+        document.getElementById('sMealTaxCard').classList.toggle('hidden', !this.checked);
         updateSummary();
       });
+    }
+
+    function onMealsChange() {
+      let v = parseInt(document.getElementById('mealsNumber').value, 10);
+      if (isNaN(v) || v < 0) v = 0;
+      if (v > 30) v = 30;
+      document.getElementById('mealsNumber').value = v;
+      numMeals = v;
+      mealMoney = getMealMoney();
+      document.getElementById('mealMoneyDisp').value = mealMoney;
+      updateSummary();
     }
 
     // ── Employee type switch ───────────────────────────────────────────────────
@@ -890,13 +990,15 @@
       if (note) { noteEl.textContent = note; noteEl.classList.remove('hidden'); }
       else       { noteEl.classList.add('hidden'); }
 
-      const { amount, desc, isMonetary } = calcPenalty(pen);
+      const { amount, desc, isMonetary, legalNote, requiresDecision } = calcPenalty(pen);
       penaltyAmt  = amount;
       penaltyDesc = desc;
 
       const calcEl = document.getElementById('regPenaltyCalc');
       if (isMonetary && amount > 0) {
-        calcEl.innerHTML = `<span class="penalty-tag">${fmt(amount)} EGP</span>`;
+        calcEl.innerHTML = `<span class="penalty-tag">${fmt(amount)} EGP</span>${legalNote ? `<div class="warn-tag">⚠ ${esc(legalNote)}</div>` : ''}`;
+      } else if (requiresDecision) {
+        calcEl.innerHTML = `<span class="warn-tag">⚠ ${getLang()==='ar'?'يلزم قرار مُسبب لتحديد المبلغ؛ لا يحسب تلقائياً. الحد المتبقي: ':'A reasoned decision must specify the amount; it is not calculated automatically. Remaining cap: '}${fmtEGP(getRemainingPenaltyCap())}</span>`;
       } else if (!isMonetary && pen !== '—') {
         calcEl.innerHTML = `<span class="warn-tag">⚠ ${getLang()==='ar'?'جزاء غير نقدي — لا يُخصم من المرتب':'Non-monetary — no salary deduction'}</span>`;
         penaltyAmt = 0;
@@ -966,14 +1068,28 @@
 
     function onCrewAmtChange() {
       const input = document.getElementById('crewPenaltyAmt');
-      const max = Number(input.max) || Infinity;
-      let v = parseInt(input.value, 10);
+      let v = parseFloat(input.value);
       if (isNaN(v)) v = 0;
-      v = Math.min(Math.max(v, 0), max);
-      input.value = v; // keep the field in sync with the clamped value that's actually used
-      penaltyAmt  = v;
+      const result = capDisciplinaryDeduction(v, getLang()==='ar' ? 'إدخال يدوي' : 'Manual entry');
+      input.value = result.amount.toFixed(2); // keep the field in sync with the legal cap actually used
+      penaltyAmt  = result.amount;
       penaltyDesc = getLang()==='ar' ? 'إدخال يدوي' : 'Manual entry';
       updatePenaltyExplain();
+      updateSummary();
+    }
+
+    function recalcCrewPenalty() {
+      if (selectedCrew) onCrewAmtChange();
+    }
+
+    function onPriorPenaltyAmtChange() {
+      const input = document.getElementById('priorPenaltyAmt');
+      let v = parseFloat(input.value);
+      if (isNaN(v) || v < 0) v = 0;
+      priorPenaltyAmt = Math.min(v, getMonthlyPenaltyCap());
+      input.value = priorPenaltyAmt.toFixed(2);
+      recalcPenalty();
+      recalcCrewPenalty();
       updateSummary();
     }
 
@@ -991,40 +1107,38 @@
     }
 
     // ── Penalty calculation (comprehensive) ──────────────────────────────────
-    // IMPORTANT: day-based penalties use Total Gross (basic + incentives) as directed
+    // Article 143 of Labour Law 14/2025: percentages and the five-day limit use daily basic wage.
     function calcPenalty(text) {
       if (!text || text === '—' || text === '-') return { amount: 0, desc: '', isMonetary: false };
       const t = text.toString();
-      const daily  = getTotalGross() / 30;   // ← من الأجر الشامل (أساسي + حوافز)
-      const raise  = getRaise();
+      const daily  = getDailyBasicWage();
 
-      // Percentage of daily wage (total gross)
-      if (t.includes('١٠٪') || t.includes('10%'))                        return { amount: daily * 0.10, desc: 'شامل يومي ×0.10', isMonetary: true };
-      if (t.includes('٧٥٪') || t.includes('75%'))                        return { amount: daily * 0.75, desc: 'شامل يومي ×0.75', isMonetary: true };
+      // Percentage of daily basic wage
+      if (t.includes('١٠٪') || t.includes('10%'))                        return capDisciplinaryDeduction(daily * 0.10, 'أجر أساسي يومي ×0.10');
+      if (t.includes('٧٥٪') || t.includes('75%'))                        return capDisciplinaryDeduction(daily * 0.75, 'أجر أساسي يومي ×0.75');
 
       // Fractions of a day
-      if (t.includes('ربع اليوم') || t.includes('ربع يوم'))              return { amount: daily * 0.25, desc: 'شامل يومي ÷4', isMonetary: true };
-      if (t.includes('نصف اليوم') || t.includes('نصف يوم'))              return { amount: daily * 0.5,  desc: 'شامل يومي ÷2', isMonetary: true };
-      if (t.includes('ثلاثة أرباع') )                                     return { amount: daily * 0.75, desc: 'شامل يومي ×0.75', isMonetary: true };
+      if (t.includes('ربع اليوم') || t.includes('ربع يوم'))              return capDisciplinaryDeduction(daily * 0.25, 'أجر أساسي يومي ÷4');
+      if (t.includes('نصف اليوم') || t.includes('نصف يوم'))              return capDisciplinaryDeduction(daily * 0.5,  'أجر أساسي يومي ÷2');
+      if (t.includes('ثلاثة أرباع') )                                     return capDisciplinaryDeduction(daily * 0.75, 'أجر أساسي يومي ×0.75');
 
       // Days (order matters: check longer phrases first)
-      if (t.includes('يوم ونصف'))                                         return { amount: daily * 1.5, desc: 'شامل يومي ×1.5', isMonetary: true };
-      if (t.includes('يومان'))                                            return { amount: daily * 2,   desc: 'شامل يومي ×2',   isMonetary: true };
-      if (t.includes('ثلاثة أيام'))                                       return { amount: daily * 3,   desc: 'شامل يومي ×3',   isMonetary: true };
-      if (t.includes('أربعة أيام'))                                       return { amount: daily * 4,   desc: 'شامل يومي ×4',   isMonetary: true };
-      if (t.includes('خمسة أيام'))                                        return { amount: daily * 5,   desc: 'شامل يومي ×5',   isMonetary: true };
+      if (t.includes('يوم ونصف'))                                         return capDisciplinaryDeduction(daily * 1.5, 'أجر أساسي يومي ×1.5');
+      if (t.includes('يومان'))                                            return capDisciplinaryDeduction(daily * 2,   'أجر أساسي يومي ×2');
+      if (t.includes('ثلاثة أيام'))                                       return capDisciplinaryDeduction(daily * 3,   'أجر أساسي يومي ×3');
+      if (t.includes('أربعة أيام'))                                       return capDisciplinaryDeduction(daily * 4,   'أجر أساسي يومي ×4');
+      if (t.includes('خمسة أيام'))                                        return capDisciplinaryDeduction(daily * 5,   'أجر أساسي يومي ×5');
       if (t === 'يوم' || (t.includes('يوم') && !t.includes('يومان') && !t.includes('يوم ونصف') && !t.includes('أيام')))
-                                                                           return { amount: daily * 1,   desc: 'شامل يومي ×1',   isMonetary: true };
+                                                                           return capDisciplinaryDeduction(daily, 'أجر أساسي يومي ×1');
 
-      // Raise-based
-      if (t.includes('نصف العلاوة') || t.includes('الحرمان من نصف العلاوة')) return { amount: raise * 0.5, desc: 'نصف العلاوة', isMonetary: true };
-      if (t.includes('خفض الأجر بمقدار علاوة') || t.includes('خصم من الأجر في حدود علاوة') || t.includes('خفض في حدود علاوة') || t.includes('خفض الأجر بمقدار علاوة على الأكثر')) return { amount: raise, desc: 'مقدار علاوة', isMonetary: true };
-      if (t.includes('خصم من الأجر') || t.includes('الخصم من الأجر'))   return { amount: daily,        desc: 'شامل يومي ×1',   isMonetary: true };
+      // These sanctions affect an entitlement or must be set in a reasoned decision; they are not a current-month automatic deduction.
+      if (t.includes('خصم من الأجر') || t.includes('الخصم من الأجر'))   return { amount: 0, desc: '', isMonetary: false, requiresDecision: true };
 
-      // Non-monetary penalties
+      // These sanctions alter a future entitlement or employment status, so they cannot be treated as a one-off payroll deduction.
       if (t.includes('إنذار'))                                            return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('تأجيل'))                                            return { amount: 0, desc: '', isMonetary: false };
-      if (t.includes('الحرمان من العلاوة') && !t.includes('نصف'))        return { amount: raise,        desc: 'قيمة العلاوة', isMonetary: true };
+      if (t.includes('الحرمان من العلاوة'))                               return { amount: 0, desc: '', isMonetary: false };
+      if (t.includes('خفض الأجر'))                                       return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('تأجيل الترقية'))                                    return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('الخفض إلى وظيفة'))                                  return { amount: 0, desc: '', isMonetary: false };
       if (t.includes('الفصل'))                                            return { amount: 0, desc: '', isMonetary: false };
@@ -1038,7 +1152,7 @@
     }
 
     // ── Egypt 2026 Social Insurance & Income Tax ──────────────────────────────
-    // SI: employee 11% of insurable wage (min 2,700 – max 16,700 EGP)
+    // SI: employee 11% of the registered insurable wage (2026: min 2,700 – max 16,700 EGP).
     // Tax: progressive annual brackets after deducting SI + personal exemption (20,000 EGP/year)
     // Total fully tax-exempt income = 60,000 EGP/year (personal 20k + first bracket 0% up to 40k)
     // No tax is calculated or withheld on the wage of the penalty deduction day
@@ -1063,8 +1177,8 @@
       return Math.min(SI_MAX, Math.max(SI_MIN, gross));
     }
 
-    function calcSocialInsurance(gross) {
-      return getInsurableWage(gross) * SI_RATE;
+    function calcSocialInsurance(insurableWage) {
+      return getInsurableWage(insurableWage) * SI_RATE;
     }
 
     function calcAnnualIncomeTax(annualGross, annualSI) {
@@ -1091,36 +1205,50 @@
     function updateSummary() {
       const enableDed  = document.getElementById('enableDed').checked;
       const gross      = getTotalGross();
+      mealMoney = getMealMoney();
 
       let insAmt = 0;
       let taxAmt = 0;
+      let mealTaxAmt = 0;
       let insurable = 0;
       let taxableMonthly = 0;
 
       if (enableDed) {
-        // لا تُحسب ولا تُحتجز ضريبة على أجر يوم الخصم → الوعاء الضريبي = الإجمالي − مبلغ الجزاء
+        // This is an annualized illustration only. Statutory payroll withholding is cumulative and needs payroll history.
+        // Progressive income tax applies to gross salary (basic + incentives) after SI & personal exemption.
+        // Meal allowance is taxed separately at a flat 10% and is not part of the progressive base.
         const grossForTax = Math.max(0, gross - penaltyAmt);
-        insurable = getInsurableWage(gross); // التأمينات تبقى على الإجمالي التأميني
-        insAmt = calcSocialInsurance(gross);
+        const registeredInsurableWage = parseFloat(document.getElementById('insurableWageDisp').value);
+        insurable = getInsurableWage(isNaN(registeredInsurableWage) ? 0 : registeredInsurableWage);
+        insAmt = calcSocialInsurance(insurable);
         taxAmt = calcMonthlyTax(grossForTax, insAmt);
-        // وعاء الضريبة الشهري التقريبي للعرض (بعد خصم يوم الجزاء)
+        mealTaxAmt = mealMoney * MEAL_TAX_RATE;
+        // وعاء الضريبة الشهري التقريبي للعرض (بعد خصم يوم الجزاء) — لا يشمل بدل الوجبة
         taxableMonthly = Math.max(0, grossForTax - insAmt - (PERSONAL_EXEMPTION_ANNUAL / 12));
       }
 
-      const net = Math.max(0, gross - taxAmt - insAmt - penaltyAmt);
+      // Net = gross + meal money − progressive tax − SI − meal tax − penalty
+      const net = Math.max(0, gross + mealMoney - taxAmt - insAmt - mealTaxAmt - penaltyAmt);
 
       document.getElementById('sBasic').textContent      = fmtEGP(basicSalary);
       document.getElementById('sIncentives').textContent = fmtEGP(incentives);
       document.getElementById('sGross').textContent      = fmtEGP(gross);
+      document.getElementById('sMeal').textContent       = fmtEGP(mealMoney);
       document.getElementById('sTax').textContent        = '-' + fmtEGP(taxAmt);
       document.getElementById('sIns').textContent        = '-' + fmtEGP(insAmt);
+      document.getElementById('sMealTax').textContent    = '-' + fmtEGP(mealTaxAmt);
       document.getElementById('sPenalty').textContent    = '-' + fmtEGP(penaltyAmt);
       document.getElementById('sNet').textContent        = fmtEGP(net);
 
-      const insDisp = document.getElementById('insurableWageDisp');
       const taxDisp = document.getElementById('taxableBaseDisp');
-      if (insDisp) insDisp.value = enableDed ? fmtEGP(insurable) : '—';
       if (taxDisp) taxDisp.value = enableDed ? fmtEGP(taxableMonthly) : '—';
+
+      const capHint = document.getElementById('penaltyCapHint');
+      if (capHint) {
+        capHint.textContent = getLang()==='ar'
+          ? `الحد المتبقي للخصم التأديبي هذا الشهر: ${fmtEGP(getRemainingPenaltyCap())} (حد الشهر = ${fmtEGP(getMonthlyPenaltyCap())}).`
+          : `Remaining disciplinary-deduction cap this month: ${fmtEGP(getRemainingPenaltyCap())} (monthly cap = ${fmtEGP(getMonthlyPenaltyCap())}).`;
+      }
     }
 
     function updatePenaltyExplain() {
@@ -1141,8 +1269,7 @@
     }
 
     function updateRaise() {
-      // افتراضي 7% من الأجر الأساسي
-      document.getElementById('raiseAmt').value = Math.round(basicSalary * 0.07);
+      // The actual periodic allowance is a payroll/contract value; never infer it from the basic wage.
     }
 
     function getRaise() {
@@ -1151,8 +1278,8 @@
     }
 
     function clampBasic(v) {
-      if (isNaN(v) || v < 400) return 400;
-      if (v > 4000) return 4000;
+      if (isNaN(v) || v < 0) return 0;
+      if (v > 100000) return 100000;
       return v;
     }
 
