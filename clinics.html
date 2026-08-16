@@ -578,15 +578,35 @@ async function sha256Hex(value) {
 
     const ARABIC_WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     // Formats an admin-picked date (YYYY-MM-DD, from <input type="date">) to
-    // match the existing "day name next to the date" convention already used
-    // for clinic dates, e.g. "الأحد 16/8/2026".
+    // match the existing clinic date convention, e.g. "2026-08-24 - الإثنين".
     function formatArabicDateWithWeekday(isoDateStr) {
       const parts = String(isoDateStr || '').split('-').map(Number);
       if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return '';
       const [year, month, day] = parts;
       const dateObj = new Date(year, month - 1, day);
       const weekday = ARABIC_WEEKDAYS[dateObj.getDay()];
-      return `${weekday} ${day}/${month}/${year}`;
+      const mm = String(month).padStart(2, '0');
+      const dd = String(day).padStart(2, '0');
+      return `${year}-${mm}-${dd} - ${weekday}`;
+    }
+
+    // Date restrictions for "اقرب وقت" picker: today .. today+30, no Fri/Sat.
+    function getDateRestrictions() {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const maxDate = new Date(today);
+      maxDate.setDate(maxDate.getDate() + 30);
+      const toIso = (d) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return { min: toIso(today), max: toIso(maxDate) };
+    }
+
+    function isWeekend(isoDateStr) {
+      const parts = String(isoDateStr || '').split('-').map(Number);
+      if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return false;
+      const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+      const day = dateObj.getDay(); // 5 = Friday, 6 = Saturday
+      return day === 5 || day === 6;
     }
 
     // Sheet header text is whatever was literally typed in row 1 (mixed
@@ -657,10 +677,11 @@ async function sha256Hex(value) {
 
           if (item.key === 'date' && needsDatePick) {
             const chosen = nearestTimeDates[row.sheetRow] || '';
+            const { min, max } = getDateRestrictions();
             return `<td>
               <div class="nearest-time-cell">
                 <span class="nearest-time-label">${escapeHtml(NEAREST_TIME_VALUE)}</span>
-                <input type="date" class="nearest-time-input" data-sheet-row="${row.sheetRow}" value="${escapeHtml(chosen)}" ${decided ? 'disabled' : ''} aria-label="${t('Pick a date for this patient', 'اختر تاريخاً لهذا المريض')}">
+                <input type="date" class="nearest-time-input" data-sheet-row="${row.sheetRow}" value="${escapeHtml(chosen)}" min="${min}" max="${max}" ${decided ? 'disabled' : ''} aria-label="${t('Pick a date for this patient', 'اختر تاريخاً لهذا المريض')}">
               </div>
             </td>`;
           }
@@ -1068,6 +1089,13 @@ async function sha256Hex(value) {
       if (!input) return;
       const sheetRow = Number(input.dataset.sheetRow);
       if (input.value) {
+        if (isWeekend(input.value)) {
+          input.value = '';
+          delete nearestTimeDates[sheetRow];
+          window.showToast?.(t('Fridays and Saturdays are not allowed.', 'لا يمكن اختيار يوم الجمعة أو السبت.'), 'warning');
+          renderClinicsTable();
+          return;
+        }
         nearestTimeDates[sheetRow] = input.value;
       } else {
         delete nearestTimeDates[sheetRow];
