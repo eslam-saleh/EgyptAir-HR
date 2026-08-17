@@ -188,7 +188,7 @@ const holidayDefinitions = {
     ['2026-06-16', 'hijriNewYear'],
     ['2026-07-02', 'june30Observed'],
     ['2026-07-23', 'julyRevolution'],
-    ['2026-08-26', 'prophetBirthday'],
+    ['2026-08-27', 'prophetBirthday'],
     ['2026-10-08', 'armedForcesObserved']
   ],
   2027: [
