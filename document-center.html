@@ -44,14 +44,108 @@
         <h1 data-en="Search and download work documents." data-ar="ابحث وحمل مستندات العمل.">Search and download work documents.</h1>
         <p data-en="Access official Word and Excel templates. Use the search bar to find specific files quickly." data-ar="استخدم شريط البحث للعثور على الملفات .">Access official Word and Excel templates. Use the search bar to find specific files quickly.</p>
 
-        <div class="search-zone" style="margin-top: 20px;">
+        <!-- Search mode tabs: Documents (default, active) | Employees -->
+        <div class="search-mode-tabs" style="display:flex; gap:10px; margin-top:20px; margin-bottom:14px;">
+          <button type="button" class="segmented-btn active" id="tabDocuments" data-search-mode="documents" style="flex:1; padding:12px 16px; border-radius:12px; font-weight:600; background:var(--primary, #0b5cad); color:#fff; border-color:var(--primary, #0b5cad);">
+            <span data-en="Search documents" data-ar="بحث المستندات">بحث المستندات</span>
+          </button>
+          <button type="button" class="segmented-btn" id="tabEmployees" data-search-mode="employees" style="flex:1; padding:12px 16px; border-radius:12px; font-weight:600;">
+            <span data-en="Search employees" data-ar="بحث الموظفين">بحث الموظفين</span>
+          </button>
+        </div>
+
+        <div id="documentSearchZone" class="search-zone">
           <input type="text" id="documentSearch" class="search-input" data-en="Search documents..." data-ar="ابحث عن المستندات..." placeholder="Search documents...">
+        </div>
+
+        <div id="employeeSearchZone" class="search-zone" hidden>
+          <input type="text" id="employeeSearch" class="search-input" data-en="Search employees by name or code..." data-ar="ابحث عن الموظف بالاسم أو الكود..." placeholder="ابحث عن الموظف بالاسم أو الكود...">
         </div>
 
         <div id="documentFormPanel" class="document-form-panel" hidden>
           <h3 id="documentFormTitle"></h3>
           <p class="form-note" id="documentFormNote"></p>
           <form id="placeholderForm">
+            <div class="document-form-field" id="employeeGenderField">
+              <label data-en="Employee gender" data-ar="جنس الموظف">Employee gender</label>
+              <div class="gender-toggle" role="radiogroup" aria-label="Employee gender">
+                <label class="gender-option">
+                  <input type="radio" name="employeeGender" id="genderMale" value="male" checked>
+                  <span class="gender-pill">
+                    <svg class="gender-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M14 14c0-2.2-1.8-4-4-4s-4 1.8-4 4v6h8v-6z"/><path d="M16 4l4 4M20 4v4h-4"/></svg>
+                    <span data-en="Male" data-ar="ذكر">Male</span>
+                  </span>
+                </label>
+                <label class="gender-option">
+                  <input type="radio" name="employeeGender" id="genderFemale" value="female">
+                  <span class="gender-pill">
+                    <svg class="gender-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 12v8M9 17h6"/><path d="M12 20v-2"/></svg>
+                    <span data-en="Female" data-ar="أنثى">Female</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <style>
+              .gender-toggle {
+                display: flex;
+                gap: 10px;
+                margin-top: 6px;
+              }
+              .gender-option {
+                flex: 1;
+                margin: 0 !important;
+                cursor: pointer;
+                text-transform: none !important;
+                font-weight: 600;
+              }
+              .gender-option input {
+                position: absolute;
+                opacity: 0;
+                width: 0;
+                height: 0;
+                pointer-events: none;
+              }
+              .gender-pill {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 12px 16px;
+                border-radius: 14px;
+                border: 2px solid var(--border, #d0d7de);
+                background: var(--surface, #f6f8fa);
+                color: var(--text, #1f2328);
+                transition: all 0.2s ease;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+                user-select: none;
+              }
+              .gender-pill:hover {
+                border-color: var(--primary, #0b5cad);
+                background: rgba(11, 92, 173, 0.06);
+              }
+              .gender-option input:checked + .gender-pill {
+                border-color: var(--primary, #0b5cad);
+                background: linear-gradient(135deg, var(--primary, #0b5cad) 0%, #0a4a8f 100%);
+                color: #fff;
+                box-shadow: 0 4px 14px rgba(11, 92, 173, 0.35);
+                transform: translateY(-1px);
+              }
+              .gender-option input:focus-visible + .gender-pill {
+                outline: 3px solid rgba(11, 92, 173, 0.35);
+                outline-offset: 2px;
+              }
+              .gender-icon {
+                flex-shrink: 0;
+              }
+              [data-theme="dark"] .gender-pill {
+                background: var(--surface, #21262d);
+                border-color: var(--border, #30363d);
+                color: var(--text, #e6edf3);
+              }
+              [data-theme="dark"] .gender-pill:hover {
+                background: rgba(11, 92, 173, 0.15);
+              }
+            </style>
             <div class="document-form-fields" id="documentFormFields"></div>
             <div class="document-form-actions">
               <button class="primary-btn" type="submit" id="generatePdfBtn"></button>
@@ -65,9 +159,14 @@
         </div>
       </div>
 
-      <div class="panel-card">
+      <div class="panel-card" id="documentsPanel">
         <h2 data-en="Available documents" data-ar="المستندات المتاحة">Available documents</h2>
         <div class="document-list" id="documentList"></div>
+      </div>
+
+      <div class="panel-card" id="employeesPanel" hidden>
+        <h2 data-en="Employee results" data-ar="نتائج الموظفين">نتائج الموظفين</h2>
+        <div class="document-list" id="employeeResults"></div>
       </div>
     </section>
   </main>
@@ -119,16 +218,201 @@
     const FOLDER_ID = '1j6DuR_aAvrqJIkbRebdrIGTdUN86Jm8Q';
     const API_KEY   = 'AIzaSyAsl5N735tOpOjkcQK4kEritH6noDBH2eA';
 
-    const ARABIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
     const PLACEHOLDER_RE = /\{([^{}]+)\}/g;
     const WORD_XML_RE = /^word\/(document|header|footer|footnotes|endnotes)\d*\.xml$/;
 
-    function toArabicDigits(value) {
-      return String(value ?? '').replace(/\d/g, (digit) => ARABIC_DIGITS[Number(digit)]);
+    // ── Employee-gender text conversion (male → female) ──────────────────
+    // When "Female" is selected, the downloaded document is walked word-by-word
+    // and masculine forms referring to the employee are swapped for feminine
+    // ones. This runs on the FINAL rendered text (template prose + whatever the
+    // user typed into the fields), after all {placeholders} are filled in.
+    //
+    // Two things make naive find/replace unsafe for Arabic here, both fixed below:
+    //  - JS regex \b only recognizes [A-Za-z0-9_] as "word" characters, so
+    //    \bكلمة\b silently never matches Arabic at all. Word edges are checked
+    //    manually instead (not preceded/followed by another Arabic letter).
+    //  - These templates often have manually-inserted tatweel/kashida stretch
+    //    characters (ـ) *inside* words for justification (e.g. "الســـيد"),
+    //    which would break an exact-string match. Every pattern below tolerates
+    //    optional tatweel between each letter of the search word; the replacement
+    //    itself comes out clean (a minor, contained side effect only on the
+    //    specific word being converted, not the rest of the document).
+    //
+    // "السيد" is genuinely ambiguous on its own — most letters address one
+    // official (e.g. "السيد الاستاذ / مدير عام...") and separately refer to the
+    // employee (e.g. "السيد / {اسم المذكور}"). Checked against all 47 templates:
+    // every recipient/addressee reference has "السيد" immediately followed by
+    // another honorific + a job title; every employee reference has "السيد"
+    // followed by "/", "المذكور", or plain prose. So "السيد" is only converted
+    // when NOT immediately followed by one of these guard words.
+    //
+    // Deliberately EXCLUDED from the table — checked every occurrence of each
+    // across all 47 templates:
+    //  - عليه / اليه / له / فيه / منه (bare) — overwhelmingly refer to "the
+    //    penalty" / "the order" / "the leave", not the employee. A few *specific
+    //    phrases* where له unambiguously means "to/for the employee" are still
+    //    converted below (المستحق له، المقررة له، التصريح له، يسبق له) — only
+    //    the له->لها part changes; the adjective before it agrees with a
+    //    masculine noun (الاجر/الاجازات/التصريح) that never changes.
+    //  - يمحى / يخفض / يمد / يستحق / يتم / يجوز / يعتمد / يسمح / كأن لم يكن —
+    //    all impersonal, or agree with "the penalty/order/system" as their
+    //    grammatical subject, never the employee.
+    //  - الزوج / يعمل (in "لمرافقة الزوجه او الزوج الذى يعمل بالخارج") — this
+    //    citation already covers both directions ("wife OR husband"); the
+    //    spouse's gender is the OPPOSITE of the employee's, not the same, so
+    //    this must never be touched by the employee-gender toggle.
+    //  - العامل / الموظف المختص / محال — either a generic legal-citation noun
+    //    (not this specific person) or, in the one letter that lists multiple
+    //    employees at once, ambiguous as to which one is meant.
+    const ARABIC_LETTER_RANGE = '\\u0621-\\u064A';
+
+    function tatweelTolerantSource(word) {
+      return word.split('').map((ch) => ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\u0640*');
+    }
+
+    function arabicWordRegex(word) {
+      return new RegExp(
+        `(?<![${ARABIC_LETTER_RANGE}])${tatweelTolerantSource(word)}(?![${ARABIC_LETTER_RANGE}])`,
+        'g'
+      );
+    }
+
+    const ALSAYYED_GUARD_WORDS = ['الاستاذ', 'الدكتور', 'المحاسب', 'اللواء', 'المهندس', 'الطيار', 'وزير'];
+
+    // Some system-constant role-holders (see the block above) are referenced
+    // the exact same way as the employee subject — "السيد / {name}" — so the
+    // honorific-word guard alone can't tell them apart once the placeholder is
+    // rendered (e.g. "يتولى أمانة اللجنة السيد / رزق عبدالغنى إبراهيم"). Their
+    // actual names are read live from window.SiteData (already loaded on this
+    // page) and added to the guard, so the fixed committee secretary/heads are
+    // never mistaken for the employee no matter what their real name is.
+    function getGuardedPersonNames() {
+      const src = (typeof window !== 'undefined' && window.SiteData) || {};
+      return Object.keys(src)
+        .filter((key) => !/ID$/i.test(key) && key !== 'currentYear')
+        .map((key) => String(src[key] || '').trim())
+        .filter(Boolean);
+    }
+
+    function buildAlsayyedGuardRe() {
+      const guardTerms = ALSAYYED_GUARD_WORDS.concat(getGuardedPersonNames()).map(tatweelTolerantSource);
+      return new RegExp(
+        `(?<![${ARABIC_LETTER_RANGE}])${tatweelTolerantSource('السيد')}` +
+        `(?!\\u0640*\\s*\\/?\\s*(?:${guardTerms.join('|')}))(?![${ARABIC_LETTER_RANGE}])`,
+        'g'
+      );
+    }
+
+    const FEMINIZE_PAIRS = [
+      ['للمذكور', 'للمذكورة'], ['بالمذكور', 'بالمذكورة'], ['والمذكور', 'والمذكورة'],
+      ['كالمذكور', 'كالمذكورة'], ['المذكور', 'المذكورة'],
+      ['للمتقدم', 'للمتقدمة'], ['بالمتقدم', 'بالمتقدمة'], ['والمتقدم', 'والمتقدمة'], ['المتقدم', 'المتقدمة'],
+      ['للسيد', 'للسيدة'], ['بالسيد', 'بالسيدة'], ['والسيد', 'والسيدة'], ['كالسيد', 'كالسيدة'],
+      // NOTE: هو/انه/إنه (bare or و-prefixed) were removed after checking every
+      // single occurrence across all 47 templates: "هو" appears exactly once
+      // and refers to "الجزاء" ("the penalty IS number X"), not the employee;
+      // every "انه" variant appears only as "بانه", the impersonal "that"
+      // connector ("نحيط علما بانه...") which never changes with anyone's
+      // gender. Zero confirmed correct uses of either, so both are excluded
+      // rather than guessed at — same reasoning as عليه/اليه/له/فيه/منه above.
+      //
+      // قام / طلبه / يحضر have zero occurrences in this specific 47-file
+      // sample — they're kept only because they were given directly as
+      // examples of words that needed converting, and (unlike هو/انه) nothing
+      // in the corpus contradicts them. تقدم was a same-family guess of mine,
+      // not a confirmed case, and is genuinely ambiguous (a same-root Form I
+      // verb "تقدُم" means "precede/being ancient", unrelated to applying) —
+      // dropped rather than risk it.
+      ['قام', 'قامت'],
+      ['طلبه', 'طلبها'], ['يحضر', 'تحضر'], ['يجازى', 'تجازى'], ['يجازي', 'تجازي'],
+      ['وقام', 'وقامت'], ['وطلبه', 'وطلبها'],
+      ['ويحضر', 'وتحضر'], ['ويجازى', 'وتجازى'], ['ويجازي', 'وتجازي'],
+      // Added after a full second pass through all 47 templates: every ي- and
+      // ت-prefixed verb was checked in context to confirm it actually agrees
+      // with the employee (not "the penalty"/"the order"/another role-holder)
+      // before being added here.
+      ['يتحمل', 'تتحمل'], ['ويتحمل', 'وتتحمل'],
+      ['يتظلم', 'تتظلم'], ['ويتظلم', 'وتتظلم']
+    ].sort((a, b) => b[0].length - a[0].length); // longest first
+
+    // Phrase-level entries: safer than a bare له/تسلم/انتظم rule (all
+    // ambiguous elsewhere in the corpus — see exclusions above) because these
+    // exact multi-word constructions were confirmed unambiguous by checking
+    // every occurrence.
+    const FEMINIZE_PHRASES = [
+      ['المستحق له', 'المستحق لها'],
+      ['المقررة له', 'المقررة لها'],
+      ['التصريح له', 'التصريح لها'],
+      ['يسبق له', 'يسبق لها'],
+      ['تسلم العمل', 'تسلمت العمل'],
+      ['انتظم بالعمل', 'انتظمت بالعمل']
+    ].sort((a, b) => b[0].length - a[0].length);
+
+    const FEMINIZE_WORD_TABLE = FEMINIZE_PAIRS.map(([m, f]) => [arabicWordRegex(m), f]);
+    const FEMINIZE_PHRASE_TABLE = FEMINIZE_PHRASES.map(([m, f]) => [arabicWordRegex(m), f]);
+
+    function feminizeArabicText(text) {
+      if (!text) return text;
+      let result = text.replace(buildAlsayyedGuardRe(), 'السيدة');
+      // Phrases first (more specific/longer), then single words.
+      for (const [pattern, replacement] of FEMINIZE_PHRASE_TABLE) {
+        result = result.replace(pattern, replacement);
+      }
+      for (const [pattern, replacement] of FEMINIZE_WORD_TABLE) {
+        result = result.replace(pattern, replacement);
+      }
+      return result;
+    }
+
+    // Walks each paragraph's <w:t> runs, joins their text, feminizes the
+    // joined string, then writes it back. Real Word documents frequently split
+    // a single visual word across multiple runs (spell-check, minor formatting
+    // edits, etc.) — matching node-by-node would miss any word straddling that
+    // boundary, so text is merged per paragraph first, matched once, and (only
+    // if it actually changed) written into the first run with the rest cleared.
+    // This is the same general strategy docxtemplater itself uses for the same
+    // problem when matching {placeholders}. Table cells are handled for free
+    // since each cell's content is itself wrapped in <w:p> paragraphs.
+    function feminizeWordXml(xml) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xml, 'application/xml');
+      if (doc.getElementsByTagName('parsererror').length) return xml;
+
+      const paragraphs = doc.getElementsByTagName('w:p');
+      for (let p = 0; p < paragraphs.length; p += 1) {
+        const tNodes = [];
+        const innerNodes = paragraphs[p].getElementsByTagName('*');
+        for (let i = 0; i < innerNodes.length; i += 1) {
+          if (innerNodes[i].localName === 't') tNodes.push(innerNodes[i]);
+        }
+        if (!tNodes.length) continue;
+
+        const original = tNodes.map((n) => n.textContent || '').join('');
+        if (!original) continue;
+        const converted = feminizeArabicText(original);
+        if (converted === original) continue;
+
+        tNodes[0].textContent = converted;
+        if (/^\s|\s$/.test(converted)) tNodes[0].setAttribute('xml:space', 'preserve');
+        for (let i = 1; i < tNodes.length; i += 1) tNodes[i].textContent = '';
+      }
+
+      return new XMLSerializer().serializeToString(doc);
+    }
+
+    function feminizeDocxZip(zip) {
+      iterateWordXmlFiles(zip, (path, file) => {
+        zip.file(path, feminizeWordXml(file.asText()));
+      });
     }
 
     function arabicDigitsToLatin(str) {
       return String(str || '').replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+    }
+
+    // All numbers displayed or inserted into generated documents use English digits.
+    function toEnglishDigits(value) {
+      return arabicDigitsToLatin(String(value ?? ''));
     }
 
     let allDocs = [];
@@ -342,18 +626,19 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
       const fields = Array.from(formFields.querySelectorAll('[data-placeholder-index]'));
       let filled = 0;
 
+      // Stored as YYYY/MM/DD → display as D/M/YYYY.
       const hireFormatted = employee.hireDate
         ? (() => {
             const [y, m, d] = employee.hireDate.split('/');
-            return toArabicDigits(`${Number(d)}/${Number(m)}/${y}`);
+            return toEnglishDigits(`${Number(d)}/${Number(m)}/${y}`);
           })()
         : '';
 
-      // dateOfBirth is stored reversed in the same YYYY/MM/DD style as hireDate
+      // dateOfBirth is stored in the same YYYY/MM/DD style as hireDate.
       const dobFormatted = employee.dateOfBirth
         ? (() => {
             const [y, m, d] = String(employee.dateOfBirth).split('/');
-            return toArabicDigits(`${Number(d)}/${Number(m)}/${y}`);
+            return toEnglishDigits(`${Number(d)}/${Number(m)}/${y}`);
           })()
         : '';
 
@@ -424,18 +709,6 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
           field.value = value;
           field.dispatchEvent(new Event('input', { bubbles: true }));
           filled += 1;
-        }
-      });
-
-      // For any date field ("تاريخ") that is still empty after loading, add a
-      // "currentYear//" placeholder so it's quicker to complete manually.
-      const currentYear = new Date().getFullYear();
-      fields.forEach((field) => {
-        const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
-        if (!group) return;
-        const label = group.label || '';
-        if (labelContains(label, 'تاريخ') && !field.value) {
-          field.placeholder = `${currentYear}//`;
         }
       });
 
@@ -547,6 +820,12 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
     const saveFieldsBtn   = document.getElementById('saveFieldsBtn');
     const loadFieldsBtn   = document.getElementById('loadFieldsBtn');
     const loadFieldsInput = document.getElementById('loadFieldsInput');
+    const genderMaleRadio   = document.getElementById('genderMale');
+    const genderFemaleRadio = document.getElementById('genderFemale');
+
+    function isFemaleSelected() {
+      return !!(genderFemaleRadio && genderFemaleRadio.checked);
+    }
 
     function lang() {
       return window.EgyptAirPortal?.language || 'en';
@@ -854,6 +1133,7 @@ function renderPlaceholderForm(doc, placeholders) {
       selectedPlaceholders = [];
       autoPlaceholders = [];
       legacyDocHtml = null;
+      if (genderMaleRadio) genderMaleRadio.checked = true;
       formPanel.hidden = false;
       updateFormStaticText();
       formTitle.textContent = t(`Selected: ${doc.name}`, `المحدد: ${doc.name}`);
@@ -1044,7 +1324,7 @@ function renderPlaceholderForm(doc, placeholders) {
       formFields.querySelectorAll('[data-placeholder-index]').forEach((field) => {
         const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
         if (!group) return;
-        const value = toArabicDigits(normalizeFieldValue(field.value));
+        const value = toEnglishDigits(normalizeFieldValue(field.value));
         for (const rawKey of group.rawKeys) {
           values[rawKey] = value;
         }
@@ -1052,7 +1332,7 @@ function renderPlaceholderForm(doc, placeholders) {
 
       const fixedMap = getFixedDataMap();
       autoPlaceholders.forEach((group) => {
-        const value = toArabicDigits(fixedMap[normalizeKey(group.label)]);
+        const value = toEnglishDigits(fixedMap[normalizeKey(group.label)]);
         for (const rawKey of group.rawKeys) {
           values[rawKey] = value;
         }
@@ -1075,7 +1355,7 @@ function renderPlaceholderForm(doc, placeholders) {
       });
     }
 
-    function replacePlaceholdersInDocx(buffer, values, keepUnmatched) {
+    function replacePlaceholdersInDocx(buffer, values, keepUnmatched, feminize) {
       const zip = new window.PizZip(buffer);
       const doc = new window.docxtemplater(zip, {
         paragraphLoop: true,
@@ -1084,7 +1364,9 @@ function renderPlaceholderForm(doc, placeholders) {
         nullGetter: (part) => keepUnmatched ? `{${part.value}}` : ''
       });
       doc.render(values);
-      return doc.getZip().generate({
+      const outZip = doc.getZip();
+      if (feminize) feminizeDocxZip(outZip);
+      return outZip.generate({
         type: 'blob',
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       });
@@ -1148,6 +1430,7 @@ function renderPlaceholderForm(doc, placeholders) {
       if (!selectedDoc || (!selectedPlaceholders.length && !autoPlaceholders.length)) return;
 
       const values = readFormValues();
+      const feminize = isFemaleSelected();
       generatePdfBtn.disabled = true;
 
       try {
@@ -1156,7 +1439,8 @@ function renderPlaceholderForm(doc, placeholders) {
           // Fall back to the HTML/canvas approximation — this is the one case
           // where exact Word formatting can't be guaranteed.
           setFormStatus(t('Preparing PDF…', 'جارٍ تجهيز ملف PDF…'));
-          const html = replacePlaceholdersInHtml(legacyDocHtml, values, selectedPlaceholders);
+          let html = replacePlaceholdersInHtml(legacyDocHtml, values, selectedPlaceholders);
+          if (feminize) html = feminizeArabicText(html);
           const renderTarget = await renderHtmlToHost(html);
           await downloadPdfFromElement(renderTarget, getExportFileName(selectedDoc.name, 'pdf', true));
           docxRenderHost.innerHTML = '';
@@ -1165,7 +1449,7 @@ function renderPlaceholderForm(doc, placeholders) {
           // This preserves all original formatting, fonts, tables, and RTL layout exactly.
           setFormStatus(t('Preparing document…', 'جارٍ تجهيز المستند…'));
           const buffer = await downloadDriveFile(selectedDoc);
-          const docxBlob = replacePlaceholdersInDocx(buffer, values);
+          const docxBlob = replacePlaceholdersInDocx(buffer, values, false, feminize);
           downloadBlob(docxBlob, getExportFileName(selectedDoc.name, 'docx', true));
         }
 
@@ -1200,7 +1484,7 @@ function renderPlaceholderForm(doc, placeholders) {
 
         const values = {};
         auto.forEach((group) => {
-          const value = toArabicDigits(fixedMap[normalizeKey(group.label)]);
+          const value = toEnglishDigits(fixedMap[normalizeKey(group.label)]);
           group.rawKeys.forEach((rawKey) => { values[rawKey] = value; });
         });
 
@@ -1340,14 +1624,159 @@ function renderPlaceholderForm(doc, placeholders) {
 
     searchInput.addEventListener('input', (e) => renderDocuments(e.target.value));
     window.addEventListener('portal-language-change', () => {
-      renderDocuments(searchInput.value);
+      if (currentSearchMode === 'documents') {
+        renderDocuments(searchInput.value);
+      } else {
+        renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
+      }
       if (!formPanel.hidden && selectedDoc) {
         renderPlaceholderForm(selectedDoc, selectedPlaceholders);
       } else {
         updateFormStaticText();
       }
+      // refresh tab labels if needed
+      updateSearchModeUI();
     });
     document.addEventListener('DOMContentLoaded', fetchDriveFiles);
+
+    // ── Dual search mode: Documents | Employees ─────────────────────────────
+    const tabDocuments = document.getElementById('tabDocuments');
+    const tabEmployees = document.getElementById('tabEmployees');
+    const documentSearchZone = document.getElementById('documentSearchZone');
+    const employeeSearchZone = document.getElementById('employeeSearchZone');
+    const employeeSearchInput = document.getElementById('employeeSearch');
+    const documentsPanel = document.getElementById('documentsPanel');
+    const employeesPanel = document.getElementById('employeesPanel');
+    const employeeResults = document.getElementById('employeeResults');
+    let currentSearchMode = 'documents';
+
+    function setActiveTabStyles(activeBtn, inactiveBtn) {
+      if (!activeBtn || !inactiveBtn) return;
+      activeBtn.classList.add('active');
+      activeBtn.style.background = 'var(--primary, #0b5cad)';
+      activeBtn.style.color = '#fff';
+      activeBtn.style.borderColor = 'var(--primary, #0b5cad)';
+      inactiveBtn.classList.remove('active');
+      inactiveBtn.style.background = '';
+      inactiveBtn.style.color = '';
+      inactiveBtn.style.borderColor = '';
+    }
+
+    function updateSearchModeUI() {
+      if (currentSearchMode === 'documents') {
+        setActiveTabStyles(tabDocuments, tabEmployees);
+        if (documentSearchZone) documentSearchZone.hidden = false;
+        if (employeeSearchZone) employeeSearchZone.hidden = true;
+        if (documentsPanel) documentsPanel.hidden = false;
+        if (employeesPanel) employeesPanel.hidden = true;
+        // Keep form panel behavior unchanged when in documents mode
+      } else {
+        setActiveTabStyles(tabEmployees, tabDocuments);
+        if (documentSearchZone) documentSearchZone.hidden = true;
+        if (employeeSearchZone) employeeSearchZone.hidden = false;
+        if (documentsPanel) documentsPanel.hidden = true;
+        if (employeesPanel) employeesPanel.hidden = false;
+        // Hide document form when switching to employees
+        if (formPanel && !formPanel.hidden) hideDocumentForm();
+        renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
+      }
+    }
+
+    function switchSearchMode(mode) {
+      if (mode !== 'documents' && mode !== 'employees') return;
+      currentSearchMode = mode;
+      updateSearchModeUI();
+    }
+
+    if (tabDocuments) {
+      tabDocuments.addEventListener('click', () => switchSearchMode('documents'));
+    }
+    if (tabEmployees) {
+      tabEmployees.addEventListener('click', () => switchSearchMode('employees'));
+    }
+
+    /** Reverse the cipher used in orgTree (names stored reversed). */
+    function displayEmployeeName(storedName) {
+      return storedName ? String(storedName).split('').reverse().join('') : '';
+    }
+
+    function formatDateDisplay(yyyyMmDd) {
+      if (!yyyyMmDd) return '—';
+      const parts = arabicDigitsToLatin(String(yyyyMmDd)).split(/[\/-]/);
+      if (parts.length !== 3) return arabicDigitsToLatin(String(yyyyMmDd));
+      const [y, m, d] = parts;
+      // Roster values are stored as YYYY/MM/DD; display consistently as D/M/YYYY.
+      return toEnglishDigits(`${Number(d)}/${Number(m)}/${y}`);
+    }
+
+    function renderEmployeeResults(filter) {
+      if (!employeeResults) return;
+      const employees = window.allEmployees || [];
+      const q = normalizeSearchText(filter || '');
+      const qLatin = arabicDigitsToLatin(q).replace(/\s+/g, '');
+
+      let matched = employees;
+      if (q) {
+        matched = employees.filter((emp) => {
+          const name = normalizeSearchText(displayEmployeeName(emp.name));
+          const codeStr = String(emp.code || '');
+          const codeNorm = normalizeSearchText(codeStr);
+          const job = normalizeSearchText(emp.job || '');
+          if (name.includes(q)) return true;
+          if (codeNorm.includes(q) || codeStr.includes(qLatin)) return true;
+          if (job.includes(q)) return true;
+          return false;
+        });
+      }
+
+      const limit = q ? 80 : 30;
+      const shown = matched.slice(0, limit);
+
+      if (!shown.length) {
+        employeeResults.innerHTML = `<div class="empty-state">${t('No employees found.', 'لم يتم العثور على موظفين.')}</div>`;
+        return;
+      }
+
+      const countNote = matched.length > limit
+        ? `<p class="document-meta" style="margin-bottom:12px;">${t(`Showing ${shown.length} of ${matched.length} — refine search`, `عرض ${shown.length} من ${matched.length} — ضيّق البحث`)}</p>`
+        : (q ? `<p class="document-meta" style="margin-bottom:12px;">${t(`${matched.length} result(s)`, `${matched.length} نتيجة`)}</p>` : '');
+
+      employeeResults.innerHTML = countNote + shown.map((emp) => {
+        const name = escapeHtml(displayEmployeeName(emp.name));
+        const code = escapeHtml(arabicDigitsToLatin(String(emp.code ?? '')));
+        const job = escapeHtml(emp.job || '—');
+        const sector = escapeHtml(emp.sector || '—');
+        const department = escapeHtml(emp.department || '—');
+        const subDept = escapeHtml(emp.subDepartment || '—');
+        const hire = formatDateDisplay(emp.hireDate);
+        const dob = formatDateDisplay(emp.dateOfBirth);
+
+        // Single column: name, then code above job, then remaining fields
+        return `
+          <article class="document-row employee-result-card">
+            <p class="document-name employee-result-name">${name}</p>
+            <div class="employee-result-fields">
+              <div class="employee-field"><strong class="employee-field-label">${t('Code', 'الكود')}</strong><span class="employee-field-value">${code}</span></div>
+              <div class="employee-field"><strong class="employee-field-label">${t('Job', 'الوظيفة')}</strong><span class="employee-field-value">${job}</span></div>
+              <div class="employee-field"><strong class="employee-field-label">${t('Sector', 'القطاع')}</strong><span class="employee-field-value">${sector}</span></div>
+              <div class="employee-field"><strong class="employee-field-label">${t('Department', 'الإدارة')}</strong><span class="employee-field-value">${department}</span></div>
+              <div class="employee-field"><strong class="employee-field-label">${t('Sub-dept', 'القسم')}</strong><span class="employee-field-value">${subDept}</span></div>
+              <div class="employee-field"><strong class="employee-field-label">${t('Hire date', 'تاريخ التعيين')}</strong><span class="employee-field-value">${hire}</span></div>
+              <div class="employee-field"><strong class="employee-field-label">${t('Date of birth', 'تاريخ الميلاد')}</strong><span class="employee-field-value">${dob}</span></div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    if (employeeSearchInput) {
+      employeeSearchInput.addEventListener('input', (e) => {
+        renderEmployeeResults(e.target.value);
+      });
+    }
+
+    // Initial UI state
+    updateSearchModeUI();
   </script>
 </body>
 </html>
