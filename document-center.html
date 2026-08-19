@@ -1713,19 +1713,12 @@ function renderPlaceholderForm(doc, placeholders) {
       if (!employeeResults) return;
       const employees = window.allEmployees || [];
       const q = normalizeSearchText(filter || '');
-      const qLatin = arabicDigitsToLatin(q).replace(/\s+/g, '');
 
       let matched = employees;
       if (q) {
         matched = employees.filter((emp) => {
           const name = normalizeSearchText(displayEmployeeName(emp.name));
-          const codeStr = String(emp.code || '');
-          const codeNorm = normalizeSearchText(codeStr);
-          const job = normalizeSearchText(emp.job || '');
-          if (name.includes(q)) return true;
-          if (codeNorm.includes(q) || codeStr.includes(qLatin)) return true;
-          if (job.includes(q)) return true;
-          return false;
+          return name.includes(q);
         });
       }
 
