@@ -733,7 +733,12 @@ function calcAdd() {
   let result = new Date(from);
   if (unit === 'day') result.setDate(result.getDate() + signed);
   else if (unit === 'week') result.setDate(result.getDate() + signed * 7);
-  else if (unit === 'month') result = addMonths(result, signed);
+  else if (unit === 'month') {
+    // Inclusive period end: start + N months ends the day before the
+    // same calendar date N months later (e.g. 2025/4/5 + 3 months → 2025/7/4).
+    result = addMonths(result, signed);
+    if (signed > 0) result.setDate(result.getDate() - 1);
+  }
   else if (unit === 'year') result = addYears(result, signed);
 
   const c = copy();
