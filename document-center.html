@@ -1716,9 +1716,12 @@ function renderPlaceholderForm(doc, placeholders) {
 
       let matched = employees;
       if (q) {
+        // Allow search by name or by employee code (Arabic or Latin digits).
+        const qDigits = arabicDigitsToLatin(q).replace(/\s+/g, '');
         matched = employees.filter((emp) => {
           const name = normalizeSearchText(displayEmployeeName(emp.name));
-          return name.includes(q);
+          const codeStr = arabicDigitsToLatin(String(emp.code ?? '')).replace(/\s+/g, '');
+          return name.includes(q) || (qDigits && codeStr.includes(qDigits));
         });
       }
 
