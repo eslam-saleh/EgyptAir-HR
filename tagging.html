@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="EgyptAir administrative DOCX tagging tool">
+  <title>DOCX Tagging | EgyptAir Work Tools</title>
+  <link rel="icon" href="egyptair-logo_.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="portal.css">
+  <style>
+    /* EgyptAir Portal Continuation — concise upload-only workflow. */
+    .portal-header { gap: 10px; }
+    .portal-nav { gap: 3px; }
+    .portal-nav a { padding: 0 5px; font-size: .72rem; }
+    .tagging-page { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 64px; }
+    .tagging-hero { position: relative; overflow: hidden; margin-bottom: 18px; padding: 26px 32px; }
+    .tagging-hero::after { content: ""; position: absolute; inset: auto -3rem -7rem auto; width: 13rem; height: 13rem; border: 1.35rem solid color-mix(in srgb, var(--primary) 10%, transparent); border-radius: 50%; pointer-events: none; }
+    .tagging-hero > * { position: relative; z-index: 1; }
+    .tagging-hero h1 { margin: 0; font-size: clamp(1.85rem, 3.4vw, 2.7rem); }
+    .tagging-hero p { max-width: 64ch; margin: 8px 0 0; color: var(--muted); line-height: 1.55; }
+    .eyebrow { margin: 0 0 7px; color: var(--accent); font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .tagging-workspace { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(300px, .8fr); gap: 18px; align-items: stretch; }
+    .upload-card, .status-card { padding: clamp(22px, 3vw, 30px); }
+    .file-input { min-height: 258px; display: grid; place-items: center; gap: 10px; padding: 28px; border: 2px dashed var(--line); border-radius: 8px; background: var(--surface-2); color: var(--muted); text-align: center; outline: none; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
+    .file-input:hover, .file-input:focus-within, .file-input.is-dragover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 7%, var(--surface-2)); transform: translateY(-1px); }
+    .file-input input { display: none; }
+    .file-input strong { color: var(--text); font-size: 1.08rem; }
+    .file-input small { color: var(--muted); line-height: 1.5; }
+    .browse-docx { min-height: 42px; border: 1px solid var(--line); border-radius: 6px; padding: 0 16px; background: var(--surface); color: var(--primary); font-weight: 800; cursor: pointer; transition: transform .16s ease, background .16s ease; }
+    .browse-docx:active { transform: scale(.97); }
+    .selected-file { min-height: 21px; margin: 0; color: var(--primary); font-size: .86rem; font-weight: 700; overflow-wrap: anywhere; }
+    .upload-assurance { margin: 14px 0 0; color: var(--muted); font-size: .86rem; text-align: center; }
+    .status-card { display: flex; flex-direction: column; justify-content: space-between; min-height: 100%; border-top: 3px solid var(--primary); }
+    .status-kicker { margin: 0 0 8px; color: var(--muted); font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .status-heading { margin: 0; color: var(--text); font-size: 1.25rem; }
+    .status-chip { display: inline-flex; align-items: center; width: max-content; min-height: 30px; margin-top: 18px; padding: 0 11px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 13%, var(--surface)); color: var(--primary); font-size: .82rem; font-weight: 800; }
+    .status-chip::before { content: ""; width: 7px; height: 7px; margin-right: 7px; border-radius: 50%; background: currentColor; }
+    html[dir="rtl"] .status-chip::before { margin-right: 0; margin-left: 7px; }
+    .status-chip.processing { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: #a47b00; }
+    .status-chip.success { background: color-mix(in srgb, var(--success) 12%, var(--surface)); color: var(--success); }
+    .status-chip.error { background: color-mix(in srgb, var(--danger) 11%, var(--surface)); color: var(--danger); }
+    .status-detail { margin: 15px 0 0; color: var(--muted); line-height: 1.6; }
+    .status-footer { margin: 28px 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; line-height: 1.55; }
+    @media (max-width: 760px) { .tagging-workspace { grid-template-columns: 1fr; } .status-card { min-height: 220px; } }
+    @media (max-width: 560px) { .tagging-page { width: min(100% - 20px, 1120px); padding-top: 20px; } .tagging-hero { padding: 22px; } }
+  </style>
+</head>
+<body>
+  <header class="portal-header">
+    <a class="brand" href="index.html" aria-label="EgyptAir home">
+      <img src="egyptair-logo_.png" alt="EgyptAir logo">
+      <span><strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong><small data-en="Human Resources Management" data-ar="ادارة الموارد البشرية">Human Resources Management</small></span>
+    </a>
+    <nav class="portal-nav" aria-label="Main navigation">
+      <a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a>
+      <a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a>
+      <a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a>
+      <a href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a>
+      <a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a>
+      <a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">Penalties & Salaries</a>
+      <a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a>
+      <a class="active" href="tagging.html" data-en="DOCX Tagging" data-ar="تهيئة مستندات DOCX">DOCX Tagging</a>
+    </nav>
+    <div class="portal-actions" aria-label="Display controls">
+      <button class="segmented-btn active" type="button" data-lang-option="en">EN</button>
+      <button class="segmented-btn" type="button" data-lang-option="ar">AR</button>
+      <button class="theme-btn" type="button" data-theme-toggle data-en="Dark" data-ar="داكن">Dark</button>
+    </div>
+  </header>
+
+  <main class="tagging-page">
+    <section class="hero-panel tagging-hero">
+      <p class="eyebrow" data-en="Human resources · document center" data-ar="الموارد البشرية · مركز المستندات">Human resources · document center</p>
+      <h1 data-en="DOCX tagging" data-ar="تهيئة مستندات DOCX">DOCX tagging</h1>
+      <p data-en="Upload one administrative document to create a standardized tagged copy." data-ar="ارفع مستنداً إدارياً واحداً لإنشاء نسخة مهيأة بالقوالب القياسية.">Upload one administrative document to create a standardized tagged copy.</p>
+    </section>
+
+    <section class="tagging-workspace" aria-label="DOCX tagging workspace">
+      <section class="panel-card upload-card" aria-label="DOCX tagging upload">
+        <div id="docx-drop-zone" class="file-input" role="group" aria-labelledby="docx-upload-title" tabindex="0">
+        <input id="docx-input" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+        <span aria-hidden="true">⇧</span>
+        <strong id="docx-upload-title" data-en="Choose DOCX" data-ar="اختر ملف DOCX">Choose DOCX</strong>
+        <button id="browse-docx" class="browse-docx" type="button" data-en="Browse for DOCX" data-ar="استعراض ملف DOCX">Browse for DOCX</button>
+        <p id="selected-file" class="selected-file" aria-live="polite" data-en="No file selected" data-ar="لم يتم اختيار ملف">No file selected</p>
+        </div>
+        <p class="upload-assurance" data-en="DOCX files only · Processing stays on this device" data-ar="ملفات DOCX فقط · تتم المعالجة على هذا الجهاز">DOCX files only · Processing stays on this device</p>
+      </section>
+      <aside class="panel-card status-card" aria-labelledby="status-heading">
+        <div><p class="status-kicker" data-en="Document status" data-ar="حالة المستند">Document status</p><h2 id="status-heading" class="status-heading" data-en="Automatic processing" data-ar="معالجة تلقائية">Automatic processing</h2><p id="status" class="status-chip ready" role="status" aria-live="polite" data-en="Ready" data-ar="جاهز">Ready</p><p id="status-detail" class="status-detail" data-en="Select a DOCX and the tagged copy will download when processing is complete." data-ar="اختر ملف DOCX وسيتم تنزيل النسخة المهيأة عند اكتمال المعالجة.">Select a DOCX and the tagged copy will download when processing is complete.</p></div>
+        <p class="status-footer" data-en="No server upload. No JSON report is created." data-ar="لا يتم رفع الملفات إلى خادم ولا يتم إنشاء تقرير JSON.">No server upload. No JSON report is created.</p>
+      </aside>
+    </section>
+  </main>
+
+  <footer class="portal-footer"><div class="footer-content"><div class="footer-info"><span><strong>Contact Us</strong></span><span><a href="mailto:eslamsaleh1999@gmail.com">eslamsaleh1999@gmail.com</a></span><span><a href="tel:+201061438871">+201061438871</a></span></div><div class="footer-copyright">&copy; 2026 Egyptair inflight services. All rights reserved.</div></div></footer>
+  <script src="portal.js"></script>
+  <script src="jszip.min.js"></script>
+  <script>(() => {
+const JSZip = globalThis.JSZip;
+
+const FIXED_SITE_DATA = {
+  currentYear: '٢٠٢٦',
+  HRHead: 'حسنى عبدالرازق عبدالغنى',
+  inflightHead: 'سهير موسى',
+  penaltiesHead: 'رزق عبدالغنى إبراهيم',
+  hiringHead: 'احمد محمد الدمرداش',
+  legalHead: 'احمد يوسف قطب',
+  presentorHead: 'اسامة توفيق عبدالحفيظ',
+  qualitiesHead: 'هشام محمد مهدى',
+  secretaryHead: 'شرين منير منقريوس',
+  HRHeadID: '32000',
+  penaltiesHeadID: '69560',
+  hiringHeadID: '65732',
+  legalHeadID: '67440',
+  presentorHeadID: '83960',
+  qualitiesHeadID: '23972',
+  secretaryHeadID: '68530'
+};
+
+const NICKNAMES = ['الاستاذ', 'الدكتور', 'المحاسب', 'اللواء', 'المهندس', 'الطيار', 'وزير'];
+const SYSTEM_KEYS = new Set([
+  'currentYear', 'HRHead', 'HRHeadID', 'legalHead', 'legalHeadID',
+  'qualitiesHead', 'qualitiesHeadID', 'hiringHead', 'hiringHeadID',
+  'presentorHead', 'presentorHeadID', 'penaltiesHead', 'penaltiesHeadID',
+  'secretaryHead', 'secretaryHeadID', 'inflightHead'
+]);
+const SYSTEM_VALUE_ALIASES = [['HRHead', 'حسنى عبد الرازق عبد الغنى']];
+const FIXED_LINE_PATTERNS = [
+  /السيد\s+المهندس\s*[/／]\s*رئيس\s+قطاع\s+الموارد\s+البشرية\s+بالشركة\s+القابضة\s+لمصر\s+للطيران\s+رق(?:ـ*)م\s*\{رقم\s+الخطاب\s+الوارد\}\s+بتاريخ\s*16\s*[/／]\s*1\s*[/／]\s*2024/gu,
+  /الاعارة\s+بعدم\s+المنح\s+أو\s+التجديد\s+عند\s+وجود\s+احتياجات\s+فعلية\s+لتلك\s+الوظيفة\s*\{وظيفة\s+المذكور\}/gu,
+  /باعادة\s+تشكيل\s+مجلس\s+ادارة\s+شركة\s+مصر\s+للطيران\s+للخدمات\s+الجوية\s+لمدة\s+ثلاث\s+سنوات\s+اعتبارا\s+من\s*\{تاريخ\s+بداية\s+الاجازة\}\s+حتى\s*\{تاريخ\s+نهاية\s+الاجازة\}\s*0?/gu,
+  /السيد\s+الاستاذ\s*[/／]\s*\{المرسل\s+اليه\}/gu,
+  /السيد\s+المحاسب\s*[/／]\s*\{المرسل\s+اليه\}/gu,
+  /السيدة\s+الاستاذة\s*[/／]\s*\{المرسل\s+اليه\}/gu,
+  /قرار\s+وزير\s+الطيران\s+المدن(?:ى|ي)\s+رق(?:ـ*)م\s*245\s*ل(?:ـ*)س(?:ـ*)ن(?:ـ*)ة\s*2023\s+باعادة\s+تشكيل\s+مجلس\s+ادارة\s+الشركة\s+القابضة\s+لمصر\s+للطيران\s+لمدة\s*\{مدة\s+الاجازة\}\s+اعتبارا\s+من\s*\{تاريخ\s+بداية\s+الاجازة\}/gu,
+  /قرار\s+وزير\s+الطيران\s+المدن(?:ى|ي)\s+رق(?:ـ*)م\s*499\s+ل(?:ـ*)س(?:ـ*)ن(?:ـ*)ة\s*2023\s+بتشكيل\s+الجمعية\s+العامة\s+لشركة\s+مصر\s+للطيران\s+للخدمات\s+الجوية\s+لمدة\s*\{مدة\s+الاجازة\}\s+اعتبارا\s+من\s*\{تاريخ\s+بداية\s+الاجازة\}\s*0?/gu,
+  /قرار\s+رئيس\s+الجمعية\s+العامة\s+رق(?:ـ*)م\s*24\s+ل(?:ـ*)س(?:ـ*)ن(?:ـ*)ة\s*2023\s+باعادة\s+تشكيل\s+مجلس\s+ادارة\s+شركة\s+مصر\s+للطيران\s+للخدمات\s+الجوية\s+لمدة\s*\{مدة\s+الاجازة\}\s+اعتبارا\s+من\s*\{تاريخ\s+بداية\s+الاجازة\}\s+حتى\s*\{تاريخ\s+نهاية\s+الاجازة\}\s*0?/gu,
+  /قرار\s+السيدة\s+الاستاذة\s*[/／]\s*رئيس\s+مجلس\s+الادارة\s+والعضو\s+المنتدب\s+التنفيذ(?:ى|ي)\s+للشركة\s+رق(?:ـ*)م\s*\{رقم\s+الخطاب\s+الوارد\}\s+بتاريخ\s*\{تاريخ\s+الخطاب\s+الوارد\}\s*بتفويضنا\s+بالتوقيع\s+على\s+الاوامر\s+الادارية\s+والتنفيذية/gu,
+  /قرار\s+وزير\s+الطيران\s+المدن(?:ى|ي)\s+رق(?:ـ*)م\s*245\s*ل(?:ـ*)س(?:ـ*)ن(?:ـ*)ة\s*2023[^\n]*/gu,
+  /قرار\s+وزير\s+الطيران\s+المدن(?:ى|ي)\s+رق(?:ـ*)م\s*499\s+ل(?:ـ*)س(?:ـ*)ن(?:ـ*)ة\s*2023[^\n]*/gu,
+  /قرار\s+رئيس\s+الجمعية\s+العامة\s+رق(?:ـ*)م\s*24\s+ل(?:ـ*)س(?:ـ*)ن(?:ـ*)ة\s*2023[^\n]*/gu,
+  /قرار\s+السيدة\s+الاستاذة\s*[/／]\s*رئيس\s+مجلس\s+الادارة\s+والعضو\s+المنتدب\s+التنفيذ(?:ى|ي)\s+للشركة\s+رق(?:ـ*)م[^\n]*بتفويضنا\s+بالتوقيع\s+على\s+الاوامر\s+الادارية\s+والتنفيذية/gu
+];
+
+function parseArgs(argv) {
+  const positional = [];
+  const options = { includeForms: false, genericNames: true, tagUnlabeledDates: false };
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--help' || arg === '-h') options.help = true;
+    else if (arg === '--include-forms') options.includeForms = true;
+    else if (arg === '--no-generic-names') options.genericNames = false;
+    else if (arg === '--tag-unlabeled-dates') options.tagUnlabeledDates = true;
+    else if (arg === '--site-data' || arg === '--report') {
+      const value = argv[++i];
+      if (!value) throw new Error(`${arg} requires a value.`);
+      const optionName = arg === '--site-data' ? 'siteData' : 'report';
+      options[optionName] = value;
+    } else if (arg.startsWith('-')) throw new Error(`Unknown option: ${arg}`);
+    else positional.push(arg);
+  }
+  return { positional, options };
+}
+
+function xmlEscape(value) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function xmlDecode(value) {
+  return value
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#([0-9]+);/g, (_, decimal) => String.fromCodePoint(Number(decimal)))
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+function normalizeArabicChar(value) {
+  return value
+    .replace(/[ًٌٍَُِّْـ]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - '٠'.charCodeAt(0)))
+    .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - '۰'.charCodeAt(0)));
+}
+
+function normalizeArabic(value) {
+  return Array.from(String(value), normalizeArabicChar).join('').replace(/\s+/g, ' ').trim();
+}
+
+function normalizedWithMap(value) {
+  let normalized = '';
+  const starts = [];
+  const ends = [];
+  let previousWasSpace = true;
+  for (let index = 0; index < value.length;) {
+    const codePoint = value.codePointAt(index);
+    const character = String.fromCodePoint(codePoint);
+    const nextIndex = index + character.length;
+    if (/\s/u.test(character)) {
+      if (!previousWasSpace && normalized.length > 0) {
+        normalized += ' ';
+        starts.push(index);
+        ends.push(nextIndex);
+      }
+      previousWasSpace = true;
+    } else {
+      const mapped = normalizeArabicChar(character);
+      for (const mappedCharacter of Array.from(mapped)) {
+        normalized += mappedCharacter;
+        starts.push(index);
+        ends.push(nextIndex);
+      }
+      previousWasSpace = false;
+    }
+    index = nextIndex;
+  }
+  while (normalized.endsWith(' ')) {
+    normalized = normalized.slice(0, -1);
+    starts.pop();
+    ends.pop();
+  }
+  return { text: normalized, starts, ends };
+}
+
+function findNormalizedMatches(text, value) {
+  const needle = normalizeArabic(value);
+  if (!needle) return [];
+  const haystack = normalizedWithMap(text);
+  const matches = [];
+  let fromIndex = 0;
+  while (fromIndex <= haystack.text.length - needle.length) {
+    const index = haystack.text.indexOf(needle, fromIndex);
+    if (index < 0) break;
+    matches.push({ start: haystack.starts[index], end: haystack.ends[index + needle.length - 1] });
+    fromIndex = index + Math.max(needle.length, 1);
+  }
+  return matches;
+}
+
+function isNickname(value) {
+  const normalized = normalizeArabic(value);
+  return NICKNAMES.some((nickname) => normalized === normalizeArabic(nickname));
+}
+
+function stripNicknames(value) {
+  let result = value;
+  for (const nickname of NICKNAMES) {
+    result = result.replace(new RegExp(`(?:^|\\s)${escapeRegExp(nickname)}(?=\\s|$)`, 'gu'), ' ');
+  }
+  return result.replace(/\s+/g, ' ').trim();
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isHandFillForm(text) {
+  const underscores = (text.match(/_{3,}/g) || []).length;
+  const blankLines = (text.match(/\.{3,}|\(\s*\)|\[\s*\]/g) || []).length;
+  const paragraphs = text.split(/\n+/).filter(Boolean).length || 1;
+  return underscores >= 4 || (blankLines >= 5 && (underscores + blankLines) / paragraphs > 0.35);
+}
+
+function addMatch(matches, start, end, tag, reason, original, confidence = 'high') {
+  if (start < 0 || end <= start || !original.trim()) return;
+  const raw = original.length >= end ? original.slice(start, end) : original;
+  if (isNickname(raw) || raw.includes('{')) return;
+  matches.push({ start, end, tag, reason, raw, confidence });
+}
+
+function fixedRanges(text) {
+  const ranges = [];
+  for (const pattern of FIXED_LINE_PATTERNS) {
+    pattern.lastIndex = 0;
+    for (const match of text.matchAll(pattern)) ranges.push({ start: match.index, end: match.index + match[0].length });
+  }
+  return ranges;
+}
+
+function findSystemConstants(text, siteData, matches, options = {}) {
+  const entries = [...Object.entries(siteData), ...SYSTEM_VALUE_ALIASES]
+    .filter(([key, value]) => SYSTEM_KEYS.has(key) && value && String(value).trim().length > 0)
+    .filter(([key]) => key !== 'currentYear' || options.allowCurrentYear === true)
+    .sort((a, b) => String(b[1]).length - String(a[1]).length);
+  for (const [key, value] of entries) {
+    const valueText = String(value).trim();
+    for (const match of findNormalizedMatches(text, valueText)) {
+      addMatch(matches, match.start, match.end, '{' + key + '}', 'site-data constant', valueText);
+    }
+  }
+}
+
+function findExecutiveHeadingYear(text, siteData, matches, options = {}) {
+  if (options.allowExecutiveHeadingYear !== true) return;
+  const currentYear = String(siteData.currentYear || '').trim();
+  if (!currentYear) return;
+  const headingNumber = /رق\s*ـ*م\s*\([^)]*\)\s*لس\s*ـ*ن\s*ـ*ه\s*[0-9٠-٩](?:\s*[0-9٠-٩]){3}/u.test(normalizeArabic(text));
+  if (!headingNumber) return;
+  const normalizedYear = normalizeArabic(currentYear);
+  const yearPattern = /لس(?:ـ*)ن(?:ـ*)ة\s*([0-9٠-٩](?:\s*[0-9٠-٩]){3})/gu;
+  for (const match of text.matchAll(yearPattern)) {
+    if (normalizeArabic(match[1]) !== normalizedYear) continue;
+    const rawYear = match[1];
+    const start = match.index + match[0].lastIndexOf(rawYear);
+    addMatch(matches, start, start + rawYear.length, '{currentYear}', 'executive-order heading year', rawYear, 'high');
+  }
+}
+
+function findContextualFields(text, matches, options = {}) {
+  const date = '(?:(?:[0-3]?[0-9])\\s*[-–/]\\s*(?:[0-3]?[0-9])\\s*[/.-]\\s*[0-1]?[0-9]\\s*[/.-]\\s*(?:19|20)[0-9]{2}|(?:[0-3]?[0-9])\\s*[،,]\\s*(?:[0-3]?[0-9])\\s*[/.-]\\s*[0-1]?[0-9]\\s*[/.-]\\s*(?:19|20)[0-9]{2}|(?:[0-3]?[0-9])\\s*[/.-]\\s*[0-1]?[0-9]\\s*[/.-]\\s*(?:19|20)[0-9]{2})';
+  // When a leave reason appears in parentheses without an explicit label, reuse the
+  // document's own leave-reason convention instead of inventing a second tag family.
+  const leaveReasonTag = /سبب\s+طلب\s+(?:الاجازة|الإجازة)\s*[:：]/u.test(text) ? 'سبب الطلب' : 'السبب';
+  const rules = [
+    // Specific letter-number rules must precede the generic incoming-letter rule.
+    { tag: 'رقم كتاب الشئون القانونية', reason: 'legal affairs letter number', patterns: [/كتاب[^\n]{0,60}?(?:ال)?(?:شئون|شؤون)\s+القانونية[^\n]{0,30}?رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?/gu] },
+    { tag: 'رقم المحضر', reason: 'administrative report/reference number', patterns: [/(?:ال)?(?:شئون|شؤون)\s+التوظف[^\n]{0,60}?رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?/gu] },
+    { tag: 'رقم الخطاب الوارد', reason: 'incoming letter number', patterns: [/(?:كتاب|كتابنا|خطاب)[^\n]{0,160}?رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?/gu, /رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?(?=\s*بتاريخ)/gu] },
+    { tag: 'رقم و سنة الامر التنفيذي', reason: 'executive order reference number/year', patterns: [/(?:الام(?:ـ*)ر|الأم(?:ـ*)ر)\s+التنفيذ(?:ـ*)[ىي][^\n]{0,80}?رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+(?:\s*[/\-]\s*[A-Za-z0-9٠-٩]+)?(?:\s+ل(?:ـ*)س(?:ـ*)ن(?:ـ*)ة\s*[0-9٠-٩]{4})?)\s*\)?/gu] },
+    { tag: 'رقم و سنة التحقيق الادارى', reason: 'administrative investigation number/year', patterns: [/(?:التحقيق\s+الادار(?:ى|ي)|التحقيق\s+الإدارى)[^\n]{0,45}?رق(?:ـ*م)\s*\(?\s*([0-9٠-٩]+(?:\s*[/\-]\s*[0-9٠-٩]+|\s+لـ*سـ*نـ*ة\s+[0-9٠-٩]+))\s*\)?/gu] },
+    { tag: 'رقم القيد', reason: 'registry entry number', patterns: [/القيد\s*[/／]\s*([0-9٠-٩]+)/gu] },
+    { tag: 'اجمالى الاجازات السابق الحصول عليها', reason: 'total prior leave taken', patterns: [/اجمال(?:ى|ي)\s+الاجازات\s+السابق\s+الحصول\s+عليها\s*[:：]\s*\(?\s*([^\n()]+?)\s*\)?(?=\s*$)/gu] },
+    { tag: 'مدة الخدمة بالشركة', reason: 'company service duration', patterns: [/مدة\s+الخدمة\s+بالشركة\s*[:：]\s*([^\n]+?)(?=\s*$)/gu] },
+    { tag: 'مدة جوازية سابقة', reason: 'prior permissible leave duration', patterns: [/مدة\s+الاجازة\s+الجوازية\s+التى\s+سبق\s+وان\s+حصل\s+عليها\s+المذكور\s+خلال\s+فترة\s+عمل(?:ه|ة)\s+بالشركة\s+حتى\s+تاريخ(?:ه|ة)\s*\(\s*([^\n()]+?)\s*\)/gu] },
+    { tag: 'الجزاء المتظلم منه', reason: 'penalty being grieved', patterns: [/الجزاء\s+المتظلم\s+منه\s*[:：]\s*([^\n]+?)(?=\s*$)/gu] },
+    { tag: 'التقارير السنوية عن عامين سابقين', reason: 'two prior annual evaluations', patterns: [/التقارير\s+السنوية\s+عن\s+عامين\s+سابقين\s*[:：]\s*([0-9٠-٩]{4}\s+[^\n/]+?\s*[/／]\s*[0-9٠-٩]{4}\s+[^\n]+?)(?=\s*$)/gu] },
+    { tag: 'مدة الايقاف', reason: 'suspension duration', patterns: [/مدة\s+لا\s*تزيد\s+على\s*([^\n]+?)(?=\s+او\s|\s+أو\s|$)/gu] },
+    { tag: 'نوع المخدر', reason: 'drug type', patterns: [/(?:لمخدر|المخدر|مادة\s+(?![(:]|(?:أولى|ثانية|ثالثة|رابعة)\s*:-))\s*([^\n،؛)]+?)(?=\s+THC|\s+0|\s*\)|\s*$)/gu] },
+    { tag: 'المدة السابقة', reason: 'prior leave duration', patterns: [/للسيد\s+المذكور\s+لمدة\s+([^\n(]+?)\s*\(/gu] },
+    { tag: 'سبب الطلب السابق', reason: 'prior leave request reason', patterns: [/للسيد\s+المذكور\s+لمدة[^\n]{0,60}?\(\s*([^\n()]+?)\s*\)\s*اعتبارا/gu] },
+    { tag: 'المدة', reason: 'leave duration', patterns: [
+      /(?:^|\s)مدة\s+(?:الاجازة|الإجازة)\s*[:：]\s*\(*\s*([^\n()]+?)\s*\)*(?=\s+الفترة|\s+قانونية|\s*$)/gu,
+      /(?:^|\s)لمد(?:ة|ه)\s+([^\n،؛.()]+?)(?=\s+اعتب(?:ـ*)ارا|\s*$)/gu
+    ] },
+    { tag: leaveReasonTag, reason: 'leave reason (unlabeled, in parentheses after duration)', patterns: [/لمدة[^\n()]*\(\s*([^\n()]+?)\s*\)\s*اعتبارا/gu] },
+    { tag: 'سبب الطلب', reason: 'leave request reason', patterns: [/سبب\s+طلب\s+(?:الاجازة|الإجازة)\s*[:：\-]?\s*([^\n]+?)(?=\s+قانونية\s+(?:الاجازة|الإجازة)|\s*$)/gu] },
+    { tag: 'السبب', reason: 'leave reason (grant notification letter)', patterns: [/الاجازة\s+بدون\s+مرتب\s+الممنوحه[^\n]{0,300}?تنته(?:ى|ي)\s*(?:في|فى)?[^\n()]{0,25}?\(\s*([^\n()]+?)\s*\)/gu] },
+    { tag: 'نوع الجزاء', reason: 'penalty type', patterns: [/نوع\s+الجزاء\s*[:：\-]?\s*([^\n،؛]+)/gu, /بج(?:ـ*)زاء\s+([^\n]+?)(?=\s+وذلك\s+)/gu] },
+    { tag: 'سبب الجزاء', reason: 'penalty reason', patterns: [
+      /سبب\s+الجزاء\s*[:：\-]?\s*([^\n،؛]*?)(?=(?:يوم|\s+يوم)\s+[0-9٠-٩]{1,2}\s*[/.-]\s*[0-9٠-٩]{1,2}\s*[/.-]\s*(?:19|20)[0-9٠-٩]{2}(?=[\s.,؛،]|$)|\s+(?:بتاريخ|المؤشر|والمؤشر)|\s*$)/gu,
+      /بجزاء[^\n]{0,60}?و\s*ذلك\s+([^\n]+?)(?=\s+ي\u0640*وم|\s*0?\s*$)/gu,
+      /بج(?:ـ*)زاء[^\n]{0,100}?وذلك\s+([^\n]+?)(?=\s*$)/gu,
+      /(لغياب(?:ه|ها)?\s+عن\s+العمل\s+بدون\s+اذن)(?=\s+ي(?:ـ*)وم)/gu
+    ] },
+    { tag: 'موضوع قرار اللجنة', reason: 'committee decision subject', patterns: [/موضوع\s+قرار\s+اللجنة\s*[:：\-]?\s*([^\n،؛]+)/gu] },
+    { tag: 'التكرار', reason: 'repeat-offense count', patterns: [/\(\s*المرة\s+([^\n()]+?)\s*\)/gu] },
+    { tag: 'ساعة اللجنة', reason: 'committee meeting time', patterns: [/الساعة\s*[:：]?\s*([^\n،؛)]+?)(?=\s+يوم|\s*$)/gu] },
+    { tag: 'يوم اللجنة', reason: 'committee meeting weekday', patterns: [/(?:^|\s)يوم\s+([^\n]+?)\s+الموافق/gu] },
+    { tag: 'القطاع', reason: 'sector (standalone field)', patterns: [/(?:^|\n)\s*القطاع\s*[/／]\s*([^\n]+?)\s*(?=\n|$)/gu] },
+    { tag: 'مد او منح سابقا', reason: 'prior grant/renewal verb choice', patterns: [/ب(مد|منح)\s+(?:ال)?اجازة\s+بدون\s+مرتب\s+للسيد\s+المذكور/gu] },
+    { tag: 'تجديد او منحه حاليا', reason: 'current renewal/grant verb choice', patterns: [/بشان\s+(تجديد|منحه)\s+(?:ال)?اجازة\s+بدون\s+مرتب/gu] },
+    { tag: 'رقم الاجتماع', reason: 'meeting minutes number', patterns: [/محضر\s+الاجتماع[^\n]{0,10}\n+\s*([0-9٠-٩]+)\s*لعام/gu] }
+  ];
+
+  for (const rule of rules) {
+    if (!options.suspensionContext && (rule.tag === 'نوع المخدر' || rule.tag === 'مدة الايقاف')) continue;
+    for (const pattern of rule.patterns) {
+      for (const match of text.matchAll(pattern)) {
+        const rawValue = match[1] || '';
+        let value = rawValue.trim();
+        let valueOffsetInCapture = rawValue.indexOf(value);
+        if (rule.tag === 'سبب الجزاء') {
+          // Generic penalty orders often say: "بجزاء ... وذلك لانه بتاريخ DATE REASON".
+          // Keep the incident date available to the date matcher and tag only the reason text.
+          const leadingIncident = new RegExp('^\\s*ل(?:ا|أ)نه(?:ا|ما)?\\s*(?:بتاريخ|بتاريـ*خ|تاريخ)?\\s*(' + date + ')\\s*', 'u').exec(rawValue);
+          if (leadingIncident) {
+            value = rawValue.slice(leadingIncident[0].length).trim();
+            valueOffsetInCapture = rawValue.indexOf(value, leadingIncident[0].length);
+          } else {
+            const dateSuffix = /(?:^|\s+)يوم\s+[0-9٠-٩]{1,2}\s*[/.-]\s*[0-9٠-٩]{1,2}\s*[/.-]\s*(?:19|20)[0-9٠-٩]{2}/u.exec(value);
+            if (dateSuffix) value = value.slice(0, dateSuffix.index).trim();
+            valueOffsetInCapture = rawValue.indexOf(value);
+          }
+        }
+        if (!value || /^[-:：/／]+$/u.test(value)) continue;
+        if (rule.tag === 'نوع المخدر' && /^(?:أولى|ثانية|ثالثة|رابعة)\s*[:：-]/u.test(value)) continue;
+        const capturedOffset = match.index + match[0].lastIndexOf(rawValue);
+        const offset = capturedOffset + Math.max(valueOffsetInCapture, 0);
+        addMatch(matches, offset, offset + value.length, '{' + rule.tag + '}', rule.reason, value, 'high');
+      }
+    }
+  }
+}
+
+function findSemanticDates(text, matches) {
+  const date = '(?:(?:[0-9٠-٩]{1,2})\\s*[-–/]\\s*(?:[0-9٠-٩]{1,2})\\s*[/.-]\\s*[0-9٠-٩]{1,2}\\s*[/.-]\\s*[0-9٠-٩]{4}|(?:[0-9٠-٩]{1,2})\\s*[،,]\\s*(?:[0-9٠-٩]{1,2})\\s*[/.-]\\s*[0-9٠-٩]{1,2}\\s*[/.-]\\s*[0-9٠-٩]{4}|(?:[0-9٠-٩]{1,2})\\s*[/.-]\\s*[0-9٠-٩]{1,2}\\s*[/.-]\\s*[0-9٠-٩]{4})';
+  const leaveEndConnector = '(?:ا(?:ـ*)ل(?:ـ*)ى|إل(?:ـ*)ى|حتى|تنته(?:ى|ي)?(?:\\s+في|\\s+فى)?)';
+  const leaveStartPrefix = 'اعتب(?:ـ*)ارا(?:ً)?\\s+م(?:ـ*)ن';
+  const maskedDate = '-+\\s*[/／]\\s*-+\\s*[/／]\\s*[0-9٠-٩]{4}';
+  const hasLeaveContext = /(?:الاجازة|الإجازة|التصري(?:ـ*)ح\s+بالعمل\s+نصف\s+الوقت|العمل\s+نصف\s+الوقت)/u.test(text);
+  const hasRetirementContext = /(?:احال(?:ـ*)ت(?:ـ*)[هة]?|الم(?:ـ*)عاش|التقاعد)/u.test(text);
+  const hasPairedLeaveDates = new RegExp(leaveStartPrefix + '\\s*' + date + '[^\\n]{0,100}?' + leaveEndConnector + '\\s*' + date, 'u').test(text);
+  const hasLeaveRequestContext = (hasLeaveContext && /(?:الفترة|المدة|الطلب|ورد\s+الينا\s+الطلب|الطلب\s+المقدم|بشأن|بشان|منح|تجديد|مد\s+التصري(?:ـ*)ح)/u.test(text)) || /(?:الفترة|المدة)\s*(?:م(?:ـ*)ن|من)\s*[0-9٠-٩]/u.test(text) || new RegExp(leaveStartPrefix + '\\s*(?:' + date + '|' + maskedDate + ')', 'u').test(text) || hasPairedLeaveDates;
+  const addDateRule = (tag, reason, patterns, confidence = 'high') => {
+    for (const pattern of patterns) {
+      for (const match of text.matchAll(pattern)) {
+        const value = (match[1] || '').trim();
+        if (!value) continue;
+        const offset = match.index + match[0].lastIndexOf(match[1]);
+        addMatch(matches, offset, offset + value.length, '{' + tag + '}', reason, value, confidence);
+      }
+    }
+  };
+
+  addDateRule('تاريخ الواقعة', 'incident date', [
+    new RegExp('(?:ل(?:ا|أ)نه|لأن(?:ه)?|الواقعة|واقعة)[^\\n]{0,40}?(?:بتاريخ|بتاريـ*خ|تاريخ)?\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')\\s*(?=[^\\n]{0,35}(?:قام|ارتكب|استولى|الاستيلاء|اثناء|أثناء))', 'gu'),
+    new RegExp('(?:سبب\\s+الجزاء|محضر\\s+الاستجواب|الاستجواب|استجواب|يج(?:ـ*)ازى|بجزاء)[^\\n]{0,400}?يوم(?:ى|ي)?\\s*(' + date + ')', 'gu'),
+    new RegExp('لغياب(?:ه|ها)?\\s+عن\\s+العمل\\s+بدون\\s+اذن\\s+ي(?:ـ*)وم\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ التعيين', 'employment start date', [new RegExp('تاريخ\\s+التعي(?:ـ*)ي(?:ـ*)ن\\s*[/：:-]?\\s*(' + date + ')', 'gu')]);
+  addDateRule('تاريخ الميلاد', 'birth date', [new RegExp('تاريخ\\s+الميلاد\\s*[/：:-]?\\s*(' + date + ')', 'gu')]);
+  // These specific fields are used by the Drive reference templates when a document
+  // contains multiple prior periods, approvals, or suspension milestones.
+  addDateRule('بداية المدة السابقة', 'prior leave period start date', [
+    new RegExp('للسيد\\s+المذكور\\s+لمدة[^\\n]{0,80}?اعتبارا(?:ً)?\\s+من\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('نهاية المدة السابقة', 'prior leave period end date', [
+    new RegExp('للسيد\\s+المذكور\\s+لمدة[^\\n]{0,140}?تنته(?:ى|ي)\\s*(?:في|فى)?\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ موافقة المدير العام المختص', 'department head approval date', [
+    new RegExp('المدير\\s+العام\\s+المختص\\s*(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ موافقة رئيس قطاع التشغيل', 'operations sector head approval date', [
+    new RegExp('رئيس\\s+قطاع\\s+التشغيل\\s*(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ انهاء الايقاف', 'suspension end date', [
+    new RegExp('انهاء\\s+ايقاف[^\\n]{0,120}?اعتبارا(?:ً)?\\s+من\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ الايقاف عن العمل', 'work suspension date (by law)', [
+    new RegExp('إعتبارا(?:ً)?\\s+من\\s*(' + date + ')\\s*بقوة\\s+القانون', 'gu')
+  ]);
+  addDateRule('تاريخ الايقاف', 'suspension effective date', [
+    new RegExp('عن\\s+العمل\\s+اعتبارا(?:ً)?\\s+من\\s*(' + date + ')\\s*لصالح\\s+التحقيق', 'gu')
+  ]);
+  addDateRule('تاريخ المحضر', 'administrative report/reference date', [
+    new RegExp('(?:ال)?(?:شئون|شؤون)\\s+التوظف[^\\n]{0,60}?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ المحضر', 'administrative report/reference date', [
+    new RegExp('المحضر(?:\\s+الادارى|\\s+الإدارى|\\s+الإداري)?[^\\n]{0,80}?الم(?:ؤ|و)رخ\\s*(?:بتاريـ*خ|بتاريخ|فى|في)?\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ الخطاب', 'letter date (own letter)', [
+    new RegExp('(?:^|\\n)\\s*التاريخ\\s*[/：:-]?\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ الخطاب الوارد', 'incoming letter date', [
+    new RegExp('(?:كتاب|كتابنا|خطاب)[^\\n]{0,60}?سيادتكم[^\\n]{0,60}?رق(?:ـ*م)[^\\n]{0,30}?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ الخطاب الوارد', 'incoming letter date (number/date line)', [new RegExp('رق(?:ـ*م)\\s*(?:[0-9٠-٩]+|\\{رقم\\s+الخطاب\\s+الوارد\\})\\s*بتاري(?:ـ*)خ\\s*(' + date + ')', 'gu')]);
+  addDateRule('تاريخ القيد', 'registry entry date', [new RegExp('القيد[^\\n]{0,80}?التاريخ\\s*[/：:-]?\\s*((?:--\\s*[/／]\\s*[0-9٠-٩]{1,2}\\s*[/／]\\s*[0-9٠-٩]{4})|' + date + ')', 'gu')]);
+  addDateRule('تاريخ علمه بالامر', 'date employee learned of order', [new RegExp('تاريخ\\s+علم(?:ه|ها|هما)\\s+بالام(?:ـ*)ر\\s*[:：-]?\\s*(' + date + ')', 'gu')]);
+  addDateRule('تاريخ التقدم بالتظلم', 'grievance submission date', [new RegExp('التقدم\\s+بالتظلم\\s*[:：-]?\\s*(' + date + ')', 'gu')]);
+  addDateRule('تاريخ استلام العمل', 'return-to-work date', [
+    new RegExp('تسلم\\s+العمل\\s+اعتبارا(?:ً)?\\s+من\\s*(' + date + ')', 'gu'),
+    new RegExp('استلام\\s+العمل\\s+للسيد\\s+المذكـ*ور\\s+يوم\\s*(' + date + ')', 'gu')
+  ]);
+  if (hasLeaveRequestContext && !hasRetirementContext) {
+    addDateRule('تاريخ البداية', 'leave or part-time period start date', [
+      new RegExp('(?:الفترة|المدة)\\s*(?:م(?:ـ*)ن|من)\\s*(' + date + ')', 'gu'),
+      new RegExp(leaveStartPrefix + '\\s*(' + date + ')', 'gu'),
+      new RegExp(leaveStartPrefix + '\\s*(' + maskedDate + ')', 'gu')
+    ]);
+    addDateRule('تاريخ النهاية', 'leave or part-time period end date', [
+      new RegExp('(?:الفترة|المدة)[^\\n]{0,100}?' + leaveEndConnector + '\\s*(' + date + ')', 'gu'),
+      new RegExp('(?:الاجازة|الإجازة)[^\\n]{0,140}?' + leaveEndConnector + '\\s*(' + date + ')', 'gu'),
+      new RegExp('اعتبارا\\s+من\\s*' + date + '\\s*' + leaveEndConnector + '\\s*(' + date + ')', 'gu'),
+      new RegExp('تنته(?:ى|ي)\\s*(?:في|فى)?\\s*(' + date + ')', 'gu'),
+      new RegExp(leaveStartPrefix + '\\s*' + maskedDate + '\\s*' + leaveEndConnector + '\\s*(' + maskedDate + ')', 'gu')
+    ]);
+  }
+  addDateRule('تاريخ الطلب', 'request or application date', [
+    new RegExp('(?:الطلب|الطلب\\s+المقدم|ورد\\s+الينا\\s+الطلب|ورد\\s+الينا\\s+الطلب\\s+المقدم)[^\\n]{0,120}?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ اصدار الامر التنفيذي', 'executive order issue date', [
+    new RegExp('(?:الامر|الأمر)\\s+التنفيذ(?:ى|ي)[^\\n]{0,100}?(?:الصادر\\s+)?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')[^\\n]{0,40}(?=(?:صدر|صددر)\\s+(?:الامر|الأمر)\\s+التنفيذ(?:ى|ي))', 'gu')
+  ]);
+  addDateRule('تاريخ كتاب الشئون القانونية', 'legal affairs letter date', [
+    new RegExp('(?:كتاب|خطاب)[^\\n]{0,140}(?:(?:ال|لل)?(?:شئون|شؤون))\\s+القانونية[^\\n]{0,80}?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')[^\\n]{0,80}(?=(?:ورد\\s+لنا|ورد\\s+الينا|تم\\s+مخاطبة)[^\\n]{0,100}(?:كتاب|خطاب)[^\\n]{0,80}(?:(?:ال|لل)?(?:شئون|شؤون))\\s+القانونية)', 'gu')
+  ]);
+  addDateRule('تاريخ اللجنة', 'committee meeting date', [
+    new RegExp('جلس(?:ة|ه)\\s*(' + date + ')', 'gu'),
+    new RegExp('المنعقد(?:ة)?\\s+(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('الاجتماع[^\\n]{0,50}(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ التأشير', 'endorsement or routing date', [
+    new RegExp('(?:المؤشـ*ر|مؤشـ*ر|التأشيـ*ر|تأشيـ*ر)[^\\n]{0,110}(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')\\s*(?=(?:من\\s+[^\\n]{0,70})?(?:المؤشـ*ر|مؤشـ*ر|اشر|أشر|التأشيـ*ر|تأشيـ*ر))', 'gu'),
+    new RegExp('(?:اشر|أشر)[^\\n]{0,110}?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ الموافقة', 'approval or no-objection date', [
+    new RegExp('المعتمـ*د(?:ة)?(?:\\s+من[^\\n]{0,100})?\\s*(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:الموافقـ*ة|موافقـ*ة|عدم\\s+الموافقـ*ة)[^\\n]{0,100}(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')\\s*(?=[^\\n]{0,45}(?:بالموافقـ*ة|بعدم\\s+الموافقـ*ة|لا\\s*مانع|لامانع))', 'gu')
+  ]);
+  addDateRule('تاريخ الإيصال', 'receipt or received-document date', [
+    new RegExp('(?:ورد|وصل|استلم|تسلم)[^\\n]{0,100}(?:كتاب|خطاب|محضر|نتيجة|إيصال|ايصال)[^\\n]{0,70}(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:إيصال|ايصال)[^\\n]{0,70}(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')[^\\n]{0,80}(?=(?:ورد\\s+لنا|ورد\\s+الينا|وردت\\s+(?:ال)?نتيجة|وصل|استلم|تسلم))', 'gu')
+  ]);
+  addDateRule('تاريخ التحرير', 'document preparation date', [new RegExp('(?:تحرير(?:اً|ا)?|حرر)\\s*(?:في|فى)?\\s*[:：-]?\\s*(' + date + ')', 'gu')]);
+  addDateRule('تاريخ الاصدار', 'document closing issue date', [
+    new RegExp('(?:صد(?:ر|در))\\s+(?:فى|في)\\s*[:：-]?\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:صد(?:ر|در))\\s+(?:فى|في)\\s*[:：-]?\\s*((?:[/／]\\s*)?[0-3]?[0-9]\\s*[/.-]\\s*(?:19|20)[0-9]{2})', 'gu'),
+    new RegExp('تاريخ\\s+(?:الاصدار|الإصدار)\\s*[:：-]?\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('تاريخ الاصدار', 'document closing partial issue date', [new RegExp('(?:صد(?:ر|در))\\s+(?:فى|في)\\s*[:：-]?\\s*(--\\s*[/／]\\s*[0-9٠-٩]{1,2}\\s*[/／]\\s*[0-9٠-٩]{4})', 'gu')]);
+}
+
+function findGenericNamesAndCodes(text, matches) {
+  const nameWord = '[ء-يآأإؤئَُِّْ]+(?:\\s+[ء-يآأإؤئَُِّْ]+){1,4}';
+  const subjectName = new RegExp('(?:للس(?:ـ*)يد|للس(?:ـ*)يدة|الس(?:ـ*)يد|الس(?:ـ*)يدة)\\s*[/／]\\s*(?:[:：؛-]+\\s*)?(' + nameWord + ')(?=\\s*(?:كـ*ود|بوظيف|بـ|احتياط|عن العمل|اعتب|تصريح|بشان|بشأن|احال|محالا|،|$))', 'gu');
+  const code = /(?:^|\s)(?:ال)?كـ*ود\s*[(（:：\-]?\s*([A-Za-z0-9٠-٩]+)/gu;
+  const job = /(?:^|\s)(?:بوظيف(?:ـ*)[ةه]|(?<!ب)الوظيف(?:ـ*)ة)\s*[/／:：\-]?\s*([^\n]+?)(?=\s+(?:و?ب(?:الادارة|الإدارة|ادارة|إدارة|مجموعة|قطاع)|لمخدر|عن العمل|كـ*ود|لصالح|اعتب|الس(?:ـ*)يد|وذلك|يوم|سبب)|\s*[،؛–—.]|$)/gu;
+  const organization = /(?:ب(?:ال)?ادارة|بإدارة)\s+[^\n،؛]+?\s+بقطاع\s+[^\n،؛]+?(?=\s+(?:بشرك|بشركة|عن العمل|لصالح|احتياط|كل فيما)|\s*[،؛]|$)/gu;
+  const signatureName = new RegExp('(?:^|\\n)\\s*الاس(?:ـ*)م\\s*[/／:：\\-]?\\s*(' + nameWord + ')', 'gu');
+  const standaloneOrganization = /(?:^|\n)\s*(?:الادار(?:ـ*)ة\s+العامة|مجموعة\s+الوظائف\s+التخصص(?:ية|يه))\s*[/／:：\-]?\s*([^\n،؛]+)/gu;
+  const groupPhrase = /ب?مجموعة\s+الوظائف\s+[^\n،؛]+?(?=\s+(?:بشرك|بشركة)|\s+\{|\s*$|[،؛.])/gu;
+
+  for (const match of text.matchAll(subjectName)) {
+    const captured = (match[1] || '').trim();
+    const value = stripNicknames(captured);
+    if (!value) continue;
+    const capturedOffset = match.index + match[0].lastIndexOf(match[1]);
+    const valueOffset = captured.indexOf(value);
+    const offset = capturedOffset + Math.max(valueOffset, 0);
+    addMatch(matches, offset, offset + value.length, '{اسم المذكور}', 'third-person subject name with excluded nickname preserved', value, 'high');
+  }
+  for (const match of text.matchAll(signatureName)) {
+    const value = (match[1] || '').trim();
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + value.length, '{اسم المذكور}', 'mentioned employee name (labeled field)', value, 'high');
+  }
+  for (const match of text.matchAll(code)) {
+    const value = match[1];
+    const offset = match.index + match[0].lastIndexOf(value);
+    addMatch(matches, offset, offset + value.length, '{كود المذكور}', 'mentioned employee code', value, 'high');
+  }
+  for (const match of text.matchAll(job)) {
+    const value = match[1].trim();
+    if (!value || /^[-:：/／]+$/u.test(value)) continue;
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + value.length, '{وظيفة المذكور}', 'mentioned employee job', value, 'medium');
+  }
+  for (const match of text.matchAll(organization)) {
+    const value = match[0].trim();
+    const offset = match.index + match[0].indexOf(value);
+    addMatch(matches, offset, offset + value.length, 'ب{المجموعة و الإدارة و القطاع}', 'organizational assignment', value, 'medium');
+  }
+  for (const match of text.matchAll(standaloneOrganization)) {
+    const value = (match[1] || '').trim();
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + value.length, 'ب{المجموعة و الإدارة و القطاع}', 'organizational assignment (labeled field)', value, 'medium');
+  }
+  for (const match of text.matchAll(groupPhrase)) {
+    const value = match[0].trim();
+    const offset = match.index + match[0].indexOf(value);
+    addMatch(matches, offset, offset + value.length, 'ب{المجموعة و الإدارة و القطاع}', 'organizational assignment (group phrase)', value, 'medium');
+  }
+}
+
+function findResignationFields(text, matches) {
+  if (!/استقالتى/u.test(text)) return;
+  const isTransfer = /لقبولى\s+بوظيفة/u.test(text);
+  const prevJobTag = isTransfer ? 'اسم الوظيفة السابقة' : 'اسم الوظيفة';
+  const prevOrgTag = isTransfer ? 'الإدارة السابقة' : 'اسم الإدارة';
+
+  const firstJobOrg = /بوظيفة\s+([^\n]+?)\s+ب\s*([^\n.]+?)\s*[.。]/u.exec(text);
+  if (firstJobOrg) {
+    const jobValue = firstJobOrg[1].trim();
+    const jobOffset = firstJobOrg.index + firstJobOrg[0].indexOf(jobValue);
+    addMatch(matches, jobOffset, jobOffset + jobValue.length, '{' + prevJobTag + '}', 'applicant current job title', jobValue, 'high');
+    const orgValue = firstJobOrg[2].trim();
+    const orgOffset = firstJobOrg.index + firstJobOrg[0].lastIndexOf(orgValue);
+    addMatch(matches, orgOffset, orgOffset + orgValue.length, '{' + prevOrgTag + '}', 'applicant current department', orgValue, 'high');
+  }
+
+  for (const match of text.matchAll(/استقالتى\s+من\s+([^\n]+?)\s+بالشركة/gu)) {
+    const value = match[1].trim();
+    const offset = match.index + match[0].lastIndexOf(value);
+    addMatch(matches, offset, offset + value.length, '{' + prevJobTag + '}', 'applicant current job title (repeat mention)', value, 'high');
+  }
+
+  for (const match of text.matchAll(/(?:^|\n)\s*الوظيفة\s*[:：]\s*([^\n]+?)\s*(?=\n|$)/gu)) {
+    const value = match[1].trim();
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(value);
+    addMatch(matches, offset, offset + value.length, '{' + prevJobTag + '}', 'applicant current job title (signature block)', value, 'high');
+  }
+
+  if (isTransfer) {
+    for (const match of text.matchAll(/لقبولى\s+بوظيفة\s+([^\n]+?)\s+ب\s*([^\n]+?)\s*بذات/gu)) {
+      const jobValue = match[1].trim();
+      const jobOffset = match.index + match[0].indexOf(jobValue);
+      addMatch(matches, jobOffset, jobOffset + jobValue.length, '{اسم الوظيفة الجديدة}', 'applicant new job title', jobValue, 'high');
+      const orgValue = match[2].trim();
+      const orgOffset = match.index + match[0].lastIndexOf(orgValue);
+      addMatch(matches, orgOffset, orgOffset + orgValue.length, '{الإدارة الجديدة}', 'applicant new department', orgValue, 'high');
+    }
+  }
+}
+
+function findAddresseeField(text, matches) {
+  const match = /^\s*(?:السيد|السيدة)\s+(?:الاستاذ|الاستاذة|المهندس|المهندسة|الدكتور|الدكتورة|المحاسب|اللواء)?\s*[/／]\s*([^\n]+?)\s*$/u.exec(text.trim());
+  if (!match) return;
+  const value = match[1].trim();
+  if (!value) return;
+  const offset = text.indexOf(value);
+  if (offset < 0) return;
+  addMatch(matches, offset, offset + value.length, '{المرسل اليه}', 'letter addressee', value, 'medium');
+}
+
+function findVariableDatesAndNumbers(text, matches) {
+  const numericDate = /(?<![\d٠-٩])(?:(?:[0-3]?\d)\s*[-–\/]\s*(?:[0-3]?\d)\s*[\/\-.]\s*[0-1]?\d\s*[\/\-.]\s*(?:19|20)\d{2}|(?:[0-3]?\d)\s*[،,]\s*(?:[0-3]?\d)\s*[\/\-.]\s*[0-1]?\d\s*[\/\-.]\s*(?:19|20)\d{2}|(?:[0-3]?\d)\s*[\/\-.]\s*[0-1]?\d\s*[\/\-.]\s*(?:19|20)\d{2}|(?:19|20)\d{2}\s*[\/\-.]\s*[0-1]?\d\s*[\/\-.]\s*[0-3]?\d)(?![\d٠-٩])/gu;
+  for (const match of text.matchAll(numericDate)) {
+    const context = text.slice(Math.max(0, match.index - 80), Math.min(text.length, match.index + match[0].length + 80));
+    if (/(?:قانون|لائحة|قرار\s+(?:وزير|رئيس)|المادة|لسنة|رقم\s*\(?|بتفويض|الجمعية|مجلس\s+الإدارة|مدة\s+ثلاث|مدة\s+عام|حتى\s+)/u.test(context)) continue;
+    if (!/(?:واقعة|ل(?:ا|أ)نه|لأن(?:ه)?|قام|ارتكب|استولى|الاستيلاء|حادث|أثناء\s+عمله)/u.test(context)) continue;
+    addMatch(matches, match.index, match.index + match[0].length, '{تاريخ الواقعة}', 'unlabeled incident date fallback', match[0], 'low');
+  }
+}
+
+function chooseMatches(text, siteData, options) {
+  if (!options.includeForms && isHandFillForm(text)) {
+    return { replacements: [], skippedAsForm: true };
+  }
+  const matches = [];
+  findSystemConstants(text, siteData, matches, options);
+  findExecutiveHeadingYear(text, siteData, matches, options);
+  findContextualFields(text, matches, options);
+  findSemanticDates(text, matches);
+  findResignationFields(text, matches);
+  findAddresseeField(text, matches);
+  if (options.genericNames) findGenericNamesAndCodes(text, matches);
+  if (options.tagUnlabeledDates) findVariableDatesAndNumbers(text, matches);
+
+  const protectedRanges = fixedRanges(text);
+  matches.sort((a, b) => a.start - b.start || b.end - a.end);
+  const accepted = [];
+  for (const candidate of matches) {
+    if (protectedRanges.some((range) => candidate.start >= range.start && candidate.end <= range.end)) continue;
+    if (accepted.some((existing) => candidate.start < existing.end && candidate.end > existing.start)) continue;
+    accepted.push(candidate);
+  }
+  return { replacements: accepted, skippedAsForm: false };
+}
+
+function collectTextNodes(paragraphXml) {
+  const nodes = [];
+  const pattern = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/gu;
+  for (const match of paragraphXml.matchAll(pattern)) {
+    const value = xmlDecode(match[1]);
+    nodes.push({ start: match.index, end: match.index + match[0].length, openEnd: match.index + match[0].indexOf('>') + 1, closeStart: match.index + match[0].lastIndexOf('</w:t>'), text: value });
+  }
+  return nodes;
+}
+
+function replaceInTextNodes(paragraphXml, replacements) {
+  const nodes = collectTextNodes(paragraphXml);
+  if (!nodes.length) return paragraphXml;
+  const fullText = nodes.map((node) => node.text).join('');
+  const starts = [];
+  let cursor = 0;
+  for (const node of nodes) {
+    starts.push(cursor);
+    cursor += node.text.length;
+  }
+  const values = nodes.map((node) => node.text);
+  const sorted = [...replacements].sort((a, b) => b.start - a.start);
+
+  for (const replacement of sorted) {
+    let startNode = nodes.length - 1;
+    for (let i = 0; i < nodes.length; i += 1) {
+      if (replacement.start < starts[i] + nodes[i].text.length || (replacement.start === starts[i] && nodes[i].text.length === 0)) {
+        startNode = i;
+        break;
+      }
+    }
+    let endNode = nodes.length - 1;
+    for (let i = 0; i < nodes.length; i += 1) {
+      if (replacement.end <= starts[i] + nodes[i].text.length) {
+        endNode = i;
+        break;
+      }
+    }
+    const startLocal = replacement.start - starts[startNode];
+    const endLocal = replacement.end - starts[endNode];
+    if (startNode === endNode) {
+      values[startNode] = values[startNode].slice(0, startLocal) + replacement.tag + values[startNode].slice(endLocal);
+    } else {
+      values[startNode] = values[startNode].slice(0, startLocal) + replacement.tag;
+      for (let i = startNode + 1; i < endNode; i += 1) values[i] = '';
+      values[endNode] = values[endNode].slice(Math.max(0, endLocal));
+    }
+  }
+
+  let output = paragraphXml;
+  for (let i = nodes.length - 1; i >= 0; i -= 1) {
+    const node = nodes[i];
+    const open = paragraphXml.slice(node.start, node.openEnd);
+    const close = paragraphXml.slice(node.closeStart, node.end);
+    const replacementXml = `${open}${xmlEscape(values[i])}${close}`;
+    output = output.slice(0, node.start) + replacementXml + output.slice(node.end);
+  }
+  return output;
+}
+
+function processTableXml(tableXml, partName, reports) {
+  const texts = [...tableXml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/gu)].map((match) => match[1]);
+  const hasEmployeeHeaders = texts.some((text) => /الك(?:ـ*)ود/u.test(text)) && texts.some((text) => /الاس(?:ـ*)م/u.test(text)) && texts.some((text) => /الوظيفة/u.test(text));
+  const hasLeaveHistoryHeaders = texts.some((text) => text.includes('من')) && texts.some((text) => /(?:الى|إلى)/u.test(text));
+  if (!hasEmployeeHeaders && !hasLeaveHistoryHeaders) return tableXml;
+
+  let rowIndex = 0;
+  return tableXml.replace(/<w:tr(?:\s[^>]*)?>[\s\S]*?<\/w:tr>/gu, (row) => {
+    rowIndex += 1;
+    let cellIndex = 0;
+    return row.replace(/<w:tc(?:\s[^>]*)?>[\s\S]*?<\/w:tc>/gu, (cell) => {
+      cellIndex += 1;
+      if (hasEmployeeHeaders) {
+        if (rowIndex === 1 || cellIndex > 4) return cell;
+        const cellText = collectTextNodes(cell).map((node) => node.text).join('');
+        const value = cellText.trim();
+        if (!value) return cell;
+        const tags = ['{كود المذكور}', '{اسم المذكور}', '{وظيفة المذكور}', 'ب{المجموعة و الإدارة و القطاع}'];
+        const reasons = ['employee-table code', 'employee-table name', 'employee-table job', 'employee-table job family'];
+        const start = cellText.indexOf(value);
+        const replacement = { start, end: start + value.length, tag: tags[cellIndex - 1], reason: reasons[cellIndex - 1], raw: value, confidence: 'high' };
+        reports.push({ part: partName, original: value, tag: replacement.tag, reason: replacement.reason, confidence: replacement.confidence });
+        return replaceInTextNodes(cell, [replacement]);
+      }
+      if (rowIndex < 3 || cellIndex > 2) return cell;
+      const cellText = collectTextNodes(cell).map((node) => node.text).join('');
+      const datePattern = /(?<![\d٠-٩])(?:(?:[0-3]?[0-9])\s*[-–/]\s*(?:[0-3]?[0-9])\s*[/.-]\s*[0-1]?[0-9]\s*[/.-]\s*(?:19|20)[0-9]{2}|(?:[0-3]?[0-9])\s*[/.-]\s*[0-1]?[0-9]\s*[/.-]\s*(?:19|20)[0-9]{2})(?![\d٠-٩])/gu;
+      const replacements = [...cellText.matchAll(datePattern)].map((match) => ({
+        start: match.index,
+        end: match.index + match[0].length,
+        tag: cellIndex === 1 ? '{تاريخ البداية}' : '{تاريخ النهاية}',
+        reason: cellIndex === 1 ? 'leave-history start-date column' : 'leave-history end-date column',
+        raw: match[0],
+        confidence: 'high'
+      }));
+      for (const replacement of replacements) reports.push({ part: partName, original: replacement.raw, tag: replacement.tag, reason: replacement.reason, confidence: replacement.confidence });
+      return replacements.length ? replaceInTextNodes(cell, replacements) : cell;
+    });
+  });
+}
+
+function processXml(xml, siteData, options, partName) {
+  const reports = [];
+  const allowCurrentYear = /^word\/header\d*\.xml$/u.test(partName);
+  const documentText = collectTextNodes(xml).map((node) => node.text).join('\n');
+  if (!options.includeForms && isHandFillForm(documentText)) {
+    return { xml, reports, skippedAsForm: true };
+  }
+  const tableProcessed = xml.replace(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/gu, (table) => processTableXml(table, partName, reports));
+  const recentParagraphs = [];
+  const output = tableProcessed.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/gu, (paragraph) => {
+    const text = collectTextNodes(paragraph).map((node) => node.text).join('');
+    const normalizedHeadingContext = normalizeArabic([...recentParagraphs.slice(-3), text].join(' '));
+    const isExecutiveHeadingYear = /امر\s*تنفيذي/u.test(normalizedHeadingContext) && /رقم\s*\([^)]*\)\s*لسنه\s*[0-9]{4}/u.test(normalizeArabic(text));
+    const chosen = chooseMatches(text, siteData, { ...options, allowCurrentYear, allowExecutiveHeadingYear: isExecutiveHeadingYear, suspensionContext: /(?:ايقاف|إيقاف|مخدر|العينة التوكيدية)/u.test(documentText) });
+    for (const replacement of chosen.replacements) reports.push({ part: partName, original: replacement.raw, tag: replacement.tag, reason: replacement.reason, confidence: replacement.confidence });
+    recentParagraphs.push(text);
+    return replaceInTextNodes(paragraph, chosen.replacements);
+  });
+  return { xml: output, reports, skippedAsForm: false };
+}
+
+async function tagDocx(file, options = {}) {
+  if (!globalThis.JSZip) throw new Error('JSZip is not loaded. Include jszip.min.js before tagging-browser.js.');
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const siteData = FIXED_SITE_DATA;
+  const allReports = [];
+  const skippedParts = [];
+  const xmlEntries = Object.keys(zip.files).filter((name) => /^word\/(?:document|header\d*|footer\d*|footnotes|endnotes|comments).*\.xml$/u.test(name));
+
+  for (const name of xmlEntries) {
+    const entry = zip.file(name);
+    if (!entry) continue;
+    const xml = await entry.async('string');
+    const result = processXml(xml, siteData, options, name);
+    zip.file(name, result.xml);
+    allReports.push(...result.reports);
+    if (result.skippedAsForm) skippedParts.push(name);
+  }
+
+  const outputBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+  return {
+    input: file.name || 'input.docx',
+    outputName: options.outputName || String(file.name || 'input.docx').replace(/\.docx$/iu, '.tagged.docx'),
+    blob: outputBlob,
+    replacements: allReports,
+    skippedAsHandFillForm: skippedParts.length > 0,
+    skippedParts,
+    nicknameExclusions: NICKNAMES
+  };
+}
+  globalThis.TagDocx = { tagDocx };
+})();</script>
+  <script>
+    (() => {
+      const input = document.getElementById('docx-input');
+      const browse = document.getElementById('browse-docx');
+      const dropZone = document.getElementById('docx-drop-zone');
+      const selectedFile = document.getElementById('selected-file');
+      const status = document.getElementById('status');
+      const statusDetail = document.getElementById('status-detail');
+      let downloadUrl = '';
+      let processing = false;
+      const text = (en, ar) => document.documentElement.lang === 'ar' ? ar : en;
+      const setStatus = (en, ar, kind = 'ready', detailEn = '', detailAr = '') => {
+        status.textContent = text(en, ar);
+        status.className = ('status-chip ' + kind).trim();
+        if (detailEn) statusDetail.textContent = text(detailEn, detailAr);
+      };
+
+      const download = (blob, name) => {
+        if (downloadUrl) URL.revokeObjectURL(downloadUrl);
+        downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = name;
+        link.hidden = true;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => { if (downloadUrl) { URL.revokeObjectURL(downloadUrl); downloadUrl = ''; } }, 60000);
+      };
+
+      const processFile = async () => {
+        const file = input.files && input.files[0];
+        if (!file || processing) return;
+        if (!/.docx$/iu.test(file.name)) { setStatus('DOCX required', 'مطلوب ملف DOCX', 'error', 'Choose a DOCX document to continue.', 'اختر مستند DOCX للمتابعة.'); return; }
+        processing = true;
+        selectedFile.textContent = file.name;
+        selectedFile.removeAttribute('data-en');
+        selectedFile.removeAttribute('data-ar');
+        setStatus('Processing', 'جارٍ المعالجة', 'processing', 'Your document is being tagged in this browser.', 'يتم تهيئة المستند داخل هذا المتصفح.');
+        try {
+          const tagDocx = globalThis.TagDocx && globalThis.TagDocx.tagDocx;
+          if (typeof tagDocx !== 'function') throw new Error('The DOCX tagging module did not load.');
+          const result = await tagDocx(file, { includeForms: false, genericNames: true, tagUnlabeledDates: false });
+          download(result.blob, result.outputName);
+          setStatus('Download started', 'بدأ التنزيل', 'success', 'The tagged DOCX has been prepared and download has started.', 'تم تجهيز ملف DOCX المهيأ وبدأ تنزيله.');
+        } catch (error) {
+          console.error(error);
+          setStatus('Processing failed', 'تعذرت المعالجة', 'error', 'The DOCX could not be processed. Try selecting it again.', 'تعذر معالجة ملف DOCX. حاول اختياره مرة أخرى.');
+        } finally {
+          processing = false;
+          input.value = '';
+          dropZone.classList.remove('is-dragover');
+        }
+      };
+
+      browse.addEventListener('click', () => input.click());
+      dropZone.addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); input.click(); } });
+      input.addEventListener('change', processFile);
+      dropZone.addEventListener('dragover', (event) => { event.preventDefault(); dropZone.classList.add('is-dragover'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('is-dragover'));
+      dropZone.addEventListener('drop', (event) => {
+        event.preventDefault();
+        const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+        if (!file) return;
+        try {
+          const transfer = new DataTransfer();
+          transfer.items.add(file);
+          input.files = transfer.files;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch {
+          setStatus('Choose DOCX', 'اختر ملف DOCX', 'error', 'Use Browse for DOCX to select this file.', 'استخدم استعراض ملف DOCX لاختيار هذا الملف.');
+        }
+      });
+      if (!globalThis.JSZip) setStatus('Processing unavailable', 'المعالجة غير متاحة', 'error', 'Could not load jszip.min.js.', 'تعذر تحميل jszip.min.js.');
+    })();
+  </script>
+</body>
+</html>
