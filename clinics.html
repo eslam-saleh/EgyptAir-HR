@@ -339,7 +339,9 @@
     // over to the next account in this list.
     const EMAILJS_ACCOUNTS = [
       { serviceId: 'service_ulzc3yq', templateId: 'template_2ww2fmf', publicKey: '2HT2DiS7Jke92DnaM' },
-      { serviceId: 'service_w5ir8kq', templateId: 'template_ygdl3ir', publicKey: 'tD0jDmxF7s4DZrqR1' },
+      // Hotmail-backed account disabled for now — EmailJS might flag/ban it.
+      // Falls back to the mailto: trick below instead (see sendDecisionEmail).
+      // { serviceId: 'service_w5ir8kq', templateId: 'template_ygdl3ir', publicKey: 'tD0jDmxF7s4DZrqR1' },
       // { serviceId: 'service_yyyyyyy', templateId: 'template_yyyyyyy', publicKey: 'yyyyyyyyyyyyyyyy' },
     ];
 
@@ -935,6 +937,18 @@ async function sha256Hex(value) {
       }
     }
 
+    // The mailto: trick — used as a fallback when EmailJS can't send.
+    // Building a real <form action="mailto:..."> submit isn't practical here
+    // since decisions are triggered by button clicks, not a form submission,
+    // so this does the equivalent: it points the browser at a mailto: URL,
+    // which opens the admin's default email client (Outlook, Mail, Gmail...)
+    // with the same subject/body already filled in, ready for a manual send.
+    function openMailtoFallback(toEmail, content) {
+      const subject = encodeURIComponent(content.title);
+      const body = encodeURIComponent(`${content.name}،\n\n${content.message}`);
+      window.location.href = `mailto:${toEmail}?subject=${subject}&body=${body}`;
+    }
+
     async function sendDecisionEmail(row, decision) {
       const toEmail = getRowValue(row, ['email address', 'email', 'البريد']);
       if (!toEmail) throw new Error(t('This row has no email address.', 'هذا الصف لا يحتوي على بريد إلكتروني.'));
@@ -970,7 +984,16 @@ async function sha256Hex(value) {
         }
       }
 
-      throw lastError || new Error(t('Email could not be sent.', 'تعذر إرسال البريد الإلكتروني.'));
+      // All configured EmailJS accounts failed (or none left, since the
+      // hotmail account is commented out above) — fall back to the mailto:
+      // trick instead of erroring out. This opens the admin's own email
+      // client with the same subject/body so they can hit send manually.
+      if (lastError) console.warn('EmailJS failed, falling back to mailto:', lastError);
+      openMailtoFallback(toEmail, content);
+      window.showToast?.(t(
+        'Automatic sending failed — your email client opened with the message ready, please hit send.',
+        'فشل الإرسال التلقائي — تم فتح برنامج البريد بالرسالة جاهزة، برجاء الضغط على إرسال.'
+      ), 'warning');
     }
 
     async function updateSheetDecision(row, decision, chosenDateIso) {
