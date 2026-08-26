@@ -266,8 +266,20 @@
     //    employees at once, ambiguous as to which one is meant.
     const ARABIC_LETTER_RANGE = '\\u0621-\\u064A';
 
+    // Build a regex source that accepts the Arabic spelling variants used in
+    // employee data and templates. This keeps gender conversion tolerant of
+    // ى/ي and ة/ه in addition to optional tatweel between letters.
     function tatweelTolerantSource(word) {
-      return word.split('').map((ch) => ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\u0640*');
+      const variantSource = {
+        'ي': '[يى]',
+        'ى': '[يى]',
+        'ه': '[هة]',
+        'ة': '[هة]'
+      };
+      return Array.from(String(word || '')).map((ch) => {
+        if (variantSource[ch]) return variantSource[ch];
+        return ch.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&');
+      }).join('\\u0640*');
     }
 
     function arabicWordRegex(word) {
@@ -447,18 +459,32 @@
       return String(key || '').toLowerCase().replace(/[\s_-]/g, '');
     }
 
-    /** Stronger Arabic-aware normalize: strip al-/taa marbuta/haa and diacritics for flexible label matching. */
-    function softNormalize(str) {
-      return String(str || '')
-        .normalize('NFKC')
+    /**
+     * Canonical Arabic matching form. It deliberately folds only orthographic
+     * variants that are safe for search and label matching:
+     *   • tatweel and tashkeel are ignored;
+     *   • alef forms become ا;
+     *   • maqsura ى and yeh ي become ي;
+     *   • taa marbuta ة and haa ه become ه.
+     * Therefore a query containing either member of each pair matches the
+     * other spelling everywhere this helper is used.
+     */
+    function normalizeArabicVariants(str, { stripLeadingAl = false, compact = false } = {}) {
+      let value = String(str ?? '').normalize('NFKC');
+      value = value
         .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
         .replace(/[إأآا]/g, 'ا')
-        .replace(/ى/g, 'ي')
-        .replace(/ة/g, 'ه')
-        .replace(/^ال/, '')
-        .replace(/[\s_\-]/g, '')
+        .replace(/[يى]/g, 'ي')
+        .replace(/[هة]/g, 'ه')
         .toLowerCase()
         .trim();
+      if (stripLeadingAl) value = value.replace(/^ال/, '');
+      if (compact) value = value.replace(/[\s_\-]/g, '');
+      return value;
+    }
+
+    function softNormalize(str) {
+      return normalizeArabicVariants(str, { stripLeadingAl: true, compact: true });
     }
 
     function labelContains(label, keyword) {
@@ -1530,15 +1556,10 @@ function renderPlaceholderForm(doc, placeholders) {
       }
     }
 
+    // Search uses the same Arabic folding as label/job matching, but keeps
+    // spaces so multi-word queries retain their natural boundaries.
     function normalizeSearchText(str) {
-      return String(str || '')
-        .normalize('NFKC')
-        .replace(/[\u064B-\u0652\u0670\u0640]/g, '') // strip tashkeel/diacritics + tatweel
-        .replace(/[إأآا]/g, 'ا')                      // normalize alef variants
-        .replace(/ى/g, 'ي')                           // alef maksura -> yaa
-        .replace(/ة/g, 'ه')                           // taa marbuta -> haa
-        .toLowerCase()
-        .trim();
+      return normalizeArabicVariants(str);
     }
 
     function renderDocuments(filter = '') {
