@@ -17,7 +17,7 @@ window.SiteData = {
   legalHead: 'احمد يوسف قطب',
   presentorHead: 'اسامة توفيق عبدالحفيظ',
   qualitiesHead: 'هشام محمد مهدى',
-  secretaryHead: 'شرين منير منقريوس',
+  secretaryHead: 'شيرين منير منقريوس',
   financialHead: 'محمد عادل راغب',
   safetyQualityHead: 'محمد صقر',
   marketingContractsHead: 'ايناس صبرى',
