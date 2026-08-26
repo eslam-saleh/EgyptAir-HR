@@ -233,6 +233,9 @@
     }
     .plist li:last-child { border-bottom: none; }
     .plist li::before { content: "•"; color: var(--primary); font-weight: 800; flex-shrink: 0; }
+    .plist li.selectable { cursor: pointer; border-radius: 6px; transition: background .15s, color .15s; }
+    .plist li.selectable:hover { background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+    .plist li.selectable.selected { background: color-mix(in srgb, var(--primary) 14%, var(--surface)); color: var(--primary); font-weight: 800; }
 
     /* ── Salary section ── */
     .sal-field { margin-bottom: 16px; }
@@ -424,7 +427,7 @@
       <div class="header-copy">
         <p class="eyebrow" data-en="Workplace Discipline & Payroll" data-ar="الانضباط الوظيفي والرواتب">الانضباط الوظيفي والرواتب</p>
         <h1 data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">الجزاءات والمرتبات</h1>
-        <p class="intro" data-en="Search workplace violations, view applicable penalties, and calculate incentive deductions for regular employees and flying crew." data-ar="ابحث عن المخالفات الوظيفية، واعرض الجزاءات المقررة، واحسب الخصومات من الحافز للموظفين العاديين وأفراد أطقم الطيران.">ابحث عن المخالفات الوظيفية، واعرض الجزاءات المقررة، واحسب الخصومات من الحافز للموظفين العاديين وأفراد أطقم الطيران.</p>
+        <p class="intro" data-en="Search workplace violations, view applicable penalties, and calculate salary deductions for regular employees and flying crew." data-ar="ابحث عن المخالفات الوظيفية، واعرض الجزاءات المقررة، واحسب الخصومات من المرتب للموظفين العاديين وأفراد أطقم الطيران.">ابحث عن المخالفات الوظيفية، واعرض الجزاءات المقررة، واحسب الخصومات من المرتب للموظفين العاديين وأفراد أطقم الطيران.</p>
       </div>
     </header>
 
@@ -520,6 +523,7 @@
               <div class="vp-row">
                 <div class="vp-label" data-en="Applicable Penalties" data-ar="الجزاءات الممكنة">الجزاءات الممكنة</div>
                 <ul class="plist" id="crewPunishments"></ul>
+                <p class="hint-text" data-en="Select the applicable punishment to calculate the incentive deduction." data-ar="اختر الجزاء المطبق لحساب خصم الحافز.">اختر الجزاء المطبق لحساب خصم الحافز.</p>
               </div>
               <div class="crew-penalty-wrap">
                 <div class="vp-label" data-en="Enter Deduction Amount" data-ar="أدخل مبلغ الخصم من المرتب">أدخل مبلغ الخصم من المرتب</div>
@@ -554,7 +558,7 @@
               <span class="sal-currency">EGP</span>
               <input type="range" id="basicRange" min="0" max="4000" step="50" value="2000">
             </div>
-            <p class="hint-text" data-en="Part of total gross salary. Penalty incentive deductions are calculated from incentives only." data-ar="جزء من الأجر الشامل. خصومات الجزاء تُحسب من الحافز فقط.">جزء من الأجر الشامل. خصومات الجزاء تُحسب من الحافز فقط.</p>
+            <p class="hint-text" data-en="Part of total gross salary. Day-based penalties use total gross (basic + incentives)." data-ar="جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).">جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).</p>
           </div>
 
           <!-- Incentives / Variable (الحوافز) -->
@@ -565,7 +569,7 @@
               <span class="sal-currency">EGP</span>
               <input type="range" id="incentivesRange" min="0" max="50000" step="50" value="13000">
             </div>
-            <p class="hint-text" data-en="The penalty deduction percentages are applied to this incentive amount." data-ar="تُطبَّق نسب خصم الجزاء على هذا المبلغ من الحافز.">تُطبَّق نسب خصم الجزاء على هذا المبلغ من الحافز.</p>
+            <p class="hint-text" data-en="Included in total gross used for day-based penalty calculation. Incentive deductions caused by a penalty are calculated separately and added to existing deductions." data-ar="تُدرج ضمن الأجر الشامل المستخدم في حساب الجزاءات بالأيام. ويُحسب خصم الحافز الناتج عن الجزاء بشكل مستقل بالإضافة إلى الخصومات الحالية.">تُدرج ضمن الأجر الشامل المستخدم في حساب الجزاءات بالأيام. ويُحسب خصم الحافز الناتج عن الجزاء بشكل مستقل بالإضافة إلى الخصومات الحالية.</p>
           </div>
 
           <!-- Meal money (وجبة) -->
@@ -657,12 +661,13 @@
               <div class="sum-cvalue neg" id="sMealTax">-0.00 EGP</div>
             </div>
             <div class="sum-card">
-              <div class="sum-clabel" data-en="Penalty Deduction from Incentives" data-ar="خصم الجزاء من الحافز">خصم الجزاء من الحافز</div>
+              <div class="sum-clabel" data-en="Penalty Deduction" data-ar="خصم الجزاء">خصم الجزاء</div>
               <div class="sum-cvalue neg" id="sPenalty">-0.00 EGP</div>
             </div>
-
-
-
+            <div class="sum-card">
+              <div class="sum-clabel" data-en="Incentive Deduction" data-ar="خصم الحافز">خصم الحافز</div>
+              <div class="sum-cvalue neg" id="sIncentive">-0.00 EGP</div>
+            </div>
 
             <div class="sum-card highlight">
               <div class="sum-clabel" data-en="Net Salary" data-ar="المرتب الصافي">المرتب الصافي</div>
@@ -676,7 +681,7 @@
 
           <!-- Penalty explanation row -->
           <div id="penaltyExplain" class="penalty-explain hidden">
-            <span data-en="Incentive deduction basis: " data-ar="أساس احتساب الخصم من الحافز: ">أساس احتساب الخصم من الحافز: </span>
+            <span data-en="Penalty basis: " data-ar="أساس احتساب الجزاء: ">أساس احتساب الجزاء: </span>
             <strong id="penaltyBasis" style="color:var(--text);"></strong>
           </div>
         </div>
@@ -709,6 +714,7 @@
     // ── State ─────────────────────────────────────────────────────────────────
     let selectedReg  = null;
     let selectedCrew = null;
+    let selectedCrewPunishment = null;
     let basicSalary  = 2000;   // الأجر الأساسي (حد أدنى 0 – أقصى 4000)
     let incentives   = 13000;  // الحوافز / الأجر المتغير
     let mealCount    = 0;      // عدد الوجبات (0–30)
@@ -716,6 +722,9 @@
     const MEAL_TAX_RATE = 0.10; // ضريبة 10% على بدل الوجبة
     let penaltyAmt   = 0;
     let penaltyDesc  = '';
+    let incentivePenaltyRate = 0;
+    let incentivePenaltyAmt  = 0;
+    let incentivePenaltyDesc = '';
 
     function getTotalGross() {
       return basicSalary + incentives;
@@ -862,6 +871,7 @@
           incRng.value = Math.min(50000, Math.max(0, n));
           incentives = n;
           updateTotalGross();
+          recalcPenalty();
           updateSummary();
         }
         clearTimeout(incDebounce);
@@ -871,6 +881,7 @@
           incRng.value = v;
           incentives = v;
           updateTotalGross();
+          recalcPenalty();
           updateSummary();
         }, 900);
       });
@@ -881,12 +892,14 @@
         incRng.value = v;
         incentives = v;
         updateTotalGross();
+        recalcPenalty();
         updateSummary();
       });
       incRng.addEventListener('input', () => {
         incentives = +incRng.value;
         incNum.value = incentives;
         updateTotalGross();
+        recalcPenalty();
         updateSummary();
       });
 
@@ -962,11 +975,16 @@
       penaltyAmt  = amount;
       penaltyDesc = desc;
 
+      const incentiveDeduction = calcIncentiveDeduction(pen);
+      incentivePenaltyRate = incentiveDeduction.rate;
+      incentivePenaltyAmt  = incentiveDeduction.amount;
+      incentivePenaltyDesc = incentiveDeduction.desc;
+
       const calcEl = document.getElementById('regPenaltyCalc');
       if (isMonetary && amount > 0) {
         calcEl.innerHTML = `<span class="penalty-tag">${fmt(amount)} EGP</span>`;
       } else if (!isMonetary && pen !== '—') {
-        calcEl.innerHTML = `<span class="warn-tag">⚠ ${getLang()==='ar'?'جزاء غير نقدي — لا يُخصم من المرتب':'Non-monetary — no salary deduction'}</span>`;
+        calcEl.innerHTML = `<span class="warn-tag">⚠ ${getLang()==='ar' ? (incentivePenaltyRate ? 'جزاء غير نقدي — لا يُخصم من المرتب مع تطبيق خصم الحافز' : 'جزاء غير نقدي — لا يُخصم من المرتب') : (incentivePenaltyRate ? 'Non-monetary — no salary deduction; incentive deduction applies' : 'Non-monetary — no salary deduction')}</span>`;
         penaltyAmt = 0;
       } else {
         calcEl.innerHTML = '';
@@ -980,6 +998,9 @@
       selectedReg = null;
       penaltyAmt  = 0;
       penaltyDesc = '';
+      incentivePenaltyRate = 0;
+      incentivePenaltyAmt  = 0;
+      incentivePenaltyDesc = '';
       document.getElementById('regularSearch').value = '';
       document.getElementById('regularResults').innerHTML = '';
       document.getElementById('regularResults').classList.add('hidden');
@@ -1021,13 +1042,31 @@
       ul.innerHTML = '';
       (r.punishments || []).forEach(p => {
         const li = document.createElement('li');
+        li.className = 'selectable';
         li.textContent = p;
+        li.addEventListener('click', () => selectCrewPunishment(p, li));
         ul.appendChild(li);
       });
-      // Reset amount
+      // Reset amount and selected punishment
       document.getElementById('crewPenaltyAmt').value = 0;
       penaltyAmt  = 0;
       penaltyDesc = getLang()==='ar' ? 'إدخال يدوي' : 'Manual entry';
+      selectedCrewPunishment = null;
+      incentivePenaltyRate = 0;
+      incentivePenaltyAmt  = 0;
+      incentivePenaltyDesc = '';
+      updatePenaltyExplain();
+      updateSummary();
+    }
+
+    function selectCrewPunishment(punishment, item) {
+      selectedCrewPunishment = punishment;
+      document.querySelectorAll('#crewPunishments li').forEach(li => li.classList.remove('selected'));
+      item.classList.add('selected');
+      const incentiveDeduction = calcIncentiveDeduction(punishment);
+      incentivePenaltyRate = incentiveDeduction.rate;
+      incentivePenaltyAmt  = incentiveDeduction.amount;
+      incentivePenaltyDesc = incentiveDeduction.desc;
       updatePenaltyExplain();
       updateSummary();
     }
@@ -1041,14 +1080,28 @@
       input.value = v; // keep the field in sync with the clamped value that's actually used
       penaltyAmt  = v;
       penaltyDesc = getLang()==='ar' ? 'إدخال يدوي' : 'Manual entry';
+      if (selectedCrewPunishment) {
+        const incentiveDeduction = calcIncentiveDeduction(selectedCrewPunishment);
+        incentivePenaltyRate = incentiveDeduction.rate;
+        incentivePenaltyAmt  = incentiveDeduction.amount;
+        incentivePenaltyDesc = incentiveDeduction.desc;
+      } else {
+        incentivePenaltyRate = 0;
+        incentivePenaltyAmt  = 0;
+        incentivePenaltyDesc = '';
+      }
       updatePenaltyExplain();
       updateSummary();
     }
 
     function clearCrew() {
       selectedCrew = null;
+      selectedCrewPunishment = null;
       penaltyAmt   = 0;
       penaltyDesc  = '';
+      incentivePenaltyRate = 0;
+      incentivePenaltyAmt  = 0;
+      incentivePenaltyDesc = '';
       document.getElementById('crewSearch').value = '';
       document.getElementById('crewResults').innerHTML = '';
       document.getElementById('crewResults').classList.add('hidden');
@@ -1058,49 +1111,113 @@
       updateSummary();
     }
 
-    // ── Penalty calculation ───────────────────────────────────────────────────
-    // خصومات الجزاء تُحتسب من الحافز وفق الشرائح المعتمدة، مع استمرار
-    // خصم 3 أيام بالطريقة السابقة وإضافة 30٪ من الحافز إليه.
+    // ── Penalty calculation (comprehensive) ──────────────────────────────────
+    // IMPORTANT: day-based penalties use Total Gross (basic + incentives) as directed
     function calcPenalty(text) {
       if (!text || text === '—' || text === '-') return { amount: 0, desc: '', isMonetary: false };
+      const t = text.toString();
+      const daily  = getTotalGross() / 30;   // ← من الأجر الشامل (أساسي + حوافز)
+      const raise  = getRaise();
+
+      // Percentage of daily wage (total gross)
+      if (t.includes('١٠٪') || t.includes('10%'))                        return { amount: daily * 0.10, desc: 'شامل يومي ×0.10', isMonetary: true };
+      if (t.includes('٧٥٪') || t.includes('75%'))                        return { amount: daily * 0.75, desc: 'شامل يومي ×0.75', isMonetary: true };
+
+      // Fractions of a day
+      if (t.includes('ربع اليوم') || t.includes('ربع يوم'))              return { amount: daily * 0.25, desc: 'شامل يومي ÷4', isMonetary: true };
+      if (t.includes('نصف اليوم') || t.includes('نصف يوم'))              return { amount: daily * 0.5,  desc: 'شامل يومي ÷2', isMonetary: true };
+      if (t.includes('ثلاثة أرباع') )                                     return { amount: daily * 0.75, desc: 'شامل يومي ×0.75', isMonetary: true };
+
+      // Days (order matters: check longer phrases first)
+      if (t.includes('يوم ونصف'))                                         return { amount: daily * 1.5, desc: 'شامل يومي ×1.5', isMonetary: true };
+      if (t.includes('يومان'))                                            return { amount: daily * 2,   desc: 'شامل يومي ×2',   isMonetary: true };
+      if (t.includes('ثلاثة أيام'))                                       return { amount: daily * 3,   desc: 'شامل يومي ×3',   isMonetary: true };
+      if (t.includes('أربعة أيام'))                                       return { amount: daily * 4,   desc: 'شامل يومي ×4',   isMonetary: true };
+      if (t.includes('خمسة أيام'))                                        return { amount: daily * 5,   desc: 'شامل يومي ×5',   isMonetary: true };
+      if (t === 'يوم' || (t.includes('يوم') && !t.includes('يومان') && !t.includes('يوم ونصف') && !t.includes('أيام')))
+                                                                           return { amount: daily * 1,   desc: 'شامل يومي ×1',   isMonetary: true };
+
+      // Raise-based
+      if (t.includes('نصف العلاوة') || t.includes('الحرمان من نصف العلاوة')) return { amount: raise * 0.5, desc: 'نصف العلاوة', isMonetary: true };
+      if (t.includes('خفض الأجر بمقدار علاوة') || t.includes('خصم من الأجر في حدود علاوة') || t.includes('خفض في حدود علاوة') || t.includes('خفض الأجر بمقدار علاوة على الأكثر')) return { amount: raise, desc: 'مقدار علاوة', isMonetary: true };
+      if (t.includes('خصم من الأجر') || t.includes('الخصم من الأجر'))   return { amount: daily,        desc: 'شامل يومي ×1',   isMonetary: true };
+
+      // Non-monetary penalties
+      if (t.includes('إنذار'))                                            return { amount: 0, desc: '', isMonetary: false };
+      if (t.includes('تأجيل'))                                            return { amount: 0, desc: '', isMonetary: false };
+      if (t.includes('الحرمان من العلاوة') && !t.includes('نصف'))        return { amount: raise,        desc: 'قيمة العلاوة', isMonetary: true };
+      if (t.includes('تأجيل الترقية'))                                    return { amount: 0, desc: '', isMonetary: false };
+      if (t.includes('الخفض إلى وظيفة'))                                  return { amount: 0, desc: '', isMonetary: false };
+      if (t.includes('الفصل'))                                            return { amount: 0, desc: '', isMonetary: false };
+
+      return { amount: 0, desc: '', isMonetary: false };
+    }
+
+    // خصم الحافز يُطبق بالإضافة إلى الخصومات النقدية الحالية لجزاء الموظف العادي.
+    // قاعدة 30%: الإنذار وأي جزاء من يوم إلى أقل من خمسة أيام.
+    // قاعدة 60%: خمسة أيام فأكثر، أو الوقف عشرة أيام، أو تأجيل موعد العلاوة.
+    // قاعدة 100%: الحرمان من نصف العلاوة، أو خفض الأجر، أو الخفض إلى وظيفة.
+    function calcIncentiveDeduction(text) {
+      if (!text || text === '—' || text === '-') return { rate: 0, amount: 0, desc: '' };
 
       const t = text.toString().trim();
-      const incentive = Math.max(0, incentives);
-      const daily = getTotalGross() / 30;
-      const has = (...terms) => terms.some(term => t.includes(term));
-      const isFiveOrMoreDays = has(
-        'خمسة أيام', 'خمس أيام', 'من خمسة أيام', 'من ٥ أيام', '٥ أيام',
-        'ستة أيام', 'سبعة أيام', 'ثمانية أيام', 'تسعة أيام', 'عشرة أيام',
-        'أحد عشر يوماً', 'اثنا عشر يوماً', '12 يوم', '10 أيام', 'عشرة أيام', 'الوقف لمدة عشرة أيام', 'وقف لمدة عشرة أيام', '10 day', '5 days'
-      ) || /(?:^|\D)(?:[5-9]|[1-9]\d+)\s*(?:يوم|أيام|day|days)/i.test(t);
+      const normalized = t.replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+      const exact = values => values.includes(t) || values.includes(normalized);
+      const isFullIncentiveDeduction = exact([
+        'الحرمان من نصف العلاوة',
+        'الحرمان من نصف العلاوة السنوية',
+        'خفض الأجر بمقدار علاوة',
+        'خفض الأجر بمقدار علاوة على الأكثر',
+        'خفض الأجر في حدود علاوة',
+        'الخفض إلى وظيفة في الدرجة الأدنى مباشرة'
+      ]);
+      const isRaiseDelay = t.startsWith('تأجيل موعد استحقاق العلاوة') ||
+        t.startsWith('تأجيل موعد استحقاق العلاوة السنوية');
+      const isTenDaySuspension = /(?:الوقف|وقف|إيقاف|ايقاف)\s*(?:10|١٠|عشرة|عشر)\s*أيام?/.test(t);
+      const isFiveOrMoreDays = exact([
+        'خمسة أيام'
+      ]);
+      const isLessThanFiveDays = exact([
+        'إنذار',
+        '١٠٪ من أجر اليوم',
+        '٧٥٪ من أجر اليوم',
+        'ربع اليوم',
+        'ربع يوم',
+        'نصف اليوم',
+        'نصف يوم',
+        'يوم',
+        'يوم ونصف',
+        'يومان',
+        'ثلاثة أيام',
+        'أربعة أيام'
+      ]);
 
-      // 100٪ من الحافز: الحرمان من نصف العلاوة أو خفض الأجر/الوظيفة.
-      if (has('نصف العلاوة', 'الحرمان من نصف العلاوة', 'خفض الأجر', 'خفض في الأجر', 'خفض إلى وظيفة', 'الخفض إلى وظيفة', 'خفض الوظيفة', 'الخفض في الوظيفة')) {
-        return { amount: incentive, desc: '100٪ من الحافز — الحرمان من نصف العلاوة أو خفض الأجر/الوظيفة', isMonetary: true };
+      let rate = 0;
+      let desc = '';
+
+      if (isFullIncentiveDeduction) {
+        rate = 1;
+        desc = '100%';
+      } else if (isFiveOrMoreDays || isTenDaySuspension || isRaiseDelay) {
+        rate = 0.60;
+        desc = '60%';
+      } else if (isLessThanFiveDays) {
+        rate = 0.30;
+        desc = '30%';
       }
 
-      // جزاء 3 أيام: خصم الأيام بالطريقة السابقة + 30٪ من الحافز.
-      if (has('ثلاثة أيام', '3 أيام', '3 ايام')) {
-        return { amount: daily * 3 + incentive * 0.30, desc: 'خصم 3 أيام + 30٪ من الحافز', isMonetary: true };
-      }
-
-      // 60٪ من الحافز: 5 أيام فأكثر، الوقف 10 أيام، أو تأجيل موعد العلاوة.
-      if (isFiveOrMoreDays || has('الوقف ١٠ أيام', 'الوقف 10 أيام', 'وقف ١٠ أيام', 'وقف 10 أيام', 'الوقف لمدة ١٠ أيام', 'الوقف لمدة 10 أيام', 'تأجيل موعد العلاوة', 'تأجيل العلاوة')) {
-        return { amount: incentive * 0.60, desc: '60٪ من الحافز — جزاء 5 أيام فأكثر/وقف 10 أيام/تأجيل موعد العلاوة', isMonetary: true };
-      }
-
-      // 30٪ من الحافز: الإنذار أو الجزاء الأقل من 5 أيام.
-      if (has('إنذار', 'انذار', 'يوم', 'أيام', 'يومان', 'يوم ونصف')) {
-        return { amount: incentive * 0.30, desc: '30٪ من الحافز — من الإنذار حتى أقل من 5 أيام', isMonetary: true };
-      }
-
-      // الجزاءات غير النقدية التي لا تنتمي إلى الشرائح المحددة.
-      return { amount: 0, desc: '', isMonetary: false };
+      return { rate, amount: incentives * rate, desc };
     }
 
     function recalcPenalty() {
       if (selectedReg) updateRegOutput();
-      // Crew: penalty is manual, no recalc needed
+      if (selectedCrewPunishment) {
+        const incentiveDeduction = calcIncentiveDeduction(selectedCrewPunishment);
+        incentivePenaltyRate = incentiveDeduction.rate;
+        incentivePenaltyAmt  = incentiveDeduction.amount;
+        incentivePenaltyDesc = incentiveDeduction.desc;
+        updatePenaltyExplain();
+      }
     }
 
     // ── Egypt 2026 Social Insurance & Income Tax ──────────────────────────────
@@ -1182,8 +1299,8 @@
         taxableMonthly = Math.max(0, grossForTax - insAmt - (PERSONAL_EXEMPTION_ANNUAL / 12));
       }
 
-      // الصافي = (أساسي + حوافز) − تأمينات − ضريبة دخل − جزاء + صافي الوجبات
-      const net = Math.max(0, gross - taxAmt - insAmt - penaltyAmt) + mealNet;
+      // الصافي = (أساسي + حوافز) − التأمينات − الضريبة − الخصومات الحالية − خصم الحافز + صافي الوجبات
+      const net = Math.max(0, gross - taxAmt - insAmt - penaltyAmt - incentivePenaltyAmt) + mealNet;
 
       document.getElementById('sBasic').textContent      = fmtEGP(basicSalary);
       document.getElementById('sIncentives').textContent = fmtEGP(incentives);
@@ -1195,6 +1312,7 @@
       const sMealTax = document.getElementById('sMealTax');
       if (sMealTax) sMealTax.textContent = '-' + fmtEGP(mealTax);
       document.getElementById('sPenalty').textContent    = '-' + fmtEGP(penaltyAmt);
+      document.getElementById('sIncentive').textContent  = '-' + fmtEGP(incentivePenaltyAmt);
       document.getElementById('sNet').textContent        = fmtEGP(net);
 
 
@@ -1207,8 +1325,16 @@
     function updatePenaltyExplain() {
       const el    = document.getElementById('penaltyExplain');
       const basis = document.getElementById('penaltyBasis');
+      const parts = [];
       if (penaltyAmt > 0 && penaltyDesc) {
-        basis.textContent = penaltyDesc + ' = ' + fmtEGP(penaltyAmt);
+        parts.push(penaltyDesc + ' = ' + fmtEGP(penaltyAmt));
+      }
+      if (incentivePenaltyRate > 0) {
+        const label = getLang() === 'ar' ? 'خصم الحافز بنسبة ' : 'Incentive deduction at ';
+        parts.push(label + incentivePenaltyDesc + ' = ' + fmtEGP(incentivePenaltyAmt));
+      }
+      if (parts.length) {
+        basis.textContent = parts.join(' + ');
         el.classList.remove('hidden');
       } else {
         el.classList.add('hidden');
