@@ -1148,7 +1148,10 @@ function renderPlaceholderForm(doc, placeholders) {
 		  const g = selectedPlaceholders[Number(f.dataset.placeholderIndex)];
 		  return g && normalizeKey(g.label).includes(normalizeKey('كود'));
 		});
-		const safeDocName = (kodField?.value || selectedDoc?.name || 'document-center-fields').replace(/[^\w\-]+/g, '_');
+      const code = (kodField?.value || '').trim();
+      const baseName = (selectedDoc?.name || 'document-center-fields').replace(/\.(docx?|DOCX?)$/, '');
+      const combinedName = code ? `${code} ${baseName}` : baseName;
+      const safeDocName = combinedName.replace(/[\\/:*?"<>|]+/g, '_').trim();
       a.href = url;
       a.download = `${safeDocName}.json`;
       document.body.appendChild(a);
