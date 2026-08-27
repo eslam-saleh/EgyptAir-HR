@@ -389,6 +389,16 @@
     const FEMINIZE_WORD_TABLE = FEMINIZE_PAIRS.map(([m, f]) => [arabicWordRegex(m), f]);
     const FEMINIZE_PHRASE_TABLE = FEMINIZE_PHRASES.map(([m, f]) => [arabicWordRegex(m), f]);
 
+    function isExecutiveOrdersBlockStart(text) {
+      const normalized = normalizeArabicVariants(String(text || '')).replace(/\s+/gu, ' ');
+      return /مدير\s+عام\s+الاداره\s+العامه\s+للم(?:وارد|وراد)\s+البشريه/u.test(normalized);
+    }
+
+    function isExecutiveOrdersBlockEnd(text) {
+      const normalized = normalizeArabicVariants(String(text || '')).replace(/\s+/gu, ' ');
+      return /قرار\s*السيده\s+الاستاذه\s*[/／]\s*رئيس\s+مجلس\s+الاداره\s+والعضو\s+المنتدب\s+التنفيذي\s+للشركه\s+رقم\s*346\s+بتاريخ\s*24\s*[/／]\s*8\s*[/／]\s*2025\s+بتفويضنا\s+بالتوقيع\s+على\s+الاوامر\s+الاداريه\s+والتنفيذيه\s*0?/u.test(normalized);
+    }
+
     function feminizeArabicText(text) {
       if (!text) return text;
       let result = text.replace(buildAlsayyedGuardRe(), 'السيدة');
@@ -417,6 +427,7 @@
       if (doc.getElementsByTagName('parsererror').length) return xml;
 
       const paragraphs = doc.getElementsByTagName('w:p');
+      let insideExecutiveOrdersBlock = false;
       for (let p = 0; p < paragraphs.length; p += 1) {
         const tNodes = [];
         const innerNodes = paragraphs[p].getElementsByTagName('*');
@@ -427,6 +438,13 @@
 
         const original = tNodes.map((n) => n.textContent || '').join('');
         if (!original) continue;
+        const startsProtectedBlock = isExecutiveOrdersBlockStart(original);
+        const endsProtectedBlock = isExecutiveOrdersBlockEnd(original);
+        if (startsProtectedBlock) insideExecutiveOrdersBlock = true;
+        if (insideExecutiveOrdersBlock) {
+          if (endsProtectedBlock) insideExecutiveOrdersBlock = false;
+          continue;
+        }
         const converted = feminizeArabicText(original);
         if (converted === original) continue;
 
@@ -1130,10 +1148,7 @@ function renderPlaceholderForm(doc, placeholders) {
 		  const g = selectedPlaceholders[Number(f.dataset.placeholderIndex)];
 		  return g && normalizeKey(g.label).includes(normalizeKey('كود'));
 		});
-		const code = (kodField?.value || '').trim();
-		const baseName = (selectedDoc?.name || 'document-center-fields').replace(/\.(docx?|DOCX?)$/, '');
-		const combinedName = code ? `${code} ${baseName}` : baseName;
-		const safeDocName = combinedName.replace(/[\\/:*?"<>|]+/g, '_').trim();
+		const safeDocName = (kodField?.value || selectedDoc?.name || 'document-center-fields').replace(/[^\w\-]+/g, '_');
       a.href = url;
       a.download = `${safeDocName}.json`;
       document.body.appendChild(a);

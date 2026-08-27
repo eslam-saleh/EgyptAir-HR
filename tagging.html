@@ -149,6 +149,19 @@ const SYSTEM_KEYS = new Set([
   'planningHead', 'procurementHead', 'warehousesHead', 'maintenanceHead'
 ]);
 const SYSTEM_VALUE_ALIASES = [['HRHead', 'حسنى عبد الرازق عبد الغنى']];
+// This block is legally fixed boilerplate. It must remain untouched from the
+// executive-orders heading through the specified delegation decision, even when
+// it spans multiple Word paragraphs/runs.
+function isExecutiveOrdersBlockStart(text) {
+  const normalized = normalizeArabic(String(text || '')).replace(/\s+/gu, ' ');
+  return /مدير\s+عام\s+الاداره\s+العامه\s+للم(?:وارد|وراد)\s+البشريه/u.test(normalized);
+}
+
+function isExecutiveOrdersBlockEnd(text) {
+  const normalized = normalizeArabic(String(text || '')).replace(/\s+/gu, ' ');
+  return /قرار\s*السيده\s+الاستاذه\s*[/／]\s*رئيس\s+مجلس\s+الاداره\s+والعضو\s+المنتدب\s+التنفيذي\s+للشركه\s+رقم\s*346\s+بتاريخ\s*24\s*[/／]\s*8\s*[/／]\s*2025\s+بتفويضنا\s+بالتوقيع\s+على\s+الاوامر\s+الاداريه\s+والتنفيذيه\s*0?/u.test(normalized);
+}
+
 const FIXED_LINE_PATTERNS = [
   /السيد\s+المهندس\s*[/／]\s*رئيس\s+قطاع\s+الموارد\s+البشرية\s+بالشركة\s+القابضة\s+لمصر\s+للطيران\s+رق(?:ـ*)م\s*\{رقم\s+الخطاب\s+الوارد\}\s+بتاريخ\s*16\s*[/／]\s*1\s*[/／]\s*2024/gu,
   /الاعارة\s+بعدم\s+المنح\s+أو\s+التجديد\s+عند\s+وجود\s+احتياجات\s+فعلية\s+لتلك\s+الوظيفة\s*\{وظيفة\s+المذكور\}/gu,
@@ -967,8 +980,17 @@ function processXml(xml, siteData, options, partName) {
   }
   const tableProcessed = xml.replace(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/gu, (table) => processTableXml(table, partName, reports));
   const recentParagraphs = [];
+  let insideExecutiveOrdersBlock = false;
   const output = tableProcessed.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/gu, (paragraph) => {
     const text = collectTextNodes(paragraph).map((node) => node.text).join('');
+    const startsProtectedBlock = isExecutiveOrdersBlockStart(text);
+    const endsProtectedBlock = isExecutiveOrdersBlockEnd(text);
+    if (startsProtectedBlock) insideExecutiveOrdersBlock = true;
+    if (insideExecutiveOrdersBlock) {
+      if (endsProtectedBlock) insideExecutiveOrdersBlock = false;
+      recentParagraphs.push(text);
+      return paragraph;
+    }
     const normalizedHeadingContext = normalizeArabic([...recentParagraphs.slice(-3), text].join(' '));
     const isExecutiveHeadingYear = /امر\s*تنفيذي/u.test(normalizedHeadingContext) && /رقم\s*\([^)]*\)\s*لسنه\s*[0-9]{4}/u.test(normalizeArabic(text));
     const chosen = chooseMatches(text, siteData, { ...options, allowCurrentYear, allowExecutiveHeadingYear: isExecutiveHeadingYear, suspensionContext: /(?:ايقاف|إيقاف|مخدر|العينة التوكيدية)/u.test(documentText) });
