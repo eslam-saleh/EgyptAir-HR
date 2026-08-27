@@ -111,7 +111,7 @@ const FIXED_SITE_DATA = {
   legalHead: 'احمد يوسف قطب',
   presentorHead: 'اسامة توفيق عبدالحفيظ',
   qualitiesHead: 'هشام محمد مهدى',
-  secretaryHead: 'شيرين منير منقريوس',
+  secretaryHead: 'شرين منير منقريوس',
   financialHead: 'محمد عادل راغب',
   safetyQualityHead: 'محمد صقر',
   marketingContractsHead: 'ايناس صبرى',
@@ -207,11 +207,12 @@ function xmlDecode(value) {
 }
 
 function normalizeArabicChar(value) {
-  return value
-    .replace(/[ًٌٍَُِّْـ]/g, '')
-    .replace(/[أإآ]/g, 'ا')
-    .replace(/ى/g, 'ي')
-    .replace(/ة/g, 'ه')
+  return String(value || '')
+    .normalize('NFKC')
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[اأإآ]/g, 'ا')
+    .replace(/[ىي]/g, 'ي')
+    .replace(/[هة]/g, 'ه')
     .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - '٠'.charCodeAt(0)))
     .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - '۰'.charCodeAt(0)));
 }
@@ -263,8 +264,8 @@ function tatweelFreeWithMap(value, finalYehVariant = null) {
     const codePoint = value.codePointAt(index);
     const character = String.fromCodePoint(codePoint);
     const nextIndex = index + character.length;
-    if (character !== 'ـ') {
-      const nextVisible = Array.from(value.slice(nextIndex)).find((nextCharacter) => nextCharacter !== 'ـ' && !/[ًٌٍَُِّْ]/u.test(nextCharacter));
+    if (!/[\u064B-\u065F\u0670\u0640]/u.test(character)) {
+      const nextVisible = Array.from(value.slice(nextIndex)).find((nextCharacter) => !/[\u064B-\u065F\u0670\u0640]/u.test(nextCharacter));
       const isWordFinalYeh = (character === 'ى' || character === 'ي') && (!nextVisible || /[\s،؛,.(){}\[\]<>:：/／\\-]/u.test(nextVisible));
       text += finalYehVariant && isWordFinalYeh ? finalYehVariant : character;
       starts.push(index);
@@ -275,9 +276,16 @@ function tatweelFreeWithMap(value, finalYehVariant = null) {
   return { text, starts, ends };
 }
 
-function yehMaqsuraPattern(pattern) {
+// Turn equivalent Arabic spellings into character classes while preserving
+// existing character classes and escaped regex sequences. This lets every
+// tagging rule accept Kashida-free/marked text plus ا/أ/إ/آ, ى/ي, and ة/ه.
+function arabicVariantPattern(pattern) {
   let source = '';
   let inCharacterClass = false;
+  const variants = {
+    'ا': '[اأإآ]', 'أ': '[اأإآ]', 'إ': '[اأإآ]', 'آ': '[اأإآ]',
+    'ى': '[ىي]', 'ي': '[ىي]', 'ة': '[هة]', 'ه': '[هة]'
+  };
   for (let index = 0; index < pattern.source.length; index += 1) {
     const character = pattern.source[index];
     if (character === '\\') {
@@ -287,21 +295,21 @@ function yehMaqsuraPattern(pattern) {
     }
     if (character === '[') inCharacterClass = true;
     if (character === ']') inCharacterClass = false;
-    source += !inCharacterClass && (character === 'ى' || character === 'ي') ? '[ىي]' : character;
+    source += !inCharacterClass && variants[character] ? variants[character] : character;
   }
   return new RegExp(source, pattern.flags);
 }
 
 function arabicMatchAll(text, pattern) {
-  return text.matchAll(yehMaqsuraPattern(pattern));
+  return text.matchAll(arabicVariantPattern(pattern));
 }
 
 function arabicTest(text, pattern) {
-  return yehMaqsuraPattern(pattern).test(text);
+  return arabicVariantPattern(pattern).test(text);
 }
 
 function arabicExec(text, pattern) {
-  return yehMaqsuraPattern(pattern).exec(text);
+  return arabicVariantPattern(pattern).exec(text);
 }
 
 function findNormalizedMatches(text, value) {
@@ -621,6 +629,10 @@ function findGenericNamesAndCodes(text, matches) {
   const job = new RegExp('(?:^|\\s)(?:' + jobTrigger + ')\\s*[/／:：\\-]?\\s*([^\\n]+?)(?=\\s+(?:و?ب(?:الادارة|الإدارة|ادارة|إدارة|مجموعة|قطاع)|لمخدر|عن العمل|كـ*ود|لصالح|اعتب|الس(?:ـ*)يد|وذلك|يوم|سبب)|\\s*[،؛–—.]|$)', 'gu');
   const organization = /(?:ب(?:ال)?ادارة|بإدارة)\s+[^\n،؛]+?\s+بقطاع\s+[^\n،؛]+?(?=\s+(?:بشرك|بشركة|عن العمل|لصالح|احتياط|كل فيما)|\s*[،؛]|$)/gu;
   const signatureName = new RegExp('(?:^|\\n)\\s*الاس(?:ـ*)م\\s*[/／:：\\-]?\\s*(' + nameWord + ')', 'gu');
+  const labeledEmployeeName = new RegExp('(?:^|\\n)\\s*(?:الاس(?:ـ*)م|اسم\\s+(?:الموظف|المذكور))\\s*[/／:：\\-]+\\s*(' + nameWord + ')', 'gu');
+  const labeledJob = /(?:^|\n)\s*(?:الوظيف(?:ة|ه)|وظيفة\s+(?:الموظف|المذكور))\s*[/／:：\-]+\s*([^\n،؛]+)/gu;
+  const labeledDepartment = /(?:^|\n)\s*(?:الادار(?:ـ*)ة|الإدار(?:ـ*)ة|القسم)\s*[/／:：\-]+\s*([^\n،؛]+)/gu;
+  const labeledSector = /(?:^|\n)\s*القطاع\s*[/／:：\-]+\s*([^\n،؛]+)/gu;
   const standaloneOrganization = /(?:^|\n)\s*(?:الادار(?:ـ*)ة\s+العامة|مجموعة\s+الوظائف\s+التخصص(?:ية|يه))\s*[/／:：\-]?\s*([^\n،؛]+)/gu;
   const groupPhrase = /ب?مجموعة\s+الوظائف\s+[^\n،؛]+?(?=\s+(?:بشرك|بشركة)|\s+\{|\s*$|[،؛.])/gu;
 
@@ -638,6 +650,31 @@ function findGenericNamesAndCodes(text, matches) {
     if (!value) continue;
     const offset = match.index + match[0].lastIndexOf(match[1]);
     addMatch(matches, offset, offset + value.length, '{اسم المذكور}', 'mentioned employee name (labeled field)', value, 'high');
+  }
+  for (const match of arabicMatchAll(text, labeledEmployeeName)) {
+    const value = (match[1] || '').trim();
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + value.length, '{اسم المذكور}', 'employee name (explicit labeled field)', value, 'high');
+  }
+  for (const match of arabicMatchAll(text, labeledJob)) {
+    const value = (match[1] || '').trim();
+    if (!value || /^[-:：/／]+$/u.test(value)) continue;
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + value.length, '{وظيفة المذكور}', 'employee job (explicit labeled field)', value, 'high');
+  }
+  for (const match of arabicMatchAll(text, labeledDepartment)) {
+    const value = (match[1] || '').trim();
+    if (!value) continue;
+    const label = /القسم/u.test(match[0]) ? '{القسم}' : '{الإدارة}';
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + value.length, label, 'employee organization unit (explicit labeled field)', value, 'high');
+  }
+  for (const match of arabicMatchAll(text, labeledSector)) {
+    const value = (match[1] || '').trim();
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + value.length, '{القطاع}', 'employee sector (explicit labeled field)', value, 'high');
   }
   for (const match of arabicMatchAll(text, code)) {
     const value = match[1];
@@ -836,6 +873,11 @@ function replaceInTextNodes(paragraphXml, replacements) {
 // everywhere in a document; add a new tag only where none existed yet.
 const PROFILE_GRID_LABELS = [
   ['الاسم', '{اسم المذكور}', 'profile-grid table: name'],
+  ['اسم الموظف', '{اسم المذكور}', 'profile-grid table: employee name'],
+  ['اسم المذكور', '{اسم المذكور}', 'profile-grid table: mentioned employee name'],
+  ['كود', '{كود المذكور}', 'profile-grid table: employee code'],
+  ['كود الموظف', '{كود المذكور}', 'profile-grid table: employee code'],
+  ['كود المذكور', '{كود المذكور}', 'profile-grid table: mentioned employee code'],
   ['تاريخ الميلاد', '{تاريخ الميلاد}', 'profile-grid table: birth date'],
   ['مؤهل التعيين', '{مؤهل التعيين}', 'profile-grid table: appointment qualification'],
   ['مؤهل التعاقد', '{مؤهل التعيين}', 'profile-grid table: contract qualification'],
@@ -847,6 +889,8 @@ const PROFILE_GRID_LABELS = [
   ['درجة القرين', '{الدرجة}', 'profile-grid table: contract grade'],
   ['المجموعة النوعية', '{المجموعة النوعية}', 'profile-grid table: specialty group'],
   ['الادارة العامة', '{الادارة العامة}', 'profile-grid table: general administration'],
+  ['الإدارة', '{الإدارة}', 'profile-grid table: department'],
+  ['القسم', '{القسم}', 'profile-grid table: sub-department'],
   ['التقارير', '{التقارير السنوية عن عامين سابقين}', 'profile-grid table: recent annual evaluations'],
   ['الجزاءات', '{الجزاءات}', 'profile-grid table: penalties record'],
   ['القطاع', '{القطاع}', 'profile-grid table: sector']
