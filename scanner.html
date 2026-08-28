@@ -209,6 +209,19 @@
       outline: 2px solid var(--primary);
       outline-offset: 2px;
     }
+    .a4-download-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border-color: transparent;
+      color: #101820;
+      font-weight: 800;
+      box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 24%, transparent);
+    }
+    .a4-download-btn:hover {
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      border-color: transparent;
+      color: #101820;
+      transform: translateY(-1px);
+    }
     /* ── Dropzone (stage 1) ── */
     .dropzone {
       border: 2px dashed var(--line);
@@ -724,16 +737,16 @@
               <h4 data-en="Export options" data-ar="خيارات التصدير">Export options</h4>
               <div class="scanner-field">
                 <label for="exportFormat" data-en="Download format" data-ar="صيغة التحميل">Download format</label>
-                <select id="exportFormat">
-                  <option value="png" data-en="PNG (high quality)" data-ar="PNG (جودة عالية)">PNG (high quality)</option>
-                  <option value="jpeg" data-en="JPG (smaller size)" data-ar="JPG (حجم أقل)">JPG (smaller size)</option>
+                <select id="exportFormat" onchange="setExportFormat(this.value)">
+                  <option value="jpeg" selected data-en="JPG (low quality · faster)" data-ar="JPG (جودة منخفضة · أسرع)">JPG (low quality · faster)</option>
+                  <option value="png" data-en="PNG (high quality · full resolution)" data-ar="PNG (جودة عالية · الدقة الكاملة)">PNG (high quality · full resolution)</option>
                 </select>
               </div>
               <button type="button" class="primary-btn scanner-btn-block" onclick="exportFromSave()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4V16M12 16L7 11M12 16L17 11M5 20H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 <span data-en="Download image" data-ar="تحميل الصورة">Download image</span>
               </button>
-              <button type="button" class="ghost-btn scanner-btn-block" onclick="exportWordDocx()">
+              <button type="button" class="primary-btn scanner-btn-block a4-download-btn" onclick="exportWordDocx()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 13L10.5 17L12.5 14L15.5 17L16 13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 <span data-en="Download Word — A4 size" data-ar="تحميل Word — مقاس A4">Download Word — A4 size</span>
               </button>
@@ -2134,6 +2147,23 @@ const ENHANCE_PREVIEW_MAX_DIM = 1100;
 // Document is pressed; 1800px preserves readable document detail while making
 // the final commit much faster and more memory-stable.
 const ENHANCE_EXPORT_MAX_DIM = 1800;
+const ENHANCE_HIGH_QUALITY_MAX_DIM = 2800;
+function getExportMaxDim() {
+  const format = document.getElementById('exportFormat')?.value;
+  return format === 'png' ? ENHANCE_HIGH_QUALITY_MAX_DIM : ENHANCE_EXPORT_MAX_DIM;
+}
+function setExportFormat() {
+  // The selected format also determines processing resolution. Invalidate the
+  // previous low/high-resolution cache so changing JPG ↔ PNG really rebuilds
+  // the output instead of reusing the old canvas dimensions.
+  state.filteredCanvas = null;
+  state.filteredPreviewCanvas = null;
+  state.enhanceDirty = true;
+  if (state.stage === 4) {
+    commitEnhanceIfDirty();
+    renderFinalCanvas();
+  }
+}
 
 function renderEnhanceCanvas({ preview = false } = {}) {
   if (!state.croppedCanvas) return;
@@ -2156,7 +2186,7 @@ function renderEnhanceCanvas({ preview = false } = {}) {
     }
   } else if (!state.filteredCanvas) {
     try {
-      const exportSource = makeDownscaledCanvas(state.croppedCanvas, ENHANCE_EXPORT_MAX_DIM);
+      const exportSource = makeDownscaledCanvas(state.croppedCanvas, getExportMaxDim());
       state.filteredCanvas = applyFilterToCanvas(exportSource, state.currentFilter);
     } catch (err) {
       console.error(err);
