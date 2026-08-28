@@ -7,7 +7,8 @@
   <link rel="icon" href="egyptair-logo_.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="portal.css">
 </head>
 <body>
@@ -47,16 +48,81 @@
         </button>
         <p data-en="Access official Word and Excel templates. Use the search bar to find specific files quickly." data-ar="استخدم شريط البحث للعثور على الملفات .">Access official Word and Excel templates. Use the search bar to find specific files quickly.</p>
 
-        <!-- Guide modal -->
+        <!-- Guide modal (guide content embedded — no separate file) -->
         <div id="docGuideModal" class="doc-guide-modal" hidden aria-hidden="true">
           <div class="doc-guide-modal-backdrop" data-close-guide></div>
           <div class="doc-guide-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="docGuideModalTitle">
             <div class="doc-guide-modal-header">
-              <h2 id="docGuideModalTitle" data-en="Document setup guide" data-ar="دليل تهيئة المستندات">دليل تهيئة المستندات</h2>
+              <h2 id="docGuideModalTitle">دليل تهيئة المستندات</h2>
               <button type="button" class="doc-guide-modal-close" data-close-guide aria-label="Close">×</button>
             </div>
             <div class="doc-guide-modal-body">
-              <iframe id="docGuideFrame" src="about:blank" title="دليل تهيئة المستندات"></iframe>
+              <div class="doc-guide-content" dir="rtl" lang="ar">
+                <div class="dg-wrap">
+                  <section class="dg-hero">
+                    <span class="dg-eyebrow">قبل إرسال المستند</span>
+                    <h1 class="dg-h1">جهّز مستندك بنفسك في خطوة واحدة</h1>
+                    <p class="dg-lede">الإدارة لا تستطيع مراجعة كل ملف يدويًا، فإذا استبدلت <b>البيانات المتغيّرة فقط</b> في مستندك بصيغة .docx قبل إرساله، توفّر وقتك ووقت الفريق المختص.</p>
+                  </section>
+
+                  <section class="dg-transform">
+                    <div class="dg-transform-head">
+                      <h2>الخطوة الأهم: التهيئة نفسها</h2>
+                      <span class="dg-hint">مثال حقيقي من داخل المستند</span>
+                    </div>
+                    <div class="dg-doc-line dg-before">
+                      <span class="dg-lbl">قبل</span>
+                      إلى السيد الأستاذ / <span class="dg-hit">محمد أحمد إبراهيم</span> بخصوص طلبه المقدم بتاريخ <span class="dg-hit"> ١٦/١/٢٠٢٤</span>...
+                    </div>
+                    <div class="dg-arrow-mid">استبدل الاسم بالوسم</div>
+                    <div class="dg-doc-line dg-after">
+                      <span class="dg-lbl">بعد</span>
+                      إلى السيد الأستاذ / <span class="dg-tag-pill">{اسم المذكور}</span> بخصوص طلبه المقدم بتاريخ <span class="dg-tag-pill">{تاريخ الطلب}</span>...
+                    </div>
+                    <div class="dg-rule"><span class="dg-dot"></span><span>احذف البيانات الفعلية (الاسم، التاريخ، الوظيفة...) واكتب مكانها <b>وصفًا لها داخل قوسين معقوفين { }</b>، بنفس الشكل تمامًا كما في المثال.</span></div>
+                  </section>
+
+                  <section class="dg-steps-head">
+                    <h2>الخطوات الثلاث</h2>
+                    <p>لا تحتاج أكثر من ذلك لتجهيز الملف قبل إرساله</p>
+                  </section>
+
+                  <div class="dg-steps">
+                    <div class="dg-step">
+                      <div class="dg-step-num">١</div>
+                      <h3>حدّد الجزء المتغيّر</h3>
+                      <p>أي بيانات تخص هذا المستند تحديدًا مثل الاسم، الوظيفة، أو التاريخ.</p>
+                    </div>
+                    <div class="dg-step">
+                      <div class="dg-step-num">٢</div>
+                      <h3>استبدله بوسم { }</h3>
+                      <p>احذف النص واكتب اسم الحقل بين قوسين معقوفين، كما في المثال أعلاه.</p>
+                    </div>
+                    <div class="dg-step">
+                      <div class="dg-step-num">٣</div>
+                      <h3>احفظ بصيغة DOCX</h3>
+                      <p>احفظ الملف بنفس امتداد Word وأرسله إلى الموارد البشرية كالمعتاد.</p>
+                    </div>
+                  </div>
+
+                  <section class="dg-ref">
+                    <h2>أمثلة شائعة على الوسوم</h2>
+                    <p class="dg-sub">استخدم نفس التسمية دائمًا حتى تُقرأ بشكل موحّد</p>
+                    <div class="dg-chips">
+                      <div class="dg-chip"><span class="dg-tag-pill">{اسم المذكور}</span><span class="dg-desc">اسم الموظف</span></div>
+                      <div class="dg-chip"><span class="dg-tag-pill">{وظيفة المذكور}</span><span class="dg-desc">المسمى الوظيفي</span></div>
+                      <div class="dg-chip"><span class="dg-tag-pill">{تاريخ الميلاد}</span><span class="dg-desc">تاريخ الميلاد</span></div>
+                      <div class="dg-chip"><span class="dg-tag-pill">{تاريخ التعيين}</span><span class="dg-desc">تاريخ بداية العمل</span></div>
+                      <div class="dg-chip"><span class="dg-tag-pill">{الإدارة}</span><span class="dg-desc">اسم الإدارة أو القسم</span></div>
+                    </div>
+                  </section>
+
+                  <div class="dg-foot">
+                    <div class="dg-card">بعد التهيئة، احفظ الملف وأرسله كما تفعل عادةً — <b>وسيتولى الفريق الباقي.</b></div>
+                    <p class="dg-small">تأكد أن الأقواس المعقوفة { } موجودة كما هي، ولا تُترجم اسم الوسم ولا تُغيّره عن الأمثلة أعلاه.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -105,7 +171,7 @@
             position: relative;
             width: min(960px, 96vw);
             height: min(88vh, 900px);
-            background: var(--surface, #fff);
+            background: #fff;
             border-radius: 16px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             display: flex;
@@ -118,14 +184,15 @@
             justify-content: space-between;
             gap: 12px;
             padding: 14px 18px;
-            border-bottom: 1px solid var(--border, #d0d7de);
-            background: var(--surface, #f6f8fa);
+            border-bottom: 1px solid #d0d7de;
+            background: #f6f8fa;
             flex-shrink: 0;
           }
           .doc-guide-modal-header h2 {
             margin: 0;
-            font-size: 1.15rem;
-            font-weight: 700;
+            font-size: 1.2rem;
+            font-weight: 800;
+            font-family: 'Cairo', sans-serif;
           }
           .doc-guide-modal-close {
             width: 36px;
@@ -136,32 +203,219 @@
             font-size: 24px;
             line-height: 1;
             cursor: pointer;
-            color: var(--text, #1f2328);
+            color: #1f2328;
           }
-          .doc-guide-modal-close:hover {
-            background: rgba(0,0,0,0.08);
-          }
+          .doc-guide-modal-close:hover { background: rgba(0,0,0,0.08); }
           .doc-guide-modal-body {
             flex: 1;
             min-height: 0;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
           }
-          .doc-guide-modal-body iframe {
-            width: 100%;
-            height: 100%;
-            border: 0;
-            display: block;
-            background: #fff;
+
+          /* Embedded guide (scoped, larger & bolder fonts) */
+          .doc-guide-content {
+            --dg-navy: #0E2A47;
+            --dg-navy-deep: #081A2C;
+            --dg-mist: #EBF0F5;
+            --dg-paper: #FBFCFD;
+            --dg-gold: #C69A3E;
+            --dg-gold-soft: #F3E3BE;
+            --dg-ink: #15222F;
+            --dg-muted: #5B6B7A;
+            --dg-line: #D7DFE7;
+            --dg-tag: #1E7D6E;
+            --dg-tag-bg: #E4F3EF;
+            --dg-before: #B8452F;
+            --dg-before-bg: #FBEAE5;
+            background:
+              radial-gradient(1100px 520px at 85% -10%, rgba(198,154,62,.10), transparent 60%),
+              radial-gradient(900px 500px at -10% 10%, rgba(14,42,71,.06), transparent 55%),
+              var(--dg-mist);
+            color: var(--dg-ink);
+            font-family: 'Cairo', 'Tajawal', sans-serif;
+            font-size: 18px;
+            font-weight: 500;
+            line-height: 1.75;
+            -webkit-font-smoothing: antialiased;
           }
-          [data-theme="dark"] .doc-guide-modal-dialog {
-            background: var(--surface, #161b22);
+          .doc-guide-content .dg-wrap {
+            width: min(920px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 36px 0 56px;
           }
+          .doc-guide-content .dg-hero { text-align: center; padding: 6px 0 36px; }
+          .doc-guide-content .dg-eyebrow {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: var(--dg-gold); background: var(--dg-navy);
+            padding: 9px 18px; border-radius: 999px;
+            font-size: .9rem; font-weight: 800; letter-spacing: .04em;
+          }
+          .doc-guide-content .dg-eyebrow::before {
+            content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--dg-gold);
+          }
+          .doc-guide-content .dg-h1 {
+            margin: 20px auto 14px;
+            font-size: clamp(2rem, 4.5vw, 2.85rem);
+            font-weight: 900; color: var(--dg-navy-deep);
+            line-height: 1.3; max-width: 18ch;
+          }
+          .doc-guide-content .dg-lede {
+            max-width: 52ch; margin: 0 auto;
+            color: var(--dg-muted); font-size: 1.15rem; font-weight: 500;
+          }
+          .doc-guide-content .dg-lede b { color: var(--dg-ink); font-weight: 800; }
+
+          .doc-guide-content .dg-transform {
+            margin: 32px 0 42px; background: var(--dg-paper);
+            border: 1px solid var(--dg-line); border-radius: 20px;
+            box-shadow: 0 18px 45px -22px rgba(14,42,71,.35);
+            padding: clamp(20px, 3.5vw, 32px); position: relative; overflow: hidden;
+          }
+          .doc-guide-content .dg-transform-head {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 18px; position: relative; gap: 12px; flex-wrap: wrap;
+          }
+          .doc-guide-content .dg-transform-head h2 {
+            font-size: 1.2rem; font-weight: 900; color: var(--dg-navy); margin: 0;
+          }
+          .doc-guide-content .dg-hint {
+            font-size: .95rem; color: var(--dg-muted); font-weight: 700;
+          }
+          .doc-guide-content .dg-doc-line {
+            position: relative; border-radius: 12px;
+            padding: 22px 24px; font-size: 1.2rem; font-weight: 700; line-height: 2.15;
+          }
+          .doc-guide-content .dg-before {
+            background: var(--dg-before-bg);
+            border: 1px dashed color-mix(in srgb, var(--dg-before) 55%, transparent);
+          }
+          .doc-guide-content .dg-after {
+            background: var(--dg-tag-bg);
+            border: 1px solid color-mix(in srgb, var(--dg-tag) 35%, transparent);
+            margin-top: 14px;
+          }
+          .doc-guide-content .dg-lbl {
+            position: absolute; top: -12px; right: 16px;
+            background: inherit; padding: 0 10px;
+            font-size: .88rem; font-weight: 800;
+          }
+          .doc-guide-content .dg-before .dg-lbl { color: var(--dg-before); }
+          .doc-guide-content .dg-after .dg-lbl { color: var(--dg-tag); }
+          .doc-guide-content .dg-hit {
+            background: color-mix(in srgb, var(--dg-before) 16%, transparent);
+            border-radius: 5px; padding: 1px 4px; font-weight: 800; color: var(--dg-before);
+            text-decoration: underline; text-decoration-style: wavy;
+            text-decoration-color: color-mix(in srgb, var(--dg-before) 60%, transparent);
+            text-underline-offset: 4px;
+          }
+          .doc-guide-content .dg-tag-pill {
+            display: inline-flex; align-items: center;
+            background: var(--dg-tag); color: #fff;
+            font-weight: 800; font-size: 1.1rem;
+            padding: 4px 12px; border-radius: 7px;
+            direction: ltr; unicode-bidi: isolate;
+          }
+          .doc-guide-content .dg-arrow-mid {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            margin: 8px 0; color: var(--dg-muted);
+            font-size: .95rem; font-weight: 800;
+          }
+          .doc-guide-content .dg-arrow-mid::before,
+          .doc-guide-content .dg-arrow-mid::after {
+            content: ""; height: 1px; width: 34px; background: var(--dg-line);
+          }
+          .doc-guide-content .dg-rule {
+            margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--dg-line);
+            font-size: 1.05rem; font-weight: 500; color: var(--dg-muted);
+            display: flex; gap: 9px; align-items: flex-start;
+          }
+          .doc-guide-content .dg-rule b { color: var(--dg-navy-deep); font-weight: 800; }
+          .doc-guide-content .dg-dot {
+            flex: none; width: 6px; height: 6px; border-radius: 50%;
+            background: var(--dg-gold); margin-top: 10px;
+          }
+
+          .doc-guide-content .dg-steps-head { text-align: center; margin: 8px 0 26px; }
+          .doc-guide-content .dg-steps-head h2 {
+            font-size: 1.5rem; font-weight: 900; color: var(--dg-navy-deep); margin: 0 0 8px;
+          }
+          .doc-guide-content .dg-steps-head p {
+            color: var(--dg-muted); margin: 0; font-size: 1.1rem; font-weight: 500;
+          }
+          .doc-guide-content .dg-steps {
+            position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+          }
+          .doc-guide-content .dg-steps::before {
+            content: ""; position: absolute; top: 28px; right: 16.6%; left: 16.6%; height: 2px;
+            background-image: linear-gradient(to left, var(--dg-line) 60%, transparent 0%);
+            background-size: 12px 2px; background-repeat: repeat-x;
+          }
+          .doc-guide-content .dg-step {
+            position: relative; background: var(--dg-paper);
+            border: 1px solid var(--dg-line); border-radius: 16px;
+            padding: 24px 16px 22px; text-align: center;
+          }
+          .doc-guide-content .dg-step-num {
+            width: 44px; height: 44px; margin: 0 auto 14px; border-radius: 50%;
+            background: var(--dg-navy); color: var(--dg-gold);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 900; font-size: 1.2rem;
+            box-shadow: 0 0 0 6px var(--dg-mist); position: relative; z-index: 1;
+          }
+          .doc-guide-content .dg-step h3 {
+            font-size: 1.15rem; color: var(--dg-navy-deep); margin: 0 0 10px; font-weight: 900;
+          }
+          .doc-guide-content .dg-step p {
+            font-size: 1rem; font-weight: 500; color: var(--dg-muted); margin: 0;
+          }
+          @media (max-width: 640px) {
+            .doc-guide-content .dg-steps { grid-template-columns: 1fr; }
+            .doc-guide-content .dg-steps::before { display: none; }
+          }
+
+          .doc-guide-content .dg-ref { margin-top: 40px; }
+          .doc-guide-content .dg-ref h2 {
+            font-size: 1.3rem; font-weight: 900; color: var(--dg-navy-deep);
+            margin: 0 0 6px; text-align: center;
+          }
+          .doc-guide-content .dg-sub {
+            text-align: center; color: var(--dg-muted);
+            font-size: 1.05rem; font-weight: 500; margin: 0 0 20px;
+          }
+          .doc-guide-content .dg-chips {
+            display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+          }
+          .doc-guide-content .dg-chip {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--dg-paper); border: 1px solid var(--dg-line);
+            border-radius: 11px; padding: 12px 16px;
+            font-size: 1.05rem; font-weight: 500;
+          }
+          .doc-guide-content .dg-chip .dg-tag-pill { font-size: 1.05rem; }
+          .doc-guide-content .dg-desc { color: var(--dg-muted); font-weight: 700; }
+
+          .doc-guide-content .dg-foot { margin-top: 44px; text-align: center; }
+          .doc-guide-content .dg-card {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: var(--dg-navy); color: #fff;
+            padding: 16px 26px; border-radius: 12px;
+            font-size: 1.1rem; font-weight: 700;
+          }
+          .doc-guide-content .dg-card b {
+            color: var(--dg-gold); font-weight: 900;
+          }
+          .doc-guide-content .dg-small {
+            margin-top: 14px; color: var(--dg-muted);
+            font-size: .95rem; font-weight: 500;
+          }
+
+          [data-theme="dark"] .doc-guide-modal-dialog { background: #161b22; }
           [data-theme="dark"] .doc-guide-modal-header {
-            background: var(--surface, #21262d);
-            border-color: var(--border, #30363d);
+            background: #21262d; border-color: #30363d;
           }
-          [data-theme="dark"] .doc-guide-modal-close {
-            color: var(--text, #e6edf3);
-          }
+          [data-theme="dark"] .doc-guide-modal-header h2,
+          [data-theme="dark"] .doc-guide-modal-close { color: #e6edf3; }
         </style>
 
         <!-- Search mode tabs: Documents (default, active) | Employees -->
@@ -1963,17 +2217,13 @@ function renderPlaceholderForm(doc, placeholders) {
     // Initial UI state
     updateSearchModeUI();
 
-    // ── Document setup guide modal ─────────────────────────────────────────
+    // ── Document setup guide modal (content embedded in page) ──────────────
     (function setupDocGuideModal() {
       const helpBtn = document.getElementById('docGuideHelpBtn');
       const modal = document.getElementById('docGuideModal');
-      const frame = document.getElementById('docGuideFrame');
-      if (!helpBtn || !modal || !frame) return;
-
-      const GUIDE_URL = 'دليل-تهيئة-المستندات.html';
+      if (!helpBtn || !modal) return;
 
       function openGuide() {
-        frame.src = GUIDE_URL;
         modal.hidden = false;
         modal.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
@@ -1982,7 +2232,6 @@ function renderPlaceholderForm(doc, placeholders) {
       function closeGuide() {
         modal.hidden = true;
         modal.setAttribute('aria-hidden', 'true');
-        frame.src = 'about:blank';
         document.body.style.overflow = '';
       }
 
