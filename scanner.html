@@ -139,8 +139,76 @@
       cursor: pointer;
     }
     .icon-btn:hover { background: var(--surface-2); border-color: var(--primary); }
-    .icon-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-
+        .icon-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .point-count-control {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      border: 0;
+      padding: 0;
+      margin: 14px 0 0;
+    }
+    .point-count-control legend {
+      width: 100%;
+      padding: 0;
+      margin: 0 0 2px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .point-option {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      height: 38px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 800;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.18s ease, background 0.18s ease, border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .point-option:hover {
+      color: var(--primary);
+      border-color: var(--primary-2);
+      background: var(--surface-2);
+      transform: translateY(-1px);
+    }
+    .point-option input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .point-option:has(input:checked) {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+      color: var(--primary);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent), 0 5px 14px rgba(0, 0, 0, 0.08);
+    }
+    .point-option:has(input:checked)::after {
+      content: '';
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .point-option:has(input:focus-visible) {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
     /* ── Dropzone (stage 1) ── */
     .dropzone {
       border: 2px dashed var(--line);
@@ -604,6 +672,14 @@
                   <span data-en="Reset" data-ar="إعادة تعيين">Reset</span>
                 </button>
               </div>
+              <fieldset id="pointCountControl" class="scanner-hint point-count-control">
+                <legend data-en="Adjustment points" data-ar="نقاط الضبط">Adjustment points</legend>
+                <label class="point-option"><input type="radio" name="manualPointCount" value="4" checked onchange="setManualPointCount(4)"><span>4</span></label>
+                <label class="point-option"><input type="radio" name="manualPointCount" value="5" onchange="setManualPointCount(5)"><span>5</span></label>
+                <label class="point-option"><input type="radio" name="manualPointCount" value="6" onchange="setManualPointCount(6)"><span>6</span></label>
+                <label class="point-option"><input type="radio" name="manualPointCount" value="7" onchange="setManualPointCount(7)"><span>7</span></label>
+                <label class="point-option"><input type="radio" name="manualPointCount" value="8" onchange="setManualPointCount(8)"><span>8</span></label>
+              </fieldset>
             </div>
             <div class="panel-card">
               <h4 data-en="Tip for best results" data-ar="نصيحة للنتائج المثلى">Tip for best results</h4>
@@ -720,6 +796,7 @@ const state = {
   stage: 1,
   originalImage: null,
   imageCorners: null,
+  manualPointCount: 4,
   croppedCanvas: null,
   enhancedCanvas: null,
   filteredCanvas: null, // Caching the heavy filter (full resolution — used for export)
@@ -896,8 +973,13 @@ function autoDetectCorners() {
     try {
       const corners = detectDocument(tempCanvas);
       if (corners) {
+        // Auto-detection always resets to the standard four-corner mode.
+        state.manualPointCount = 4;
+        syncPointModeControls();
         state.imageCorners = corners;
       } else {
+        state.manualPointCount = 4;
+        syncPointModeControls();
         state.imageCorners = defaultCorners(tempCanvas.width, tempCanvas.height);
         showToast(tr().toastNoDocFound, 'info');
       }
@@ -912,6 +994,8 @@ function autoDetectCorners() {
     updateNextButton();
   }, 100);
 }
+
+const MIN_AUTO_DETECT_AREA_RATIO = 0.50;
 
 function detectDocument(canvas) {
   let src = cv.imread(canvas);
@@ -953,8 +1037,17 @@ function detectDocument(canvas) {
     const best = candidates[0];
 
     if (best) {
-      const corners = best.corners.map(p => ({ x: p.x / scale, y: p.y / scale }));
-      result = orderCorners(corners);
+      const corners = orderCorners(best.corners.map(p => ({ x: p.x / scale, y: p.y / scale })));
+      // Never accept a confident-looking small box: if the detected contour
+      // covers less than half of the complete photo, fail detection and let
+      // autoDetectCorners() fall back to the full-photo selection.
+      const imageArea = canvas.width * canvas.height;
+      // Keep the detected document, but enlarge its selection when the
+      // document itself occupies less than half of the source photo. This
+      // preserves recognition for portrait/card photos while ensuring the
+      // returned crop is never a small box.
+      result = expandCornersToMinimumArea(corners, canvas.width, canvas.height, imageArea * MIN_AUTO_DETECT_AREA_RATIO);
+      if (!result) result = defaultCorners(canvas.width, canvas.height);
     }
   } finally {
     src.delete();
@@ -1018,10 +1111,10 @@ function findDocContour(workSrc, mode) {
     cv.findContours(work, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
     let bestScore = -1, bestPts = null, bestArea = 0;
-    // 8% of frame is enough for a document photographed with margin; the old
-    // 10% threshold rejected some valid outdoor shots where the page sat
-    // further from the edges.
-    const minArea = workSrc.cols * workSrc.rows * 0.08;
+    // Ignore only very small local details during contour search. A valid
+    // card/document may occupy less than half of a portrait photo; the final
+    // corner result is expanded to the required minimum area below.
+    const minArea = workSrc.cols * workSrc.rows * 0.12;
     const maxArea = workSrc.cols * workSrc.rows * 0.97;
     for (let i = 0; i < contours.size(); i++) {
       const cnt = contours.get(i);
@@ -1145,14 +1238,42 @@ function rotatedRectCorners(rect) {
   ];
 }
 
+function polygonArea(points) {
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const current = points[i];
+    const next = points[(i + 1) % points.length];
+    area += current.x * next.y - next.x * current.y;
+  }
+  return Math.abs(area) / 2;
+}
+function expandCornersToMinimumArea(corners, w, h, minimumArea) {
+  const currentArea = polygonArea(corners);
+  if (currentArea >= minimumArea) return corners;
+  if (currentArea <= 0) return null;
+
+  const center = corners.reduce((sum, point) => ({
+    x: sum.x + point.x / corners.length,
+    y: sum.y + point.y / corners.length,
+  }), { x: 0, y: 0 });
+  const scale = Math.sqrt(minimumArea / currentArea);
+  const expanded = corners.map(point => ({
+    x: Math.max(0, Math.min(w, center.x + (point.x - center.x) * scale)),
+    y: Math.max(0, Math.min(h, center.y + (point.y - center.y) * scale)),
+  }));
+  return polygonArea(expanded) >= minimumArea ? expanded : defaultCorners(w, h);
+}
+function fullPhotoCorners(w, h) {
+  return [
+    { x: 0, y: 0 },
+    { x: w, y: 0 },
+    { x: w, y: h },
+    { x: 0, y: h },
+  ];
+}
 function defaultCorners(w, h) {
-  const inset = 0.05;
-  return orderCorners([
-    { x: w * inset, y: h * inset },
-    { x: w * (1 - inset), y: h * inset },
-    { x: w * (1 - inset), y: h * (1 - inset) },
-    { x: w * inset, y: h * (1 - inset) },
-  ]);
+  // Reset and failed auto-detection must select the complete photo.
+  return fullPhotoCorners(w, h);
 }
 
 function orderCorners(corners) {
@@ -1165,6 +1286,37 @@ function orderCorners(corners) {
 // ====================================================================
 // CROP CANVAS
 // ====================================================================
+function syncPointModeControls() {
+  const control = document.getElementById('pointCountControl');
+  if (!control) return;
+  control.style.display = 'flex';
+  control.classList.toggle('is-multi-point', state.manualPointCount > 4);
+  const radio = control.querySelector(`input[name="manualPointCount"][value="${state.manualPointCount}"]`);
+  if (radio) radio.checked = true;
+}
+function baseCornersForPoints(points) {
+  if (points.length === 5) return [points[0], points[2], points[3], points[4]];
+  if (points.length === 6) return [points[0], points[2], points[3], points[5]];
+  if (points.length === 7) return [points[0], points[2], points[4], points[6]];
+  if (points.length === 8) return [points[0], points[2], points[4], points[6]];
+  return points.slice(0, 4);
+}
+function pointsForCount(corners, count) {
+  const [tl, tr, br, bl] = baseCornersForPoints(corners);
+  if (count === 4) return [tl, tr, br, bl];
+  const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  if (count === 5) return [tl, midpoint(tl, tr), tr, br, bl];
+  if (count === 6) return [tl, midpoint(tl, tr), tr, br, midpoint(br, bl), bl];
+  if (count === 7) return [tl, midpoint(tl, tr), tr, midpoint(tr, br), br, midpoint(br, bl), bl];
+  return [tl, midpoint(tl, tr), tr, midpoint(tr, br), br, midpoint(br, bl), bl, midpoint(bl, tl)];
+}
+function setManualPointCount(count) {
+  if (!state.originalImage || !state.imageCorners || ![4, 5, 6, 7, 8].includes(count)) return;
+  state.manualPointCount = count;
+  state.imageCorners = pointsForCount(state.imageCorners, count);
+  syncPointModeControls();
+  renderCropCanvas();
+}
 function renderCropCanvas() {
   const canvas = document.getElementById('cropCanvas');
   const container = document.getElementById('cropContainer');
@@ -1254,6 +1406,17 @@ function isSimpleQuad(c) {
   return !segmentsIntersect(c[0], c[1], c[2], c[3]) &&
          !segmentsIntersect(c[1], c[2], c[3], c[0]);
 }
+function isSimplePolygon(points) {
+  const n = points.length;
+  for (let i = 0; i < n; i++) {
+    const a1 = points[i], a2 = points[(i + 1) % n];
+    for (let j = i + 1; j < n; j++) {
+      if (j === i || (j + 1) % n === i || (i + 1) % n === j) continue;
+      if (segmentsIntersect(a1, a2, points[j], points[(j + 1) % n])) return false;
+    }
+  }
+  return true;
+}
 
 function setupCropCanvasInteraction() {
   const canvas = document.getElementById('cropCanvas');
@@ -1313,7 +1476,8 @@ function setupCropCanvasInteraction() {
     // concave/"dog-eared" corner placements, which is exactly the extra
     // flexibility real paper sometimes needs, so any corner can now go
     // anywhere as long as the outline itself doesn't cross.
-    if (isSimpleQuad(candidate)) {
+    const candidateIsValid = candidate.length === 4 ? isSimpleQuad(candidate) : isSimplePolygon(candidate);
+    if (candidateIsValid) {
       state.imageCorners = candidate;
       scheduleCropRender();
     }
@@ -1338,7 +1502,12 @@ function showCropLoading(show) {
 
 function resetCorners() {
   if (!state.originalImage) return;
-  state.imageCorners = defaultCorners(state.originalImage.naturalWidth, state.originalImage.naturalHeight);
+  state.manualPointCount = 4;
+  syncPointModeControls();
+  state.imageCorners = fullPhotoCorners(
+    state.originalImage.naturalWidth,
+    state.originalImage.naturalHeight,
+  );
   renderCropCanvas();
 }
 
@@ -1366,15 +1535,67 @@ function rotateImage(degrees) {
 // ====================================================================
 // PERSPECTIVE TRANSFORM
 // ====================================================================
+function applyPolygonCrop() {
+  const img = state.originalImage;
+  const points = state.imageCorners;
+  const minX = Math.floor(Math.min(...points.map(p => p.x)));
+  const minY = Math.floor(Math.min(...points.map(p => p.y)));
+  const maxX = Math.ceil(Math.max(...points.map(p => p.x)));
+  const maxY = Math.ceil(Math.max(...points.map(p => p.y)));
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = Math.max(1, maxX - minX);
+  outCanvas.height = Math.max(1, maxY - minY);
+  const ctx = outCanvas.getContext('2d');
+  ctx.beginPath();
+  points.forEach((p, i) => i ? ctx.lineTo(p.x - minX, p.y - minY) : ctx.moveTo(p.x - minX, p.y - minY));
+  ctx.closePath();
+  ctx.clip();
+  ctx.drawImage(img, -minX, -minY);
+  state.croppedCanvas = outCanvas;
+  state.filteredCanvas = null;
+  state.filteredPreviewCanvas = null;
+  return true;
+}
+function applyTransparencyMask(canvas, maskSource) {
+  if (!canvas || !maskSource || canvas.width <= 0 || canvas.height <= 0) return canvas;
+  const masked = document.createElement('canvas');
+  masked.width = canvas.width;
+  masked.height = canvas.height;
+  const ctx = masked.getContext('2d');
+  ctx.drawImage(canvas, 0, 0);
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(maskSource, 0, 0, canvas.width, canvas.height);
+  return masked;
+}
+function effectiveCornersForWarp(points) {
+  const base = baseCornersForPoints(points).map(p => ({ x: p.x, y: p.y }));
+  if (points.length < 5) return base;
+  const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const shiftEdge = (a, b, handle) => {
+    const expected = midpoint(a, b);
+    const dx = handle.x - expected.x, dy = handle.y - expected.y;
+    a.x += dx; a.y += dy; b.x += dx; b.y += dy;
+  };
+  // Extra handles move their entire edge; the four resulting outer corners
+  // are then sent through the same perspective warp as normal 4-point mode.
+  shiftEdge(base[0], base[1], points[1]);
+  if (points.length >= 6) shiftEdge(base[3], base[2], points[4]);
+  if (points.length >= 7) shiftEdge(base[1], base[2], points[3]);
+  if (points.length >= 8) shiftEdge(base[2], base[3], points[5]);
+  return base;
+}
 function applyPerspectiveTransform() {
   if (!state.originalImage || !state.imageCorners) return false;
-
+  // Four corners use the perspective-filled document warp. Extra-point modes
+  // intentionally use a transparent polygon crop instead of forcing a warped
+  // quadrilateral over the manually adjusted outline.
+  if (state.imageCorners.length > 4) return applyPolygonCrop();
   const srcCanvas = document.createElement('canvas');
   srcCanvas.width = state.originalImage.naturalWidth;
   srcCanvas.height = state.originalImage.naturalHeight;
   srcCanvas.getContext('2d').drawImage(state.originalImage, 0, 0);
 
-  const [tl, tr2, br, bl] = state.imageCorners;
+  const [tl, tr2, br, bl] = effectiveCornersForWarp(state.imageCorners);
   const widthTop = Math.hypot(tr2.x - tl.x, tr2.y - tl.y);
   const widthBottom = Math.hypot(br.x - bl.x, br.y - bl.y);
   let maxWidth = Math.max(widthTop, widthBottom);
@@ -1429,16 +1650,15 @@ function setFilter(filter) {
   document.querySelectorAll('.filter-card').forEach(c => {
     c.classList.toggle('active', c.dataset.filter === filter);
   });
-  state.filteredCanvas = null; // Invalidate cache so it recalculates with the new filter
+  // Discard only the current filter's caches. The expensive full-resolution
+  // pass is deferred until the user continues to export.
+  state.filteredCanvas = null;
   state.filteredPreviewCanvas = null;
-
-  // Original has no sharpening applied by default; Magic uses the default sharpness.
   const sharpnessDefault = filter === 'original' ? 0 : 20;
   state.adjustments.sharpness = sharpnessDefault;
   document.getElementById('sharpnessSlider').value = sharpnessDefault;
   document.getElementById('sharpnessVal').textContent = String(sharpnessDefault);
-
-  renderEnhanceCanvas({ preview: false }); // discrete click, not a drag — fine to pay full-res cost once
+  renderEnhanceCanvas({ preview: true });
 }
 
 // Live dragging renders against the small filteredPreviewCanvas (see
@@ -1550,6 +1770,9 @@ function centralRoi(mat, marginFrac) {
 }
 
 function applyFilterToCanvas(srcCanvas, filterType) {
+  // Original is already the source image; avoid a needless full-size OpenCV
+  // read/copy when switching back from Magic.
+  if (filterType === 'original') return srcCanvas;
   let src = cv.imread(srcCanvas);
   let dst = new cv.Mat();
   try {
@@ -1906,6 +2129,11 @@ function makeDownscaledCanvas(srcCanvas, maxDim) {
   return small;
 }
 const ENHANCE_PREVIEW_MAX_DIM = 1100;
+// Keep the export-time OpenCV pass bounded. Processing a large phone photo at
+// full resolution can block the main thread for many seconds when Save
+// Document is pressed; 1800px preserves readable document detail while making
+// the final commit much faster and more memory-stable.
+const ENHANCE_EXPORT_MAX_DIM = 1800;
 
 function renderEnhanceCanvas({ preview = false } = {}) {
   if (!state.croppedCanvas) return;
@@ -1913,18 +2141,30 @@ function renderEnhanceCanvas({ preview = false } = {}) {
   const container = document.getElementById('enhanceContainer');
   const ctx = canvas.getContext('2d');
 
-  // Cache the heavy per-filter OpenCV pass (full res) plus a small downscaled
-  // copy for live dragging — both only recomputed when the filter changes.
-  if (!state.filteredCanvas) {
+  // Filter previews are always generated from a small canvas. Full-resolution
+  // OpenCV processing is intentionally skipped during stage 3 and performed
+  // only when preview:false is requested for export.
+  if (preview) {
+    if (!state.filteredPreviewCanvas) {
+      try {
+        const previewSource = makeDownscaledCanvas(state.croppedCanvas, ENHANCE_PREVIEW_MAX_DIM);
+        state.filteredPreviewCanvas = applyFilterToCanvas(previewSource, state.currentFilter);
+      } catch (err) {
+        console.error(err);
+        state.filteredPreviewCanvas = makeDownscaledCanvas(state.croppedCanvas, ENHANCE_PREVIEW_MAX_DIM);
+      }
+    }
+  } else if (!state.filteredCanvas) {
     try {
-      state.filteredCanvas = applyFilterToCanvas(state.croppedCanvas, state.currentFilter);
+      const exportSource = makeDownscaledCanvas(state.croppedCanvas, ENHANCE_EXPORT_MAX_DIM);
+      state.filteredCanvas = applyFilterToCanvas(exportSource, state.currentFilter);
     } catch (err) {
       console.error(err);
       state.filteredCanvas = state.croppedCanvas;
     }
     state.filteredPreviewCanvas = null;
   }
-  if (!state.filteredPreviewCanvas) {
+  if (!preview && !state.filteredPreviewCanvas) {
     state.filteredPreviewCanvas = makeDownscaledCanvas(state.filteredCanvas, ENHANCE_PREVIEW_MAX_DIM);
   }
 
@@ -1945,8 +2185,17 @@ function renderEnhanceCanvas({ preview = false } = {}) {
     );
   } catch (err) { console.error(err); finalCanvas = source; }
 
+  // Magic/OpenCV can restore opaque pixels outside a transparent polygon.
+  // Reapply the original alpha mask so excluded areas stay transparent in the
+  // preview and in the downloaded PNG.
+  if (state.imageCorners && state.imageCorners.length > 4) {
+    finalCanvas = applyTransparencyMask(finalCanvas, state.croppedCanvas);
+  }
+
   if (preview) {
-    state.enhanceDirty = true; // full-res enhancedCanvas no longer matches the sliders
+    // Mark the preview as dirty even on initial entry or filter switching so
+    // stage 4 commits the final full-resolution image before export.
+    state.enhanceDirty = true;
   } else {
     state.enhancedCanvas = finalCanvas;
     state.enhanceDirty = false;
@@ -2058,7 +2307,7 @@ function setStage(stage) {
     state.filteredPreviewCanvas = null;
     setTimeout(() => {
       generatePreviews();
-      renderEnhanceCanvas();
+      renderEnhanceCanvas({ preview: true });
     }, 50);
   } else if (stage === 4) {
     commitEnhanceIfDirty(); // safety net — sliders normally commit on 'change'
@@ -2211,10 +2460,15 @@ function updatePagesSection() {
 // ====================================================================
 function exportImage(format) {
   if (!state.enhancedCanvas) return;
-  const mime = format === 'png' ? 'image/png' : 'image/jpeg';
-  const quality = format === 'jpeg' ? 0.92 : undefined;
+  // JPEG has no alpha channel and turns transparent 5–8 point cut-away areas
+  // black. Force PNG for multi-point crops so excluded regions remain truly
+  // transparent and are ignored by the downloaded image.
+  const transparentCrop = state.imageCorners && state.imageCorners.length > 4;
+  const outputFormat = transparentCrop ? 'png' : format;
+  const mime = outputFormat === 'png' ? 'image/png' : 'image/jpeg';
+  const quality = outputFormat === 'jpeg' ? 0.92 : undefined;
   const link = document.createElement('a');
-  link.download = `scan-image.${format}`;
+  link.download = `scan-image.${outputFormat}`;
   link.href = state.enhancedCanvas.toDataURL(mime, quality);
   link.click();
   showToast(tr().toastImageDownloaded, 'success');
