@@ -53,7 +53,7 @@
           <div class="doc-guide-modal-backdrop" data-close-guide></div>
           <div class="doc-guide-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="docGuideModalTitle">
             <div class="doc-guide-modal-header">
-              <h2 id="docGuideModalTitle">دليل تهيئة المستندات</h2>
+              <h2 id="docGuideModalTitle" dir="rtl">دليل تهيئة المستندات</h2>
               <button type="button" class="doc-guide-modal-close" data-close-guide aria-label="Close">×</button>
             </div>
             <div class="doc-guide-modal-body">
@@ -72,7 +72,7 @@
                     </div>
                     <div class="dg-doc-line dg-before">
                       <span class="dg-lbl">قبل</span>
-                      إلى السيد الأستاذ / <span class="dg-hit">محمد أحمد إبراهيم</span> بخصوص طلبه المقدم بتاريخ <span class="dg-hit"> ١٦/١/٢٠٢٤</span>...
+                      إلى السيد الأستاذ / <span class="dg-hit">محمد أحمد إبراهيم</span> بخصوص طلبه المقدم بتاريخ <span class="dg-hit">١٦/١/٢٠٢٤</span>...
                     </div>
                     <div class="dg-arrow-mid">استبدل الاسم بالوسم</div>
                     <div class="dg-doc-line dg-after">
@@ -113,6 +113,8 @@
                       <div class="dg-chip"><span class="dg-tag-pill">{وظيفة المذكور}</span><span class="dg-desc">المسمى الوظيفي</span></div>
                       <div class="dg-chip"><span class="dg-tag-pill">{تاريخ الميلاد}</span><span class="dg-desc">تاريخ الميلاد</span></div>
                       <div class="dg-chip"><span class="dg-tag-pill">{تاريخ التعيين}</span><span class="dg-desc">تاريخ بداية العمل</span></div>
+                      <div class="dg-chip"><span class="dg-tag-pill">{تاريخ الطلب}</span><span class="dg-desc">تاريخ تقديم الطلب</span></div>
+                      <div class="dg-chip"><span class="dg-tag-pill">{القطاع}</span><span class="dg-desc">اسم القطاع</span></div>
                       <div class="dg-chip"><span class="dg-tag-pill">{الإدارة}</span><span class="dg-desc">اسم الإدارة أو القسم</span></div>
                       <div class="dg-chip"><span class="dg-tag-pill">{السبب}</span><span class="dg-desc">سبب الطلب</span></div>
                       <div class="dg-chip"><span class="dg-tag-pill">{تاريخ البداية}</span><span class="dg-desc">تاريخ البداية</span></div>
@@ -123,7 +125,7 @@
 
                   <div class="dg-foot">
                     <div class="dg-card">بعد التهيئة، احفظ الملف وأرسله كما تفعل عادةً — <b>وسيتولى الفريق الباقي.</b></div>
-                    <p class="dg-small">تأكد أن الأقواس المعقوفة { } موجودة كما هي، ولا تُترجم اسم الوسم ولا تُغيّره عن الأمثلة أعلاه.</p>
+                    <p class="dg-small">تأكد أن الأقواس المعقوفة { } مغلقة و غير مستخدمة في اي مكان اخر داخل الملف.</p>
                   </div>
                 </div>
               </div>
@@ -215,10 +217,12 @@
             min-height: 0;
             overflow: auto;
             -webkit-overflow-scrolling: touch;
+            background: #EBF0F5;
           }
 
           /* Embedded guide (scoped, larger & bolder fonts) */
           .doc-guide-content {
+            min-height: 100%;
             --dg-navy: #0E2A47;
             --dg-navy-deep: #081A2C;
             --dg-mist: #EBF0F5;
@@ -2225,18 +2229,47 @@ function renderPlaceholderForm(doc, placeholders) {
     (function setupDocGuideModal() {
       const helpBtn = document.getElementById('docGuideHelpBtn');
       const modal = document.getElementById('docGuideModal');
+      const dialog = modal ? modal.querySelector('.doc-guide-modal-dialog') : null;
+      const closeBtn = modal ? modal.querySelector('.doc-guide-modal-close') : null;
       if (!helpBtn || !modal) return;
+      let lastFocused = null;
+
+      function focusableEls() {
+        return Array.from(dialog.querySelectorAll(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        ));
+      }
+
+      function trapTab(e) {
+        if (e.key !== 'Tab') return;
+        const items = focusableEls();
+        if (!items.length) return;
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
 
       function openGuide() {
+        lastFocused = document.activeElement;
         modal.hidden = false;
         modal.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        (closeBtn || dialog).focus();
+        dialog.addEventListener('keydown', trapTab);
       }
 
       function closeGuide() {
         modal.hidden = true;
         modal.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+        dialog.removeEventListener('keydown', trapTab);
+        (lastFocused || helpBtn).focus();
       }
 
       helpBtn.addEventListener('click', openGuide);

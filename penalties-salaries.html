@@ -283,6 +283,14 @@
       cursor: pointer;
       margin-bottom: 14px;
     }
+    .ded-toggle-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .ded-toggle-row .ded-toggle { margin-bottom: 0; }
+    @media (max-width: 480px) { .ded-toggle-row { grid-template-columns: 1fr; } }
     .ded-toggle input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer; }
     .ded-toggle span { font-weight: 700; font-size: 0.95rem; color: var(--text); }
 
@@ -293,6 +301,12 @@
       margin-bottom: 16px;
     }
     @media (max-width: 480px) { .ded-grid { grid-template-columns: 1fr; } }
+    .ded-fields-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 700px) { .ded-fields-row { grid-template-columns: 1fr; } }
     .ded-field label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
     .ded-field input {
       width: 100%;
@@ -605,28 +619,40 @@
             </div>
           </div>
 
-          <!-- Tax & Insurance toggle -->
-          <label class="ded-toggle" for="enableDed">
-            <input type="checkbox" id="enableDed">
-            <span data-en="Apply Tax & Social Insurance (Egypt Law 2026)" data-ar="تطبيق الضرائب والتأمينات الاجتماعية (قانون مصر 2026)">تطبيق الضرائب والتأمينات الاجتماعية (قانون مصر 2026)</span>
-          </label>
+          <!-- Tax & Insurance / Incentive deduction toggles (side by side) -->
+          <div class="ded-toggle-row">
+            <label class="ded-toggle" for="enableDed">
+              <input type="checkbox" id="enableDed" checked>
+              <span data-en="Apply Tax & Social Insurance (Egypt Law 2026)" data-ar="تطبيق الضرائب والتأمينات الاجتماعية">تطبيق الضرائب والتأمينات الاجتماعية</span>
+            </label>
 
-          <div class="ded-grid hidden" id="dedGrid">
+            <label class="ded-toggle" for="enableIncentiveDed">
+              <input type="checkbox" id="enableIncentiveDed">
+              <span data-en="Apply Incentive Deduction (30% / 60%)" data-ar="تطبيق خصم الحوافز (30% / 60% / 100%)">تطبيق خصم الحوافز (30% / 60% / 100%)</span>
+            </label>
+          </div>
+
+          <div class="ded-grid" id="dedGrid">
             <div class="ded-field" style="grid-column:1/-1;">
               <p class="hint-text" style="margin:0;">
-                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 16,700 EGP). Tax: progressive brackets after SI. Total fully tax-exempt income = 60,000 EGP/year (personal exemption 20,000 + 0% bracket 40,000). No tax calculated/withheld on the penalty deduction day wage." data-ar="التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000).">التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه). الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000). </span>
-
-
-
+                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 16,700 EGP)." data-ar="التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه).">التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 16,700 جنيه).</span>
+                <br>
+                <span data-en="Tax: progressive brackets after SI. Total fully tax-exempt income = 60,000 EGP/year (personal exemption 20,000 + 0% bracket 40,000). No tax calculated/withheld on the penalty deduction day wage." data-ar="الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000).">الضريبة: شرائح تصاعدية بعد خصم التأمينات. إجمالي الدخل المعفى تماماً = 60,000 جنيه/سنة (إعفاء شخصي 20,000 + شريحة 0% حتى 40,000).</span>
               </p>
             </div>
-            <div class="ded-field">
-              <label data-en="Insurable Wage (auto)" data-ar="الأجر التأميني (تلقائي)">الأجر التأميني (تلقائي)</label>
-              <input type="text" id="insurableWageDisp" readonly value="—" style="background:var(--surface); font-weight:700;">
-            </div>
-            <div class="ded-field">
-              <label data-en="Taxable Base (monthly)" data-ar="وعاء الضريبة (شهري)">وعاء الضريبة (شهري)</label>
-              <input type="text" id="taxableBaseDisp" readonly value="—" style="background:var(--surface); font-weight:700;">
+            <div class="ded-fields-row" style="grid-column:1/-1;">
+              <div class="ded-field">
+                <label data-en="Insurable Wage (auto)" data-ar="الأجر التأميني (تلقائي)">الأجر التأميني (تلقائي)</label>
+                <input type="text" id="insurableWageDisp" readonly value="—" style="background:var(--surface); font-weight:700;">
+              </div>
+              <div class="ded-field">
+                <label data-en="Personal Exemption (monthly)" data-ar="الإعفاء الشخصي (شهري)">الإعفاء الشخصي (شهري)</label>
+                <input type="text" id="personalExemptionDisp" readonly value="—" title="يشمل: إعفاء شخصي 20,000" style="background:var(--surface); font-weight:700;">
+              </div>
+              <div class="ded-field">
+                <label data-en="Taxable Base (monthly)" data-ar="وعاء الضريبة (شهري)">وعاء الضريبة (شهري)</label>
+                <input type="text" id="taxableBaseDisp" readonly value="—" style="background:var(--surface); font-weight:700;">
+              </div>
             </div>
           </div>
 
@@ -644,11 +670,11 @@
               <div class="sum-clabel" data-en="Total Gross" data-ar="الإجمالي">الإجمالي</div>
               <div class="sum-cvalue" id="sGross">15,000.00 EGP</div>
             </div>
-            <div class="sum-card hidden" id="sInsCard">
+            <div class="sum-card" id="sInsCard">
               <div class="sum-clabel" data-en="Social Insurance (11%)" data-ar="التأمينات (11%)">التأمينات (11%)</div>
               <div class="sum-cvalue neg" id="sIns">-0.00 EGP</div>
             </div>
-            <div class="sum-card hidden" id="sTaxCard">
+            <div class="sum-card" id="sTaxCard">
               <div class="sum-clabel" data-en="Income Tax" data-ar="ضريبة الدخل">ضريبة الدخل</div>
               <div class="sum-cvalue neg" id="sTax">-0.00 EGP</div>
             </div>
@@ -760,6 +786,7 @@
       }
 
       bindEvents();
+      syncDedVisibility();
       updateTotalGross();
       updateRaise();
       updateMealsDisp();
@@ -912,11 +939,22 @@
 
       // Deductions
       document.getElementById('enableDed').addEventListener('change', function() {
-        document.getElementById('dedGrid').classList.toggle('hidden', !this.checked);
-        document.getElementById('sTaxCard').classList.toggle('hidden', !this.checked);
-        document.getElementById('sInsCard').classList.toggle('hidden', !this.checked);
+        syncDedVisibility();
         updateSummary();
       });
+
+      // Incentive deduction toggle (30% / 60%)
+      document.getElementById('enableIncentiveDed').addEventListener('change', function() {
+        updatePenaltyExplain();
+        updateSummary();
+      });
+    }
+
+    function syncDedVisibility() {
+      const checked = document.getElementById('enableDed').checked;
+      document.getElementById('dedGrid').classList.toggle('hidden', !checked);
+      document.getElementById('sTaxCard').classList.toggle('hidden', !checked);
+      document.getElementById('sInsCard').classList.toggle('hidden', !checked);
     }
 
     // ── Employee type switch ───────────────────────────────────────────────────
@@ -1229,6 +1267,8 @@
     const SI_MAX = 16700;
     const SI_RATE = 0.11;
     const PERSONAL_EXEMPTION_ANNUAL = 20000; // + 40,000 at 0% = 60,000 total fully exempt
+    const ZERO_BRACKET_ANNUAL = 40000; // أول شريحة ضريبية بنسبة 0%
+    const FULLY_EXEMPT_ANNUAL = PERSONAL_EXEMPTION_ANNUAL; // + ZERO_BRACKET_ANNUAL; // 60,000 EGP/year
 
     // Annual tax brackets (EGP) – Law 7 of 2024 / current 2026
     const TAX_BRACKETS = [
@@ -1277,7 +1317,8 @@
 
     // ── Salary summary ────────────────────────────────────────────────────────
     function updateSummary() {
-      const enableDed  = document.getElementById('enableDed').checked;
+      const enableDed    = document.getElementById('enableDed').checked;
+      const enableIncDed = document.getElementById('enableIncentiveDed').checked;
       const gross      = getTotalGross();
       const mealGross  = getMealGross();
       const mealTax    = getMealTax();
@@ -1299,8 +1340,11 @@
         taxableMonthly = Math.max(0, grossForTax - insAmt - (PERSONAL_EXEMPTION_ANNUAL / 12));
       }
 
-      // الصافي = (أساسي + حوافز) − التأمينات − الضريبة − الخصومات الحالية − خصم الحافز + صافي الوجبات
-      const net = Math.max(0, gross - taxAmt - insAmt - penaltyAmt - incentivePenaltyAmt) + mealNet;
+      // خصم الحافز (30%/60%) لا يُطبق على الصافي إلا إذا فُعّل مربع الاختيار الخاص به
+      const effectiveIncentivePenalty = enableIncDed ? incentivePenaltyAmt : 0;
+
+      // الصافي = (أساسي + حوافز) − التأمينات − الضريبة − الخصومات الحالية − خصم الحافز (إن فُعّل) + صافي الوجبات
+      const net = Math.max(0, gross - taxAmt - insAmt - penaltyAmt - effectiveIncentivePenalty) + mealNet;
 
       document.getElementById('sBasic').textContent      = fmtEGP(basicSalary);
       document.getElementById('sIncentives').textContent = fmtEGP(incentives);
@@ -1312,24 +1356,27 @@
       const sMealTax = document.getElementById('sMealTax');
       if (sMealTax) sMealTax.textContent = '-' + fmtEGP(mealTax);
       document.getElementById('sPenalty').textContent    = '-' + fmtEGP(penaltyAmt);
-      document.getElementById('sIncentive').textContent  = '-' + fmtEGP(incentivePenaltyAmt);
+      document.getElementById('sIncentive').textContent  = '-' + fmtEGP(effectiveIncentivePenalty);
       document.getElementById('sNet').textContent        = fmtEGP(net);
 
 
-      const insDisp = document.getElementById('insurableWageDisp');
-      const taxDisp = document.getElementById('taxableBaseDisp');
+      const insDisp     = document.getElementById('insurableWageDisp');
+      const taxDisp      = document.getElementById('taxableBaseDisp');
+      const exemptDisp   = document.getElementById('personalExemptionDisp');
       if (insDisp) insDisp.value = enableDed ? fmtEGP(insurable) : '—';
       if (taxDisp) taxDisp.value = enableDed ? fmtEGP(taxableMonthly) : '—';
+      if (exemptDisp) exemptDisp.value = enableDed ? fmtEGP(FULLY_EXEMPT_ANNUAL / 12) : '—';
     }
 
     function updatePenaltyExplain() {
       const el    = document.getElementById('penaltyExplain');
       const basis = document.getElementById('penaltyBasis');
+      const enableIncDed = document.getElementById('enableIncentiveDed').checked;
       const parts = [];
       if (penaltyAmt > 0 && penaltyDesc) {
         parts.push(penaltyDesc + ' = ' + fmtEGP(penaltyAmt));
       }
-      if (incentivePenaltyRate > 0) {
+      if (enableIncDed && incentivePenaltyRate > 0) {
         const label = getLang() === 'ar' ? 'خصم الحافز بنسبة ' : 'Incentive deduction at ';
         parts.push(label + incentivePenaltyDesc + ' = ' + fmtEGP(incentivePenaltyAmt));
       }
