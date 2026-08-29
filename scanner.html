@@ -1010,6 +1010,151 @@ function autoDetectCorners() {
 
 const MIN_AUTO_DETECT_AREA_RATIO = 0.50;
 
+// ── Corner precision & shape-quality helpers ────────────────────────────
+// These operate on plain JS point arrays only (no cv.Mat allocation), so
+// they add no OpenCV memory-management burden to the callers below.
+
+// Full list of contour points as {x,y}, using the same intPtr-with-fallback
+// approach already used for approxPolyDP results above.
+function getContourPoints(cnt) {
+  const n = cnt.rows;
+  const pts = new Array(n);
+  for (let i = 0; i < n; i++) {
+    let x, y;
+    try {
+      const p = cnt.intPtr(i, 0);
+      x = p[0]; y = p[1];
+    } catch (_) {
+      x = cnt.data32S[i * 2];
+      y = cnt.data32S[i * 2 + 1];
+    }
+    pts[i] = { x, y };
+  }
+  return pts;
+}
+
+function nearestContourIndex(contourPts, pt) {
+  let bestIdx = 0, bestDist = Infinity;
+  for (let i = 0; i < contourPts.length; i++) {
+    const dx = contourPts[i].x - pt.x, dy = contourPts[i].y - pt.y;
+    const d = dx * dx + dy * dy;
+    if (d < bestDist) { bestDist = d; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+// Points along the contour from startIdx to endIdx, walking forward
+// (with wraparound) in the contour's own traversal order.
+function arcBetween(contourPts, startIdx, endIdx) {
+  const n = contourPts.length;
+  const out = [];
+  let i = startIdx;
+  while (true) {
+    out.push(contourPts[i]);
+    if (i === endIdx) break;
+    i = (i + 1) % n;
+  }
+  return out;
+}
+
+// Total-least-squares line fit (orthogonal regression) — unlike a plain
+// y = mx + b fit, this stays numerically stable for near-vertical edges,
+// which are common in photographed documents.
+function fitLineTLS(points) {
+  const n = points.length;
+  let mx = 0, my = 0;
+  for (const p of points) { mx += p.x; my += p.y; }
+  mx /= n; my /= n;
+  let sxx = 0, syy = 0, sxy = 0;
+  for (const p of points) {
+    const dx = p.x - mx, dy = p.y - my;
+    sxx += dx * dx; syy += dy * dy; sxy += dx * dy;
+  }
+  const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+  return { point: { x: mx, y: my }, dir: { x: Math.cos(theta), y: Math.sin(theta) } };
+}
+
+function intersectLines(l1, l2) {
+  const denom = l1.dir.x * l2.dir.y - l1.dir.y * l2.dir.x;
+  if (Math.abs(denom) < 1e-6) return null; // parallel — shouldn't happen for adjacent page edges
+  const dx = l2.point.x - l1.point.x, dy = l2.point.y - l1.point.y;
+  const t = (dx * l2.dir.y - dy * l2.dir.x) / denom;
+  return { x: l1.point.x + t * l1.dir.x, y: l1.point.y + t * l1.dir.y };
+}
+
+const EDGE_REFINE_TRIM_FRAC = 0.15;   // drop the rounded/noisy bit near each corner before fitting
+const EDGE_REFINE_MIN_POINTS = 6;     // need at least this many points left to trust the fit
+const EDGE_REFINE_MAX_SHIFT_FRAC = 0.08; // refined corner can't jump more than 8% of the image diagonal
+
+// Replaces each polygon-approximation corner with the intersection of lines
+// fit to the two full contour edges that meet there. approxPolyDP gives a
+// coarse simplification of the contour — using every pixel along each edge
+// (minus a trimmed margin near the corner itself) lands much closer to the
+// true corner, and any single noisy point can't throw it off the way it can
+// with a bare polygon vertex. Falls back to the original corner, edge by
+// edge, whenever the contour is too sparse or the fit looks untrustworthy.
+function refineQuadCorners(cnt, corners, imgW, imgH) {
+  const contourPts = getContourPoints(cnt);
+  if (contourPts.length < 4 * (EDGE_REFINE_MIN_POINTS + 2)) return corners;
+
+  const idxs = corners.map(c => nearestContourIndex(contourPts, c));
+  const diag = Math.hypot(imgW, imgH);
+  const maxShift = diag * EDGE_REFINE_MAX_SHIFT_FRAC;
+
+  const lines = corners.map((_, i) => {
+    const arc = arcBetween(contourPts, idxs[i], idxs[(i + 1) % 4]);
+    const trim = Math.floor(arc.length * EDGE_REFINE_TRIM_FRAC);
+    const inner = arc.slice(trim, arc.length - trim);
+    return inner.length >= EDGE_REFINE_MIN_POINTS ? fitLineTLS(inner) : null;
+  });
+
+  return corners.map((c, i) => {
+    const prev = lines[(i + 3) % 4]; // edge arriving at this corner
+    const next = lines[i];            // edge leaving this corner
+    if (!prev || !next) return c;
+    const ip = intersectLines(prev, next);
+    if (!ip || Math.hypot(ip.x - c.x, ip.y - c.y) > maxShift) return c;
+    return ip;
+  });
+}
+
+// How close a quad's four interior angles are to 90°, averaged and mapped
+// to [0,1]. A genuine page — even under perspective — stays fairly close to
+// rectangular; background clutter that happens to pass the extent/solidity
+// checks (a shadow edge, a table corner, a patterned surface) usually
+// doesn't, which makes this a useful extra signal against picking the wrong
+// region on a busy background.
+function quadAngleScore(pts) {
+  let total = 0;
+  for (let i = 0; i < 4; i++) {
+    const a = pts[(i + 3) % 4], b = pts[i], c = pts[(i + 1) % 4];
+    const v1x = a.x - b.x, v1y = a.y - b.y;
+    const v2x = c.x - b.x, v2y = c.y - b.y;
+    const mag1 = Math.hypot(v1x, v1y), mag2 = Math.hypot(v2x, v2y);
+    if (mag1 < 1e-6 || mag2 < 1e-6) return 0;
+    const cosA = Math.max(-1, Math.min(1, (v1x * v2x + v1y * v2y) / (mag1 * mag2)));
+    const angleDeg = Math.acos(cosA) * 180 / Math.PI;
+    total += Math.max(0, 1 - Math.abs(angleDeg - 90) / 90);
+  }
+  return total / 4;
+}
+
+function bboxOf(corners) {
+  const xs = corners.map(p => p.x), ys = corners.map(p => p.y);
+  return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
+}
+
+function bboxIoU(a, b) {
+  const ix0 = Math.max(a.x0, b.x0), iy0 = Math.max(a.y0, b.y0);
+  const ix1 = Math.min(a.x1, b.x1), iy1 = Math.min(a.y1, b.y1);
+  const iw = Math.max(0, ix1 - ix0), ih = Math.max(0, iy1 - iy0);
+  const inter = iw * ih;
+  const areaA = (a.x1 - a.x0) * (a.y1 - a.y0);
+  const areaB = (b.x1 - b.x0) * (b.y1 - b.y0);
+  const union = areaA + areaB - inter;
+  return union > 0 ? inter / union : 0;
+}
+
 function detectDocument(canvas) {
   let src = cv.imread(canvas);
   let workMats = [];
@@ -1042,6 +1187,19 @@ function detectDocument(canvas) {
       findDocContour(workSrc, 'saturation'),
     ].filter(Boolean);
 
+    // Cross-strategy agreement: three independent methods rarely make the
+    // same mistake, but they do usually agree on where the real document
+    // is. A candidate whose region overlaps another strategy's candidate
+    // gets a confidence boost; one strategy latching onto clutter that the
+    // other two didn't see stays unboosted and is far less likely to win.
+    const CONSENSUS_IOU_THRESHOLD = 0.5;
+    const CONSENSUS_BONUS = 0.25;
+    candidates.forEach(c => { c.bbox = bboxOf(c.corners); });
+    candidates.forEach(c => {
+      c.corroborated = candidates.some(o => o !== c && bboxIoU(c.bbox, o.bbox) > CONSENSUS_IOU_THRESHOLD);
+      if (c.corroborated) c.score += CONSENSUS_BONUS;
+    });
+
     // Rank by (rectangularity score) first, area second — a clean, solid,
     // well-formed quadrilateral beats a bigger but messier/irregular blob,
     // which is exactly the failure mode of picking "whole frame minus one
@@ -1055,11 +1213,18 @@ function detectDocument(canvas) {
       // covers less than half of the complete photo, fail detection and let
       // autoDetectCorners() fall back to the full-photo selection.
       const imageArea = canvas.width * canvas.height;
-      // Keep the detected document, but enlarge its selection when the
-      // document itself occupies less than half of the source photo. This
-      // preserves recognition for portrait/card photos while ensuring the
-      // returned crop is never a small box.
-      result = expandCornersToMinimumArea(corners, canvas.width, canvas.height, imageArea * MIN_AUTO_DETECT_AREA_RATIO);
+      // Never accept a confident-looking small box: the area floor exists to
+      // catch a single method latching onto a small, wrong region (a logo,
+      // a table corner) and calling it "the document". But when multiple
+      // independent strategies land on the same region, that agreement is
+      // much stronger evidence of correctness than raw area — a real page
+      // photographed with generous surrounding background is completely
+      // normal and shouldn't be forced past its own edges into that
+      // background. So: full-strength floor for an uncorroborated (single-
+      // strategy) detection, a much lower one as a last-resort sanity check
+      // when corroborated.
+      const areaFloorRatio = best.corroborated ? 0.15 : MIN_AUTO_DETECT_AREA_RATIO;
+      result = expandCornersToMinimumArea(corners, canvas.width, canvas.height, imageArea * areaFloorRatio);
       if (!result) result = defaultCorners(canvas.width, canvas.height);
     }
   } finally {
@@ -1214,9 +1379,15 @@ function findDocContour(workSrc, mode) {
         // abort the whole detector and silently fall back to full-frame
         // corners (which is why enhance still showed the motorcycle).
         pts = rotatedRectCorners(rect);
+      } else {
+        // Sub-pixel corner refinement (see helper above): fit a line to
+        // each full contour edge and intersect adjacent edges, instead of
+        // trusting approxPolyDP's coarse polygon vertices directly.
+        pts = refineQuadCorners(cnt, pts, workSrc.cols, workSrc.rows);
       }
 
-      const score = extent * 0.5 + solidity * 0.4 + (cleanQuad ? 0.1 : 0);
+      const angleScore = quadAngleScore(pts);
+      const score = extent * 0.35 + solidity * 0.30 + angleScore * 0.25 + (cleanQuad ? 0.1 : 0);
       if (pts && score > bestScore) {
         bestScore = score;
         bestPts = pts;
@@ -1340,7 +1511,16 @@ function renderCropCanvas() {
   if (containerW === 0 || containerH === 0) return;
 
   const imgW = state.originalImage.naturalWidth, imgH = state.originalImage.naturalHeight;
-  const scale = Math.min(containerW / imgW, containerH / imgH);
+  // HANDLE_MARGIN reserves space around the image inside the container so a
+  // corner sitting right at the image edge (very common — e.g. after Reset,
+  // or a full-frame auto-detect) still has its whole draggable handle drawn
+  // and hit-testable on screen, instead of being clipped by the canvas/
+  // container boundary. Must be >= the handle's hit-test radius (28, see
+  // findCornerAt below) so the entire grab zone stays inside the container.
+  const HANDLE_MARGIN = 28;
+  const availW = Math.max(1, containerW - HANDLE_MARGIN * 2);
+  const availH = Math.max(1, containerH - HANDLE_MARGIN * 2);
+  const scale = Math.min(availW / imgW, availH / imgH);
   const displayW = imgW * scale, displayH = imgH * scale;
   const offsetX = (containerW - displayW) / 2, offsetY = (containerH - displayH) / 2;
 
@@ -1461,7 +1641,20 @@ function setupCropCanvasInteraction() {
     e.preventDefault();
     const pos = getEventPos(e);
     state.dragCorner = findCornerAt(pos.x, pos.y);
-    if (state.dragCorner !== -1) canvas.style.cursor = 'grabbing';
+    if (state.dragCorner !== -1) {
+      canvas.style.cursor = 'grabbing';
+      // Mouse events (unlike touch events) are delivered to whatever element
+      // is currently under the cursor, not to the element the drag started
+      // on. Once the cursor leaves the canvas mid-drag, canvas-only
+      // listeners would simply stop hearing about it. Listening on
+      // `document` for the duration of the drag means we keep getting
+      // move/up events no matter where the cursor goes, so the corner can
+      // still be dragged along an edge past the canvas boundary — the
+      // existing Math.max/min clamps below take care of pinning it to the
+      // image bounds.
+      document.addEventListener('mousemove', pointerMove);
+      document.addEventListener('mouseup', pointerUp);
+    }
   }
   function pointerMove(e) {
     if (state.dragCorner === -1) {
@@ -1496,13 +1689,15 @@ function setupCropCanvasInteraction() {
     }
   }
   function pointerUp() {
+    if (state.dragCorner !== -1) {
+      document.removeEventListener('mousemove', pointerMove);
+      document.removeEventListener('mouseup', pointerUp);
+    }
     state.dragCorner = -1;
     canvas.style.cursor = 'crosshair';
   }
   canvas.addEventListener('mousedown', pointerDown);
   canvas.addEventListener('mousemove', pointerMove);
-  canvas.addEventListener('mouseup', pointerUp);
-  canvas.addEventListener('mouseleave', pointerUp);
   canvas.addEventListener('touchstart', pointerDown, { passive: false });
   canvas.addEventListener('touchmove', pointerMove, { passive: false });
   canvas.addEventListener('touchend', pointerUp);
