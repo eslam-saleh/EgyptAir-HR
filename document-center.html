@@ -601,6 +601,201 @@
     const FOLDER_ID = '1j6DuR_aAvrqJIkbRebdrIGTdUN86Jm8Q';
     const API_KEY   = 'AIzaSyAsl5N735tOpOjkcQK4kEritH6noDBH2eA';
 
+    // ═══════════════════════════════════════════════════════════════════
+    // بيانات.xlsx sync — pushes a row/update to the Google Sheet whenever a
+    // tracked document is generated. See the "Google Apps Script" backend
+    // (Code.gs) that must be deployed as a Web App; paste its URL below.
+    // ═══════════════════════════════════════════════════════════════════
+    const SHEET_SYNC_URL = 'https://script.google.com/macros/s/AKfycbxqwTz6C_MQ4Yxx7aXRl7fUvzQKlmbclUFkQ-krYq3umcukDN7C5piLuGcRvYfSDz14/exec';
+
+    // Which document (by its filename, without extension) maps to which
+    // sheet/action. "kind" selects which extra columns get filled in below.
+    const SHEET_DOC_RULES = {
+      'امر تنفيذى تصريح عمل نصف الوقت':            { sheet: 'اجازات', action: 'append', kind: 'leave' },
+      'امر تنفيذى منح اجازة بدون مرتب':             { sheet: 'اجازات', action: 'append', kind: 'leave' },
+      'امر تنفيذى مد اجازة بدون مرتب':              { sheet: 'اجازات', action: 'append', kind: 'leave' },
+
+      'امر تنفيذى تطبيق لائحة':                     { sheet: 'لائحة',  action: 'append', kind: 'penalty' },
+      'امر تنفيذى تطبيق لائحة - الغياب':            { sheet: 'لائحة',  action: 'append', kind: 'penalty', fixedReason: 'الغياب' },
+
+      'امر تنفيذى جزاء بسبب تحقيق':                 { sheet: 'قانوني', action: 'append', kind: 'penalty' },
+      'امر تنفيذى جزاء شخصين بسبب تحقيق':           { sheet: 'قانوني', action: 'append', kind: 'penalty2' },
+
+      'امر تنفيذى ايقاف عن العمل لايجابية العينة':  { sheet: 'ايقاف',  action: 'append', kind: 'suspendStart' },
+      'امر تنفيذى ايقاف عن العمل لصالح تحقيق':      { sheet: 'ايقاف',  action: 'append', kind: 'suspendStart' },
+
+      'امر تنفيذى انهاء ايقاف عن العمل لسلبية العينة': { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd' },
+      'امر تنفيذى انهاء ايقاف عن العمل مع مجازاة':      { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd' },
+      'خطاب مدير عام انهاء ايقاف عن العمل':             { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd' },
+    };
+
+    function normalizeDocRuleName(name) {
+      return String(name || '')
+        .replace(/\.(docx?|DOCX?)$/, '')
+        .trim()
+        .replace(/\s+/g, ' ');
+    }
+
+    function getSheetRule(docName) {
+      const norm = normalizeDocRuleName(docName);
+      if (SHEET_DOC_RULES[norm]) return SHEET_DOC_RULES[norm];
+      // Fuzzy fallback: collapse " - " spacing differences and retry.
+      const collapsed = norm.replace(/\s*-\s*/g, ' - ');
+      return SHEET_DOC_RULES[collapsed] || null;
+    }
+
+    function sheetSyncToday() {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      return `${dd}/${mm}/${now.getFullYear()}`;
+    }
+
+    // Normalizes an already-parsed d/m/yyyy-ish value to strict dd/mm/yyyy.
+    // Non-date-looking values are returned unchanged.
+    function toStrictDDMMYYYY(value) {
+      const v = String(value || '').trim();
+      const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (!m) return v;
+      return `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`;
+    }
+
+    // First placeholder group whose label contains any of the given
+    // Arabic keywords (checked in priority order), read from valuesByRawKey.
+    function findValueByLabelKeywords(placeholders, valuesByRawKey, keywords) {
+      for (const kw of keywords) {
+        const group = placeholders.find((g) => labelContains(g.label, kw));
+        if (group) {
+          const v = valuesByRawKey[group.rawKeys[0]];
+          if (v) return v;
+        }
+      }
+      return '';
+    }
+
+    // Every placeholder group whose label contains the keyword, in the
+    // order they appear on the form — used to pair up multi-person docs.
+    function findAllValuesByLabelKeyword(placeholders, valuesByRawKey, keyword) {
+      return placeholders
+        .filter((g) => labelContains(g.label, keyword))
+        .map((g) => valuesByRawKey[g.rawKeys[0]] || '');
+    }
+
+    function showSheetSyncToast(message, isError = false) {
+      let el = document.getElementById('sheetSyncToast');
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'sheetSyncToast';
+        el.style.cssText = `
+          position: fixed; top: 16px; left: 16px; z-index: 99999;
+          max-width: 360px; padding: 12px 16px; border-radius: 10px;
+          font-family: 'Cairo', 'Inter', sans-serif; font-size: 14px;
+          font-weight: 600; line-height: 1.4; color: #fff;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+          transition: opacity .25s ease, transform .25s ease; direction: rtl;
+          text-align: right; pointer-events: none;
+        `;
+        document.body.appendChild(el);
+      }
+      el.style.background = isError ? '#c0392b' : '#1e8e3e';
+      el.textContent = message;
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+      clearTimeout(el._hideTimer);
+      el._hideTimer = setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(-8px)';
+      }, 4500);
+    }
+
+    async function postToSheet(payload) {
+      const res = await fetch(SHEET_SYNC_URL, {
+        method: 'POST',
+        // text/plain avoids a CORS preflight against the Apps Script Web App.
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.message || t('The sheet rejected the update.', 'رفض الشيت التحديث.'));
+      return data;
+    }
+
+    // Reads whatever was just generated and pushes it to بيانات.xlsx.
+    // Never throws — failures are reported via the top-left toast only, so
+    // they never block the document download itself.
+    async function syncGeneratedDocumentToSheet(doc, valuesByRawKey) {
+      const rule = getSheetRule(doc?.name);
+      if (!rule) return; // this document isn't tracked in بيانات.xlsx
+
+      if (!SHEET_SYNC_URL || SHEET_SYNC_URL.includes('https://script.google.com/macros/s/AKfycbxqwTz6C_MQ4Yxx7aXRl7fUvzQKlmbclUFkQ-krYq3umcukDN7C5piLuGcRvYfSDz14/exec')) {
+        showSheetSyncToast(t("Sheet sync isn't configured yet.", 'لم يتم إعداد رابط ربط الشيت بعد.'), true);
+        return;
+      }
+
+      const placeholders = selectedPlaceholders.length ? selectedPlaceholders : autoPlaceholders;
+      // التاريخ = the date "Select" was pressed for this document, not the
+      // (possibly later) moment Generate/Download is clicked.
+      const today = selectedAtDate || sheetSyncToday();
+
+      try {
+        if (rule.kind === 'penalty2') {
+          const codes = findAllValuesByLabelKeyword(placeholders, valuesByRawKey, 'كود');
+          const names = findAllValuesByLabelKeyword(placeholders, valuesByRawKey, 'اسم');
+          const penaltyType   = findValueByLabelKeywords(placeholders, valuesByRawKey, ['نوع الجزاء']);
+          const penaltyReason = findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الجزاء', 'السبب']);
+          const count = Math.min(codes.length, names.length) || 0;
+          const rows = [];
+          for (let i = 0; i < count; i += 1) {
+            if (!codes[i]) continue;
+            rows.push({
+              'كود': codes[i],
+              'اسم': names[i] || '',
+              'التاريخ': today,
+              'نوع الجزاء': penaltyType,
+              'سبب الجزاء': penaltyReason,
+            });
+          }
+          if (!rows.length) throw new Error(t('Could not find two code fields in this document.', 'تعذر العثور على حقلي كود في هذا المستند.'));
+          await postToSheet({ action: 'append', sheet: rule.sheet, rows });
+          showSheetSyncToast(t(`Added ${rows.length} record(s) to "${rule.sheet}".`, `تمت إضافة ${rows.length} سجل إلى شيت "${rule.sheet}".`));
+          return;
+        }
+
+        const code = findValueByLabelKeywords(placeholders, valuesByRawKey, ['كود']);
+        const name = findValueByLabelKeywords(placeholders, valuesByRawKey, ['اسم']);
+        if (!code) throw new Error(t('Could not find the code field in this document.', 'تعذر العثور على حقل الكود في هذا المستند.'));
+
+        if (rule.action === 'update') {
+          await postToSheet({
+            action: 'update', sheet: rule.sheet, code,
+            targetHeader: 'نهاية الإيقاف', value: today,
+          });
+          showSheetSyncToast(t('Suspension end date updated.', 'تم تحديث تاريخ نهاية الإيقاف بنجاح.'));
+          return;
+        }
+
+        const row = { 'كود': code, 'اسم': name, 'التاريخ': today };
+        if (rule.kind === 'leave') {
+          row['نوع الاجازة']  = findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الاجازة', 'السبب']);
+          row['نهاية الاجازة'] = toStrictDDMMYYYY(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ نهاية الاجازة']));
+        } else if (rule.kind === 'penalty') {
+          // Covers both قانوني docs (field is literally "نوع الجزاء" /
+          // "موضوع و سبب الجزاء") and لائحة docs (field is literally
+          // "نوع الجزاء" / "سبب الجزاء"). The absence variant of لائحة has
+          // no reason field at all, so it falls back to rule.fixedReason.
+          row['نوع الجزاء'] = findValueByLabelKeywords(placeholders, valuesByRawKey, ['نوع الجزاء']);
+          row['سبب الجزاء'] = findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الجزاء', 'السبب']) || rule.fixedReason || '';
+        } else if (rule.kind === 'suspendStart') {
+          row['بداية الإيقاف'] = toStrictDDMMYYYY(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ الايقاف عن العمل', 'تاريخ الايقاف'])) || today;
+        }
+
+        await postToSheet({ action: 'append', sheet: rule.sheet, rows: [row] });
+        showSheetSyncToast(t(`Added to "${rule.sheet}" sheet.`, `تمت الإضافة إلى شيت "${rule.sheet}".`));
+      } catch (err) {
+        showSheetSyncToast(err.message || t('Failed to update the sheet.', 'فشل تحديث الشيت.'), true);
+      }
+    }
+
     const PLACEHOLDER_RE = /\{([^{}]+)\}/g;
     const WORD_XML_RE = /^word\/(document|header|footer|footnotes|endnotes)\d*\.xml$/;
 
@@ -859,6 +1054,7 @@
     let selectedPlaceholders = [];
     let autoPlaceholders = [];
     let legacyDocHtml = null;
+    let selectedAtDate = null; // date "Select" was pressed — used for التاريخ column
 
     function normalizeKey(key) {
       return String(key || '').toLowerCase().replace(/[\s_-]/g, '');
@@ -1589,6 +1785,7 @@ function renderPlaceholderForm(doc, placeholders) {
       selectedPlaceholders = [];
       autoPlaceholders = [];
       legacyDocHtml = null;
+      selectedAtDate = sheetSyncToday();
       if (genderMaleRadio) genderMaleRadio.checked = true;
       formPanel.hidden = false;
       updateFormStaticText();
@@ -1909,6 +2106,7 @@ function renderPlaceholderForm(doc, placeholders) {
           downloadBlob(docxBlob, getExportFileName(selectedDoc.name, 'docx', true));
         }
 
+        await syncGeneratedDocumentToSheet(selectedDoc, values);
         hideDocumentForm();
       } catch (err) {
         generatePdfBtn.disabled = false;
@@ -1954,6 +2152,7 @@ function renderPlaceholderForm(doc, placeholders) {
           const docxBlob = replacePlaceholdersInDocx(buffer, values, true);
           downloadBlob(docxBlob, getExportFileName(doc.name, 'docx', true));
         }
+        await syncGeneratedDocumentToSheet(doc, values);
       } catch (err) {
         window.showToast?.(err.message || t('Could not create the file.', 'تعذر إنشاء الملف.'), 'error');
       } finally {
