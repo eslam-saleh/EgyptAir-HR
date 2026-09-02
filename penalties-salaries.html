@@ -594,10 +594,6 @@
               <span class="sal-currency" data-en="meals" data-ar="وجبة">وجبة</span>
               <input type="range" id="mealsRange" min="0" max="30" step="1" value="0">
             </div>
-            <p class="hint-text" style="margin-top:6px;">
-              <span data-en="60 EGP × meals − 10% tax → " data-ar="60 جنيه × عدد الوجبات − 10٪ ضريبة → ">60 جنيه × عدد الوجبات − 10٪ ضريبة → </span>
-              <strong id="mealsNetDisp" style="color:var(--primary);">0.00 EGP</strong>
-            </p>
           </div>
 
           <!-- Total Gross + Annual Raise side by side -->
@@ -679,12 +675,8 @@
               <div class="sum-cvalue neg" id="sTax">-0.00 EGP</div>
             </div>
             <div class="sum-card">
-              <div class="sum-clabel" data-en="Meals (net)" data-ar="الوجبات (صافي)">الوجبات (صافي)</div>
+              <div class="sum-clabel" data-en="Meals (net)" data-ar="الوجبات (صافي)">الوجبات</div>
               <div class="sum-cvalue pos" id="sMeals">0.00 EGP</div>
-            </div>
-            <div class="sum-card">
-              <div class="sum-clabel" data-en="Meal Tax (10%)" data-ar="ضريبة الوجبة (10%)">ضريبة الوجبة (10%)</div>
-              <div class="sum-cvalue neg" id="sMealTax">-0.00 EGP</div>
             </div>
             <div class="sum-card">
               <div class="sum-clabel" data-en="Penalty Deduction" data-ar="خصم الجزاء">خصم الجزاء</div>
@@ -745,7 +737,6 @@
     let incentives   = 13000;  // الحوافز / الأجر المتغير
     let mealCount    = 0;      // عدد الوجبات (0–30)
     const MEAL_UNIT  = 60;     // قيمة الوجبة الواحدة
-    const MEAL_TAX_RATE = 0.10; // ضريبة 10% على بدل الوجبة
     let penaltyAmt   = 0;
     let penaltyDesc  = '';
     let incentivePenaltyRate = 0;
@@ -760,12 +751,8 @@
       return mealCount * MEAL_UNIT;
     }
 
-    function getMealTax() {
-      return getMealGross() * MEAL_TAX_RATE;
-    }
-
     function getMealNet() {
-      return getMealGross() - getMealTax();
+      return getMealGross();
     }
 
     // ── Boot ──────────────────────────────────────────────────────────────────
@@ -789,7 +776,6 @@
       syncDedVisibility();
       updateTotalGross();
       updateRaise();
-      updateMealsDisp();
       updateSummary();
     });
 
@@ -875,7 +861,6 @@
         mealCount = clampMeals(v);
         mealsNum.value = mealCount;
         mealsRng.value = mealCount;
-        updateMealsDisp();
         updateSummary();
       }
       mealsNum.addEventListener('input', () => {
@@ -1310,10 +1295,6 @@
       return calcAnnualIncomeTax(annualGross, annualSI) / 12;
     }
 
-    function updateMealsDisp() {
-      const el = document.getElementById('mealsNetDisp');
-      if (el) el.textContent = fmtEGP(getMealNet());
-    }
 
     // ── Salary summary ────────────────────────────────────────────────────────
     function updateSummary() {
@@ -1321,7 +1302,6 @@
       const enableIncDed = document.getElementById('enableIncentiveDed').checked;
       const gross      = getTotalGross();
       const mealGross  = getMealGross();
-      const mealTax    = getMealTax();
       const mealNet    = getMealNet();
 
       let insAmt = 0;
@@ -1353,8 +1333,6 @@
       document.getElementById('sGross').textContent      = fmtEGP(gross);
       document.getElementById('sTax').textContent        = '-' + fmtEGP(taxAmt);
       document.getElementById('sIns').textContent        = '-' + fmtEGP(insAmt);
-      const sMealTax = document.getElementById('sMealTax');
-      if (sMealTax) sMealTax.textContent = '-' + fmtEGP(mealTax);
       document.getElementById('sPenalty').textContent    = '-' + fmtEGP(penaltyAmt);
       document.getElementById('sIncentive').textContent  = '-' + fmtEGP(effectiveIncentivePenalty);
       document.getElementById('sNet').textContent        = fmtEGP(net);

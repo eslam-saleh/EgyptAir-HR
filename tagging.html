@@ -158,7 +158,7 @@ function isExecutiveOrdersBlockStart(text) {
 
 function isExecutiveOrdersBlockEnd(text) {
   const normalized = normalizeArabic(String(text || '')).replace(/\s+/gu, ' ');
-  return /قرار\s*السيده\s+الاستاذه\s*[/／]\s*رئيس\s+مجلس\s+الاداره\s+والعضو\s+المنتدب\s+التنفيذي\s+للشركه\s+رقم\s*346\s+بتاريخ\s*24\s*[/／]\s*8\s*[/／]\s*2025\s+بتفويضنا\s+بالتوقيع\s+على\s+الاوامر\s+الاداريه\s+والتنفيذيه\s*0?/u.test(normalized);
+  return /قرار\s*السيده\s+الاستاذه\s*[/／]\s*رئيس\s+مجلس\s+الاداره\s+والعضو\s+المنتدب\s+التنفيذي\s+للشركه\s+رقم\s*346\s+بتاريخ\s*24\s*[/／]\s*8\s*[/／]\s*2025\s+بتفويضنا\s+بالتوقيع\s+علي\s+الاوامر\s+الاداريه\s+والتنفيذيه\s*0?/u.test(normalized);
 }
 
 const FIXED_LINE_PATTERNS = [
@@ -433,9 +433,10 @@ function findContextualFields(text, matches, options = {}) {
     // Specific letter-number rules must precede the generic incoming-letter rule.
     { tag: 'رقم كتاب الشئون القانونية', reason: 'legal affairs letter number', patterns: [/كتاب[^\n]{0,60}?(?:ال)?(?:شئون|شؤون)\s+القانونية[^\n]{0,30}?رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?/gu] },
     { tag: 'رقم المحضر', reason: 'administrative report/reference number', patterns: [/(?:ال)?(?:شئون|شؤون)\s+التوظف[^\n]{0,60}?رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?/gu] },
-    { tag: 'رقم الخطاب الوارد', reason: 'incoming letter number', patterns: [/(?:كتاب|كتابنا|خطاب)[^\n]{0,160}?رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?/gu, /رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?(?=\s*بتاريخ)/gu] },
+    { tag: 'رقم الإيصال', reason: 'receipt number', patterns: [/(?:إيصال|ايصال)\s*رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?/gu] },
+    { tag: 'رقم الخطاب الوارد', reason: 'incoming letter number', patterns: [/(?:كتاب|كتابنا|خطاب)[^\n]{0,160}?رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?/gu, /(?<=(?:كتاب|كتابنا|خطاب)[^\n]{0,60})رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+)\s*\)?(?=\s*بتاريخ)/gu] },
     { tag: 'رقم و سنة الامر التنفيذي', reason: 'executive order reference number/year', patterns: [/(?:الام(?:ـ*)ر|الأم(?:ـ*)ر)\s+التنفيذ(?:ـ*)[ىي][^\n]{0,80}?رق(?:ـ*م)\s*\(?\s*([A-Za-z0-9٠-٩]+(?:\s*[/\-]\s*[A-Za-z0-9٠-٩]+)?(?:\s+ل(?:ـ*)س(?:ـ*)ن(?:ـ*)ة\s*[0-9٠-٩]{4})?)\s*\)?/gu] },
-    { tag: 'رقم و سنة التحقيق الادارى', reason: 'administrative investigation number/year', patterns: [/(?:التحقيق\s+الادار(?:ى|ي)|التحقيق\s+الإدارى)[^\n]{0,45}?رق(?:ـ*م)\s*\(?\s*([0-9٠-٩]+(?:\s*[/\-]\s*[0-9٠-٩]+|\s+لـ*سـ*نـ*ة\s+[0-9٠-٩]+))\s*\)?/gu] },
+    { tag: 'رقم و سنة التحقيق الادارى', reason: 'administrative investigation number/year', patterns: [/التحقيق\s+(?:ال)?ادار(?:ى|ي)[^\n]{0,45}?رق(?:ـ*م)\s*\(?\s*([0-9٠-٩]+(?:\s*[/\-]\s*[0-9٠-٩]+|\s+لـ*سـ*نـ*ة\s+[0-9٠-٩]+))\s*\)?/gu] },
     { tag: 'رقم القيد', reason: 'registry entry number', patterns: [/القيد\s*[/／]\s*([0-9٠-٩]+)/gu] },
     { tag: 'اجمالى الاجازات السابق الحصول عليها', reason: 'total prior leave taken', patterns: [/اجمال(?:ى|ي)\s+الاجازات\s+السابق\s+الحصول\s+عليها\s*[:：]\s*\(?\s*([^\n()]+?)\s*\)?(?=\s*(?:$|[،؛.]))/gu] },
     { tag: 'الادارة العامة', reason: 'general administration (labeled field)', patterns: [/(?:^|\n)\s*الادار(?:ـ*)ة\s*[/／:：\-]\s*([^\n،؛]+)/gu] },
@@ -447,10 +448,22 @@ function findContextualFields(text, matches, options = {}) {
     { tag: 'نوع المخدر', reason: 'drug type', patterns: [/(?:لمخدر|المخدر|مادة\s+(?![(:]|(?:أولى|ثانية|ثالثة|رابعة)\s*:-))\s*([^\n،؛)]+?)(?=\s+THC|\s+0|\s*\)|\s*$)/gu] },
     { tag: 'المدة السابقة', reason: 'prior leave duration', patterns: [/للسيد\s+المذكور\s+لمدة\s+([^\n(]+?)\s*\(/gu] },
     { tag: 'سبب الطلب السابق', reason: 'prior leave request reason', patterns: [/للسيد\s+المذكور\s+لمدة[^\n]{0,60}?\(\s*([^\n()]+?)\s*\)\s*اعتبارا/gu] },
-    { tag: 'المدة', reason: 'leave duration', patterns: [
-      /(?:^|\s)مدة\s+(?:الاجازة|الإجازة)\s*[:：]\s*\(*\s*([^\n()]+?)\s*\)*(?=\s+الفترة|\s+قانونية|\s*$)/gu,
+    { tag: 'مدة الاجازة', reason: 'leave duration (explicit "مدة الاجازة" label)', patterns: [
+      /(?:^|\s)مدة\s+(?:الاجازة|الإجازة)\s*[:：]\s*\(*\s*([^\n،؛.()\s]+(?:\s+[^\n،؛.()\s]+){0,6}?)\s*\)*(?=\s+الفترة|\s+قانونية|\s+(?:اعتب(?:ـ*)ارا|وذلك|وينته(?:ى|ي)|صادر)|[،؛.]|\s*$)/gu
+    ] },
+    { tag: 'المدة', reason: 'inline duration ("لمدة ...")', patterns: [
       /(?:^|\s)لمد(?:ة|ه)\s+((?:[ء-ي]+\s+)?(?:عام|(?:ا|أ)عوام|(?:ا|أ)شهر|شهور|سن(?:ة|وات)))(?=\s|[،؛.()،]|$)/gu,
-      /(?:^|\s)لمد(?:ة|ه)\s+([^\n،؛.()]+?)(?=\s+(?:اعتب(?:ـ*)ارا|وذلك|وينته(?:ى|ي)|صادر)|\s*[،؛.]|\s*$)/gu
+      // BUGFIX: each repeated token used to swallow its own trailing "\s*",
+      // which ate the separator space that the "اعتبارا/وذلك/..." lookahead
+      // needed to see via "\s+". With the space already consumed, that
+      // lookahead branch could never fire, so the lazy quantifier kept
+      // expanding past the real duration and absorbed the following
+      // "اعتباراً من <start date>" into this tag too (duplicating text that
+      // the dedicated start-date rules already tag separately). Moving the
+      // "\s+" to the front of each repeated token leaves the separator space
+      // unconsumed, so the lookahead can match immediately after the last
+      // duration word as intended.
+      /(?:^|\s)لمد(?:ة|ه)\s+([^\n،؛.()\s]+(?:\s+[^\n،؛.()\s]+){0,5}?)(?=\s+(?:اعتب(?:ـ*)ارا|وذلك|وينته(?:ى|ي)|صادر)|[،؛.]|\s*$)/gu
     ] },
     { tag: leaveReasonTag, reason: 'leave reason (unlabeled, in parentheses after duration)', patterns: [/لمدة[^\n()]*\(\s*([^\n()]+?)\s*\)\s*اعتبارا/gu] },
     { tag: 'سبب الطلب', reason: 'leave request reason', patterns: [/سبب\s+طلب\s+(?:الاجازة|الإجازة)\s*[:：\-]?\s*([^\n]+?)(?=\s+قانونية\s+(?:الاجازة|الإجازة)|\s*$)/gu] },
@@ -463,13 +476,23 @@ function findContextualFields(text, matches, options = {}) {
       /(لغياب(?:ه|ها)?\s+عن\s+العمل\s+بدون\s+اذن)(?=\s+ي(?:ـ*)وم)/gu
     ] },
     { tag: 'موضوع قرار اللجنة', reason: 'committee decision subject', patterns: [/موضوع\s+قرار\s+اللجنة\s*[:：\-]?\s*([^\n،؛]+)/gu] },
+    { tag: 'موضوع و تفاصيل أيام العمل', reason: 'subject and workday details', patterns: [/موضوع\s*(?:و|\s)\s*تفاصيل\s+أيام\s+العمل\s*[:：\-]?\s*([^\n]+?)(?=\s*$)/gu] },
+    // Generic subject line ("الموضوع : ..."), only when no more specific
+    // subject rule above already matched this paragraph.
+    { tag: 'موضوع', reason: 'generic subject line', patterns: [/(?:^|\n)\s*(?:ال)?موضوع\s*[/／:：\-]+\s*([^\n]+)/gu] },
+    { tag: 'نوع و سبب الحفظ', reason: 'investigation closure type and reason', patterns: [/نوع\s*(?:و|\s)\s*سبب\s+الحفظ\s*[:：\-]?\s*([^\n]+?)(?=\s*$)/gu] },
+    { tag: 'عدد الموظفين', reason: 'employee headcount', patterns: [/عدد\s+الموظف(?:ين|ون)\s*[:：\-]?\s*([0-9٠-٩]+)/gu] },
     { tag: 'التكرار', reason: 'repeat-offense count', patterns: [/\(\s*المرة\s+([^\n()]+?)\s*\)/gu] },
     { tag: 'ساعة اللجنة', reason: 'committee meeting time', patterns: [/الساعة\s*[:：]?\s*([^\n،؛)]+?)(?=\s+يوم|\s*$)/gu] },
     { tag: 'يوم اللجنة', reason: 'committee meeting weekday', patterns: [/(?:^|\s)يوم\s+([^\n]+?)\s+الموافق/gu] },
     { tag: 'القطاع', reason: 'sector (standalone field)', patterns: [/(?:^|\n)\s*القطاع\s*[/／]\s*([^\n]+?)\s*(?=\n|$)/gu] },
     { tag: 'مد او منح سابقا', reason: 'prior grant/renewal verb choice', patterns: [/ب(مد|منح)\s+(?:ال)?اجازة\s+بدون\s+مرتب\s+للسيد\s+المذكور/gu] },
     { tag: 'تجديد او منحه حاليا', reason: 'current renewal/grant verb choice', patterns: [/بشان\s+(تجديد|منحه)\s+(?:ال)?اجازة\s+بدون\s+مرتب/gu] },
-    { tag: 'رقم الاجتماع', reason: 'meeting minutes number', patterns: [/محضر\s+الاجتماع[^\n]{0,10}\n+\s*([0-9٠-٩]+)\s*لعام/gu] }
+    { tag: 'رقم الاجتماع', reason: 'meeting minutes number', patterns: [
+      /محضر\s+الاجتماع[^\n]{0,10}\n+\s*([0-9٠-٩]+)\s*لعام/gu,
+      /اجتماع\s*رق(?:ـ*م)\s*\(?\s*([0-9٠-٩]+)\s*\)?/gu,
+      /رق(?:ـ*م)\s+الاجتماع\s*[:：\-]?\s*\(?\s*([0-9٠-٩]+)\s*\)?/gu
+    ] }
   ];
 
   for (const rule of rules) {
@@ -510,8 +533,16 @@ function findSemanticDates(text, matches) {
   const maskedDate = '-+\\s*[/／]\\s*-+\\s*[/／]\\s*[0-9٠-٩]{4}';
   const hasLeaveContext = arabicTest(text, /(?:الاجازة|الإجازة|التصري(?:ـ*)ح\s+بالعمل\s+نصف\s+الوقت|العمل\s+نصف\s+الوقت)/u);
   const hasRetirementContext = arabicTest(text, /(?:احال(?:ـ*)ت(?:ـ*)[هة]?|الم(?:ـ*)عاش|التقاعد)/u);
+  const hasTerminationContext = arabicTest(text, /(?:إنهاء|انهاء)\s+خدم(?:ة|ه)|الاستقال(?:ة|ه)\s+الحكمية|فصل(?:ه|ها)?\s+من\s+الخدم(?:ة|ه)/u);
+  // A suspension order ("ايقاف عن العمل") also commonly reads "اعتبارا من
+  // DATE" for its own effective date, in wording too varied for a single rigid
+  // pattern (pending-investigation suspensions, drug-test suspensions, lifting
+  // a suspension, etc.). Treat it the same way as termination: exclude it from
+  // the leave-date heuristic so it isn't mislabeled, and give it its own
+  // broad fallback below (after the more specific suspension-date rules).
+  const hasSuspensionContext = arabicTest(text, /(?:ايقاف|إيقاف|موقوف|الموقوف)/u);
   const hasPairedLeaveDates = arabicTest(text, new RegExp(leaveStartPrefix + '\\s*' + date + '[^\\n]{0,100}?' + leaveEndConnector + '\\s*' + date, 'u'));
-  const hasLeaveRequestContext = (hasLeaveContext && arabicTest(text, /(?:الفترة|المدة|الطلب|ورد\s+الينا\s+الطلب|الطلب\s+المقدم|بشأن|بشان|منح|تجديد|مد\s+التصري(?:ـ*)ح)/u)) || arabicTest(text, /(?:الفترة|المدة)\s*(?:م(?:ـ*)ن|من)\s*[0-9٠-٩]/u) || arabicTest(text, new RegExp(leaveStartPrefix + '\\s*(?:' + date + '|' + maskedDate + ')', 'u')) || hasPairedLeaveDates;
+  const hasLeaveRequestContext = !hasTerminationContext && !hasSuspensionContext && ((hasLeaveContext && arabicTest(text, /(?:الفترة|المدة|الطلب|ورد\s+الينا\s+الطلب|الطلب\s+المقدم|بشأن|بشان|منح|تجديد|مد\s+التصري(?:ـ*)ح)/u)) || arabicTest(text, /(?:الفترة|المدة)\s*(?:م(?:ـ*)ن|من)\s*[0-9٠-٩]/u) || arabicTest(text, new RegExp(leaveStartPrefix + '\\s*(?:' + date + '|' + maskedDate + ')', 'u')) || hasPairedLeaveDates);
   const addDateRule = (tag, reason, patterns, confidence = 'high') => {
     for (const pattern of patterns) {
       for (const match of arabicMatchAll(text, pattern)) {
@@ -534,6 +565,12 @@ function findSemanticDates(text, matches) {
     new RegExp('(?:بتاريخ|بتاري(?:ـ*)خ|تاريخ)\\s*(' + date + ')\\s*(?=تم\\s+التعاقد)', 'gu')
   ]);
   addDateRule('تاريخ الميلاد', 'birth date', [new RegExp('تاريخ\\s+الميلاد\\s*[/：:-]?\\s*(' + date + ')', 'gu')]);
+  addDateRule('بداية مدة التامينات', 'insurance period start date', [
+    new RegExp('(?:بداي(?:ة|ه)|بدايـ*ة)\\s+مدة\\s+الت(?:ا|أ)مينات\\s*[/：:-]?\\s*(' + date + ')', 'gu')
+  ]);
+  addDateRule('نهاية مدة التامينات', 'insurance period end date', [
+    new RegExp('نهاي(?:ة|ه)\\s+مدة\\s+الت(?:ا|أ)مينات\\s*[/：:-]?\\s*(' + date + ')', 'gu')
+  ]);
   // These specific fields are used by the Drive reference templates when a document
   // contains multiple prior periods, approvals, or suspension milestones.
   addDateRule('بداية المدة السابقة', 'prior leave period start date', [
@@ -554,9 +591,21 @@ function findSemanticDates(text, matches) {
   addDateRule('تاريخ الايقاف عن العمل', 'work suspension date (by law)', [
     new RegExp('إعتبارا(?:ً)?\\s+من\\s*(' + date + ')\\s*بقوة\\s+القانون', 'gu')
   ]);
+  addDateRule('تاريخ سريان الامر', 'order implementation/effective date (closing clause)', [
+    new RegExp('الجهات\\s+المعني(?:ة|ه)\\s+تنفيذ\\s+هذا\\s+الامر[^\\n]{0,40}اعتبارا(?:ً)?\\s*(?:من\\s*)?(' + date + ')', 'gu')
+  ]);
   addDateRule('تاريخ الايقاف', 'suspension effective date', [
     new RegExp('عن\\s+العمل\\s+اعتبارا(?:ً)?\\s+من\\s*(' + date + ')\\s*لصالح\\s+التحقيق', 'gu')
   ]);
+  if (hasSuspensionContext && !hasRetirementContext && !hasTerminationContext) {
+    addDateRule('تاريخ الايقاف', 'suspension effective date (broad fallback)', [
+      new RegExp(leaveStartPrefix + '\\s*(' + date + ')', 'gu')
+    ]);
+    addDateRule('تاريخ انهاء الايقاف', 'suspension end date (broad fallback)', [
+      new RegExp('(?:الايقاف|الإيقاف)[^\\n]{0,140}?' + leaveEndConnector + '\\s*(' + date + ')', 'gu'),
+      new RegExp(leaveStartPrefix + '\\s*' + date + '\\s*' + leaveEndConnector + '\\s*(' + date + ')', 'gu')
+    ]);
+  }
   addDateRule('تاريخ المحضر', 'administrative report/reference date', [
     new RegExp('(?:ال)?(?:شئون|شؤون)\\s+التوظف[^\\n]{0,60}?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
   ]);
@@ -566,10 +615,20 @@ function findSemanticDates(text, matches) {
   addDateRule('تاريخ الخطاب', 'letter date (own letter)', [
     new RegExp('(?:^|\\n)\\s*التاريخ\\s*[/：:-]?\\s*(' + date + ')', 'gu')
   ]);
+  // Specific letter-type date rules must precede the generic incoming-letter
+  // fallback below, or the fallback's bare "رقم N بتاريخ D" pattern will win
+  // ties on the same date span and mislabel these as a plain incoming letter.
+  addDateRule('تاريخ كتاب الشئون القانونية', 'legal affairs letter date', [
+    new RegExp('(?:كتاب|خطاب)[^\\n]{0,140}(?:(?:ال|لل)?(?:شئون|شؤون))\\s+القانونية[^\\n]{0,80}?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')[^\\n]{0,80}(?=(?:ورد\\s+لنا|ورد\\s+الينا|تم\\s+مخاطبة)[^\\n]{0,100}(?:كتاب|خطاب)[^\\n]{0,80}(?:(?:ال|لل)?(?:شئون|شؤون))\\s+القانونية)', 'gu')
+  ]);
   addDateRule('تاريخ الخطاب الوارد', 'incoming letter date', [
     new RegExp('(?:كتاب|كتابنا|خطاب)[^\\n]{0,60}?سيادتكم[^\\n]{0,60}?رق(?:ـ*م)[^\\n]{0,30}?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
   ]);
-  addDateRule('تاريخ الخطاب الوارد', 'incoming letter date (number/date line)', [new RegExp('رق(?:ـ*م)\\s*(?:[0-9٠-٩]+|\\{رقم\\s+الخطاب\\s+الوارد\\})\\s*بتاري(?:ـ*)خ\\s*(' + date + ')', 'gu')]);
+  addDateRule('تاريخ الخطاب الوارد', 'incoming letter date (number/date line)', [new RegExp('(?<=(?:كتاب|كتابنا|خطاب)[^\\n]{0,60})رق(?:ـ*م)\\s*\\(?\\s*(?:[0-9٠-٩]+|\\{رقم\\s+الخطاب\\s+الوارد\\})\\s*\\)?\\s*بتاري(?:ـ*)خ\\s*(' + date + ')', 'gu')]);
+  addDateRule('تاريخ المحضر الادارى', 'administrative report/minutes date', [
+    new RegExp('المحضر\\s+الادار(?:ى|ي)[^\\n]{0,20}?بتاري(?:ـ*)خ\\s*(' + date + ')', 'gu')
+  ]);
   addDateRule('تاريخ القيد', 'registry entry date', [new RegExp('القيد[^\\n]{0,80}?التاريخ\\s*[/：:-]?\\s*((?:--\\s*[/／]\\s*[0-9٠-٩]{1,2}\\s*[/／]\\s*[0-9٠-٩]{4})|' + date + ')', 'gu')]);
   addDateRule('تاريخ علمه بالامر', 'date employee learned of order', [new RegExp('تاريخ\\s+علم(?:ه|ها|هما)\\s+بالام(?:ـ*)ر\\s*[:：-]?\\s*(' + date + ')', 'gu')]);
   addDateRule('تاريخ التقدم بالتظلم', 'grievance submission date', [new RegExp('التقدم\\s+بالتظلم\\s*[:：-]?\\s*(' + date + ')', 'gu')]);
@@ -578,12 +637,17 @@ function findSemanticDates(text, matches) {
     new RegExp('استلام\\s+العمل\\s+للسيد\\s+المذكـ*ور\\s+يوم\\s*(' + date + ')', 'gu')
   ]);
   if (hasLeaveRequestContext && !hasRetirementContext) {
-    addDateRule('تاريخ البداية', 'leave or part-time period start date', [
+    // Documents that actually say "اجازة/إجازة" get the canonical leave-specific
+    // tags; a bare part-time-work-permit period (no "اجازة" word at all) keeps a
+    // separate tag so it is never mislabeled as a leave date.
+    const startTag = hasLeaveContext && !arabicTest(text, /(?:الاجازة|الإجازة)/u) ? 'تاريخ بداية التصريح' : 'تاريخ بداية الاجازة';
+    const endTag = hasLeaveContext && !arabicTest(text, /(?:الاجازة|الإجازة)/u) ? 'تاريخ نهاية التصريح' : 'تاريخ نهاية الاجازة';
+    addDateRule(startTag, 'leave or part-time period start date', [
       new RegExp('(?:الفترة|المدة)\\s*(?:م(?:ـ*)ن|من)\\s*(' + date + ')', 'gu'),
       new RegExp(leaveStartPrefix + '\\s*(' + date + ')', 'gu'),
       new RegExp(leaveStartPrefix + '\\s*(' + maskedDate + ')', 'gu')
     ]);
-    addDateRule('تاريخ النهاية', 'leave or part-time period end date', [
+    addDateRule(endTag, 'leave or part-time period end date', [
       new RegExp('(?:الفترة|المدة)[^\\n]{0,100}?' + leaveEndConnector + '\\s*(' + date + ')', 'gu'),
       new RegExp('(?:الاجازة|الإجازة)[^\\n]{0,140}?' + leaveEndConnector + '\\s*(' + date + ')', 'gu'),
       new RegExp('اعتبارا\\s+من\\s*' + date + '\\s*' + leaveEndConnector + '\\s*(' + date + ')', 'gu'),
@@ -599,14 +663,23 @@ function findSemanticDates(text, matches) {
     new RegExp('(?:الامر|الأمر)\\s+التنفيذ(?:ى|ي)[^\\n]{0,100}?(?:الصادر\\s+)?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
     new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')[^\\n]{0,40}(?=(?:صدر|صددر)\\s+(?:الامر|الأمر)\\s+التنفيذ(?:ى|ي))', 'gu')
   ]);
-  addDateRule('تاريخ كتاب الشئون القانونية', 'legal affairs letter date', [
-    new RegExp('(?:كتاب|خطاب)[^\\n]{0,140}(?:(?:ال|لل)?(?:شئون|شؤون))\\s+القانونية[^\\n]{0,80}?(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
-    new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')[^\\n]{0,80}(?=(?:ورد\\s+لنا|ورد\\s+الينا|تم\\s+مخاطبة)[^\\n]{0,100}(?:كتاب|خطاب)[^\\n]{0,80}(?:(?:ال|لل)?(?:شئون|شؤون))\\s+القانونية)', 'gu')
+  // "تاريخ اللجنة" is the summons-style date, the natural companion of "يوم
+  // اللجنة" and "ساعة اللجنة" (e.g. "يوم الأحد الموافق DATE الساعة ..."); it is
+  // a distinct tag from "تاريخ اجتماع اللجنة" below, not a renamed duplicate.
+  addDateRule('تاريخ اللجنة', 'committee session date (summons: يوم WEEKDAY الموافق DATE)', [
+    new RegExp('يوم\\s+[^\\n]+?\\s+الموافق\\s*(' + date + ')', 'gu'),
+    new RegExp('جلس(?:ة|ه)\\s*(' + date + ')', 'gu')
   ]);
-  addDateRule('تاريخ اللجنة', 'committee meeting date', [
-    new RegExp('جلس(?:ة|ه)\\s*(' + date + ')', 'gu'),
+  addDateRule('تاريخ اجتماع اللجنة', 'committee meeting date (minutes/reference)', [
     new RegExp('المنعقد(?:ة)?\\s+(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
     new RegExp('الاجتماع[^\\n]{0,50}(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu')
+  ]);
+  // Distinct from the meeting date itself and from the generic approval date:
+  // this is specifically when the committee's decision/minutes were adopted.
+  addDateRule('تاريخ اعتماد اللجنة', 'committee approval/adoption date', [
+    new RegExp('اعتماد\\s+اللجنة[^\\n]{0,40}(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:اعتم(?:ـ*)د(?:ت)?|المعتم(?:ـ*)د(?:ة)?)[^\\n]{0,30}اللجنة[^\\n]{0,30}(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
+    new RegExp('(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')\\s*(?=[^\\n]{0,40}اعتماد\\s+اللجنة)', 'gu')
   ]);
   addDateRule('تاريخ التأشير', 'endorsement or routing date', [
     new RegExp('(?:المؤشـ*ر|مؤشـ*ر|التأشيـ*ر|تأشيـ*ر)[^\\n]{0,110}(?:بتاريخ|بتاريـ*خ|تاريخ)\\s*(' + date + ')', 'gu'),
@@ -634,46 +707,109 @@ function findSemanticDates(text, matches) {
 }
 
 function findGenericNamesAndCodes(text, matches) {
-  const nameWord = '[ء-يآأإؤئَُِّْ]+(?:\\s+[ء-يآأإؤئَُِّْ]+){1,4}';
-  const subjectName = new RegExp('(?:للس(?:ـ*)يد|للس(?:ـ*)يدة|الس(?:ـ*)يد|الس(?:ـ*)يدة)\\s*[/／]\\s*(?:[:：؛-]+\\s*)?(' + nameWord + ')(?=\\s*(?:كـ*ود|بوظيف|بـ|احتياط|عن العمل|اعتب|تصريح|بشان|بشأن|احال|محالا|،|$))', 'gu');
+  const nameWord = '[ء-يآأإؤئَُِّْ]+(?:\\s+[ء-يآأإؤئَُِّْ]+){1,7}';
+  // A paragraph/section written by the employee about themselves (a leave or
+  // grievance request letter, a resignation notice, etc.) should tag its own
+  // name/code/job as "المتقدم" (the applicant); a paragraph describing an
+  // employee in the third person (an HR memo, order, or penalty notice) should
+  // use "المذكور" (the mentioned employee) as before.
+  const applicantContext = arabicTest(text, /(?:مقدم(?:ة)?\s+هذا\s+الطلب|مقدم\s+الطلب|أتقدم|اتقدم|طلبي|طلب(?:ى|ي)|(?:أنا|انا)\s+الموظف(?:ة)?|بصفتي)/u);
+  const nameTag = applicantContext ? '{اسم المتقدم}' : '{اسم المذكور}';
+  const codeTag = applicantContext ? '{كود المتقدم}' : '{كود المذكور}';
+  const jobTag = applicantContext ? '{وظيفة المتقدم}' : '{وظيفة المذكور}';
+  const boundaryWords = 'و?ب(?:الادارة|الإدارة|ادارة|إدارة|مجموعة|قطاع)|لمخدر|عن العمل|كـ*ود|لصالح|اعتب|الس(?:ـ*)يد|وذلك|يوم|سبب|أتقدم|اتقدم|برجاء|الرجاء';
+  // BUGFIX: nameWord's repetition was greedy, so on "الاسم كود (12345)" it
+  // would first try to swallow the literal word "كود" as if it were part of
+  // the name, then find that the bare "\(" lookahead alternative (added for
+  // the no-"كود" case below) is satisfied right after — silently absorbing
+  // "كود" into the captured name instead of stopping in front of it. Making
+  // the repetition lazy makes the match stop at the *first* boundary word it
+  // reaches (matching this rule's own intent), rather than the last one a
+  // bare "(" happens to rescue.
+  const subjectNameNameWord = '[ء-يآأإؤئَُِّْ]+(?:\\s+[ء-يآأإؤئَُِّْ]+){1,7}?';
+  const subjectName = new RegExp('(?:للس(?:ـ*)يد|للس(?:ـ*)يدة|الس(?:ـ*)يد|الس(?:ـ*)يدة)\\s*[/／]\\s*(?:[:：؛-]+\\s*)?(' + subjectNameNameWord + ')(?=\\s*(?:كـ*ود|بوظيف|بـ|احتياط|عن العمل|اعتب|تصريح|بشان|بشأن|احال|محالا|\\(|،|$))', 'gu');
+  // "السيد / NAME (CODE)" — the code given in bare parentheses with no literal
+  // "كود" word, as used in this company's memo subject lines.
+  const subjectNameWithParenCode = new RegExp('(?:للس(?:ـ*)يد|للس(?:ـ*)يدة|الس(?:ـ*)يد|الس(?:ـ*)يدة)\\s*[/／]\\s*(?:[:：؛-]+\\s*)?(' + nameWord + ')\\s*\\(\\s*([A-Za-z0-9٠-٩]+)\\s*\\)', 'gu');
+  // First-person self-introduction, e.g. "أنا الموظف / أحمد محمد على ..."
+  const selfIntroName = new RegExp('(?:أنا|انا)\\s+الموظف(?:ة)?\\s*[/／:：\\-]?\\s*(' + nameWord + ')(?=\\s*(?:كـ*ود|بوظيف|\\(|،|$))', 'gu');
+  const selfIntroNameWithParenCode = new RegExp('(?:أنا|انا)\\s+الموظف(?:ة)?\\s*[/／:：\\-]?\\s*(' + nameWord + ')\\s*\\(\\s*([A-Za-z0-9٠-٩]+)\\s*\\)', 'gu');
+  const applicantLabeledName = new RegExp('(?:^|\\n)\\s*(?:اسم\\s+مقدم\\s+الطلب|مقدم\\s+الطلب)\\s*[/／:：\\-]+\\s*(' + nameWord + ')', 'gu');
   const code = /(?:^|\s)(?:ال)?كـ*ود\s*[(（:：\-]?\s*([A-Za-z0-9٠-٩]+)/gu;
   const jobTrigger = arabicPrefixedTrigger('وظيف(?:ـ*)[ةه]');
-  const job = new RegExp('(?:^|\\s)(?:' + jobTrigger + ')\\s*[/／:：\\-]?\\s*([^\\n]+?)(?=\\s+(?:و?ب(?:الادارة|الإدارة|ادارة|إدارة|مجموعة|قطاع)|لمخدر|عن العمل|كـ*ود|لصالح|اعتب|الس(?:ـ*)يد|وذلك|يوم|سبب)|\\s*[،؛–—.]|$)', 'gu');
-  const organization = /(?:ب(?:ال)?ادارة|بإدارة)\s+[^\n،؛]+?\s+بقطاع\s+[^\n،؛]+?(?=\s+(?:بشرك|بشركة|عن العمل|لصالح|احتياط|كل فيما)|\s*[،؛]|$)/gu;
+  const job = new RegExp('(?:^|\\s)(?:' + jobTrigger + ')\\s*[/／:：\\-]?\\s*([^\\n]+?)(?=\\s+(?:' + boundaryWords + ')|\\s*[،؛–—.]|$)', 'gu');
+  const organization = /(?:ب(?:ال)?ادارة|بإدارة)\s+[^\n،؛]+?\s+بقطاع\s+[^\n،؛]+?(?=\s+(?:ب(?:ال)?شرك|عن العمل|لصالح|احتياط|كل فيما)|\s*[،؛]|$)/gu;
   const signatureName = new RegExp('(?:^|\\n)\\s*الاس(?:ـ*)م\\s*[/／:：\\-]?\\s*(' + nameWord + ')', 'gu');
   const labeledEmployeeName = new RegExp('(?:^|\\n)\\s*(?:الاس(?:ـ*)م|اسم\\s+(?:الموظف|المذكور))\\s*[/／:：\\-]+\\s*(' + nameWord + ')', 'gu');
-  const labeledJob = /(?:^|\n)\s*(?:الوظيف(?:ة|ه)|وظيفة\s+(?:الموظف|المذكور))\s*[/／:：\-]+\s*([^\n،؛]+)/gu;
+  // "الاسم: NAME (CODE)" — a bare parenthesized code with no "كود" word,
+  // right after a labeled name field rather than a "السيد /" mention.
+  const labeledNameWithParenCode = new RegExp('(?:^|\\n)\\s*(?:الاس(?:ـ*)م|اسم\\s+(?:الموظف|المذكور))\\s*[/／:：\\-]+\\s*(' + nameWord + ')\\s*\\(\\s*([A-Za-z0-9٠-٩]+)\\s*\\)', 'gu');
+  const labeledJob = new RegExp('(?:^|\\n)\\s*(?:الوظيف(?:ة|ه)|وظيفة\\s+(?:الموظف|المذكور))\\s*[/／:：\\-]+\\s*([^\\n،؛]+)', 'gu');
   const labeledDepartment = /(?:^|\n)\s*(?:الادار(?:ـ*)ة|الإدار(?:ـ*)ة|القسم)\s*[/／:：\-]+\s*([^\n،؛]+)/gu;
   const labeledSector = /(?:^|\n)\s*القطاع\s*[/／:：\-]+\s*([^\n،؛]+)/gu;
   const standaloneOrganization = /(?:^|\n)\s*(?:الادار(?:ـ*)ة\s+العامة|مجموعة\s+الوظائف\s+التخصص(?:ية|يه))\s*[/／:：\-]?\s*([^\n،؛]+)/gu;
-  const groupPhrase = /ب?مجموعة\s+الوظائف\s+[^\n،؛]+?(?=\s+(?:بشرك|بشركة)|\s+\{|\s*$|[،؛.])/gu;
+  const groupPhrase = /ب?مجموعة\s+الوظائف\s+[^\n،؛]+?(?=\s+(?:ب(?:ال)?شرك)|\s+\{|\s*$|[،؛.])/gu;
+  // "السيد مدير عام إدارة [X]" mentioned as a routing/reference role elsewhere
+  // in the body (not the letter's own "/"-style addressee salutation, which
+  // findAddresseeField already covers) — the whole title+department phrase is
+  // variable, so the entire match becomes one tag.
+  const departmentGeneralManager = /السيد\s+مدير\s+عام\s+(?:ادارة|إدارة)\s+[^\n،؛]+?(?=\s*[،؛]|\n|$)/gu;
 
+  for (const match of arabicMatchAll(text, applicantLabeledName)) {
+    const value = (match[1] || '').trim();
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + value.length, '{اسم المتقدم}', 'applicant name (explicit "مقدم الطلب" labeled field)', value, 'high');
+  }
+  for (const match of arabicMatchAll(text, selfIntroName)) {
+    const captured = (match[1] || '').trim();
+    const value = stripNicknames(captured);
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + captured.length, '{اسم المتقدم}', 'first-person self-introduction name', value, 'high');
+  }
+  for (const match of arabicMatchAll(text, selfIntroNameWithParenCode)) {
+    const value = (match[2] || '').trim();
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(match[2]);
+    addMatch(matches, offset, offset + value.length, '{كود المتقدم}', 'self-introduction name with bare parenthesized code', value, 'high');
+  }
   for (const match of arabicMatchAll(text, subjectName)) {
     const captured = (match[1] || '').trim();
     const value = stripNicknames(captured);
     if (!value) continue;
-    const capturedOffset = match.index + match[0].lastIndexOf(match[1]);
-    const valueOffset = captured.indexOf(value);
-    const offset = capturedOffset + Math.max(valueOffset, 0);
-    addMatch(matches, offset, offset + value.length, '{اسم المذكور}', 'third-person subject name with excluded nickname preserved', value, 'high');
+    const offset = match.index + match[0].lastIndexOf(match[1]);
+    addMatch(matches, offset, offset + captured.length, nameTag, 'subject name with excluded nickname preserved', value, 'high');
+  }
+  for (const match of arabicMatchAll(text, subjectNameWithParenCode)) {
+    const value = (match[2] || '').trim();
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(match[2]);
+    addMatch(matches, offset, offset + value.length, codeTag, 'subject name with bare parenthesized code', value, 'high');
   }
   for (const match of arabicMatchAll(text, signatureName)) {
     const value = (match[1] || '').trim();
     if (!value) continue;
     const offset = match.index + match[0].lastIndexOf(match[1]);
-    addMatch(matches, offset, offset + value.length, '{اسم المذكور}', 'mentioned employee name (labeled field)', value, 'high');
+    addMatch(matches, offset, offset + value.length, nameTag, 'employee name (labeled field)', value, 'high');
   }
   for (const match of arabicMatchAll(text, labeledEmployeeName)) {
     const value = (match[1] || '').trim();
     if (!value) continue;
     const offset = match.index + match[0].lastIndexOf(match[1]);
-    addMatch(matches, offset, offset + value.length, '{اسم المذكور}', 'employee name (explicit labeled field)', value, 'high');
+    addMatch(matches, offset, offset + value.length, nameTag, 'employee name (explicit labeled field)', value, 'high');
+  }
+  for (const match of arabicMatchAll(text, labeledNameWithParenCode)) {
+    const value = (match[2] || '').trim();
+    if (!value) continue;
+    const offset = match.index + match[0].lastIndexOf(match[2]);
+    addMatch(matches, offset, offset + value.length, codeTag, 'labeled name field with bare parenthesized code', value, 'high');
   }
   for (const match of arabicMatchAll(text, labeledJob)) {
     const value = (match[1] || '').trim();
     if (!value || /^[-:：/／]+$/u.test(value)) continue;
     const offset = match.index + match[0].lastIndexOf(match[1]);
-    addMatch(matches, offset, offset + value.length, '{وظيفة المذكور}', 'employee job (explicit labeled field)', value, 'high');
+    addMatch(matches, offset, offset + value.length, jobTag, 'employee job (explicit labeled field)', value, 'high');
   }
   for (const match of arabicMatchAll(text, labeledDepartment)) {
     const value = (match[1] || '').trim();
@@ -691,13 +827,18 @@ function findGenericNamesAndCodes(text, matches) {
   for (const match of arabicMatchAll(text, code)) {
     const value = match[1];
     const offset = match.index + match[0].lastIndexOf(value);
-    addMatch(matches, offset, offset + value.length, '{كود المذكور}', 'mentioned employee code', value, 'high');
+    addMatch(matches, offset, offset + value.length, codeTag, 'employee code', value, 'high');
   }
   for (const match of arabicMatchAll(text, job)) {
     const value = match[1].trim();
     if (!value || /^[-:：/／]+$/u.test(value)) continue;
     const offset = match.index + match[0].lastIndexOf(match[1]);
-    addMatch(matches, offset, offset + value.length, '{وظيفة المذكور}', 'mentioned employee job', value, 'medium');
+    addMatch(matches, offset, offset + value.length, jobTag, 'employee job', value, 'medium');
+  }
+  for (const match of arabicMatchAll(text, departmentGeneralManager)) {
+    const value = match[0].trim();
+    const offset = match.index + match[0].indexOf(value);
+    addMatch(matches, offset, offset + value.length, '{السيد مدير عام ادارة}', 'department general manager reference', value, 'medium');
   }
   for (const match of arabicMatchAll(text, organization)) {
     const value = match[0].trim();
@@ -707,6 +848,10 @@ function findGenericNamesAndCodes(text, matches) {
   for (const match of arabicMatchAll(text, standaloneOrganization)) {
     const value = (match[1] || '').trim();
     if (!value) continue;
+    // Guards against a compound header like "الإدارة العامة/ القطاع" (a label,
+    // not a value) being misread as "label / actual-value"; the profile-grid
+    // table matcher is what should handle that combined header cell instead.
+    if (/^(?:القطاع|الادار(?:ـ*)ه|الإدار(?:ـ*)ه)$/u.test(normalizeArabic(value))) continue;
     const offset = match.index + match[0].lastIndexOf(match[1]);
     addMatch(matches, offset, offset + value.length, 'ب{المجموعة و الإدارة و القطاع}', 'organizational assignment (labeled field)', value, 'medium');
   }
@@ -896,11 +1041,16 @@ const PROFILE_GRID_LABELS = [
   ['تاريخ التعيين', '{تاريخ التعيين}', 'profile-grid table: appointment date'],
   ['تاريخ التعاقد', '{تاريخ التعيين}', 'profile-grid table: contract date'],
   ['الوظيفة', '{وظيفة المذكور}', 'profile-grid table: job title'],
+  ['الوظيفة الحالية', '{وظيفة المذكور}', 'profile-grid table: current job title'],
   ['وظيفة التعاقد', '{وظيفة المذكور}', 'profile-grid table: contract job title'],
   ['الدرجة', '{الدرجة}', 'profile-grid table: grade'],
+  ['درجة الحالية', '{الدرجة}', 'profile-grid table: current grade'],
   ['درجة القرين', '{الدرجة}', 'profile-grid table: contract grade'],
   ['المجموعة النوعية', '{المجموعة النوعية}', 'profile-grid table: specialty group'],
   ['الادارة العامة', '{الادارة العامة}', 'profile-grid table: general administration'],
+  ['الإدارة العامة/ القطاع', 'ب{المجموعة و الإدارة و القطاع}', 'profile-grid table: combined general administration and sector'],
+  ['الإدارة العامة/القطاع', 'ب{المجموعة و الإدارة و القطاع}', 'profile-grid table: combined general administration and sector'],
+  ['مؤهل إعادة التعيين', '{مؤهل التعيين}', 'profile-grid table: re-appointment qualification'],
   ['الإدارة', '{الإدارة}', 'profile-grid table: department'],
   ['القسم', '{القسم}', 'profile-grid table: sub-department'],
   ['التقارير', '{التقارير السنوية عن عامين سابقين}', 'profile-grid table: recent annual evaluations'],
@@ -909,11 +1059,78 @@ const PROFILE_GRID_LABELS = [
 ];
 const PROFILE_GRID_MAP = new Map(PROFILE_GRID_LABELS.map(([label, tag, reason]) => [normalizeArabic(label), { tag, reason }]));
 
+// BUGFIX: the employee-header table path used to assume code/name/job/org
+// always sit in columns 1-4 in that exact order. Real rosters often add a
+// leading serial-number column ("م") or omit the org column entirely, which
+// shifted every value over by one and mistagged serials as codes, codes as
+// names, names as jobs, etc. Locate each column by its own header text
+// instead, mirroring findDateRangeColumns' approach for leave tables.
+function findEmployeeColumns(tableXml) {
+  const rows = [...tableXml.matchAll(/<w:tr(?:\s[^>]*)?>[\s\S]*?<\/w:tr>/gu)].map((m) => m[0]);
+  const jobNeedle = normalizeArabic('الوظيفة');
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const cells = [...rows[rowIndex].matchAll(/<w:tc(?:\s[^>]*)?>[\s\S]*?<\/w:tc>/gu)].map((m) => m[0]);
+    const cellTexts = cells.map((cell) => normalizeArabic(collectTextNodes(cell).map((node) => node.text).join('')));
+    const codeIndex = cellTexts.findIndex((text) => text.includes('الكود'));
+    const nameIndex = cellTexts.findIndex((text) => text.includes('الاسم'));
+    const jobIndex = cellTexts.findIndex((text) => text.includes(jobNeedle));
+    if (codeIndex >= 0 && nameIndex >= 0 && jobIndex >= 0) {
+      const orgIndex = cellTexts.findIndex((text) => /الاداره|الإداره|القطاع|المجموعه/u.test(text));
+      const columns = {};
+      columns[codeIndex + 1] = { tag: '{كود المذكور}', reason: 'employee-table code' };
+      columns[nameIndex + 1] = { tag: '{اسم المذكور}', reason: 'employee-table name' };
+      columns[jobIndex + 1] = { tag: '{وظيفة المذكور}', reason: 'employee-table job' };
+      if (orgIndex >= 0) columns[orgIndex + 1] = { tag: 'ب{المجموعة و الإدارة و القطاع}', reason: 'employee-table job family' };
+      return { headerRowCount: rowIndex + 1, columns };
+    }
+  }
+  // Fallback to the historical fixed layout if no header row can be parsed.
+  return {
+    headerRowCount: 1,
+    columns: {
+      1: { tag: '{كود المذكور}', reason: 'employee-table code' },
+      2: { tag: '{اسم المذكور}', reason: 'employee-table name' },
+      3: { tag: '{وظيفة المذكور}', reason: 'employee-table job' },
+      4: { tag: 'ب{المجموعة و الإدارة و القطاع}', reason: 'employee-table job family' }
+    }
+  };
+}
+
+function findDateRangeColumns(tableXml) {
+  const rows = [...tableXml.matchAll(/<w:tr(?:\s[^>]*)?>[\s\S]*?<\/w:tr>/gu)].map((m) => m[0]);
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const cells = [...rows[rowIndex].matchAll(/<w:tc(?:\s[^>]*)?>[\s\S]*?<\/w:tc>/gu)].map((m) => m[0]);
+    const cellTexts = cells.map((cell) => normalizeArabic(collectTextNodes(cell).map((node) => node.text).join('')));
+    const fromIndex = cellTexts.findIndex((text) => text === 'من');
+    const toIndex = cellTexts.findIndex((text) => text === 'الي' || text === 'الى' || text === 'إلى' || text === 'إلي');
+    if (fromIndex >= 0 && toIndex >= 0) {
+      return { fromColumn: fromIndex + 1, toColumn: toIndex + 1, headerRowCount: rowIndex + 1 };
+    }
+  }
+  // Fallback to the historical assumption (columns 1/2, two header rows) if no
+  // row literally spells out bare "من"/"الى" cells — keeps old behavior for any
+  // table shape this scan doesn't recognize instead of silently doing nothing.
+  return { fromColumn: 1, toColumn: 2, headerRowCount: 2 };
+}
+
 function processTableXml(tableXml, partName, reports) {
   const texts = [...tableXml.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/gu)].map((match) => match[1]);
   const normalizedTexts = texts.map((text) => normalizeArabic(text));
-  const hasEmployeeHeaders = normalizedTexts.some((text) => /الكود/u.test(text)) && normalizedTexts.some((text) => /الاسم/u.test(text)) && normalizedTexts.some((text) => /الوظيفة/u.test(text));
+  // BUGFIX: normalizedTexts has already folded ة->ه (see normalizeArabicChar),
+  // so a literal "/الوظيفة/" (with ة) never matches and this check was always
+  // false for real documents, silently misrouting every employee-roster table
+  // into the profile-grid path below. Normalize the needle the same way as the
+  // haystack instead of hardcoding an unnormalized spelling.
+  const hasEmployeeHeaders = normalizedTexts.some((text) => text.includes('الكود')) && normalizedTexts.some((text) => text.includes('الاسم')) && normalizedTexts.some((text) => text.includes(normalizeArabic('الوظيفة')));
   const hasLeaveHistoryHeaders = normalizedTexts.some((text) => text.includes('من')) && normalizedTexts.some((text) => /(?:الي|الى)/u.test(text));
+  // A "من/الى" period table isn't always about leave — the same shape is used
+  // for unauthorized-absence ("انقطاع/غياب") records. Only use the leave-specific
+  // tag names when the table's own text (captions, "الايام" rows, etc.) actually
+  // says "اجازة/إجازة"; otherwise fall back to a neutral period tag so absence
+  // dates are never mislabeled as leave dates.
+  const isLeavePeriodTable = hasLeaveHistoryHeaders && normalizedTexts.some((text) => /اجاز[هة]?ات?/u.test(text));
+  const dateRangeColumns = hasLeaveHistoryHeaders ? findDateRangeColumns(tableXml) : null;
+  const employeeColumns = hasEmployeeHeaders ? findEmployeeColumns(tableXml) : null;
   const profileLabelHits = hasEmployeeHeaders || hasLeaveHistoryHeaders ? 0 : texts.filter((text) => PROFILE_GRID_MAP.has(normalizeArabic(text.trim()))).length;
   const isProfileGrid = profileLabelHits >= 3;
   if (!hasEmployeeHeaders && !hasLeaveHistoryHeaders && !isProfileGrid) return tableXml;
@@ -926,14 +1143,14 @@ function processTableXml(tableXml, partName, reports) {
     return row.replace(/<w:tc(?:\s[^>]*)?>[\s\S]*?<\/w:tc>/gu, (cell) => {
       cellIndex += 1;
       if (hasEmployeeHeaders) {
-        if (rowIndex === 1 || cellIndex > 4) return cell;
+        if (rowIndex <= employeeColumns.headerRowCount) return cell;
+        const colDef = employeeColumns.columns[cellIndex];
+        if (!colDef) return cell;
         const cellText = collectTextNodes(cell).map((node) => node.text).join('');
         const value = cellText.trim();
         if (!value) return cell;
-        const tags = ['{كود المذكور}', '{اسم المذكور}', '{وظيفة المذكور}', 'ب{المجموعة و الإدارة و القطاع}'];
-        const reasons = ['employee-table code', 'employee-table name', 'employee-table job', 'employee-table job family'];
         const start = cellText.indexOf(value);
-        const replacement = { start, end: start + value.length, tag: tags[cellIndex - 1], reason: reasons[cellIndex - 1], raw: value, confidence: 'high' };
+        const replacement = { start, end: start + value.length, tag: colDef.tag, reason: colDef.reason, raw: value, confidence: 'high' };
         reports.push({ part: partName, original: value, tag: replacement.tag, reason: replacement.reason, confidence: replacement.confidence });
         return replaceInTextNodes(cell, [replacement]);
       }
@@ -953,14 +1170,17 @@ function processTableXml(tableXml, partName, reports) {
         reports.push({ part: partName, original: value, tag: field.tag, reason: field.reason, confidence: 'high' });
         return replaceInTextNodes(cell, [replacement]);
       }
-      if (rowIndex < 3 || cellIndex > 2) return cell;
+      if (rowIndex <= dateRangeColumns.headerRowCount || (cellIndex !== dateRangeColumns.fromColumn && cellIndex !== dateRangeColumns.toColumn)) return cell;
+      const isStartColumn = cellIndex === dateRangeColumns.fromColumn;
+      const startTag = isLeavePeriodTable ? '{تاريخ بداية الاجازة}' : '{تاريخ بداية الفترة}';
+      const endTag = isLeavePeriodTable ? '{تاريخ نهاية الاجازة}' : '{تاريخ نهاية الفترة}';
       const cellText = collectTextNodes(cell).map((node) => node.text).join('');
       const datePattern = /(?<![\d٠-٩])(?:(?:[0-3]?[0-9])\s*[-–/]\s*(?:[0-3]?[0-9])\s*[/.-]\s*[0-1]?[0-9]\s*[/.-]\s*(?:19|20)[0-9]{2}|(?:[0-3]?[0-9])\s*[/.-]\s*[0-1]?[0-9]\s*[/.-]\s*(?:19|20)[0-9]{2})(?![\d٠-٩])/gu;
       const replacements = [...cellText.matchAll(datePattern)].map((match) => ({
         start: match.index,
         end: match.index + match[0].length,
-        tag: cellIndex === 1 ? '{تاريخ البداية}' : '{تاريخ النهاية}',
-        reason: cellIndex === 1 ? 'leave-history start-date column' : 'leave-history end-date column',
+        tag: isStartColumn ? startTag : endTag,
+        reason: isStartColumn ? 'period-history start-date column' : 'period-history end-date column',
         raw: match[0],
         confidence: 'high'
       }));
