@@ -615,18 +615,27 @@
       'امر تنفيذى منح اجازة بدون مرتب':             { sheet: 'اجازات', action: 'append', kind: 'leave' },
       'امر تنفيذى مد اجازة بدون مرتب':              { sheet: 'اجازات', action: 'append', kind: 'leave' },
 
-      'امر تنفيذى تطبيق لائحة':                     { sheet: 'لائحة',  action: 'append', kind: 'penalty' },
-      'امر تنفيذى تطبيق لائحة - الغياب':            { sheet: 'لائحة',  action: 'append', kind: 'penalty', fixedReason: 'الغياب' },
+      // لائحة و قانوني كانا شيتين منفصلين، ودُمجا فى شيت واحد "جزاءات"،
+      // مع عمود سابع "الامر التنفيذي" يسجل مصدر الجزاء (لائحة/قانوني).
+      'امر تنفيذى تطبيق لائحة':                     { sheet: 'جزاءات', action: 'append', kind: 'penalty', sourceLabel: 'لائحة' },
+      'امر تنفيذى تطبيق لائحة - الغياب':            { sheet: 'جزاءات', action: 'append', kind: 'penalty', sourceLabel: 'لائحة', fixedReason: 'الغياب' },
 
-      'امر تنفيذى جزاء بسبب تحقيق':                 { sheet: 'قانوني', action: 'append', kind: 'penalty' },
-      'امر تنفيذى جزاء شخصين بسبب تحقيق':           { sheet: 'قانوني', action: 'append', kind: 'penalty2' },
+      'امر تنفيذى جزاء بسبب تحقيق':                 { sheet: 'جزاءات', action: 'append', kind: 'penalty', sourceLabel: 'قانوني' },
+      'امر تنفيذى جزاء شخصين بسبب تحقيق':           { sheet: 'جزاءات', action: 'append', kind: 'penalty2', sourceLabel: 'قانوني' },
+
+      // خفض/محو/إلغاء الجزاء يعدّلون أو يحذفون آخر سجل مطابق فى "جزاءات".
+      'امر تنفيذى خفض جزاء':                        { sheet: 'جزاءات', action: 'updatePenalty' },
+      'امر تنفيذى محو جزاء':                        { sheet: 'جزاءات', action: 'deletePenalty', hasType: false },
+      'امر تنفيذى الغاء جزاء':                       { sheet: 'جزاءات', action: 'deletePenalty', hasType: true },
 
       'امر تنفيذى ايقاف عن العمل لايجابية العينة':  { sheet: 'ايقاف',  action: 'append', kind: 'suspendStart' },
       'امر تنفيذى ايقاف عن العمل لصالح تحقيق':      { sheet: 'ايقاف',  action: 'append', kind: 'suspendStart' },
 
       'امر تنفيذى انهاء ايقاف عن العمل لسلبية العينة': { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd' },
       'امر تنفيذى انهاء ايقاف عن العمل مع مجازاة':      { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd' },
-      'خطاب مدير عام انهاء ايقاف عن العمل':             { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd' },
+      // خطاب مدير عام: نهاية الإيقاف تُؤخذ من {تاريخ استلام العمل} فى المستند
+      // نفسه، وليس من تاريخ اليوم.
+      'خطاب مدير عام انهاء ايقاف عن العمل':             { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd', dateField: 'تاريخ استلام العمل' },
     };
 
     function normalizeDocRuleName(name) {
@@ -644,20 +653,22 @@
       return SHEET_DOC_RULES[collapsed] || null;
     }
 
+    // سنة/شهر/يوم بدلاً من يوم/شهر/سنة (تبديل الأيام بالسنوات فى بيانات.xlsx).
     function sheetSyncToday() {
       const now = new Date();
       const dd = String(now.getDate()).padStart(2, '0');
       const mm = String(now.getMonth() + 1).padStart(2, '0');
-      return `${dd}/${mm}/${now.getFullYear()}`;
+      return `${now.getFullYear()}/${mm}/${dd}`;
     }
 
-    // Normalizes an already-parsed d/m/yyyy-ish value to strict dd/mm/yyyy.
+    // Converts an already-parsed d/m/yyyy-ish value (as produced when
+    // filling the .docx itself) into the sheet's yyyy/mm/dd format.
     // Non-date-looking values are returned unchanged.
-    function toStrictDDMMYYYY(value) {
+    function toSheetDateFormat(value) {
       const v = String(value || '').trim();
       const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       if (!m) return v;
-      return `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`;
+      return `${m[3]}/${m[2].padStart(2, '0')}/${m[1].padStart(2, '0')}`;
     }
 
     // First placeholder group whose label contains any of the given
@@ -727,11 +738,6 @@
       const rule = getSheetRule(doc?.name);
       if (!rule) return; // this document isn't tracked in بيانات.xlsx
 
-      if (!SHEET_SYNC_URL || SHEET_SYNC_URL.includes('https://script.google.com/macros/s/AKfycbxqwTz6C_MQ4Yxx7aXRl7fUvzQKlmbclUFkQ-krYq3umcukDN7C5piLuGcRvYfSDz14/exec')) {
-        showSheetSyncToast(t("Sheet sync isn't configured yet.", 'لم يتم إعداد رابط ربط الشيت بعد.'), true);
-        return;
-      }
-
       const placeholders = selectedPlaceholders.length ? selectedPlaceholders : autoPlaceholders;
       // التاريخ = the date "Select" was pressed for this document, not the
       // (possibly later) moment Generate/Download is clicked.
@@ -753,6 +759,7 @@
               'التاريخ': today,
               'نوع الجزاء': penaltyType,
               'سبب الجزاء': penaltyReason,
+              'الامر التنفيذي': rule.sourceLabel || '',
             });
           }
           if (!rows.length) throw new Error(t('Could not find two code fields in this document.', 'تعذر العثور على حقلي كود في هذا المستند.'));
@@ -762,13 +769,36 @@
         }
 
         const code = findValueByLabelKeywords(placeholders, valuesByRawKey, ['كود']);
-        const name = findValueByLabelKeywords(placeholders, valuesByRawKey, ['اسم']);
         if (!code) throw new Error(t('Could not find the code field in this document.', 'تعذر العثور على حقل الكود في هذا المستند.'));
 
+        if (rule.action === 'updatePenalty') {
+          const oldType = findValueByLabelKeywords(placeholders, valuesByRawKey, ['الجزاء القديم']);
+          const newType = findValueByLabelKeywords(placeholders, valuesByRawKey, ['الجزاء الجديد']);
+          await postToSheet({ action: 'updatePenalty', sheet: rule.sheet, code, oldType, newType });
+          showSheetSyncToast(t('Penalty updated.', 'تم تخفيض الجزاء بنجاح.'));
+          return;
+        }
+
+        if (rule.action === 'deletePenalty') {
+          // محو جزاء has no نوع الجزاء field, so it deletes by code only;
+          // الغاء جزاء has one, so it deletes the matching-type record.
+          const type = rule.hasType ? findValueByLabelKeywords(placeholders, valuesByRawKey, ['نوع الجزاء']) : '';
+          await postToSheet({ action: 'deletePenalty', sheet: rule.sheet, code, type });
+          showSheetSyncToast(t('Penalty record deleted.', 'تم حذف سجل الجزاء بنجاح.'));
+          return;
+        }
+
+        const name = findValueByLabelKeywords(placeholders, valuesByRawKey, ['اسم']);
+
         if (rule.action === 'update') {
+          // Normally نهاية الإيقاف = today; the GM letter instead sources
+          // it from its own تاريخ استلام العمل field (rule.dateField).
+          const endValue = rule.dateField
+            ? (toSheetDateFormat(findValueByLabelKeywords(placeholders, valuesByRawKey, [rule.dateField])) || today)
+            : today;
           await postToSheet({
             action: 'update', sheet: rule.sheet, code,
-            targetHeader: 'نهاية الإيقاف', value: today,
+            targetHeader: 'نهاية الإيقاف', value: endValue,
           });
           showSheetSyncToast(t('Suspension end date updated.', 'تم تحديث تاريخ نهاية الإيقاف بنجاح.'));
           return;
@@ -777,7 +807,7 @@
         const row = { 'كود': code, 'اسم': name, 'التاريخ': today };
         if (rule.kind === 'leave') {
           row['نوع الاجازة']  = findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الاجازة', 'السبب']);
-          row['نهاية الاجازة'] = toStrictDDMMYYYY(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ نهاية الاجازة']));
+          row['نهاية الاجازة'] = toSheetDateFormat(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ نهاية الاجازة']));
         } else if (rule.kind === 'penalty') {
           // Covers both قانوني docs (field is literally "نوع الجزاء" /
           // "موضوع و سبب الجزاء") and لائحة docs (field is literally
@@ -785,8 +815,9 @@
           // no reason field at all, so it falls back to rule.fixedReason.
           row['نوع الجزاء'] = findValueByLabelKeywords(placeholders, valuesByRawKey, ['نوع الجزاء']);
           row['سبب الجزاء'] = findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الجزاء', 'السبب']) || rule.fixedReason || '';
+          row['الامر التنفيذي'] = rule.sourceLabel || '';
         } else if (rule.kind === 'suspendStart') {
-          row['بداية الإيقاف'] = toStrictDDMMYYYY(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ الايقاف عن العمل', 'تاريخ الايقاف'])) || today;
+          row['بداية الإيقاف'] = toSheetDateFormat(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ الايقاف عن العمل', 'تاريخ الايقاف'])) || today;
         }
 
         await postToSheet({ action: 'append', sheet: rule.sheet, rows: [row] });
@@ -794,6 +825,7 @@
       } catch (err) {
         showSheetSyncToast(err.message || t('Failed to update the sheet.', 'فشل تحديث الشيت.'), true);
       }
+
     }
 
     const PLACEHOLDER_RE = /\{([^{}]+)\}/g;
@@ -2226,7 +2258,7 @@ function renderPlaceholderForm(doc, placeholders) {
       const url = `https://www.googleapis.com/drive/v3/files`
         + `?q='${FOLDER_ID}'+in+parents+and+trashed=false`
         + `&fields=files(id,name,size,modifiedTime,mimeType)`
-        + `&orderBy=name`
+        + `&orderBy=name desc`
         + `&key=${API_KEY}`;
       try {
         const res  = await fetch(url);
