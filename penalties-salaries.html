@@ -303,7 +303,7 @@
     @media (max-width: 480px) { .ded-grid { grid-template-columns: 1fr; } }
     .ded-fields-row {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
     @media (max-width: 700px) { .ded-fields-row { grid-template-columns: 1fr; } }
@@ -656,8 +656,8 @@
             </div>
             <div class="ded-fields-row" style="grid-column:1/-1;">
               <div class="ded-field">
-                <label data-en="Insurable Wage (editable)" data-ar="الأجر التأميني (قابل للتعديل)">الأجر التأميني (قابل للتعديل)</label>
-                <input type="number" id="insurableWageInput" min="0" step="1" value="6800" style="font-weight:700;">
+                <label data-en="Insurable Wage (auto / editable)" data-ar="الأجر التأميني (تلقائي / قابل للتعديل)">الأجر التأميني (تلقائي / قابل للتعديل)</label>
+                <input type="number" id="insurableWageInput" min="0" step="1" value="15000" style="font-weight:700;">
               </div>
               <div class="ded-field">
                 <label data-en="Taxable Base (monthly)" data-ar="وعاء الضريبة (شهري)">وعاء الضريبة (شهري)</label>
@@ -955,11 +955,22 @@
         updateSummary();
       });
 
-      // New fixed + insurable inputs
-      ['unionFee','solidarityFee','medicalFund','healingProject','insurableWageInput'].forEach(id => {
+      // Fixed + insurable inputs
+      ['unionFee','solidarityFee','medicalFund','healingProject'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('input', updateSummary);
       });
+
+      // الأجر التأميني – manual edit sets override flag so it stops auto-following gross
+      const insEl = document.getElementById('insurableWageInput');
+      if (insEl) {
+        insEl.addEventListener('input', () => {
+          insurableManualOverride = true;
+          updateSummary();
+        });
+        // Double-click or long focus can reset to auto mode if desired
+        insEl.title = 'يُحدَّث تلقائياً مع الإجمالي. عدّله يدوياً لتعطيل التحديث التلقائي.';
+      }
     }
 
     function syncDedVisibility() {
@@ -1408,9 +1419,20 @@
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+    let insurableManualOverride = false; // true once user types in the field
+
     function updateTotalGross() {
       const el = document.getElementById('totalGross');
       if (el) el.value = getTotalGross();
+      // Auto-update الأجر التأميني unless user has manually overridden it
+      if (!insurableManualOverride) {
+        const insEl = document.getElementById('insurableWageInput');
+        if (insEl) {
+          const g = getTotalGross();
+          const clamped = Math.min(SI_MAX, Math.max(SI_MIN, Math.round(g)));
+          insEl.value = clamped;
+        }
+      }
     }
 
     function updateRaise() {
