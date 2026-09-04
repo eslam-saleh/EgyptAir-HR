@@ -15,7 +15,8 @@
  * does all matching/edits on the in-memory JavaScript array, and writes
  * back with ONE setValues() call (plus, for deletions, a single
  * deleteRow() to drop the now-stale trailing row). Nothing ever loops
- * calling the Sheets API per-row.
+ * calling the Sheets API per-row. The one exception is handleUpdate(),
+ * which targets a single cell directly — see the note there.
  *
  * doGet(?action=dashboard) is read-only and powers tagging.html's
  * "Deadlines to track" cards (اجازات / جزاءات / ايقاف) — see
@@ -23,14 +24,39 @@
  * If this script is already deployed, changes here only go live once you
  * redeploy: Deploy ▸ Manage deployments ▸ (pencil icon) ▸ Version: New
  * version ▸ Deploy. The /exec URL itself doesn't change.
+ *
+ * ── Access control ─────────────────────────────────────────────────
+ * "Who has access: Anyone" means anyone with the /exec URL can currently
+ * call doPost (append/update/edit/delete اجازات، جزاءات و ايقاف records)
+ * AND doGet?action=dashboard (read every employee's name/code/leave/
+ * penalty/suspension data) with no login of any kind — the URL itself is
+ * the only thing standing between this HR data and the public internet.
+ * SYNC_TOKEN below is an optional, low-effort mitigation: set a Script
+ * Property named SYNC_TOKEN (Project Settings ▸ Script properties) to any
+ * random string, and set the matching SHEET_SYNC_TOKEN in
+ * document-center.html / tagging.html to the same value — every request
+ * then has to present it. Leave the property unset and everything keeps
+ * working exactly as before (nothing breaks by default), but until it's
+ * set this endpoint remains fully open to anyone who has (or guesses) the
+ * URL. Setting it is strongly recommended.
  */
 
 // Sheet tabs read by the tagging.html "Deadlines to track" dashboard.
 var DASHBOARD_SHEETS = ['اجازات', 'جزاءات', 'ايقاف'];
 
+// Returns true if the caller supplied the correct SYNC_TOKEN, OR if no
+// SYNC_TOKEN Script Property has been configured yet (opt-in — see the
+// "Access control" note above).
+function isAuthorized(token) {
+  var required = PropertiesService.getScriptProperties().getProperty('SYNC_TOKEN');
+  if (!required) return true;
+  return token === required;
+}
+
 function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
+    if (!isAuthorized(body.token)) return respond(false, 'غير مصرح بهذا الطلب.');
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(body.sheet);
     if (!sheet) return respond(false, 'لم يتم العثور على الشيت: ' + body.sheet);
@@ -53,6 +79,8 @@ function doPost(e) {
 function doGet(e) {
   try {
     var action = e && e.parameter && e.parameter.action;
+    var token = e && e.parameter && e.parameter.token;
+    if (!isAuthorized(token)) return respond(false, 'غير مصرح بهذا الطلب.');
 
     if (action === 'dashboard') {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -93,6 +121,35 @@ function findHeaderCol(headers, keyword) {
   return -1;
 }
 
+// ── Date columns: written as literal "yyyy/mm/dd" TEXT, never as a Sheets
+// Date value ──────────────────────────────────────────────────────────
+// The browser (document-center.html's toSheetDateFormat/sheetSyncToday)
+// always sends dates as an unambiguous "yyyy/mm/dd" string. Left alone,
+// Sheets' setValues() auto-detects that string as a date and stores it as
+// a real Date value, which then DISPLAYS in whatever the spreadsheet's
+// own locale is (e.g. dd/mm/yyyy) when the sheet is opened/exported
+// directly — not wrong, just not the literal "yyyy/mm/dd" text an editor
+// scanning the raw sheet expects, and easy to misread as a day/month swap.
+// isDateHeader() flags the columns that hold dates in this app; every
+// write to one of them goes through a cell forced to Plain text ("@")
+// format first, so Sheets never re-interprets it — the cell always shows
+// exactly the text that was sent, in every locale.
+function isDateHeader(header) {
+  var n = normalizeAr(header);
+  return n.indexOf('تاريخ') !== -1 || n.indexOf('بداية') !== -1 || n.indexOf('نهاية') !== -1;
+}
+
+// Normalizes any "yyyy/mm/dd" or "yyyy-mm-dd" value into zero-padded
+// "yyyy/mm/dd" text. Values that don't match (blank, or some other kind
+// of cell content entirely) pass through unchanged.
+function normalizeDateCellText(value) {
+  var s = String(value == null ? '' : value).trim();
+  var m = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+  if (!m) return value;
+  var pad = function (n) { return n.length < 2 ? '0' + n : n; };
+  return m[1] + '/' + pad(m[2]) + '/' + pad(m[3]);
+}
+
 // Reads the whole used range in one call and splits it into headers/data.
 function loadSheet(sheet) {
   var lastRow = sheet.getLastRow();
@@ -120,9 +177,14 @@ function findSheetByName(ss, name) {
 // Read-only: every "filled" record (column A / order number populated) from
 // a sheet, as an array of { headerText: value, ... } objects keyed by the
 // sheet's own header row — so column order doesn't matter to the caller.
-// Dates that come back as real Date objects are formatted as yyyy-MM-dd
-// strings so JSON.stringify doesn't need to touch them; dates already
-// stored as plain text (e.g. after migrateSwapDayYear) pass through as-is.
+// Dates that come back as real Date objects (any cell written before this
+// script started forcing Plain text — see isDateHeader() above, or a cell
+// typed directly into the sheet and auto-detected by Sheets) are formatted
+// as "yyyy/mm/dd" text using the ACTUAL underlying date value, so this is
+// correct regardless of the spreadsheet's display locale. Cells already
+// stored as "yyyy/mm/dd" text (every date written from now on) pass
+// through as-is — both forms land on the client in the same unambiguous
+// format.
 function getFilledRecords(sheet) {
   var loaded = loadSheet(sheet);
   if (!loaded.data.length) return [];
@@ -137,7 +199,7 @@ function getFilledRecords(sheet) {
       if (!key) continue;
       var val = row[c];
       if (val instanceof Date) {
-        val = Utilities.formatDate(val, tz, 'yyyy-MM-dd');
+        val = Utilities.formatDate(val, tz, 'yyyy/MM/dd');
       }
       record[key] = val;
     }
@@ -168,12 +230,21 @@ function handleAppend(sheet, body) {
     out[0] = startOrder + i; // column A = order, never overwritten below
     Object.keys(rowData).forEach(function (key) {
       var col = findHeaderCol(headers, key);
-      if (col > 0) out[col] = rowData[key];
+      if (col < 0) return;
+      var value = rowData[key];
+      out[col] = isDateHeader(headers[col]) ? normalizeDateCellText(value) : value;
     });
     return out;
   });
 
   var startRow = lastRow + 1;
+  // These are brand-new, previously-empty cells, so it's safe to force
+  // Plain text on their date columns before writing — see isDateHeader().
+  for (var c = 0; c < headers.length; c++) {
+    if (isDateHeader(headers[c])) {
+      sheet.getRange(startRow, c + 1, newRows.length, 1).setNumberFormat('@');
+    }
+  }
   sheet.getRange(startRow, 1, newRows.length, lastCol).setValues(newRows); // single bulk write
 
   var word = newRows.length === 1 ? 'سجل واحد' : newRows.length + ' سجلات';
@@ -182,6 +253,14 @@ function handleAppend(sheet, body) {
 }
 
 // ── UPDATE (نهاية الإيقاف: fills the newest still-open row for a code) ──
+// Writes ONE cell directly (getRange(row, col).setValue(...)) rather than
+// rewriting the whole data range: this column can already hold a mix of
+// real Date values (older rows) and plain "yyyy/mm/dd" text (rows written
+// after the isDateHeader() change above), and a full-range setValues()
+// would force every one of those pre-existing cells through the same
+// number format as the one we're actually changing — safe for the one
+// cell we mean to touch, but a needless (and, for the Date-valued ones,
+// potentially display-breaking) side effect on every other row.
 function handleUpdate(sheet, body) {
   var loaded = loadSheet(sheet);
   if (!loaded.data.length) return respond(false, 'لا توجد بيانات في شيت ' + sheet.getName() + '.');
@@ -197,8 +276,11 @@ function handleUpdate(sheet, body) {
     var sameCode = String(data[r][codeCol]).trim() === String(body.code).trim();
     var isOpen = !data[r][targetCol];
     if (sameCode && isOpen) {
-      data[r][targetCol] = body.value;
-      sheet.getRange(2, 1, data.length, loaded.lastCol).setValues(data); // single bulk write
+      var header = loaded.headers[targetCol];
+      var value = isDateHeader(header) ? normalizeDateCellText(body.value) : body.value;
+      var cell = sheet.getRange(r + 2, targetCol + 1);
+      if (isDateHeader(header)) cell.setNumberFormat('@'); // plain text — see isDateHeader()
+      cell.setValue(value); // single targeted write
       return respond(true, 'تم تحديث ' + body.targetHeader + ' بنجاح.', { row: r + 2 });
     }
   }
@@ -267,131 +349,4 @@ function findMostRecentMatch(data, codeCol, code, typeCol, typeValue) {
     }
   }
   return codeOnlyIdx;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// ONE-TIME MIGRATION — swap day/year in existing date cells.
-//
-// Run this ONCE manually: open this project from Extensions ▸ Apps Script,
-// pick "migrateSwapDayYear" in the function dropdown next to Run, and
-// click Run. It converts existing dd/mm/yyyy values to yyyy/mm/dd across
-// the known date columns (التاريخ, نهاية الاجازة, بداية الإيقاف,
-// نهاية الإيقاف) on every sheet, using one bulk read + one bulk write
-// per sheet. Unknown/unrelated columns are never touched.
-//
-// It's safe if run by accident a second time: once a cell is already in
-// yyyy/mm/dd form its first segment has 4 digits, which no longer matches
-// the "old format" pattern below, so it's simply skipped.
-// ═══════════════════════════════════════════════════════════════════════
-function migrateSwapDayYear() {
-  var sheetNames = ['اجازات', 'جزاءات', 'ايقاف'];
-  var dateHeaderKeywords = ['التاريخ', 'نهاية الاجازة', 'بداية الإيقاف', 'نهاية الإيقاف'];
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var report = [];
-
-  sheetNames.forEach(function (name) {
-    var sheet = ss.getSheetByName(name);
-    if (!sheet) return;
-    var loaded = loadSheet(sheet);
-    if (!loaded.data.length) return;
-
-    var dateCols = [];
-    dateHeaderKeywords.forEach(function (kw) {
-      var col = findHeaderCol(loaded.headers, kw);
-      if (col !== -1 && dateCols.indexOf(col) === -1) dateCols.push(col);
-    });
-    if (!dateCols.length) return;
-
-    var changed = 0;
-    var data = loaded.data;
-    for (var r = 0; r < data.length; r++) {
-      for (var c = 0; c < dateCols.length; c++) {
-        var col = dateCols[c];
-        var m = String(data[r][col]).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-        if (!m) continue; // not old-format, or already migrated — leave as-is
-        var dd = ('0' + m[1]).slice(-2);
-        var mm = ('0' + m[2]).slice(-2);
-        data[r][col] = m[3] + '/' + mm + '/' + dd;
-        changed++;
-      }
-    }
-
-    sheet.getRange(2, 1, data.length, loaded.lastCol).setValues(data); // single bulk write
-    report.push(name + ': ' + changed + ' خلية');
-  });
-
-  var summary = report.length ? report.join(' | ') : 'لا توجد خلايا لتحديثها.';
-  Logger.log(summary);
-  try {
-    SpreadsheetApp.getUi().alert('تم تبديل الأيام بالسنوات:\n' + report.join('\n'));
-  } catch (uiErr) {
-    // getUi() is unavailable in some execution contexts — the Logger.log
-    // output above still has the full report.
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// ONE-TIME MIGRATION — merge لائحة + قانوني into a single جزاءات sheet.
-//
-// Run this ONCE, the same way as migrateSwapDayYear above (pick
-// "mergeLailQanoniIntoJazaat" in the Run dropdown). It creates a جزاءات
-// sheet if one doesn't exist yet (copying قانوني's/لائحة's header row and
-// appending "الامر التنفيذي" as the 7th column), then copies every row
-// from لائحة and قانوني into it — tagging each with its source sheet name
-// — renumbering column A sequentially as it goes. Nothing in لائحة or
-// قانوني is modified or deleted; review the merged data in جزاءات, then
-// delete those two old sheets yourself once you're happy with it.
-// ═══════════════════════════════════════════════════════════════════════
-function mergeLailQanoniIntoJazaat() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var lail = ss.getSheetByName('لائحة');
-  var qanoni = ss.getSheetByName('قانوني');
-  var target = ss.getSheetByName('جزاءات');
-  if (!target) target = ss.insertSheet('جزاءات');
-
-  if (target.getLastRow() < 1) {
-    var baseHeaders = qanoni ? loadSheet(qanoni).headers : (lail ? loadSheet(lail).headers : []);
-    var headers = baseHeaders.concat(['الامر التنفيذي']);
-    target.getRange(1, 1, 1, headers.length).setValues([headers]); // single write
-  }
-
-  var targetLoaded = loadSheet(target);
-  var targetHeaders = targetLoaded.headers;
-  var lastCol = targetHeaders.length;
-  var nextOrder = targetLoaded.data.length
-    ? (Number(targetLoaded.data[targetLoaded.data.length - 1][0]) || 0) + 1
-    : 1;
-  var srcTypeCol = findHeaderCol(targetHeaders, 'الامر التنفيذي');
-
-  var rowsToAppend = [];
-  [{ sheet: lail, label: 'لائحة' }, { sheet: qanoni, label: 'قانوني' }].forEach(function (src) {
-    if (!src.sheet) return;
-    var loaded = loadSheet(src.sheet); // single bulk read per source sheet
-    loaded.data.forEach(function (srcRow) {
-      var out = new Array(lastCol).fill('');
-      out[0] = nextOrder++;
-      loaded.headers.forEach(function (h, i) {
-        if (i === 0) return; // skip the source's own order column
-        var col = findHeaderCol(targetHeaders, h);
-        if (col > 0) out[col] = srcRow[i];
-      });
-      if (srcTypeCol > 0) out[srcTypeCol] = src.label;
-      rowsToAppend.push(out);
-    });
-  });
-
-  if (rowsToAppend.length) {
-    var startRow = targetLoaded.data.length + 2;
-    target.getRange(startRow, 1, rowsToAppend.length, lastCol).setValues(rowsToAppend); // single bulk write
-  }
-
-  Logger.log('Merged ' + rowsToAppend.length + ' rows into جزاءات.');
-  try {
-    SpreadsheetApp.getUi().alert(
-      'تم دمج ' + rowsToAppend.length + ' سجل فى شيت جزاءات.\n' +
-      'راجع البيانات ثم احذف شيتى لائحة و قانوني يدويًا.'
-    );
-  } catch (uiErr) {
-    // getUi() unavailable in some contexts — see Logger.log above.
-  }
 }

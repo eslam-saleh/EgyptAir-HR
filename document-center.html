@@ -607,6 +607,11 @@
     // (Code.gs) that must be deployed as a Web App; paste its URL below.
     // ═══════════════════════════════════════════════════════════════════
     const SHEET_SYNC_URL = 'https://script.google.com/macros/s/AKfycbxqwTz6C_MQ4Yxx7aXRl7fUvzQKlmbclUFkQ-krYq3umcukDN7C5piLuGcRvYfSDz14/exec';
+    // Optional shared secret — see the "Access control" note at the top of
+    // Code.gs. Leave this blank until you've set a matching SYNC_TOKEN
+    // Script Property in Apps Script; until then the endpoint stays open
+    // to anyone with the URL above, exactly as before.
+    const SHEET_SYNC_TOKEN = '';
 
     // Which document (by its filename, without extension) maps to which
     // sheet/action. "kind" selects which extra columns get filled in below.
@@ -614,6 +619,11 @@
       'امر تنفيذى تصريح عمل نصف الوقت':            { sheet: 'اجازات', action: 'append', kind: 'leave' },
       'امر تنفيذى منح اجازة بدون مرتب':             { sheet: 'اجازات', action: 'append', kind: 'leave' },
       'امر تنفيذى مد اجازة بدون مرتب':              { sheet: 'اجازات', action: 'append', kind: 'leave' },
+      // تعديل الاجازة: نفس منطق "مد اجازة بدون مرتب"، لكن هذا المستند يحتوي
+      // على تاريخ النهاية الأصلي *و* المعدَّل معًا ({تاريخ نهاية الاجازة}
+      // فى سياق الطلب الأصلى، و{تاريخ نهاية الاجازة المعدلة} فى مادة اولى) —
+      // فلازم نحدد endDateKeywords صراحة عشان ناخد المعدَّل مش الأصلى.
+      'امر تنفيذى تعديل اجازة بدون مرتب':           { sheet: 'اجازات', action: 'append', kind: 'leave', endDateKeywords: ['تاريخ نهاية الاجازة المعدلة'] },
 
       // لائحة و قانوني كانا شيتين منفصلين، ودُمجا فى شيت واحد "جزاءات"،
       // مع عمود سابع "الامر التنفيذي" يسجل مصدر الجزاء (لائحة/قانوني).
@@ -724,7 +734,7 @@
         method: 'POST',
         // text/plain avoids a CORS preflight against the Apps Script Web App.
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(SHEET_SYNC_TOKEN ? { ...payload, token: SHEET_SYNC_TOKEN } : payload),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || t('The sheet rejected the update.', 'رفض الشيت التحديث.'));
@@ -807,7 +817,12 @@
         const row = { 'كود': code, 'اسم': name, 'التاريخ': today };
         if (rule.kind === 'leave') {
           row['نوع الاجازة']  = findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الاجازة', 'السبب']);
-          row['نهاية الاجازة'] = toSheetDateFormat(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ نهاية الاجازة']));
+          // rule.endDateKeywords lets a document override which {placeholder}
+          // is the leave's end date — needed by "تعديل اجازة بدون مرتب",
+          // whose recitals also contain the ORIGINAL {تاريخ نهاية الاجازة}
+          // (a plain keyword match would hit that one first, since it comes
+          // earlier in the document).
+          row['نهاية الاجازة'] = toSheetDateFormat(findValueByLabelKeywords(placeholders, valuesByRawKey, rule.endDateKeywords || ['تاريخ نهاية الاجازة']));
         } else if (rule.kind === 'penalty') {
           // Covers both قانوني docs (field is literally "نوع الجزاء" /
           // "موضوع و سبب الجزاء") and لائحة docs (field is literally
@@ -2201,11 +2216,37 @@ function renderPlaceholderForm(doc, placeholders) {
       return normalizeArabicVariants(str);
     }
 
+    // Always shown first, in this exact order, ahead of the rest of the
+    // (alphabetically-sorted) list — reference material rather than
+    // fill-in-the-blank templates, so "Select" is never offered for them,
+    // only "Download".
+    const PINNED_DOC_NAMES = [
+      'دليل استخدام لأدوات الموقع.docx',
+      'هيكل الشركة.docx',
+      'بيانات التصريح (وثيقة التعارف).docx',
+      'كشف توزيع وتسليم أمر تنفيذى.docx',
+      'نموذج طلب أجازة.docx',
+      'الجزاءات.xlsx',
+    ];
+
+    function sortWithPinnedFirst(docs) {
+      return [...docs].sort((a, b) => {
+        const pa = PINNED_DOC_NAMES.indexOf(a.name);
+        const pb = PINNED_DOC_NAMES.indexOf(b.name);
+        const ra = pa === -1 ? Infinity : pa;
+        const rb = pb === -1 ? Infinity : pb;
+        return ra - rb; // pinned docs in PINNED_DOC_NAMES order; everyone
+                         // else keeps their existing (Drive-sorted) order —
+                         // Array#sort is stable, so ties (ra === rb === Infinity)
+                         // don't get reshuffled.
+      });
+    }
+
     function renderDocuments(filter = '') {
       const normalizedFilter = normalizeSearchText(filter);
-      const filtered = allDocs.filter((doc) =>
+      const filtered = sortWithPinnedFirst(allDocs.filter((doc) =>
         normalizeSearchText(doc.name).includes(normalizedFilter)
-      );
+      ));
 
       if (!filtered.length) {
         list.innerHTML = `<div class="empty-state">${t('No documents found.', 'لم يتم العثور على مستندات.')}</div>`;
@@ -2214,7 +2255,8 @@ function renderPlaceholderForm(doc, placeholders) {
 
       list.innerHTML = filtered.map((doc) => {
         const wordDoc = isWordDocument(doc);
-        const selectBtn = wordDoc ? `
+        const isPinned = PINNED_DOC_NAMES.includes(doc.name);
+        const selectBtn = (wordDoc && !isPinned) ? `
           <button class="ghost-btn" type="button" data-select-id="${doc.id}">
             ${t('Select', 'اختيار')}
           </button>

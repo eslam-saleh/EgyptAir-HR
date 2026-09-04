@@ -58,6 +58,7 @@
     .sheet-row.risk-warning { border-inline-start-color: #a47b00; background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); }
     .sheet-row.risk-danger { border-inline-start-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface-2)); }
     .sheet-row.risk-expired { border-inline-start-color: var(--muted); opacity: .7; }
+    .sheet-row.risk-resolved { border-inline-start-color: var(--success); opacity: .7; }
     .sheet-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .sheet-row-name { color: var(--text); font-size: .92rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sheet-row-code, .sheet-row-extra, .sheet-row-meta { color: var(--muted); font-size: .76rem; }
@@ -66,6 +67,7 @@
     .risk-badge.risk-warning { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: #a47b00; }
     .risk-badge.risk-danger { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
     .risk-badge.risk-expired { background: color-mix(in srgb, var(--muted) 16%, var(--surface)); color: var(--muted); }
+    .risk-badge.risk-resolved { background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); }
     .sheet-group-label { margin: 4px 0 -2px; color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
     .sheet-empty, .sheet-error { color: var(--muted); font-size: .85rem; text-align: center; padding: 18px 0; margin: 0; }
     .sheet-error { color: var(--danger); }
@@ -1400,6 +1402,10 @@ async function tagDocx(file, options = {}) {
     (() => {
       // Reads from the بيانات.xlsx Apps Script web app (see Code.gs, action=dashboard).
       const DASHBOARD_URL = 'https://script.google.com/macros/s/AKfycbxqwTz6C_MQ4Yxx7aXRl7fUvzQKlmbclUFkQ-krYq3umcukDN7C5piLuGcRvYfSDz14/exec';
+      // Optional shared secret — see the "Access control" note at the top
+      // of Code.gs, and SHEET_SYNC_TOKEN in document-center.html. Leave
+      // blank until a matching SYNC_TOKEN Script Property is set.
+      const DASHBOARD_TOKEN = '';
       const SHEETS = {
         leave: { key: 'اجازات', listId: 'leave-list' },
         penalty: { key: 'جزاءات', listId: 'penalty-list' },
@@ -1433,11 +1439,13 @@ async function tagDocx(file, options = {}) {
         if (!value) return null;
         if (value instanceof Date) return value;
         const s = String(value).trim();
-        // yyyy-MM-dd (from Utilities.formatDate) or yyyy/mm/dd (the sheet's
-        // own text format after migrateSwapDayYear in Code.gs).
+        // yyyy/mm/dd or yyyy-MM-dd — what Code.gs's getFilledRecords()
+        // always sends now (real Date cells are formatted this way; cells
+        // already written as plain "yyyy/mm/dd" text pass straight through).
         let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
         if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
-        // Legacy dd/mm/yyyy, for any cell not yet migrated.
+        // d/m/yyyy fallback, for any older cell this app wrote before
+        // Code.gs started normalizing dates on the way in.
         m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
         if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
         const d = new Date(s);
@@ -1456,7 +1464,7 @@ async function tagDocx(file, options = {}) {
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
+        return `${y}/${m}/${day}`;
       };
 
       const bilingual = (el, en, ar) => {
@@ -1560,28 +1568,39 @@ async function tagDocx(file, options = {}) {
       // sorted soonest-first; past the window it's grouped separately as
       // "Expired" since it's no longer actionable. cfg.closeKeyword (used by
       // ايقاف, whose نهاية الإيقاف Code.gs treats as the "resolved" marker)
-      // skips records that are already closed — the countdown no longer
-      // applies to them.
+      // no longer hides records that already have a close date — every
+      // record stays visible, just grouped under "Resolved" with its close
+      // date shown instead of a live countdown.
       function renderThresholdCard(container, records, cfg) {
         if (!records.length) return renderEmpty(container, cfg.emptyEn, cfg.emptyAr);
         const today = new Date();
+        const resolved = [];
         const rows = records.map((rec) => {
-          if (cfg.closeKeyword && findField(rec, cfg.closeKeyword)) return null; // already resolved
           const start = parseSheetDate(findField(rec, cfg.dateKeyword));
           if (!start) return null;
+          const closeValue = cfg.closeKeyword && findField(rec, cfg.closeKeyword);
+          if (closeValue) {
+            resolved.push({ rec, start, end: parseSheetDate(closeValue) || start });
+            return null;
+          }
           const elapsed = dayDiff(start, today);
           return { rec, start, remaining: cfg.windowDays - elapsed };
         }).filter(Boolean);
-        if (!rows.length) return renderEmpty(container, cfg.noDateEn, cfg.noDateAr);
+        if (!rows.length && !resolved.length) return renderEmpty(container, cfg.noDateEn, cfg.noDateAr);
 
         const active = rows.filter((r) => r.remaining > 0).sort((a, b) => a.remaining - b.remaining);
         const expired = rows.filter((r) => r.remaining <= 0).sort((a, b) => b.remaining - a.remaining);
+        resolved.sort((a, b) => b.end - a.end); // most recently resolved first
 
         container.innerHTML = '';
         active.forEach((r) => container.appendChild(buildThresholdRow(r, cfg)));
         if (expired.length) {
           container.appendChild(groupLabel('Expired (' + expired.length + ')', 'منتهية المهلة (' + expired.length + ')'));
           expired.forEach((r) => container.appendChild(buildThresholdRow(r, cfg)));
+        }
+        if (resolved.length) {
+          container.appendChild(groupLabel('Resolved (' + resolved.length + ')', 'منتهية (تم الإنهاء) (' + resolved.length + ')'));
+          resolved.forEach((r) => container.appendChild(buildResolvedRow(r, cfg)));
         }
       }
 
@@ -1595,6 +1614,21 @@ async function tagDocx(file, options = {}) {
         appendMeta(main, cfg.dateLabelEn, cfg.dateLabelAr, fmtDate(start));
         if (remaining <= 0) appendBadge(row, level, 'Expired', 'منتهية المهلة');
         else appendBadge(row, level, remaining + ' day(s) left', remaining + ' يوم متبقي');
+        return row;
+      }
+
+      // Row for a record whose cfg.closeKeyword (e.g. نهاية الإيقاف) is
+      // already filled in — shown instead of hidden, with the resolution
+      // date in place of a countdown badge.
+      function buildResolvedRow(r, cfg) {
+        const { rec, start, end } = r;
+        const name = findField(rec, 'اسم');
+        const code = findField(rec, 'كود');
+        const reason = findField(rec, cfg.reasonKeyword);
+        const { row, main } = buildRowShell('resolved', name, code, reason);
+        appendMeta(main, cfg.dateLabelEn, cfg.dateLabelAr, fmtDate(start));
+        appendMeta(main, 'Ended', 'انتهى في', fmtDate(end));
+        appendBadge(row, 'resolved', 'Resolved', 'منتهية');
         return row;
       }
 
@@ -1626,7 +1660,8 @@ async function tagDocx(file, options = {}) {
       async function loadDashboard() {
         Object.values(SHEETS).forEach(({ listId }) => renderLoading(document.getElementById(listId)));
         try {
-          const res = await fetch(DASHBOARD_URL + '?action=dashboard', { method: 'GET' });
+          const tokenParam = DASHBOARD_TOKEN ? '&token=' + encodeURIComponent(DASHBOARD_TOKEN) : '';
+          const res = await fetch(DASHBOARD_URL + '?action=dashboard' + tokenParam, { method: 'GET' });
           const payload = await res.json();
           if (!payload || !payload.ok) throw new Error((payload && payload.message) || 'Unknown error');
           const data = payload.data || {};
