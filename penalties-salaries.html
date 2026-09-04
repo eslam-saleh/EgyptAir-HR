@@ -562,6 +562,11 @@
           <h2 class="ps-card-title">
             <span>💰</span>
             <span data-en="Salary & Deductions" data-ar="المرتب والخصومات">المرتب والخصومات</span>
+            <a href="https://ps.egyptair.com/Login" target="_blank" rel="noopener noreferrer"
+               style="margin-inline-start:auto; font-size:0.78rem; font-weight:700; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;">
+              <span>🔗</span>
+              <span data-en="Official Salaries Portal" data-ar="بوابة المرتبات الرسمية">بوابة المرتبات الرسمية</span>
+            </a>
           </h2>
 
           <!-- Basic Salary (الأجر الأساسي) – used for penalty day deductions -->
@@ -572,7 +577,6 @@
               <span class="sal-currency">EGP</span>
               <input type="range" id="basicRange" min="0" max="4000" step="50" value="2000">
             </div>
-            <p class="hint-text" data-en="Part of total gross salary. Day-based penalties use total gross (basic + incentives)." data-ar="جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).">جزء من الأجر الشامل. الجزاءات بالأيام تُحسب من الإجمالي (أساسي + حوافز).</p>
           </div>
 
           <!-- Incentives / Variable (الحوافز) -->
@@ -583,7 +587,6 @@
               <span class="sal-currency">EGP</span>
               <input type="range" id="incentivesRange" min="0" max="50000" step="50" value="13000">
             </div>
-            <p class="hint-text" data-en="Included in total gross used for day-based penalty calculation. Incentive deductions caused by a penalty are calculated separately and added to existing deductions." data-ar="تُدرج ضمن الأجر الشامل المستخدم في حساب الجزاءات بالأيام. ويُحسب خصم الحافز الناتج عن الجزاء بشكل مستقل بالإضافة إلى الخصومات الحالية.">تُدرج ضمن الأجر الشامل المستخدم في حساب الجزاءات بالأيام. ويُحسب خصم الحافز الناتج عن الجزاء بشكل مستقل بالإضافة إلى الخصومات الحالية.</p>
           </div>
 
           <!-- Meal money (وجبة) -->
@@ -619,7 +622,7 @@
           <div class="ded-toggle-row">
             <label class="ded-toggle" for="enableDed">
               <input type="checkbox" id="enableDed" checked>
-              <span data-en="Apply Tax & Social Insurance + Martyrs (Egypt Law 2026)" data-ar="تطبيق الضرائب والتأمينات + تكريم الشهداء">تطبيق الضرائب والتأمينات + تكريم الشهداء</span>
+              <span data-en="Apply Tax & Social Insurance (Egypt Law 2026)" data-ar="تطبيق الضرائب والتأمينات">تطبيق الضرائب والتأمينات</span>
             </label>
 
             <label class="ded-toggle" for="enableIncentiveDed">
@@ -656,7 +659,7 @@
             </div>
             <div class="ded-fields-row" style="grid-column:1/-1;">
               <div class="ded-field">
-                <label data-en="Insurable Wage (auto = gross − meals − 100 − 100)" data-ar="الأجر التأميني (تلقائي = الإجمالي − وجبات − 100 − 100)">الأجر التأميني (تلقائي = الإجمالي − وجبات − 100 − 100)</label>
+                <label data-en="Insurable Wage (auto = gross − meals)" data-ar="الأجر التأميني (تلقائي = الإجمالي − وجبات)">الأجر التأميني (تلقائي = الإجمالي − وجبات)</label>
                 <input type="number" id="insurableWageInput" min="0" step="1" value="6800" style="font-weight:700;">
               </div>
               <div class="ded-field">
