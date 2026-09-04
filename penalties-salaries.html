@@ -656,8 +656,8 @@
             </div>
             <div class="ded-fields-row" style="grid-column:1/-1;">
               <div class="ded-field">
-                <label data-en="Insurable Wage (auto / editable)" data-ar="الأجر التأميني (تلقائي / قابل للتعديل)">الأجر التأميني (تلقائي / قابل للتعديل)</label>
-                <input type="number" id="insurableWageInput" min="0" step="1" value="15000" style="font-weight:700;">
+                <label data-en="Insurable Wage (auto = gross − meals − 100 − 100)" data-ar="الأجر التأميني (تلقائي = الإجمالي − وجبات − 100 − 100)">الأجر التأميني (تلقائي = الإجمالي − وجبات − 100 − 100)</label>
+                <input type="number" id="insurableWageInput" min="0" step="1" value="6800" style="font-weight:700;">
               </div>
               <div class="ded-field">
                 <label data-en="Taxable Base (monthly)" data-ar="وعاء الضريبة (شهري)">وعاء الضريبة (شهري)</label>
@@ -882,6 +882,7 @@
         mealCount = clampMeals(v);
         mealsNum.value = mealCount;
         mealsRng.value = mealCount;
+        updateTotalGross();   // include meals in إجمالي الاستحقاقات
         updateSummary();
       }
       mealsNum.addEventListener('input', () => {
@@ -955,21 +956,23 @@
         updateSummary();
       });
 
-      // Fixed + insurable inputs
+      // Fixed deductions
       ['unionFee','solidarityFee','medicalFund','healingProject'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener('input', updateSummary);
+        if (el) el.addEventListener('input', () => {
+          if (!insurableManualOverride) updateTotalGross();
+          updateSummary();
+        });
       });
 
-      // الأجر التأميني – manual edit sets override flag so it stops auto-following gross
+      // الأجر التأميني – typing sets override so it stops auto-recalculating
       const insEl = document.getElementById('insurableWageInput');
       if (insEl) {
         insEl.addEventListener('input', () => {
           insurableManualOverride = true;
           updateSummary();
         });
-        // Double-click or long focus can reset to auto mode if desired
-        insEl.title = 'يُحدَّث تلقائياً مع الإجمالي. عدّله يدوياً لتعطيل التحديث التلقائي.';
+        insEl.title = 'تلقائي = الإجمالي − الوجبات − 100 − 100. عدّله يدوياً لتعطيل التحديث التلقائي.';
       }
     }
 
@@ -1419,19 +1422,26 @@
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    let insurableManualOverride = false; // true once user types in the field
+    // الأجر التأميني = الإجمالي − الوجبات − مشروع الزمالة (100) − صندوق العلاج (100)
+    // Original example: 7480 − 480 − 100 − 100 = 6800
+    // Still editable; legal min/max applied when calculating SI.
+    let insurableManualOverride = false;
+
+    function getAutoInsurable() {
+      const meals = getMealGross();
+      const solidarity = parseFloat(document.getElementById('solidarityFee')?.value) || 100;
+      const medical = parseFloat(document.getElementById('medicalFund')?.value) || 100;
+      const raw = getTotalGross() - meals - solidarity - medical;
+      return Math.min(SI_MAX, Math.max(SI_MIN, Math.round(Math.max(0, raw))));
+    }
 
     function updateTotalGross() {
       const el = document.getElementById('totalGross');
       if (el) el.value = getTotalGross();
-      // Auto-update الأجر التأميني unless user has manually overridden it
+      // Auto-fill unless user has typed a custom value
       if (!insurableManualOverride) {
         const insEl = document.getElementById('insurableWageInput');
-        if (insEl) {
-          const g = getTotalGross();
-          const clamped = Math.min(SI_MAX, Math.max(SI_MIN, Math.round(g)));
-          insEl.value = clamped;
-        }
+        if (insEl) insEl.value = getAutoInsurable();
       }
     }
 
