@@ -1035,10 +1035,20 @@ function chooseMatches(text, siteData, options) {
 
 function collectTextNodes(paragraphXml) {
   const nodes = [];
-  const pattern = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/gu;
+  // Word text can be stored as ordinary WordprocessingML text (w:t) or
+  // DrawingML text (a:t), especially inside text boxes and shapes.
+  const pattern = /<(w:t|a:t)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/gu;
   for (const match of paragraphXml.matchAll(pattern)) {
-    const value = xmlDecode(match[1]);
-    nodes.push({ start: match.index, end: match.index + match[0].length, openEnd: match.index + match[0].indexOf('>') + 1, closeStart: match.index + match[0].lastIndexOf('</w:t>'), text: value });
+    const value = xmlDecode(match[2]);
+    const tagName = match[1];
+    nodes.push({
+      start: match.index,
+      end: match.index + match[0].length,
+      openEnd: match.index + match[0].indexOf('>') + 1,
+      closeStart: match.index + match[0].lastIndexOf(`</${tagName}>`),
+      text: value,
+      tagName
+    });
   }
   return nodes;
 }
@@ -1272,7 +1282,7 @@ function processXml(xml, siteData, options, partName) {
   const tableProcessed = xml.replace(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/gu, (table) => processTableXml(table, partName, reports));
   const recentParagraphs = [];
   let insideExecutiveOrdersBlock = false;
-  const output = tableProcessed.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/gu, (paragraph) => {
+  const processParagraph = (paragraph) => {
     const text = collectTextNodes(paragraph).map((node) => node.text).join('');
     const startsProtectedBlock = isExecutiveOrdersBlockStart(text);
     const endsProtectedBlock = isExecutiveOrdersBlockEnd(text);
@@ -1288,7 +1298,10 @@ function processXml(xml, siteData, options, partName) {
     for (const replacement of chosen.replacements) reports.push({ part: partName, original: replacement.raw, tag: replacement.tag, reason: replacement.reason, confidence: replacement.confidence });
     recentParagraphs.push(text);
     return replaceInTextNodes(paragraph, chosen.replacements);
-  });
+  };
+  // Process DrawingML paragraphs first so text boxes/shapes are not missed.
+  const drawingProcessed = tableProcessed.replace(/<a:p(?:\s[^>]*)?>[\s\S]*?<\/a:p>/gu, processParagraph);
+  const output = drawingProcessed.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/gu, processParagraph);
   return { xml: output, reports, skippedAsForm: false };
 }
 
