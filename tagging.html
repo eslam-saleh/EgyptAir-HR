@@ -32,7 +32,6 @@
     .browse-docx { min-height: 42px; border: 1px solid var(--line); border-radius: 6px; padding: 0 16px; background: var(--surface); color: var(--primary); font-weight: 800; cursor: pointer; transition: transform .16s ease, background .16s ease; }
     .browse-docx:active { transform: scale(.97); }
     .selected-file { min-height: 21px; margin: 0; color: var(--primary); font-size: .86rem; font-weight: 700; overflow-wrap: anywhere; }
-    .upload-assurance { margin: 14px 0 0; color: var(--muted); font-size: .86rem; text-align: center; }
     .engine-status { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
     .status-kicker { margin: 0; color: var(--muted); font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
     .status-chip { display: inline-flex; align-items: center; width: max-content; min-height: 26px; padding: 0 11px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 13%, var(--surface)); color: var(--primary); font-size: .82rem; font-weight: 800; }
@@ -41,35 +40,38 @@
     .status-chip.processing { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); color: #a47b00; }
     .status-chip.success { background: color-mix(in srgb, var(--success) 12%, var(--surface)); color: var(--success); }
     .status-chip.error { background: color-mix(in srgb, var(--danger) 11%, var(--surface)); color: var(--danger); }
-    .status-detail { flex-basis: 100%; margin: 0; color: var(--muted); line-height: 1.55; font-size: .86rem; }
     .sheet-dashboard-section { margin-top: 26px; }
-    .sheet-dashboard-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
-    .sheet-dashboard-title { margin: 0; color: var(--text); font-size: 1.35rem; }
-    .sheet-dashboard-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    .sheet-dashboard-actions a, .sheet-dashboard-actions button { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-family: inherit; }
-    .sheet-dashboard-updated { flex-basis: 100%; margin: 6px 0 0; color: var(--muted); font-size: .78rem; }
-    .sheet-dashboard { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-    .sheet-card { padding: clamp(20px, 2.6vw, 26px); display: flex; flex-direction: column; gap: 14px; border-top: 3px solid var(--primary); }
-    .sheet-card-header { display: flex; flex-direction: column; gap: 2px; }
-    .sheet-card-title { margin: 0; color: var(--text); font-size: 1.05rem; }
-    .sheet-list { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; padding-inline-end: 4px; }
-    .sheet-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); border-inline-start: 4px solid var(--line); }
+    .sheet-dashboard-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+    .sheet-dashboard-title { margin: 0; color: var(--text); font-size: 1.55rem; font-weight: 800; }
+    .sheet-dashboard-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .sheet-dashboard-actions a, .sheet-dashboard-actions button { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; font-family: inherit; font-size: .92rem; gap: 6px; }
+    .sheet-dashboard-updated { flex-basis: 100%; margin: 6px 0 0; color: var(--muted); font-size: .85rem; }
+    .sheet-dashboard { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+    .sheet-card { padding: clamp(22px, 2.6vw, 28px); display: flex; flex-direction: column; gap: 16px; border-top: 4px solid var(--primary); border-radius: 12px; box-shadow: 0 6px 18px -12px rgba(0,0,0,.28); transition: box-shadow .18s ease, transform .18s ease; }
+    .sheet-card:hover { box-shadow: 0 10px 26px -12px rgba(0,0,0,.34); transform: translateY(-1px); }
+    .sheet-card-header { display: flex; flex-direction: column; gap: 4px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+    .sheet-card-header .status-kicker { font-size: .85rem; }
+    .sheet-card-title { margin: 0; color: var(--text); font-size: 1.28rem; font-weight: 800; }
+    .sheet-list { display: flex; flex-direction: column; gap: 12px; max-height: 460px; overflow-y: auto; padding-inline-end: 6px; scrollbar-width: thin; }
+    .sheet-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 10px; background: var(--surface-2); border-inline-start: 5px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,.06); transition: transform .14s ease, box-shadow .14s ease; }
+    .sheet-row:hover { transform: translateX(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+    html[dir="rtl"] .sheet-row:hover { transform: translateX(2px); }
     .sheet-row.risk-safe { border-inline-start-color: var(--success); }
     .sheet-row.risk-warning { border-inline-start-color: #a47b00; background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); }
     .sheet-row.risk-danger { border-inline-start-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface-2)); }
-    .sheet-row.risk-expired { border-inline-start-color: var(--muted); opacity: .7; }
-    .sheet-row.risk-resolved { border-inline-start-color: var(--success); opacity: .7; }
-    .sheet-row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-    .sheet-row-name { color: var(--text); font-size: .92rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sheet-row-code, .sheet-row-extra, .sheet-row-meta { color: var(--muted); font-size: .76rem; }
-    .risk-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: .76rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
+    .sheet-row.risk-expired { border-inline-start-color: var(--muted); opacity: .78; }
+    .sheet-row.risk-resolved { border-inline-start-color: var(--success); opacity: .78; }
+    .sheet-row-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .sheet-row-name { color: var(--text); font-size: 1.12rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sheet-row-code, .sheet-row-extra, .sheet-row-meta { color: var(--muted); font-size: .9rem; line-height: 1.45; }
+    .risk-badge { display: inline-flex; align-items: center; padding: 5px 14px; border-radius: 999px; font-size: .88rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
     .risk-badge.risk-safe { background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); }
     .risk-badge.risk-warning { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: #a47b00; }
     .risk-badge.risk-danger { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
     .risk-badge.risk-expired { background: color-mix(in srgb, var(--muted) 16%, var(--surface)); color: var(--muted); }
     .risk-badge.risk-resolved { background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); }
-    .sheet-group-label { margin: 4px 0 -2px; color: var(--muted); font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-    .sheet-empty, .sheet-error { color: var(--muted); font-size: .85rem; text-align: center; padding: 18px 0; margin: 0; }
+    .sheet-group-label { margin: 6px 0 -2px; color: var(--muted); font-size: .84rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+    .sheet-empty, .sheet-error { color: var(--muted); font-size: .95rem; text-align: center; padding: 20px 0; margin: 0; }
     .sheet-error { color: var(--danger); }
     @media (max-width: 900px) { .sheet-dashboard { grid-template-columns: 1fr; } }
     @media (max-width: 560px) { .tagging-page { width: min(100% - 20px, 1120px); padding-top: 20px; } .tagging-hero { padding: 22px; } }
@@ -117,9 +119,7 @@
         <div class="engine-status" aria-labelledby="status-heading">
           <span id="status-heading" class="status-kicker" data-en="Document status" data-ar="حالة المستند">Document status</span>
           <p id="status" class="status-chip ready" role="status" aria-live="polite" data-en="Ready" data-ar="جاهز">Ready</p>
-          <p id="status-detail" class="status-detail" data-en="Select a DOCX and the tagged copy will download when processing is complete." data-ar="اختر ملف DOCX وسيتم تنزيل النسخة المهيأة عند اكتمال المعالجة.">Select a DOCX and the tagged copy will download when processing is complete.</p>
         </div>
-        <p class="upload-assurance" data-en="DOCX files only · Processing stays on this device" data-ar="ملفات DOCX فقط · تتم المعالجة على هذا الجهاز">DOCX files only · Processing stays on this device</p>
       </section>
     </section>
 
@@ -131,6 +131,7 @@
         </div>
         <div class="sheet-dashboard-actions">
           <a class="browse-docx" href="https://docs.google.com/spreadsheets/d/1YCAUm-0kSeXS5mdJDwuq3cSYNyC6d52DBTMHlRtQjHI" target="_blank" rel="noopener" data-en="Open sheet" data-ar="فتح الشيت">Open sheet</a>
+          <a class="browse-docx" href="https://docs.google.com/spreadsheets/d/1YCAUm-0kSeXS5mdJDwuq3cSYNyC6d52DBTMHlRtQjHI/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a>
           <button id="dashboard-refresh" class="browse-docx" type="button" data-en="Refresh" data-ar="تحديث">Refresh</button>
         </div>
         <p id="dashboard-updated" class="sheet-dashboard-updated" aria-live="polite"></p>
@@ -1329,14 +1330,12 @@ async function tagDocx(file, options = {}) {
       const dropZone = document.getElementById('docx-drop-zone');
       const selectedFile = document.getElementById('selected-file');
       const status = document.getElementById('status');
-      const statusDetail = document.getElementById('status-detail');
       let downloadUrl = '';
       let processing = false;
       const text = (en, ar) => document.documentElement.lang === 'ar' ? ar : en;
-      const setStatus = (en, ar, kind = 'ready', detailEn = '', detailAr = '') => {
+      const setStatus = (en, ar, kind = 'ready') => {
         status.textContent = text(en, ar);
         status.className = ('status-chip ' + kind).trim();
-        if (detailEn) statusDetail.textContent = text(detailEn, detailAr);
       };
 
       const download = (blob, name) => {
@@ -1535,8 +1534,11 @@ async function tagDocx(file, options = {}) {
         row.appendChild(badge);
       };
 
-      // اجازات: countdown to نهاية الاجازة. Never "expires" — stays visible
-      // and goes negative (and stays sorted at the very top) once it passes.
+      // اجازات: countdown to نهاية الاجازة. Once a leave has ended, it's no
+      // longer actionable, so instead of sorting by an ever-more-negative
+      // day count (which used to push long-ended leaves to the very top),
+      // it drops into an "Ended" group below the still-active ones — the
+      // same active/expired split used for جزاءات and ايقاف below.
       function renderLeaveCard(records) {
         const container = document.getElementById('leave-list');
         if (!records.length) return renderEmpty(container, 'No leave records found.', 'لا توجد سجلات إجازات.');
@@ -1547,20 +1549,28 @@ async function tagDocx(file, options = {}) {
           return { rec, end, remaining: dayDiff(today, end) };
         }).filter(Boolean);
         if (!rows.length) return renderEmpty(container, 'No leave end dates found.', 'لا توجد تواريخ نهاية إجازة.');
-        rows.sort((a, b) => a.remaining - b.remaining);
+
+        const active = rows.filter((r) => r.remaining >= 0).sort((a, b) => a.remaining - b.remaining);
+        const ended = rows.filter((r) => r.remaining < 0).sort((a, b) => b.remaining - a.remaining);
 
         container.innerHTML = '';
-        rows.forEach(({ rec, end, remaining }) => {
-          const name = findField(rec, 'اسم');
-          const code = findField(rec, 'كود');
-          const type = findField(rec, 'نوع الاجازة');
-          const level = remaining < 0 ? 'danger' : (remaining <= 7 ? 'warning' : 'safe');
-          const { row, main } = buildRowShell(level, name, code, type);
-          appendMeta(main, 'Ends', 'تنتهي', fmtDate(end));
-          if (remaining >= 0) appendBadge(row, level, remaining + ' day(s) left', remaining + ' يوم متبقي');
-          else appendBadge(row, level, Math.abs(remaining) + ' day(s) overdue', 'تجاوزت بـ ' + Math.abs(remaining) + ' يوم');
-          container.appendChild(row);
-        });
+        active.forEach((r) => container.appendChild(buildLeaveRow(r)));
+        if (ended.length) {
+          container.appendChild(groupLabel('Ended (' + ended.length + ')', 'منتهية (' + ended.length + ')'));
+          ended.forEach((r) => container.appendChild(buildLeaveRow(r)));
+        }
+      }
+
+      function buildLeaveRow({ rec, end, remaining }) {
+        const name = findField(rec, 'اسم');
+        const code = findField(rec, 'كود');
+        const type = findField(rec, 'نوع الاجازة');
+        const level = remaining < 0 ? 'expired' : (remaining <= 7 ? 'warning' : 'safe');
+        const { row, main } = buildRowShell(level, name, code, type);
+        appendMeta(main, 'Ends', 'تنتهي', fmtDate(end));
+        if (remaining >= 0) appendBadge(row, level, remaining + ' day(s) left', remaining + ' يوم متبقي');
+        else appendBadge(row, level, 'Ended', 'منتهية');
+        return row;
       }
 
       // Shared logic for جزاءات (15-day window from التاريخ) and ايقاف
