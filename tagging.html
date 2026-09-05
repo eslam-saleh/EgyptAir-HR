@@ -1119,8 +1119,10 @@ const PROFILE_GRID_LABELS = [
   ['كود المذكور', '{كود المذكور}', 'profile-grid table: mentioned employee code'],
   ['تاريخ الميلاد', '{تاريخ الميلاد}', 'profile-grid table: birth date'],
   ['مؤهل التعيين', '{مؤهل التعيين}', 'profile-grid table: appointment qualification'],
+  ['مؤهل التعين', '{مؤهل التعيين}', 'profile-grid table: appointment qualification (document spelling)'],
   ['مؤهل التعاقد', '{مؤهل التعيين}', 'profile-grid table: contract qualification'],
   ['تاريخ التعيين', '{تاريخ التعيين}', 'profile-grid table: appointment date'],
+  ['تاريخ التعين', '{تاريخ التعيين}', 'profile-grid table: appointment date (document spelling)'],
   ['تاريخ التعاقد', '{تاريخ التعيين}', 'profile-grid table: contract date'],
   ['الوظيفة', '{وظيفة المذكور}', 'profile-grid table: job title'],
   ['الوظيفة الحالية', '{وظيفة المذكور}', 'profile-grid table: current job title'],
@@ -1204,7 +1206,13 @@ function processTableXml(tableXml, partName, reports) {
   // into the profile-grid path below. Normalize the needle the same way as the
   // haystack instead of hardcoding an unnormalized spelling.
   const hasEmployeeHeaders = normalizedTexts.some((text) => text.includes('الكود')) && normalizedTexts.some((text) => text.includes('الاسم')) && normalizedTexts.some((text) => text.includes(normalizeArabic('الوظيفة')));
-  const hasLeaveHistoryHeaders = normalizedTexts.some((text) => text.includes('من')) && normalizedTexts.some((text) => /(?:الي|الى)/u.test(text));
+  // Only classify a table as a date-range table when it has standalone header
+  // cells named exactly "من" and "إلى"/"الى". Substring checks are unsafe:
+  // profile-table values commonly contain these letter sequences inside words
+  // such as "منتدب" or "الوظيفى", which previously redirected the whole table
+  // into the date-range path and labeled appointment dates as period-end dates.
+  const hasLeaveHistoryHeaders = normalizedTexts.some((text) => text === 'من')
+    && normalizedTexts.some((text) => text === 'الي' || text === 'الى');
   // A "من/الى" period table isn't always about leave — the same shape is used
   // for unauthorized-absence ("انقطاع/غياب") records. Only use the leave-specific
   // tag names when the table's own text (captions, "الايام" rows, etc.) actually
@@ -1448,20 +1456,52 @@ async function tagDocx(file, options = {}) {
       };
 
       const parseSheetDate = (value) => {
-        if (!value) return null;
-        if (value instanceof Date) return value;
-        const s = String(value).trim();
-        // yyyy/mm/dd or yyyy-MM-dd — what Code.gs's getFilledRecords()
-        // always sends now (real Date cells are formatted this way; cells
-        // already written as plain "yyyy/mm/dd" text pass straight through).
-        let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
-        if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
-        // d/m/yyyy fallback, for any older cell this app wrote before
-        // Code.gs started normalizing dates on the way in.
-        m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-        if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
-        const d = new Date(s);
-        return isNaN(d.getTime()) ? null : d;
+        if (value == null || value === '') return null;
+        if (value instanceof Date) {
+          return isNaN(value.getTime()) ? null : new Date(value.getFullYear(), value.getMonth(), value.getDate());
+        }
+
+        // Apps Script normally sends dates as yyyy/mm/dd. Do not pass
+        // ambiguous numeric strings to new Date(), because browser parsing
+        // can interpret them as mm/dd/yyyy and silently swap the day/month.
+        let s = String(value).trim()
+          .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+          .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06F0));
+        if (!s) return null;
+
+        // Extract the first date token even when the sheet cell contains
+        // additional Arabic text, e.g. "اعتبارا من 21/6/2023" or
+        // "30/6/2026 عدم التجديد...".
+        // The live Apps Script payload uses year/day/month for numeric
+        // year-first values, e.g. 2026/11/03 means 03/11/2026.
+        // Treating this as ISO yyyy/mm/dd was the source of the false future
+        // dates that appeared in the dashboard.
+        let m = s.match(/(?:^|[^\d])(\d{4})\s*[-\/]\s*(\d{1,2})\s*[-\/]\s*(\d{1,2})(?=$|[^\d])/);
+        if (m) return makeLocalDate(+m[1], +m[3], +m[2]);
+
+        // Non-year-first slash dates are day/month/year.
+        m = s.match(/(?:^|[^\d])(\d{1,2})\s*[\/-]\s*(\d{1,2})\s*[\/-]\s*(\d{4})(?=$|[^\d])/);
+        if (m) {
+          const first = +m[1];
+          const second = +m[2];
+          // The sheet uses day/month/year for slash dates.
+          return makeLocalDate(+m[3], second, first);
+        }
+
+        // Last resort for textual dates such as "Sep 5, 2026" only.
+        const parsed = new Date(s);
+        return isNaN(parsed.getTime())
+          ? null
+          : new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+      };
+
+      const makeLocalDate = (year, month, day) => {
+        const date = new Date(year, month - 1, day);
+        return date.getFullYear() === year
+          && date.getMonth() === month - 1
+          && date.getDate() === day
+          ? date
+          : null;
       };
 
       const dayDiff = (from, to) => {
@@ -1476,7 +1516,7 @@ async function tagDocx(file, options = {}) {
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
-        return `${y}/${m}/${day}`;
+        return `${day}/${m}/${y}`;
       };
 
       const bilingual = (el, en, ar) => {
@@ -1607,12 +1647,27 @@ async function tagDocx(file, options = {}) {
             return null;
           }
           const elapsed = dayDiff(start, today);
-          return { rec, start, remaining: cfg.windowDays - elapsed };
+          // Penalty dates and suspension-start dates are action records, not
+          // planned future events. Ignore any future-dated row entirely; it
+          // must not appear as an active employee case or a countdown.
+          if (elapsed < 0) return null;
+          // Day zero is the first actionable day: 15->14->...->1.
+          // Once the full window has elapsed, the record is expired and
+          // belongs in the expired group instead of showing 0 or a negative
+          // counter.
+          const remaining = elapsed < cfg.windowDays
+            ? cfg.windowDays - elapsed
+            : 0;
+          return { rec, start, remaining };
         }).filter(Boolean);
         if (!rows.length && !resolved.length) return renderEmpty(container, cfg.noDateEn, cfg.noDateAr);
 
-        const active = rows.filter((r) => r.remaining > 0).sort((a, b) => a.remaining - b.remaining);
-        const expired = rows.filter((r) => r.remaining <= 0).sort((a, b) => b.remaining - a.remaining);
+        const active = rows
+          .filter((r) => r.remaining >= 1 && r.remaining <= cfg.windowDays)
+          .sort((a, b) => a.remaining - b.remaining);
+        const expired = rows
+          .filter((r) => r.remaining === 0)
+          .sort((a, b) => b.start - a.start);
         resolved.sort((a, b) => b.end - a.end); // most recently resolved first
 
         container.innerHTML = '';
