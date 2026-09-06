@@ -1486,9 +1486,10 @@ async function tagDocx(file, options = {}) {
           return isNaN(value.getTime()) ? null : new Date(value.getFullYear(), value.getMonth(), value.getDate());
         }
 
-        // Apps Script normally sends dates as yyyy/mm/dd. Do not pass
-        // ambiguous numeric strings to new Date(), because browser parsing
-        // can interpret them as mm/dd/yyyy and silently swap the day/month.
+        // Sheet dates are stored as literal yyyy/mm/dd or yyyy/m/d text
+        // (Egyptian year-first format). Do not pass ambiguous numeric strings
+        // to new Date(), because browser parsing can interpret them as
+        // mm/dd/yyyy and silently swap the day/month.
         let s = String(value).trim()
           .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
           .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06F0));
@@ -1497,19 +1498,19 @@ async function tagDocx(file, options = {}) {
         // Extract the first date token even when the sheet cell contains
         // additional Arabic text, e.g. "اعتبارا من 21/6/2023" or
         // "30/6/2026 عدم التجديد...".
-        // The live Apps Script payload uses year/day/month for numeric
-        // year-first values, e.g. 2026/11/03 means 03/11/2026.
-        // Treating this as ISO yyyy/mm/dd was the source of the false future
-        // dates that appeared in the dashboard.
+        // Year-first (sheet standard): yyyy/mm/dd or yyyy/m/d
         let m = s.match(/(?:^|[^\d])(\d{4})\s*[-\/]\s*(\d{1,2})\s*[-\/]\s*(\d{1,2})(?=$|[^\d])/);
-        if (m) return makeLocalDate(+m[1], +m[3], +m[2]);
+        if (m) return makeLocalDate(+m[1], +m[2], +m[3]);
 
-        // Non-year-first slash dates are day/month/year.
+        // Non-year-first slash dates are day/month/year (legacy / mixed cells).
         m = s.match(/(?:^|[^\d])(\d{1,2})\s*[\/-]\s*(\d{1,2})\s*[\/-]\s*(\d{4})(?=$|[^\d])/);
         if (m) {
           const first = +m[1];
           const second = +m[2];
-          // The sheet uses day/month/year for slash dates.
+          // Prefer day/month/year; if second > 12 and first <= 12, treat as month/day/year.
+          if (second > 12 && first <= 12) {
+            return makeLocalDate(+m[3], first, second);
+          }
           return makeLocalDate(+m[3], second, first);
         }
 

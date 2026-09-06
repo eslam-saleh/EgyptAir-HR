@@ -672,12 +672,22 @@
       return `${now.getFullYear()}/${mm}/${dd}`;
     }
 
-    // Converts an already-parsed d/m/yyyy-ish value (as produced when
-    // filling the .docx itself) into the sheet's yyyy/mm/dd format.
+    // Converts an already-parsed date value into the sheet's Egyptian
+    // year-first format (yyyy/mm/dd or yyyy/m/d — both accepted; we
+    // normalize with zero-padded month/day for consistency).
+    // Accepts d/m/yyyy (form fields) and already yyyy/m/d style values.
     // Non-date-looking values are returned unchanged.
     function toSheetDateFormat(value) {
-      const v = String(value || '').trim();
-      const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      const v = String(value || '').trim()
+        .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+        .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06F0));
+      // Already year-first: yyyy/mm/dd or yyyy-m-d
+      let m = v.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+      if (m) {
+        return `${m[1]}/${m[2].padStart(2, '0')}/${m[3].padStart(2, '0')}`;
+      }
+      // Form style: d/m/yyyy
+      m = v.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
       if (!m) return v;
       return `${m[3]}/${m[2].padStart(2, '0')}/${m[1].padStart(2, '0')}`;
     }
