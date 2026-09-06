@@ -808,6 +808,7 @@ const state = {
   cvReady: false,
   stage: 1,
   originalImage: null,
+  sourceFileName: '',
   imageCorners: null,
   manualPointCount: 4,
   croppedCanvas: null,
@@ -941,6 +942,7 @@ function loadImageFile(file) {
     showToast(tr().toastInvalidFile, 'error');
     return;
   }
+  state.sourceFileName = file.name || 'scan';
   const reader = new FileReader();
   reader.onload = (e) => {
     const img = new Image();
@@ -2683,6 +2685,13 @@ function updatePagesSection() {
 // ====================================================================
 // EXPORT
 // ====================================================================
+function scannedFileName(extension) {
+  const originalName = state.sourceFileName || 'scan';
+  const baseName = originalName.replace(/\.[^/.]+$/, '') || 'scan';
+  const safeBaseName = baseName.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'scan';
+  return `${safeBaseName}-scanned.${extension}`;
+}
+
 function exportImage(format) {
   if (!state.enhancedCanvas) return;
   // JPEG has no alpha channel and turns transparent 5–8 point cut-away areas
@@ -2693,7 +2702,7 @@ function exportImage(format) {
   const mime = outputFormat === 'png' ? 'image/png' : 'image/jpeg';
   const quality = outputFormat === 'jpeg' ? 0.92 : undefined;
   const link = document.createElement('a');
-  link.download = `scan-image.${outputFormat}`;
+  link.download = scannedFileName(outputFormat);
   link.href = state.enhancedCanvas.toDataURL(mime, quality);
   link.click();
   showToast(tr().toastImageDownloaded, 'success');
@@ -2808,7 +2817,7 @@ async function exportWordDocx() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `scan-word.docx`;
+    link.download = scannedFileName('docx');
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     showToast(tr().toastWordExported(allPages.length), 'success');
