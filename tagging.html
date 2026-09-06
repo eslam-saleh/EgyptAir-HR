@@ -54,6 +54,21 @@
     .sheet-card-title { margin: 0; color: var(--text); font-size: 1.28rem; font-weight: 800; }
     .sheet-list { display: flex; flex-direction: column; gap: 12px; max-height: 460px; overflow-y: auto; padding-inline-end: 6px; scrollbar-width: thin; }
     .sheet-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 10px; background: var(--surface-2); border-inline-start: 5px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,.06); transition: transform .14s ease, box-shadow .14s ease; }
+    .sheet-row.is-interactive { cursor: pointer; }
+    .sheet-row.is-interactive:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 3px; }
+    .row-detail-modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: color-mix(in srgb, var(--text) 42%, transparent); }
+    .row-detail-modal[hidden] { display: none; }
+    .row-detail-dialog { width: min(720px, 100%); max-height: min(760px, calc(100vh - 40px)); overflow: auto; padding: 24px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text); box-shadow: 0 22px 70px rgba(0,0,0,.28); }
+    .row-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .row-detail-title { margin: 0; color: var(--text); font-size: 1.35rem; font-weight: 800; }
+    .row-detail-close { display: inline-grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); font: inherit; font-size: 1.35rem; line-height: 1; cursor: pointer; }
+    .row-detail-close:hover, .row-detail-close:focus-visible { background: color-mix(in srgb, var(--primary) 10%, var(--surface-2)); color: var(--primary); }
+    .row-detail-fields { display: grid; gap: 12px; margin: 0; }
+    .row-detail-field { display: grid; grid-template-columns: minmax(130px, .7fr) minmax(0, 1.3fr); gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .row-detail-field:last-child { border-bottom: 0; }
+    .row-detail-field dt { color: var(--muted); font-weight: 800; overflow-wrap: anywhere; }
+    .row-detail-field dd { margin: 0; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; }
+    @media (max-width: 560px) { .row-detail-dialog { padding: 18px; } .row-detail-field { grid-template-columns: 1fr; gap: 5px; } }
     .sheet-row:hover { transform: translateX(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
     html[dir="rtl"] .sheet-row:hover { transform: translateX(2px); }
     .sheet-row.risk-safe { border-inline-start-color: var(--success); }
@@ -166,7 +181,17 @@
         </article>
       </div>
     </section>
-  </main>
+    </main>
+
+  <div id="rowDetailModal" class="row-detail-modal" hidden>
+    <section class="row-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="rowDetailTitle" tabindex="-1">
+      <header class="row-detail-header">
+        <h2 id="rowDetailTitle" class="row-detail-title">Row details</h2>
+        <button id="rowDetailClose" class="row-detail-close" type="button" aria-label="Close row details">×</button>
+      </header>
+      <dl id="rowDetailFields" class="row-detail-fields"></dl>
+    </section>
+  </div>
 
   <footer class="portal-footer"><div class="footer-content"><div class="footer-info"><span><strong>Contact Us</strong></span><span><a href="mailto:eslamsaleh1999@gmail.com">eslamsaleh1999@gmail.com</a></span><span><a href="tel:+201061438871">+201061438871</a></span></div><div class="footer-copyright">&copy; 2026 Egyptair inflight services. All rights reserved.</div></div></footer>
   <script src="portal.js"></script>
@@ -1543,9 +1568,93 @@ async function tagDocx(file, options = {}) {
       const renderEmpty = (container, en, ar) => renderMessage(container, 'sheet-empty', en, ar);
       const renderError = (container, en, ar) => renderMessage(container, 'sheet-error', en, ar);
 
-      const buildRowShell = (level, name, code, extra) => {
+      const rowDetailModal = document.getElementById('rowDetailModal');
+      const rowDetailDialog = rowDetailModal && rowDetailModal.querySelector('.row-detail-dialog');
+      const rowDetailClose = document.getElementById('rowDetailClose');
+      const rowDetailFields = document.getElementById('rowDetailFields');
+      let rowDetailReturnFocus = null;
+
+      const rowDetailFocusable = () => rowDetailDialog
+        ? [...rowDetailDialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')].filter((el) => !el.disabled)
+        : [];
+
+      const closeRowDetail = () => {
+        if (!rowDetailModal || rowDetailModal.hidden) return;
+        rowDetailModal.hidden = true;
+        document.body.classList.remove('modal-open');
+        const returnFocus = rowDetailReturnFocus;
+        rowDetailReturnFocus = null;
+        if (returnFocus && document.contains(returnFocus)) returnFocus.focus();
+      };
+
+      const openRowDetail = (rec) => {
+        if (!rowDetailModal || !rowDetailDialog || !rowDetailFields || !rec) return;
+        rowDetailReturnFocus = document.activeElement;
+        rowDetailFields.innerHTML = '';
+        Object.entries(rec).forEach(([label, value]) => {
+          if (value == null || String(value).trim() === '') return;
+          const field = document.createElement('div');
+          field.className = 'row-detail-field';
+          const labelEl = document.createElement('dt');
+          labelEl.textContent = label;
+          const valueEl = document.createElement('dd');
+          valueEl.textContent = String(value);
+          field.append(labelEl, valueEl);
+          rowDetailFields.appendChild(field);
+        });
+        rowDetailModal.hidden = false;
+        document.body.classList.add('modal-open');
+        rowDetailClose.focus();
+      };
+
+      rowDetailClose && rowDetailClose.addEventListener('click', closeRowDetail);
+      rowDetailModal && rowDetailModal.addEventListener('click', (event) => {
+        if (event.target === rowDetailModal) closeRowDetail();
+      });
+      document.addEventListener('keydown', (event) => {
+        if (!rowDetailModal || rowDetailModal.hidden) return;
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closeRowDetail();
+          return;
+        }
+        if (event.key !== 'Tab') return;
+        const focusable = rowDetailFocusable();
+        if (!focusable.length) {
+          event.preventDefault();
+          rowDetailDialog.focus();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!rowDetailDialog.contains(document.activeElement)) {
+          event.preventDefault();
+          first.focus();
+        } else if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      });
+
+      const buildRowShell = (level, name, code, extra, rec) => {
         const row = document.createElement('div');
         row.className = 'sheet-row risk-' + level;
+        if (rec) {
+          row.classList.add('is-interactive');
+          row.tabIndex = 0;
+          row.setAttribute('role', 'button');
+          row.setAttribute('aria-label', text('View row details', 'عرض تفاصيل السجل'));
+          row.addEventListener('click', () => openRowDetail(rec));
+          row.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openRowDetail(rec);
+            }
+          });
+        }
         const main = document.createElement('div');
         main.className = 'sheet-row-main';
 
@@ -1619,7 +1728,7 @@ async function tagDocx(file, options = {}) {
         const code = findField(rec, 'كود');
         const type = findField(rec, 'نوع الاجازة');
         const level = remaining < 0 ? 'expired' : (remaining <= 7 ? 'warning' : 'safe');
-        const { row, main } = buildRowShell(level, name, code, type);
+        const { row, main } = buildRowShell(level, name, code, type, rec);
         appendMeta(main, 'Ends', 'تنتهي', fmtDate(end));
         if (remaining >= 0) appendBadge(row, level, remaining + ' day(s) left', remaining + ' يوم متبقي');
         else appendBadge(row, level, 'Ended', 'منتهية');
@@ -1688,7 +1797,7 @@ async function tagDocx(file, options = {}) {
         const code = findField(rec, 'كود');
         const reason = findField(rec, cfg.reasonKeyword);
         const level = remaining <= 0 ? 'expired' : (remaining > cfg.safeThreshold ? 'safe' : 'warning');
-        const { row, main } = buildRowShell(level, name, code, reason);
+        const { row, main } = buildRowShell(level, name, code, reason, rec);
         appendMeta(main, cfg.dateLabelEn, cfg.dateLabelAr, fmtDate(start));
         if (remaining <= 0) appendBadge(row, level, 'Expired', 'منتهية المهلة');
         else appendBadge(row, level, remaining + ' day(s) left', remaining + ' يوم متبقي');
@@ -1703,7 +1812,7 @@ async function tagDocx(file, options = {}) {
         const name = findField(rec, 'اسم');
         const code = findField(rec, 'كود');
         const reason = findField(rec, cfg.reasonKeyword);
-        const { row, main } = buildRowShell('resolved', name, code, reason);
+        const { row, main } = buildRowShell('resolved', name, code, reason, rec);
         appendMeta(main, cfg.dateLabelEn, cfg.dateLabelAr, fmtDate(start));
         appendMeta(main, 'Ended', 'انتهى في', fmtDate(end));
         appendBadge(row, 'resolved', 'Resolved', 'منتهية');
