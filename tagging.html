@@ -81,7 +81,7 @@
     .sheet-row-code, .sheet-row-extra, .sheet-row-meta { color: var(--muted); font-size: .9rem; line-height: 1.45; }
     .risk-badge { display: inline-flex; align-items: center; padding: 5px 14px; border-radius: 999px; font-size: .88rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
     .risk-badge.risk-safe { background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); }
-    .risk-badge.risk-warning { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: #a47b00; }
+    .risk-badge.risk-warning { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: #ff7b7b; }
     .risk-badge.risk-danger { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
     .risk-badge.risk-expired { background: color-mix(in srgb, var(--muted) 16%, var(--surface)); color: var(--muted); }
     .risk-badge.risk-resolved { background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); }
@@ -116,12 +116,6 @@
   </header>
 
   <main class="tagging-page">
-    <section class="hero-panel tagging-hero">
-      <p class="eyebrow" data-en="Human resources · document center" data-ar="الموارد البشرية · مركز المستندات">Human resources · document center</p>
-      <h1 data-en="DOCX tagging" data-ar="تهيئة مستندات DOCX">DOCX tagging</h1>
-      <p data-en="Upload one administrative document to create a standardized tagged copy." data-ar="ارفع مستنداً إدارياً واحداً لإنشاء نسخة مهيأة بالقوالب القياسية.">Upload one administrative document to create a standardized tagged copy.</p>
-    </section>
-
     <section class="tagging-workspace" aria-label="DOCX tagging workspace">
       <section class="panel-card upload-card" aria-label="DOCX tagging upload">
         <div id="docx-drop-zone" class="file-input" role="group" aria-labelledby="docx-upload-title" tabindex="0">
@@ -173,7 +167,7 @@
         <article class="panel-card sheet-card" aria-labelledby="suspension-card-heading">
           <header class="sheet-card-header">
             <span class="status-kicker" data-en="ايقاف" data-ar="ايقاف">ايقاف</span>
-            <h3 id="suspension-card-heading" class="sheet-card-title" data-en="60-day action window" data-ar="مهلة التصرف 60 يوم">60-day action window</h3>
+            <h3 id="suspension-card-heading" class="sheet-card-title" data-en="60-day action window" data-ar="مهلة الانهاء 60 يوم">60-day action window</h3>
           </header>
           <div id="suspension-list" class="sheet-list" aria-live="polite">
             <p class="sheet-empty" data-en="Loading…" data-ar="جارٍ التحميل…">Loading…</p>
