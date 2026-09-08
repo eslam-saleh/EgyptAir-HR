@@ -654,12 +654,12 @@
           <div class="ded-grid" id="dedGrid">
             <div class="ded-field" style="grid-column:1/-1;">
               <p class="hint-text" style="margin:0;">
-                <span data-en="Social Insurance: 11% of insurable wage (min 2,700 – max 15,181.82 EGP 2026)." data-ar="التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 15,181.82  جنيه 2026).">التأمينات: 11٪ من الأجر التأميني (حد أدنى 2,700 – حد أقصى 15,181.82 جنيه 2026).</span>
+                <span data-en="Social Insurance: 10% of total entitlements (matches the EgyptAir payslip calculation)." data-ar="التأمينات: ١٠٪ من إجمالي الاستحقاقات (مطابق لطريقة حساب مفردات مرتب مصر للطيران).">التأمينات: ١٠٪ من إجمالي الاستحقاقات (مطابق لطريقة حساب مفردات مرتب مصر للطيران).</span>
               </p>
             </div>
             <div class="ded-fields-row" style="grid-column:1/-1;">
               <div class="ded-field">
-                <label data-en="Insurable Wage (auto = gross − meals)" data-ar="الأجر التأميني (تلقائي = الإجمالي − وجبات)">الأجر التأميني (تلقائي = الإجمالي − وجبات)</label>
+                <label data-en="Insurance wage (reference only)" data-ar="الأجر التأميني (مرجعي فقط)">الأجر التأميني (مرجعي فقط)</label>
                 <input type="number" id="insurableWageInput" min="0" step="1" value="6800" style="font-weight:700;">
               </div>
               <div class="ded-field">
@@ -684,7 +684,7 @@
               <div class="sum-cvalue pos" id="sGross">15,000.00 EGP</div>
             </div>
             <div class="sum-card" id="sInsCard">
-              <div class="sum-clabel" data-en="Social Insurance (11%)" data-ar="التأمينات (11%)">التأمينات (11%)</div>
+              <div class="sum-clabel" data-en="Social Insurance (10% of gross)" data-ar="التأمينات (١٠٪ من الإجمالي)">التأمينات (١٠٪ من الإجمالي)</div>
               <div class="sum-cvalue neg" id="sIns">-0.00 EGP</div>
             </div>
             <div class="sum-card" id="sTaxCard">
@@ -975,7 +975,7 @@
           insurableManualOverride = true;
           updateSummary();
         });
-        insEl.title = 'تلقائي = الإجمالي − الوجبات − 100 − 100. عدّله يدوياً لتعطيل التحديث التلقائي.';
+        insEl.title = 'مرجعي فقط؛ التأمينات تُحسب بنسبة ١٠٪ من إجمالي الاستحقاقات.';
       }
     }
 
@@ -1287,14 +1287,15 @@
       }
     }
 
-    // ── Egypt 2026 Social Insurance & Income Tax (exact payslip logic) ────────
-    // SI: employee 11% of insurable wage (min 2,700 – max 15,181.82 EGP)
+    // ── EgyptAir payslip Social Insurance & Income Tax logic ──────────────────
+    // SI: 10% of total entitlements (gross). This reproduces the payslip example:
+    // 7,460 × 10% = 746.00, and produces 194.60 tax with the brackets below.
     // Martyrs: 0.05% of gross (Law 4/2021)
     // Tax: progressive annual brackets after SI + personal exemption 20,000/year
     // First bracket 0–40,000 at 0% → total fully exempt zone = 60,000/year
     const SI_MIN = 2700;
     const SI_MAX = 15181.82;
-    const SI_RATE = 0.11;
+    const SI_RATE = 0.10;
     const MARTYRS_RATE = 0.0005; // 0.05%
     const PERSONAL_EXEMPTION_ANNUAL = 20000;
 
@@ -1313,12 +1314,13 @@
       const el = document.getElementById('insurableWageInput');
       let v = el ? parseFloat(el.value) : 0;
       if (isNaN(v) || v < 0) v = 0;
-      // still respect legal min/max when calculating SI
+      // Kept as a reference field for compatibility with existing saved layouts.
       return Math.min(SI_MAX, Math.max(SI_MIN, v));
     }
 
     function calcSocialInsurance() {
-      return getInsurableWageFromInput() * SI_RATE;
+      // The payslip uses gross entitlements, not the editable reference wage.
+      return getTotalGross() * SI_RATE;
     }
 
     function calcMartyrs(gross) {
@@ -1425,9 +1427,8 @@
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-    // الأجر التأميني = الإجمالي − الوجبات − مشروع الزمالة (100) − صندوق العلاج (100)
-    // Original example: 7480 − 480 − 100 − 100 = 6800
-    // Still editable; legal min/max applied when calculating SI.
+    // The insurance-wage field is retained as a reference for the payslip, while
+    // the actual insurance deduction is calculated from total entitlements.
     let insurableManualOverride = false;
 
     function getAutoInsurable() {
