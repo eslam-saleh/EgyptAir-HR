@@ -1031,10 +1031,13 @@
 
     }
 
-    function isExecutiveOrdersBlockEnd(text) {
-      const normalized = normalizeArabicVariants(String(text || '')).replace(/\s+/gu, ' ');
-      return /قرار\s*السيده\s+الاستاذه\s*[/／]\s*رئيس\s+مجلس\s+الاداره\s+والعضو\s+المنتدب\s+التنفيذي\s+للشركه\s+رقم\s*346\s+بتاريخ\s*24\s*[/／]\s*8\s*[/／]\s*2025\s+بتفويضنا\s+بالتوقيع\s+على\s+الاوامر\s+الاداريه\s+والتنفيذيه\s*0?/u.test(normalized);
-    }
+	function isExecutiveOrdersBlockEnd(text) {
+	  const normalized = normalizeArabicVariants(String(text || ''))
+		.replace(/\s+/gu, ' ')
+		.trim();
+
+	  return /بتفويضنا/u.test(normalized);
+	}
 
     function feminizeArabicText(text) {
       if (!text) return text;
