@@ -1025,14 +1025,25 @@
     const FEMINIZE_WORD_TABLE = FEMINIZE_PAIRS.map(([m, f]) => [arabicWordRegex(m), f]);
     const FEMINIZE_PHRASE_TABLE = FEMINIZE_PHRASES.map(([m, f]) => [arabicWordRegex(m), f]);
 
+    // Word may split runs, remove the space in "قرارالسيدة", or add
+    // inconsistent spaces around the slash and between words. Use a compact
+    // normalized marker for the section boundaries.
+    function normalizeExecutiveOrdersMarker(text) {
+      return normalizeArabicVariants(String(text || ''), { compact: true })
+        .replace(/[\u200f\u200e]/gu, '');
+    }
+
     function isExecutiveOrdersBlockStart(text) {
-      const normalized = normalizeArabicVariants(String(text || '')).replace(/\s+/gu, ' ');
-      return /مدير\s+عام\s+الاداره\s+العامه\s+للم(?:وارد|وراد)\s+البشريه/u.test(normalized);
+      const normalized = normalizeExecutiveOrdersMarker(text);
+      return normalized.includes('مديرعامالادارهالعامهللمواردالبشريه') ||
+        normalized.includes('مديرعامالادارهالعامهللمورادالبشريه');
     }
 
     function isExecutiveOrdersBlockEnd(text) {
-      const normalized = normalizeArabicVariants(String(text || '')).replace(/\s+/gu, ' ');
-      return /قرار\s*السيده\s+الاستاذه\s*[/／]\s*رئيس\s+مجلس\s+الاداره\s+والعضو\s+المنتدب\s+التنفيذي\s+للشركه\s+رقم\s*346\s+بتاريخ\s*24\s*[/／]\s*8\s*[/／]\s*2025\s+بتفويضنا\s+بالتوقيع\s+على\s+الاوامر\s+الاداريه\s+والتنفيذيه\s*0?/u.test(normalized);
+      const normalized = normalizeExecutiveOrdersMarker(text);
+      return normalized.includes(
+        'قرارالسيدهالاستاذهرئيسمجلسالادارهوالعضوالمنتدبالتنفيذيللشركهرقم346بتاريخ24/8/2025بتفويضنابالتوقيععلىالاوامرالاداريهوالتنفيذيه'
+      );
     }
 
     function feminizeArabicText(text) {
