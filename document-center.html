@@ -1150,6 +1150,36 @@
       return softNormalize(label).includes(softNormalize(keyword));
     }
 
+    // Organization data occasionally contains umbrella/default values that are
+    // not valid values for the employee's actual unit. Never write those values
+    // into document placeholders: they make the generated wording misleading.
+    function isGenericDepartmentValue(value) {
+      return softNormalize(value) === softNormalize('الإدارة');
+    }
+
+    function isBoardChairSectorValue(value) {
+      const normalized = softNormalize(value);
+      return normalized.includes(softNormalize('رئيس مجلس')) &&
+        normalized.includes(softNormalize('الإدارة'));
+    }
+
+    function isWithoutGeneralDepartmentValue(value) {
+      const normalized = softNormalize(value);
+      return normalized.includes(softNormalize('بدون إدارة عامة'));
+    }
+
+    function cleanOrganizationValue(value, kind) {
+      const candidate = String(value || '').trim();
+      if (!candidate) return '';
+      // These values must never be emitted by the code-load path, including
+      // when they are embedded in the combined المجموعة text.
+      if (isWithoutGeneralDepartmentValue(candidate)) return '';
+      if (isBoardChairSectorValue(candidate)) return '';
+      if (kind === 'sector' && isBoardChairSectorValue(candidate)) return '';
+      if (kind === 'department' && isGenericDepartmentValue(candidate)) return '';
+      return candidate;
+    }
+
     // ---- Employee lookup by code ----
     function findEmployeeByCode(rawCode) {
       const employees = window.allEmployees || [];
@@ -1290,9 +1320,18 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
     function buildGroupPath(info, employee) {
       const group = (info && info.group) || '';
       // Prefer HR roster fields; fall back to the tree walk only if missing.
-      const sector = (employee && employee.sector) || (info && info.sector) || '';
-      const department = (employee && employee.department) || (info && info.department) || '';
-      const subdepartment = (employee && employee.subDepartment) || (info && info.subdepartment) || '';
+      const sector = cleanOrganizationValue(
+        (employee && employee.sector) || (info && info.sector) || '',
+        'sector'
+      );
+      const department = cleanOrganizationValue(
+        (employee && employee.department) || (info && info.department) || '',
+        'department'
+      );
+      const subdepartment = cleanOrganizationValue(
+        (employee && employee.subDepartment) || (info && info.subdepartment) || '',
+        'department'
+      );
 
       if (!group && !sector && !department && !subdepartment) return '';
 
@@ -1356,9 +1395,18 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
       const fullGroupPath = buildGroupPath(jobInfo, employee);
 
       // Resolved units (HR roster first, tree as fallback)
-      const resolvedSector = employee.sector || (jobInfo && jobInfo.sector) || '';
-      const resolvedDept = employee.department || (jobInfo && jobInfo.department) || '';
-      const resolvedSub = employee.subDepartment || (jobInfo && jobInfo.subdepartment) || '';
+      const resolvedSector = cleanOrganizationValue(
+        employee.sector || (jobInfo && jobInfo.sector) || '',
+        'sector'
+      );
+      const resolvedDept = cleanOrganizationValue(
+        employee.department || (jobInfo && jobInfo.department) || '',
+        'department'
+      );
+      const resolvedSub = cleanOrganizationValue(
+        employee.subDepartment || (jobInfo && jobInfo.subdepartment) || '',
+        'department'
+      );
 
       fields.forEach((field) => {
         const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
@@ -1384,10 +1432,15 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
           value = employee.job;
         } else if (labelContains(label, 'مجموعة')) {
           // Full combined organisational title (group + sub/dept + sector).
-          value = fullGroupPath || (jobInfo && jobInfo.group) || resolvedDept || '';
+          // Sanitize the final result as well, so forbidden text cannot leak
+          // through a tree label or fallback value.
+          value = cleanOrganizationValue(
+            fullGroupPath || (jobInfo && jobInfo.group) || resolvedDept || '',
+            'group'
+          );
         } else if (labelContains(label, 'قطاع') && !labelContains(label, 'مجموعة')) {
-          // Sector only — never the full path.
-          value = resolvedSector;
+          // Sector only — never the full path or forbidden umbrella values.
+          value = cleanOrganizationValue(resolvedSector, 'sector');
         } else if (
           (labelContains(label, 'ادارة') || labelContains(label, 'إدارة') || labelContains(label, 'قسم')) &&
           !labelContains(label, 'مجموعة') &&
@@ -1406,10 +1459,13 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
           if (wantsSub) {
             value = resolvedSub || resolvedDept || '';
           } else if (wantsGeneral) {
-            value = resolvedDept || resolvedSub || '';
+            // Do not fill a general-department field with the bare word
+            // "الإدارة"; only a real named الإدارة العامة is acceptable.
+            value = resolvedDept || '';
           } else {
             value = resolvedSub || resolvedDept || '';
           }
+          value = cleanOrganizationValue(value, 'department');
         }
 		}
         if (value !== null && value !== '') {
