@@ -443,7 +443,113 @@
 
         <div id="employeeSearchZone" class="search-zone" hidden>
           <input type="text" id="employeeSearch" class="search-input" data-en="Search employees by name or code..." data-ar="ابحث عن الموظف بالاسم أو الكود..." placeholder="ابحث عن الموظف بالاسم أو الكود...">
+
+          <!-- Employee filters live here (same left column as the document form) -->
+          <div id="employeeFilterPanel" class="employee-filter-panel" aria-label="Employee filters">
+            <div class="employee-filter-panel-head">
+              <h3 data-en="Filter employees" data-ar="تصفية الموظفين">تصفية الموظفين</h3>
+              <button type="button" id="clearEmployeeFiltersBtn" class="ghost-btn employee-filter-clear" data-en="Clear" data-ar="مسح">مسح</button>
+            </div>
+            <div class="employee-filter-grid">
+              <div class="document-form-field">
+                <label for="employeeSectorFilter" data-en="Sector" data-ar="القطاع">القطاع</label>
+                <select id="employeeSectorFilter" aria-label="Sector filter">
+                  <option value="">كل القطاعات</option>
+                </select>
+              </div>
+              <div class="document-form-field">
+                <label for="employeeDepartmentFilter" data-en="Department" data-ar="الإدارة">الإدارة</label>
+                <select id="employeeDepartmentFilter" aria-label="Department filter">
+                  <option value="">كل الإدارات</option>
+                </select>
+              </div>
+              <div class="document-form-field">
+                <label for="employeeSubDeptFilter" data-en="Sub-department" data-ar="القسم الفرعي">القسم الفرعي</label>
+                <select id="employeeSubDeptFilter" aria-label="Sub-department filter">
+                  <option value="">كل الأقسام الفرعية</option>
+                </select>
+              </div>
+              <div class="document-form-field">
+                <label for="employeeJobFilter" data-en="Job title" data-ar="الوظيفة">الوظيفة</label>
+                <select id="employeeJobFilter" aria-label="Job filter">
+                  <option value="">كل الوظائف</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <style>
+          .employee-filter-panel {
+            margin-top: 16px;
+            padding: 16px;
+            border: 1px solid var(--border, #d0d7de);
+            border-radius: 14px;
+            background: var(--surface, #f6f8fa);
+          }
+          .employee-filter-panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+          }
+          .employee-filter-panel-head h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text, #1f2328);
+          }
+          .employee-filter-clear {
+            padding: 6px 12px !important;
+            font-size: 0.85rem !important;
+            border-radius: 8px !important;
+            flex-shrink: 0;
+          }
+          .employee-filter-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+          .employee-filter-panel .document-form-field {
+            margin: 0;
+          }
+          .employee-filter-panel .document-form-field label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--muted, #57606a);
+          }
+          .employee-filter-panel select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border, #d0d7de);
+            border-radius: 10px;
+            background: var(--bg, #fff);
+            color: var(--text, #1f2328);
+            font: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+          }
+          .employee-filter-panel select:hover {
+            border-color: var(--primary, #0b5cad);
+          }
+          .employee-filter-panel select:focus {
+            outline: none;
+            border-color: var(--primary, #0b5cad);
+            box-shadow: 0 0 0 3px rgba(11, 92, 173, 0.18);
+          }
+          [data-theme="dark"] .employee-filter-panel {
+            background: var(--surface, #21262d);
+            border-color: var(--border, #30363d);
+          }
+          [data-theme="dark"] .employee-filter-panel select {
+            background: var(--bg, #0d1117);
+            border-color: var(--border, #30363d);
+            color: var(--text, #e6edf3);
+          }
+        </style>
 
         <div id="documentFormPanel" class="document-form-panel" hidden>
           <h3 id="documentFormTitle"></h3>
@@ -543,59 +649,7 @@
       </div>
 
       <div class="panel-card" id="employeesPanel" hidden>
-        <style>
-          .employee-results-heading {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 14px;
-            flex-wrap: wrap;
-            margin-bottom: 14px;
-          }
-          .employee-results-heading h2 { margin: 0; }
-          .employee-filters {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(130px, 1fr));
-            gap: 8px;
-            flex: 1 1 560px;
-          }
-          .employee-filters select {
-            min-width: 0;
-            width: 100%;
-            padding: 9px 10px;
-            border: 1px solid var(--border, #d0d7de);
-            border-radius: 9px;
-            background: var(--surface, #fff);
-            color: var(--text, #1f2328);
-            font: inherit;
-          }
-          @media (max-width: 760px) {
-            .employee-filters { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
-          }
-          @media (max-width: 480px) {
-            .employee-filters { grid-template-columns: 1fr; }
-          }
-        </style>
-        <div class="employee-results-heading">
-          <h2 data-en="Employee results" data-ar="نتائج الموظفين">نتائج الموظفين</h2>
-          <div class="employee-filters" aria-label="Employee filters">
-            <!-- Do NOT put data-en/data-ar on the <select> itself: portal language
-                 switching sets textContent on [data-en] nodes and would wipe all
-                 <option> children, leaving blank dropdowns. Labels are managed in JS. -->
-            <select id="employeeDepartmentFilter" aria-label="Department filter">
-              <option value="">كل الإدارات</option>
-            </select>
-            <select id="employeeSectorFilter" aria-label="Sector filter">
-              <option value="">كل القطاعات</option>
-            </select>
-            <select id="employeeSubDeptFilter" aria-label="Sub-department filter">
-              <option value="">كل الأقسام الفرعية</option>
-            </select>
-            <select id="employeeJobFilter" aria-label="Job filter">
-              <option value="">كل الوظائف</option>
-            </select>
-          </div>
-        </div>
+        <h2 data-en="Employee results" data-ar="نتائج الموظفين">نتائج الموظفين</h2>
         <div class="document-list" id="employeeResults"></div>
       </div>
     </section>
@@ -2506,6 +2560,7 @@ function renderPlaceholderForm(doc, placeholders) {
     const employeeSectorFilter = document.getElementById('employeeSectorFilter');
     const employeeSubDeptFilter = document.getElementById('employeeSubDeptFilter');
     const employeeJobFilter = document.getElementById('employeeJobFilter');
+    const clearEmployeeFiltersBtn = document.getElementById('clearEmployeeFiltersBtn');
     let currentSearchMode = 'documents';
 
     function setActiveTabStyles(activeBtn, inactiveBtn) {
@@ -2536,6 +2591,7 @@ function renderPlaceholderForm(doc, placeholders) {
         if (employeesPanel) employeesPanel.hidden = false;
         // Hide document form when switching to employees
         if (formPanel && !formPanel.hidden) hideDocumentForm();
+        populateEmployeeFilters(true);
         renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
       }
     }
@@ -2645,9 +2701,10 @@ function renderPlaceholderForm(doc, placeholders) {
         selected.job = '';
       }
 
+      // Visual order matches the left-panel form: sector → department → sub-dept → job
       const defs = [
-        [employeeDepartmentFilter, 'department', 'All departments', 'كل الإدارات'],
         [employeeSectorFilter, 'sector', 'All sectors', 'كل القطاعات'],
+        [employeeDepartmentFilter, 'department', 'All departments', 'كل الإدارات'],
         [employeeSubDeptFilter, 'subDepartment', 'All sub-depts', 'كل الأقسام الفرعية'],
         [employeeJobFilter, 'job', 'All jobs', 'كل الوظائف']
       ];
@@ -2717,6 +2774,17 @@ function renderPlaceholderForm(doc, placeholders) {
         populateEmployeeFilters(true);
         renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
       }));
+
+    if (clearEmployeeFiltersBtn) {
+      clearEmployeeFiltersBtn.addEventListener('click', () => {
+        [employeeSectorFilter, employeeDepartmentFilter, employeeSubDeptFilter, employeeJobFilter]
+          .filter(Boolean)
+          .forEach((select) => { select.value = ''; });
+        if (employeeSearchInput) employeeSearchInput.value = '';
+        populateEmployeeFilters(false);
+        renderEmployeeResults('');
+      });
+    }
 
     function initializeEmployeeFilters(attempt = 0) {
       const employees = window.allEmployees || [];
