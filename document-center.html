@@ -455,14 +455,12 @@
                 <label class="gender-option">
                   <input type="radio" name="employeeGender" id="genderMale" value="male" checked>
                   <span class="gender-pill">
-                    <svg class="gender-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M14 14c0-2.2-1.8-4-4-4s-4 1.8-4 4v6h8v-6z"/><path d="M16 4l4 4M20 4v4h-4"/></svg>
                     <span data-en="Male" data-ar="ذكر">Male</span>
                   </span>
                 </label>
                 <label class="gender-option">
                   <input type="radio" name="employeeGender" id="genderFemale" value="female">
                   <span class="gender-pill">
-                    <svg class="gender-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M12 12v8M9 17h6"/><path d="M12 20v-2"/></svg>
                     <span data-en="Female" data-ar="أنثى">Female</span>
                   </span>
                 </label>
@@ -517,9 +515,6 @@
                 outline: 3px solid rgba(11, 92, 173, 0.35);
                 outline-offset: 2px;
               }
-              .gender-icon {
-                flex-shrink: 0;
-              }
               [data-theme="dark"] .gender-pill {
                 background: var(--surface, #21262d);
                 border-color: var(--border, #30363d);
@@ -548,7 +543,56 @@
       </div>
 
       <div class="panel-card" id="employeesPanel" hidden>
-        <h2 data-en="Employee results" data-ar="نتائج الموظفين">نتائج الموظفين</h2>
+        <style>
+          .employee-results-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+          }
+          .employee-results-heading h2 { margin: 0; }
+          .employee-filters {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(130px, 1fr));
+            gap: 8px;
+            flex: 1 1 560px;
+          }
+          .employee-filters select {
+            min-width: 0;
+            width: 100%;
+            padding: 9px 10px;
+            border: 1px solid var(--border, #d0d7de);
+            border-radius: 9px;
+            background: var(--surface, #fff);
+            color: var(--text, #1f2328);
+            font: inherit;
+          }
+          @media (max-width: 760px) {
+            .employee-filters { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+          }
+          @media (max-width: 480px) {
+            .employee-filters { grid-template-columns: 1fr; }
+          }
+        </style>
+        <div class="employee-results-heading">
+          <h2 data-en="Employee results" data-ar="نتائج الموظفين">نتائج الموظفين</h2>
+          <div class="employee-filters" aria-label="Employee filters">
+            <select id="employeeDepartmentFilter" data-en="All departments" data-ar="كل الإدارات" aria-label="Department filter">
+              <option value="" data-en="All departments" data-ar="كل الإدارات">All departments</option>
+            </select>
+            <select id="employeeSectorFilter" data-en="All sectors" data-ar="كل القطاعات" aria-label="Sector filter">
+              <option value="" data-en="All sectors" data-ar="كل القطاعات">All sectors</option>
+            </select>
+            <select id="employeeSubDeptFilter" data-en="All sub-depts" data-ar="كل الأقسام الفرعية" aria-label="Sub-department filter">
+              <option value="" data-en="All sub-depts" data-ar="كل الأقسام الفرعية">All sub-depts</option>
+            </select>
+            <select id="employeeJobFilter" data-en="All jobs" data-ar="كل الوظائف" aria-label="Job filter">
+              <option value="" data-en="All jobs" data-ar="كل الوظائف">All jobs</option>
+            </select>
+          </div>
+        </div>
         <div class="document-list" id="employeeResults"></div>
       </div>
     </section>
@@ -978,7 +1022,8 @@
       ['قام', 'قامت'],
       ['طلبه', 'طلبها'], ['يحضر', 'تحضر'], ['يجازى', 'تجازى'], ['يجازي', 'تجازي'],
       ['وقام', 'وقامت'], ['وطلبه', 'وطلبها'],['اخطاره', 'اخطارها'],['بمجازاته', 'بمجازاتها'],
-      ['ويحضر', 'وتحضر'], ['ويجازى', 'وتجازى'], ['ويجازي', 'وتجازي'],
+      ['ويحضر', 'وتحضر'], ['ويجازى', 'وتجازى'], ['ويجازي', 'وتجازي'], ['ندبه', 'ندبها'],
+
       // Added after a full second pass through all 47 templates: every ي- and
       // ت-prefixed verb was checked in context to confirm it actually agrees
       // with the employee (not "the penalty"/"the order"/another role-holder)
@@ -992,6 +1037,9 @@
     // exact multi-word constructions were confirmed unambiguous by checking
     // every occurrence.
     const FEMINIZE_PHRASES = [
+//      ['', ''],
+      ['والمنقطع عن', 'والمنقطعة عن'],
+      ['المسمي الوظيفي له', 'المسمي الوظيفي لها'],
       ['المستحق له', 'المستحق لها'],
       ['المقررة له', 'المقررة لها'],
       ['بالتصريح له', 'بالتصريح لها'],
@@ -1136,6 +1184,7 @@
       let value = String(str ?? '').normalize('NFKC');
       value = value
         .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+        .replace(/[\u002D\u2010-\u2015]/g, '')
         .replace(/[إأآا]/g, 'ا')
         .replace(/[يى]/g, 'ي')
         .replace(/[هة]/g, 'ه')
@@ -1172,12 +1221,18 @@
       return normalized.includes(softNormalize('بدون إدارة عامة'));
     }
 
+    function isInternalUnitsValue(value) {
+      const normalized = softNormalize(value);
+      return normalized.includes(softNormalize('بالوحدات الداخلية'));
+    }
+
     function cleanOrganizationValue(value, kind) {
       const candidate = String(value || '').trim();
       if (!candidate) return '';
       // These values must never be emitted by the code-load path, including
       // when they are embedded in the combined المجموعة text.
       if (isWithoutGeneralDepartmentValue(candidate)) return '';
+      if (isInternalUnitsValue(candidate)) return '';
       if (isBoardChairSectorValue(candidate)) return '';
       if (kind === 'sector' && isBoardChairSectorValue(candidate)) return '';
       if (kind === 'department' && isGenericDepartmentValue(candidate)) return '';
@@ -2422,6 +2477,7 @@ function renderPlaceholderForm(doc, placeholders) {
       if (currentSearchMode === 'documents') {
         renderDocuments(searchInput.value);
       } else {
+        populateEmployeeFilters();
         renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
       }
       if (!formPanel.hidden && selectedDoc) {
@@ -2443,6 +2499,10 @@ function renderPlaceholderForm(doc, placeholders) {
     const documentsPanel = document.getElementById('documentsPanel');
     const employeesPanel = document.getElementById('employeesPanel');
     const employeeResults = document.getElementById('employeeResults');
+    const employeeDepartmentFilter = document.getElementById('employeeDepartmentFilter');
+    const employeeSectorFilter = document.getElementById('employeeSectorFilter');
+    const employeeSubDeptFilter = document.getElementById('employeeSubDeptFilter');
+    const employeeJobFilter = document.getElementById('employeeJobFilter');
     let currentSearchMode = 'documents';
 
     function setActiveTabStyles(activeBtn, inactiveBtn) {
@@ -2504,23 +2564,61 @@ function renderPlaceholderForm(doc, placeholders) {
       return toEnglishDigits(`${Number(d)}/${Number(m)}/${y}`);
     }
 
+    function employeeFilterValue(value) {
+      return normalizeSearchText(String(value || ''));
+    }
+    function populateEmployeeFilters() {
+      const employees = window.allEmployees || [];
+      const definitions = [
+        [employeeDepartmentFilter, 'department', 'All departments', 'كل الإدارات'],
+        [employeeSectorFilter, 'sector', 'All sectors', 'كل القطاعات'],
+        [employeeSubDeptFilter, 'subDepartment', 'All sub-depts', 'كل الأقسام الفرعية'],
+        [employeeJobFilter, 'job', 'All jobs', 'كل الوظائف']
+      ];
+      definitions.forEach(([select, field, en, ar]) => {
+        if (!select) return;
+        const current = select.value;
+        const values = new Map();
+        employees.forEach((emp) => {
+          const display = String(emp[field] || '').trim();
+          const key = employeeFilterValue(display);
+          if (key && !values.has(key)) values.set(key, display);
+        });
+        const options = [...values.entries()].sort((a, b) => a[1].localeCompare(b[1], lang() === 'ar' ? 'ar' : 'en'));
+        select.innerHTML = `<option value="" data-en="${en}" data-ar="${ar}">${t(en, ar)}</option>` +
+          options.map(([key, display]) => `<option value="${escapeHtml(key)}">${escapeHtml(display)}</option>`).join('');
+        if (values.has(current)) select.value = current;
+      });
+    }
     function renderEmployeeResults(filter) {
       if (!employeeResults) return;
       const employees = window.allEmployees || [];
       const q = normalizeSearchText(filter || '');
 
+      const selectedFilters = {
+        department: employeeDepartmentFilter?.value || '',
+        sector: employeeSectorFilter?.value || '',
+        subDepartment: employeeSubDeptFilter?.value || '',
+        job: employeeJobFilter?.value || ''
+      };
+
       let matched = employees;
-      if (q) {
+      if (q || Object.values(selectedFilters).some(Boolean)) {
         // Allow search by name or by employee code (Arabic or Latin digits).
         const qDigits = arabicDigitsToLatin(q).replace(/\s+/g, '');
         matched = employees.filter((emp) => {
           const name = normalizeSearchText(displayEmployeeName(emp.name));
           const codeStr = arabicDigitsToLatin(String(emp.code ?? '')).replace(/\s+/g, '');
-          return name.includes(q) || (qDigits && codeStr.includes(qDigits));
+          const searchMatches = !q || name.includes(q) || (qDigits && codeStr.includes(qDigits));
+          const filtersMatch = Object.entries(selectedFilters).every(([field, selected]) =>
+            !selected || employeeFilterValue(emp[field]) === selected
+          );
+          return searchMatches && filtersMatch;
         });
       }
 
-      const limit = q ? 80 : 30;
+      const hasFilter = Object.values(selectedFilters).some(Boolean);
+      const limit = q || hasFilter ? 80 : 30;
       const shown = matched.slice(0, limit);
 
       if (!shown.length) {
@@ -2530,7 +2628,7 @@ function renderPlaceholderForm(doc, placeholders) {
 
       const countNote = matched.length > limit
         ? `<p class="document-meta" style="margin-bottom:12px;">${t(`Showing ${shown.length} of ${matched.length} — refine search`, `عرض ${shown.length} من ${matched.length} — ضيّق البحث`)}</p>`
-        : (q ? `<p class="document-meta" style="margin-bottom:12px;">${t(`${matched.length} result(s)`, `${matched.length} نتيجة`)}</p>` : '');
+        : (q || hasFilter ? `<p class="document-meta" style="margin-bottom:12px;">${t(`${matched.length} result(s)`, `${matched.length} نتيجة`)}</p>` : '');
 
       employeeResults.innerHTML = countNote + shown.map((emp) => {
         const name = escapeHtml(displayEmployeeName(emp.name));
@@ -2564,6 +2662,27 @@ function renderPlaceholderForm(doc, placeholders) {
       employeeSearchInput.addEventListener('input', (e) => {
         renderEmployeeResults(e.target.value);
       });
+    }
+
+    [employeeDepartmentFilter, employeeSectorFilter, employeeSubDeptFilter, employeeJobFilter]
+      .filter(Boolean)
+      .forEach((select) => select.addEventListener('change', () => {
+        renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
+      }));
+    function initializeEmployeeFilters(attempt = 0) {
+      const employees = window.allEmployees || [];
+      if (employees.length) {
+        populateEmployeeFilters();
+        return;
+      }
+      if (attempt < 20) {
+        window.setTimeout(() => initializeEmployeeFilters(attempt + 1), 100);
+      }
+    }
+    if (window.jobTreeReady && typeof window.jobTreeReady.then === 'function') {
+      window.jobTreeReady.then(() => initializeEmployeeFilters());
+    } else {
+      initializeEmployeeFilters();
     }
 
     // Initial UI state

@@ -182,6 +182,37 @@
   .date-mask .dm-month, .date-mask .dm-day { width: 2.6ch; }
   .date-mask .dm-sep { color: var(--text-muted); }
 
+  .date-control {
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+  .date-control .date-mask { flex: 1; min-width: 0; }
+  .today-btn {
+    flex: 0 0 40px;
+    border: 1px solid var(--border-bright);
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    color: var(--accent);
+    font-size: 22px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .today-btn:hover,
+  .today-btn:focus-visible {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #ffffff;
+    outline: none;
+  }
+
+  .add-form-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (max-width: 760px) { .add-form-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 580px) { .add-form-row { grid-template-columns: 1fr; } }
+
   /* Checkbox */
   .check-row {
     display: flex; align-items: center; gap: 10px;
@@ -336,7 +367,7 @@
   <!-- ADD -->
   <div id="panel-add" class="panel">
     <div class="card">
-      <div class="form-row">
+      <div class="form-row add-form-row">
         <div class="field"><label data-en="Start Date" data-ar="تاريخ البدء">Start Date</label><input type="date" id="add-from" /></div>
         <div class="field"><label data-en="Amount" data-ar="القيمة">Amount</label><input type="number" id="add-amount" min="0" value="30" /></div>
         <div class="field">
@@ -917,6 +948,29 @@ function buildDateMask(orig) {
   orig.insertAdjacentElement('afterend', wrap);
   orig.style.display = 'none';
   orig.tabIndex = -1;
+
+  if (orig.id === 'diff-to' || orig.id === 'add-from') {
+    const control = document.createElement('div');
+    control.className = 'date-control';
+    const todayBtn = document.createElement('button');
+    todayBtn.type = 'button';
+    todayBtn.className = 'today-btn';
+    todayBtn.textContent = '↓';
+    todayBtn.title = "Use today's date";
+    todayBtn.setAttribute('aria-label', "Use today's date");
+    wrap.replaceWith(control);
+    control.append(wrap, todayBtn);
+    todayBtn.addEventListener('click', () => {
+      const today = new Date();
+      const value = dateKey(today);
+      const [y, m, d] = value.split('-');
+      year.value = y;
+      month.value = m;
+      day.value = d;
+      orig.value = value;
+      orig.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  }
 
   function clamp(el, min, max) {
     if (!el.value) return;
