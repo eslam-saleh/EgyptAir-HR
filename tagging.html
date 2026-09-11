@@ -167,7 +167,7 @@
         <article class="panel-card sheet-card" aria-labelledby="suspension-card-heading">
           <header class="sheet-card-header">
             <span class="status-kicker" data-en="ايقاف" data-ar="ايقاف">ايقاف</span>
-            <h3 id="suspension-card-heading" class="sheet-card-title" data-en="60-day action window" data-ar="مهلة الانهاء 60 يوم">60-day action window</h3>
+            <h3 id="suspension-card-heading" class="sheet-card-title" data-en="Action window (by duration)" data-ar="مهلة الانهاء (حسب المدة)">Action window (by duration)</h3>
           </header>
           <div id="suspension-list" class="sheet-list" aria-live="polite">
             <p class="sheet-empty" data-en="Loading…" data-ar="جارٍ التحميل…">Loading…</p>
@@ -1730,14 +1730,36 @@ async function tagDocx(file, options = {}) {
         return row;
       }
 
-      // Shared logic for جزاءات (15-day window from التاريخ) and ايقاف
-      // (60-day window from بداية الإيقاف): actionable while remaining > 0,
-      // sorted soonest-first; past the window it's grouped separately as
-      // "Expired" since it's no longer actionable. cfg.closeKeyword (used by
-      // ايقاف, whose نهاية الإيقاف Code.gs treats as the "resolved" marker)
-      // no longer hides records that already have a close date — every
-      // record stays visible, just grouped under "Resolved" with its close
-      // date shown instead of a live countdown.
+      // Reads a per-record action-window length in days for cfg.durationKeyword
+      // (e.g. ايقاف's المدة column). A value >= cfg.foreverDays (1000) marks an
+      // indefinite/forever record — it returns Infinity so the record never
+      // reaches the "Expired" group and its remaining-days badge reads
+      // "Indefinite" instead of a countdown (see buildThresholdRow). A blank or
+      // unparsable cell — either because the sheet has no duration column
+      // (جزاءات) or the row predates the المدة column being added to ايقاف —
+      // falls back to cfg.windowDays, the sheet's previous fixed default.
+      function getWindowDays(rec, cfg) {
+        if (!cfg.durationKeyword) return cfg.windowDays;
+        const raw = findField(rec, cfg.durationKeyword);
+        const digits = String(raw == null ? '' : raw)
+          .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+          .match(/\d+/);
+        const n = digits ? parseInt(digits[0], 10) : NaN;
+        if (!n || isNaN(n)) return cfg.windowDays;
+        if (cfg.foreverDays && n >= cfg.foreverDays) return Infinity;
+        return n;
+      }
+
+      // Shared logic for جزاءات (fixed 15-day window from التاريخ) and ايقاف
+      // (per-record window from المدة, counted from بداية الإيقاف — see
+      // getWindowDays above): actionable while remaining > 0, sorted
+      // soonest-first (indefinite/Infinity records sort last); past the
+      // window it's grouped separately as "Expired" since it's no longer
+      // actionable. cfg.closeKeyword (used by ايقاف, whose نهاية الإيقاف
+      // Code.gs treats as the "resolved" marker) no longer hides records that
+      // already have a close date — every record stays visible, just grouped
+      // under "Resolved" with its close date shown instead of a live
+      // countdown.
       function renderThresholdCard(container, records, cfg) {
         if (!records.length) return renderEmpty(container, cfg.emptyEn, cfg.emptyAr);
         const today = new Date();
@@ -1755,20 +1777,23 @@ async function tagDocx(file, options = {}) {
           // planned future events. Ignore any future-dated row entirely; it
           // must not appear as an active employee case or a countdown.
           if (elapsed < 0) return null;
-          // Day zero is the first actionable day: 15->14->...->1.
-          // Once the full window has elapsed, the record is expired and
-          // belongs in the expired group instead of showing 0 or a negative
-          // counter.
-          const remaining = elapsed < cfg.windowDays
-            ? cfg.windowDays - elapsed
+          const windowDays = getWindowDays(rec, cfg);
+          // An indefinite/forever record (المدة >= 1000) never counts down
+          // and never expires.
+          if (windowDays === Infinity) return { rec, start, remaining: Infinity };
+          // Day zero is the first actionable day: windowDays->...->1. Once
+          // the full window has elapsed, the record is expired and belongs
+          // in the expired group instead of showing 0 or a negative counter.
+          const remaining = elapsed < windowDays
+            ? windowDays - elapsed
             : 0;
           return { rec, start, remaining };
         }).filter(Boolean);
         if (!rows.length && !resolved.length) return renderEmpty(container, cfg.noDateEn, cfg.noDateAr);
 
         const active = rows
-          .filter((r) => r.remaining >= 1 && r.remaining <= cfg.windowDays)
-          .sort((a, b) => a.remaining - b.remaining);
+          .filter((r) => r.remaining === Infinity || r.remaining >= 1)
+          .sort((a, b) => a.remaining - b.remaining); // Infinity naturally sorts last
         const expired = rows
           .filter((r) => r.remaining === 0)
           .sort((a, b) => b.start - a.start);
@@ -1791,10 +1816,12 @@ async function tagDocx(file, options = {}) {
         const name = findField(rec, 'اسم');
         const code = findField(rec, 'كود');
         const reason = findField(rec, cfg.reasonKeyword);
-        const level = remaining <= 0 ? 'expired' : (remaining > cfg.safeThreshold ? 'safe' : 'warning');
+        const isIndefinite = remaining === Infinity;
+        const level = isIndefinite ? 'safe' : (remaining <= 0 ? 'expired' : (remaining > cfg.safeThreshold ? 'safe' : 'warning'));
         const { row, main } = buildRowShell(level, name, code, reason, rec);
         appendMeta(main, cfg.dateLabelEn, cfg.dateLabelAr, fmtDate(start));
-        if (remaining <= 0) appendBadge(row, level, 'Expired', 'منتهية المهلة');
+        if (isIndefinite) appendBadge(row, level, 'Indefinite', 'دائم');
+        else if (remaining <= 0) appendBadge(row, level, 'Expired', 'منتهية المهلة');
         else appendBadge(row, level, remaining + ' day(s) left', remaining + ' يوم متبقي');
         return row;
       }
@@ -1831,7 +1858,9 @@ async function tagDocx(file, options = {}) {
           dateKeyword: 'بداية الإيقاف',
           closeKeyword: 'نهاية الإيقاف',
           reasonKeyword: 'سبب',
-          windowDays: 60,
+          durationKeyword: 'المدة', // per-record window length in days
+          windowDays: 60,           // fallback for rows with no المدة value
+          foreverDays: 1000,        // المدة >= 1000 means an indefinite suspension
           safeThreshold: 20,
           emptyEn: 'No suspension records found.', emptyAr: 'لا توجد سجلات إيقاف.',
           noDateEn: 'No suspension start dates found.', noDateAr: 'لا توجد تواريخ بداية إيقاف.',
