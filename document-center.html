@@ -579,17 +579,20 @@
         <div class="employee-results-heading">
           <h2 data-en="Employee results" data-ar="نتائج الموظفين">نتائج الموظفين</h2>
           <div class="employee-filters" aria-label="Employee filters">
-            <select id="employeeDepartmentFilter" data-en="All departments" data-ar="كل الإدارات" aria-label="Department filter">
-              <option value="" data-en="All departments" data-ar="كل الإدارات">All departments</option>
+            <!-- Do NOT put data-en/data-ar on the <select> itself: portal language
+                 switching sets textContent on [data-en] nodes and would wipe all
+                 <option> children, leaving blank dropdowns. Labels are managed in JS. -->
+            <select id="employeeDepartmentFilter" aria-label="Department filter">
+              <option value="">كل الإدارات</option>
             </select>
-            <select id="employeeSectorFilter" data-en="All sectors" data-ar="كل القطاعات" aria-label="Sector filter">
-              <option value="" data-en="All sectors" data-ar="كل القطاعات">All sectors</option>
+            <select id="employeeSectorFilter" aria-label="Sector filter">
+              <option value="">كل القطاعات</option>
             </select>
-            <select id="employeeSubDeptFilter" data-en="All sub-depts" data-ar="كل الأقسام الفرعية" aria-label="Sub-department filter">
-              <option value="" data-en="All sub-depts" data-ar="كل الأقسام الفرعية">All sub-depts</option>
+            <select id="employeeSubDeptFilter" aria-label="Sub-department filter">
+              <option value="">كل الأقسام الفرعية</option>
             </select>
-            <select id="employeeJobFilter" data-en="All jobs" data-ar="كل الوظائف" aria-label="Job filter">
-              <option value="" data-en="All jobs" data-ar="كل الوظائف">All jobs</option>
+            <select id="employeeJobFilter" aria-label="Job filter">
+              <option value="">كل الوظائف</option>
             </select>
           </div>
         </div>
@@ -2564,60 +2567,103 @@ function renderPlaceholderForm(doc, placeholders) {
       return toEnglishDigits(`${Number(d)}/${Number(m)}/${y}`);
     }
 
-    function employeeFilterValue(value) {
-      return normalizeSearchText(String(value || ''));
+    // Strong key for employee filter matching: fold Arabic letter variants,
+    // strip leading ال, drop spaces/punctuation so spelling/spacing variants
+    // (e.g. "الاداره العامه" vs "الادارة العامة", double spaces, إ/أ) collapse.
+    function employeeFilterKey(value) {
+      return softNormalize(String(value || ''));
     }
-    function populateEmployeeFilters() {
-      const employees = window.allEmployees || [];
-      const definitions = [
-        [employeeDepartmentFilter, 'department', 'All departments', 'كل الإدارات'],
-        [employeeSectorFilter, 'sector', 'All sectors', 'كل القطاعات'],
-        [employeeSubDeptFilter, 'subDepartment', 'All sub-depts', 'كل الأقسام الفرعية'],
-        [employeeJobFilter, 'job', 'All jobs', 'كل الوظائف']
-      ];
-      definitions.forEach(([select, field, en, ar]) => {
-        if (!select) return;
-        const current = select.value;
-        const values = new Map();
-        employees.forEach((emp) => {
-          const display = String(emp[field] || '').trim();
-          const key = employeeFilterValue(display);
-          if (key && !values.has(key)) values.set(key, display);
-        });
-        const options = [...values.entries()].sort((a, b) => a[1].localeCompare(b[1], lang() === 'ar' ? 'ar' : 'en'));
-        select.innerHTML = `<option value="" data-en="${en}" data-ar="${ar}">${t(en, ar)}</option>` +
-          options.map(([key, display]) => `<option value="${escapeHtml(key)}">${escapeHtml(display)}</option>`).join('');
-        if (values.has(current)) select.value = current;
-      });
-    }
-    function renderEmployeeResults(filter) {
-      if (!employeeResults) return;
-      const employees = window.allEmployees || [];
-      const q = normalizeSearchText(filter || '');
 
-      const selectedFilters = {
+    // Human-readable label kept for the dropdown (first/most-common original form).
+    function employeeFilterDisplay(value) {
+      return String(value || '').trim();
+    }
+
+    function getSelectedEmployeeFilters() {
+      return {
         department: employeeDepartmentFilter?.value || '',
         sector: employeeSectorFilter?.value || '',
         subDepartment: employeeSubDeptFilter?.value || '',
         job: employeeJobFilter?.value || ''
       };
+    }
 
-      let matched = employees;
-      if (q || Object.values(selectedFilters).some(Boolean)) {
-        // Allow search by name or by employee code (Arabic or Latin digits).
-        const qDigits = arabicDigitsToLatin(q).replace(/\s+/g, '');
-        matched = employees.filter((emp) => {
-          const name = normalizeSearchText(displayEmployeeName(emp.name));
-          const codeStr = arabicDigitsToLatin(String(emp.code ?? '')).replace(/\s+/g, '');
-          const searchMatches = !q || name.includes(q) || (qDigits && codeStr.includes(qDigits));
-          const filtersMatch = Object.entries(selectedFilters).every(([field, selected]) =>
-            !selected || employeeFilterValue(emp[field]) === selected
-          );
-          return searchMatches && filtersMatch;
-        });
+    function employeeMatchesFilters(emp, selectedFilters, q, qDigits) {
+      const name = normalizeSearchText(displayEmployeeName(emp.name));
+      const codeStr = arabicDigitsToLatin(String(emp.code ?? '')).replace(/\s+/g, '');
+      const searchMatches = !q || name.includes(q) || (qDigits && codeStr.includes(qDigits));
+      if (!searchMatches) return false;
+      return Object.entries(selectedFilters).every(([field, selected]) =>
+        !selected || employeeFilterKey(emp[field]) === selected
+      );
+    }
+
+    function filterEmployees(filterText, selectedFilters, excludeField) {
+      const employees = window.allEmployees || [];
+      const q = normalizeSearchText(filterText || '');
+      const qDigits = arabicDigitsToLatin(q).replace(/\s+/g, '');
+      const filters = { ...selectedFilters };
+      if (excludeField) filters[excludeField] = '';
+      if (!q && !Object.values(filters).some(Boolean)) return employees;
+      return employees.filter((emp) => employeeMatchesFilters(emp, filters, q, qDigits));
+    }
+
+    // Rebuild one <select> from a list of employees. Keeps current selection
+    // when it is still valid among the new options.
+    function fillFilterSelect(select, field, en, ar, sourceEmployees, currentValue) {
+      if (!select) return;
+      const values = new Map(); // key -> display
+      sourceEmployees.forEach((emp) => {
+        const display = employeeFilterDisplay(emp[field]);
+        const key = employeeFilterKey(display);
+        if (!key) return;
+        if (!values.has(key)) values.set(key, display);
+      });
+      const options = [...values.entries()].sort((a, b) =>
+        a[1].localeCompare(b[1], lang() === 'ar' ? 'ar' : 'en')
+      );
+      const keep = currentValue && values.has(currentValue) ? currentValue : '';
+      select.innerHTML =
+        `<option value="" data-en="${en}" data-ar="${ar}">${t(en, ar)}</option>` +
+        options
+          .map(([key, display]) => `<option value="${escapeHtml(key)}">${escapeHtml(display)}</option>`)
+          .join('');
+      select.value = keep;
+    }
+
+    // Cascade: each dropdown only lists values that exist among employees
+    // matching the *other* active filters (+ search text). That way picking
+    // a sector narrows departments/jobs, and inconsistent spellings still
+    // match via employeeFilterKey.
+    function populateEmployeeFilters(preserveSelections = true) {
+      const filterText = employeeSearchInput ? employeeSearchInput.value : '';
+      const selected = getSelectedEmployeeFilters();
+      if (!preserveSelections) {
+        selected.department = '';
+        selected.sector = '';
+        selected.subDepartment = '';
+        selected.job = '';
       }
 
+      const defs = [
+        [employeeDepartmentFilter, 'department', 'All departments', 'كل الإدارات'],
+        [employeeSectorFilter, 'sector', 'All sectors', 'كل القطاعات'],
+        [employeeSubDeptFilter, 'subDepartment', 'All sub-depts', 'كل الأقسام الفرعية'],
+        [employeeJobFilter, 'job', 'All jobs', 'كل الوظائف']
+      ];
+
+      defs.forEach(([select, field, en, ar]) => {
+        const pool = filterEmployees(filterText, selected, field);
+        fillFilterSelect(select, field, en, ar, pool, selected[field]);
+      });
+    }
+
+    function renderEmployeeResults(filter) {
+      if (!employeeResults) return;
+      const selectedFilters = getSelectedEmployeeFilters();
+      const matched = filterEmployees(filter, selectedFilters);
       const hasFilter = Object.values(selectedFilters).some(Boolean);
+      const q = normalizeSearchText(filter || '');
       const limit = q || hasFilter ? 80 : 30;
       const shown = matched.slice(0, limit);
 
@@ -2640,7 +2686,6 @@ function renderPlaceholderForm(doc, placeholders) {
         const hire = formatDateDisplay(emp.hireDate);
         const dob = formatDateDisplay(emp.dateOfBirth);
 
-        // Single column: name, then code above job, then remaining fields
         return `
           <article class="document-row employee-result-card">
             <p class="document-name employee-result-name">${name}</p>
@@ -2660,6 +2705,8 @@ function renderPlaceholderForm(doc, placeholders) {
 
     if (employeeSearchInput) {
       employeeSearchInput.addEventListener('input', (e) => {
+        // Rebuild cascading options from the new search text, then list results.
+        populateEmployeeFilters(true);
         renderEmployeeResults(e.target.value);
       });
     }
@@ -2667,12 +2714,17 @@ function renderPlaceholderForm(doc, placeholders) {
     [employeeDepartmentFilter, employeeSectorFilter, employeeSubDeptFilter, employeeJobFilter]
       .filter(Boolean)
       .forEach((select) => select.addEventListener('change', () => {
+        populateEmployeeFilters(true);
         renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
       }));
+
     function initializeEmployeeFilters(attempt = 0) {
       const employees = window.allEmployees || [];
       if (employees.length) {
-        populateEmployeeFilters();
+        populateEmployeeFilters(false);
+        if (currentSearchMode === 'employees') {
+          renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
+        }
         return;
       }
       if (attempt < 20) {
