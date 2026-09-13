@@ -52,6 +52,11 @@
     .sheet-card-header { display: flex; flex-direction: column; gap: 4px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
     .sheet-card-header .status-kicker { font-size: .85rem; }
     .sheet-card-title { margin: 0; color: var(--text); font-size: 1.28rem; font-weight: 800; }
+    .sheet-active-count { margin: 2px 0 0; color: var(--primary); font-size: .88rem; font-weight: 800; }
+    .sheet-search-zone { margin-top: 8px; }
+    .sheet-search-input { box-sizing: border-box; width: 100%; min-height: 40px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--text); font: inherit; font-size: .88rem; outline: none; transition: border-color .18s ease, box-shadow .18s ease; }
+    .sheet-search-input::placeholder { color: var(--muted); }
+    .sheet-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent); }
     .sheet-list { display: flex; flex-direction: column; gap: 12px; max-height: 460px; overflow-y: auto; padding-inline-end: 6px; scrollbar-width: thin; }
     .sheet-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 10px; background: var(--surface-2); border-inline-start: 5px solid var(--line); box-shadow: 0 1px 4px rgba(0,0,0,.06); transition: transform .14s ease, box-shadow .14s ease; }
     .sheet-row.is-interactive { cursor: pointer; }
@@ -150,6 +155,8 @@
           <header class="sheet-card-header">
             <span class="status-kicker" data-en="اجازات" data-ar="اجازات">اجازات</span>
             <h3 id="leave-card-heading" class="sheet-card-title" data-en="Leave endings" data-ar="اقتراب انتهاء الإجازات">Leave endings</h3>
+            <p id="leave-active-count" class="sheet-active-count" aria-live="polite"></p>
+            <div class="sheet-search-zone"><input id="leave-search" class="sheet-search-input" type="text" data-en="Search employees by name or code..." data-ar="ابحث عن الموظف بالاسم أو الكود..." placeholder="Search employees by name or code..." aria-label="Search leave employees by name or code"></div>
           </header>
           <div id="leave-list" class="sheet-list" aria-live="polite">
             <p class="sheet-empty" data-en="Loading…" data-ar="جارٍ التحميل…">Loading…</p>
@@ -159,6 +166,8 @@
           <header class="sheet-card-header">
             <span class="status-kicker" data-en="جزاءات" data-ar="جزاءات">جزاءات</span>
             <h3 id="penalty-card-heading" class="sheet-card-title" data-en="15-day action window" data-ar="مهلة التصرف 15 يوم">15-day action window</h3>
+            <p id="penalty-active-count" class="sheet-active-count" aria-live="polite"></p>
+            <div class="sheet-search-zone"><input id="penalty-search" class="sheet-search-input" type="text" data-en="Search employees by name or code..." data-ar="ابحث عن الموظف بالاسم أو الكود..." placeholder="Search employees by name or code..." aria-label="Search penalty employees by name or code"></div>
           </header>
           <div id="penalty-list" class="sheet-list" aria-live="polite">
             <p class="sheet-empty" data-en="Loading…" data-ar="جارٍ التحميل…">Loading…</p>
@@ -168,6 +177,8 @@
           <header class="sheet-card-header">
             <span class="status-kicker" data-en="ايقاف" data-ar="ايقاف">ايقاف</span>
             <h3 id="suspension-card-heading" class="sheet-card-title" data-en="Action window (by duration)" data-ar="مهلة الانهاء (حسب المدة)">Action window (by duration)</h3>
+            <p id="suspension-active-count" class="sheet-active-count" aria-live="polite"></p>
+            <div class="sheet-search-zone"><input id="suspension-search" class="sheet-search-input" type="text" data-en="Search employees by name or code..." data-ar="ابحث عن الموظف بالاسم أو الكود..." placeholder="Search employees by name or code..." aria-label="Search suspension employees by name or code"></div>
           </header>
           <div id="suspension-list" class="sheet-list" aria-live="polite">
             <p class="sheet-empty" data-en="Loading…" data-ar="جارٍ التحميل…">Loading…</p>
@@ -1457,6 +1468,24 @@ async function tagDocx(file, options = {}) {
       const refreshBtn = document.getElementById('dashboard-refresh');
       const updatedEl = document.getElementById('dashboard-updated');
       const text = (en, ar) => document.documentElement.lang === 'ar' ? ar : en;
+      const sheetRecords = { leave: [], penalty: [], suspension: [] };
+
+      const normalizeSearch = (value) => normalizeAr(String(value == null ? '' : value))
+        .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+        .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06F0));
+
+      const recordMatchesSearch = (record, query) => {
+        const q = normalizeSearch(query).replace(/\s+/g, '');
+        if (!q) return true;
+        const name = normalizeSearch(findField(record, 'اسم')).replace(/\s+/g, '');
+        const code = normalizeSearch(findField(record, 'كود')).replace(/\s+/g, '');
+        return name.includes(q) || code.includes(q);
+      };
+
+      const setActiveCount = (id, count, enLabel, arLabel) => {
+        const el = document.getElementById(id);
+        if (el) bilingual(el, `${count} active record(s)`, `${count} سجل نشط`);
+      };
 
       // Mirrors the normalizeAr() header matching in Code.gs so field lookup
       // survives spacing/diacritic/hamza variation between the sheet headers
@@ -1701,15 +1730,22 @@ async function tagDocx(file, options = {}) {
       // same active/expired split used for جزاءات and ايقاف below.
       function renderLeaveCard(records) {
         const container = document.getElementById('leave-list');
-        if (!records.length) return renderEmpty(container, 'No leave records found.', 'لا توجد سجلات إجازات.');
+        if (!records.length) {
+          setActiveCount('leave-active-count', 0);
+          return renderEmpty(container, 'No leave records found.', 'لا توجد سجلات إجازات.');
+        }
         const today = new Date();
         const rows = records.map((rec) => {
           const end = parseSheetDate(findField(rec, 'نهاية الاجازة'));
           if (!end) return null;
           return { rec, end, remaining: dayDiff(today, end) };
         }).filter(Boolean);
-        if (!rows.length) return renderEmpty(container, 'No leave end dates found.', 'لا توجد تواريخ نهاية إجازة.');
+        if (!rows.length) {
+          setActiveCount('leave-active-count', 0);
+          return renderEmpty(container, 'No leave end dates found.', 'لا توجد تواريخ نهاية إجازة.');
+        }
 
+        setActiveCount('leave-active-count', rows.filter((r) => r.remaining >= 0).length);
         const active = rows.filter((r) => r.remaining >= 0).sort((a, b) => a.remaining - b.remaining);
         const ended = rows.filter((r) => r.remaining < 0).sort((a, b) => b.remaining - a.remaining);
 
@@ -1764,7 +1800,10 @@ async function tagDocx(file, options = {}) {
       // under "Resolved" with its close date shown instead of a live
       // countdown.
       function renderThresholdCard(container, records, cfg) {
-        if (!records.length) return renderEmpty(container, cfg.emptyEn, cfg.emptyAr);
+        if (!records.length) {
+          if (cfg.countId) setActiveCount(cfg.countId, 0);
+          return renderEmpty(container, cfg.emptyEn, cfg.emptyAr);
+        }
         const today = new Date();
         const resolved = [];
         const rows = records.map((rec) => {
@@ -1792,7 +1831,10 @@ async function tagDocx(file, options = {}) {
             : 0;
           return { rec, start, remaining };
         }).filter(Boolean);
-        if (!rows.length && !resolved.length) return renderEmpty(container, cfg.noDateEn, cfg.noDateAr);
+        if (!rows.length && !resolved.length) {
+          if (cfg.countId) setActiveCount(cfg.countId, 0);
+          return renderEmpty(container, cfg.noDateEn, cfg.noDateAr);
+        }
 
         const active = rows
           .filter((r) => r.remaining === Infinity || r.remaining >= 1)
@@ -1801,6 +1843,8 @@ async function tagDocx(file, options = {}) {
           .filter((r) => r.remaining === 0)
           .sort((a, b) => b.start - a.start);
         resolved.sort((a, b) => b.end - a.end); // most recently resolved first
+
+        if (cfg.countId) setActiveCount(cfg.countId, active.length);
 
         container.innerHTML = '';
         active.forEach((r) => container.appendChild(buildThresholdRow(r, cfg)));
@@ -1821,7 +1865,16 @@ async function tagDocx(file, options = {}) {
         const reason = findField(rec, cfg.reasonKeyword);
         const isIndefinite = remaining === Infinity;
         const level = isIndefinite ? 'safe' : (remaining <= 0 ? 'expired' : (remaining > cfg.safeThreshold ? 'safe' : 'warning'));
-        const { row, main } = buildRowShell(level, name, code, reason, rec);
+        const detailRec = { ...rec };
+        if (cfg.isSuspension) {
+          const duration = getWindowDays(rec, cfg);
+          detailRec['تاريخ بداية الإيقاف'] = fmtDate(start);
+          detailRec['المدة'] = duration === Infinity ? text('Indefinite', 'دائم') : `${duration} ${text('day(s)', 'يوم')}`;
+          detailRec['تاريخ العودة'] = duration === Infinity
+            ? text('No scheduled return date', 'لا يوجد تاريخ عودة محدد')
+            : fmtDate(new Date(start.getFullYear(), start.getMonth(), start.getDate() + duration));
+        }
+        const { row, main } = buildRowShell(level, name, code, reason, detailRec);
         appendMeta(main, cfg.dateLabelEn, cfg.dateLabelAr, fmtDate(start));
         if (isIndefinite) appendBadge(row, level, 'Indefinite', 'دائم');
         else if (remaining <= 0) appendBadge(row, level, 'Expired', 'منتهية المهلة');
@@ -1852,7 +1905,7 @@ async function tagDocx(file, options = {}) {
           safeThreshold: 7,
           emptyEn: 'No penalty records found.', emptyAr: 'لا توجد سجلات جزاءات.',
           noDateEn: 'No penalty dates found.', noDateAr: 'لا توجد تواريخ جزاءات.',
-          dateLabelEn: 'Issued', dateLabelAr: 'بتاريخ'
+          dateLabelEn: 'Issued', dateLabelAr: 'بتاريخ', countId: 'penalty-active-count'
         });
       }
 
@@ -1867,9 +1920,23 @@ async function tagDocx(file, options = {}) {
           safeThreshold: 20,
           emptyEn: 'No suspension records found.', emptyAr: 'لا توجد سجلات إيقاف.',
           noDateEn: 'No suspension start dates found.', noDateAr: 'لا توجد تواريخ بداية إيقاف.',
-          dateLabelEn: 'Started', dateLabelAr: 'بدأ في'
+          dateLabelEn: 'Started', dateLabelAr: 'بدأ في', countId: 'suspension-active-count', isSuspension: true
         });
       }
+
+      const renderFilteredCards = () => {
+        const leaveQuery = document.getElementById('leave-search')?.value || '';
+        const penaltyQuery = document.getElementById('penalty-search')?.value || '';
+        const suspensionQuery = document.getElementById('suspension-search')?.value || '';
+        renderLeaveCard(sheetRecords.leave.filter((rec) => recordMatchesSearch(rec, leaveQuery)));
+        renderPenaltyCard(sheetRecords.penalty.filter((rec) => recordMatchesSearch(rec, penaltyQuery)));
+        renderSuspensionCard(sheetRecords.suspension.filter((rec) => recordMatchesSearch(rec, suspensionQuery)));
+      };
+
+      ['leave', 'penalty', 'suspension'].forEach((sheet) => {
+        const input = document.getElementById(`${sheet}-search`);
+        if (input) input.addEventListener('input', renderFilteredCards);
+      });
 
       async function loadDashboard() {
         Object.values(SHEETS).forEach(({ listId }) => renderLoading(document.getElementById(listId)));
@@ -1879,9 +1946,10 @@ async function tagDocx(file, options = {}) {
           const payload = await res.json();
           if (!payload || !payload.ok) throw new Error((payload && payload.message) || 'Unknown error');
           const data = payload.data || {};
-          renderLeaveCard(data[SHEETS.leave.key] || []);
-          renderPenaltyCard(data[SHEETS.penalty.key] || []);
-          renderSuspensionCard(data[SHEETS.suspension.key] || []);
+          sheetRecords.leave = data[SHEETS.leave.key] || [];
+          sheetRecords.penalty = data[SHEETS.penalty.key] || [];
+          sheetRecords.suspension = data[SHEETS.suspension.key] || [];
+          renderFilteredCards();
           if (updatedEl) {
             const now = new Date();
             bilingual(updatedEl, 'Updated ' + now.toLocaleTimeString('en-GB'), 'آخر تحديث ' + now.toLocaleTimeString('ar-EG'));
