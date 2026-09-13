@@ -258,8 +258,8 @@ function isExecutiveOrdersBlockStart(text) {
   return /مدير\s+عام\s+الاداره\s+العامه\s+للم(?:وارد|وراد)\s+البشريه/u.test(normalized);
 }
 
-function isExecutiveOrdersBlockEnd(text) {
-	  const normalized = normalizeArabicVariants(String(text || ''))
+	function isExecutiveOrdersBlockEnd(text) {
+		  const normalized = normalizeArabic(String(text || ''))
 		.replace(/\s+/gu, ' ')
 		.trim();
 
@@ -1422,7 +1422,8 @@ async function tagDocx(file, options = {}) {
           setStatus('Download started', 'بدأ التنزيل', 'success', 'The tagged DOCX has been prepared and download has started.', 'تم تجهيز ملف DOCX المهيأ وبدأ تنزيله.');
         } catch (error) {
           console.error(error);
-          setStatus('Processing failed', 'تعذرت المعالجة', 'error', 'The DOCX could not be processed. Try selecting it again.', 'تعذر معالجة ملف DOCX. حاول اختياره مرة أخرى.');
+          const reason = error && error.message ? String(error.message) : 'Unknown processing error';
+          setStatus('Processing failed: ' + reason, 'تعذرت المعالجة: ' + reason, 'error', 'The DOCX could not be processed: ' + reason, 'تعذر معالجة ملف DOCX: ' + reason);
         } finally {
           processing = false;
           input.value = '';
