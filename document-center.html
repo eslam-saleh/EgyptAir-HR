@@ -1280,7 +1280,8 @@
 
     function isInternalUnitsValue(value) {
       const normalized = softNormalize(value);
-      return normalized.includes(softNormalize('بالوحدات الداخلية'));
+      return normalized.includes(softNormalize('بالوحدات الداخلية')) ||
+        normalized.includes(softNormalize('بالوحدات الداخليه'));
     }
 
     // Remove only the excluded/default organization fragments from a combined
@@ -1289,16 +1290,18 @@
     function removeExcludedOrganizationParts(value) {
       return String(value || '')
         .replace(/ب?\s*بدون\s+(?:إدارة|ادارة)\s+(?:عامة|عامه)/gi, ' ')
-        .replace(/ب?\s*(?:ب?الوحدات)\s+الداخلية/gi, ' ')
+        .replace(/ب?\s*(?:ب?الوحدات)\s+الداخلي(?:ة|ه)/gi, ' ')
+        .replace(/ب?\s*رئيس\s+مجلس\s+(?:الإدارة|الادارة)/gi, ' ')
         .replace(/\s+/g, ' ')
         .replace(/(^|\s)ب(?=\s|$)/g, ' ')
         .trim();
     }
 
     function cleanOrganizationValue(value, kind) {
-      const candidate = kind === 'group'
-        ? removeExcludedOrganizationParts(value)
-        : String(value || '').trim();
+      // Organization values can be combined strings, even when they populate
+      // a single الإدارة or القطاع field. Remove only excluded fragments and
+      // preserve any valid text that remains.
+      const candidate = removeExcludedOrganizationParts(value);
       if (!candidate) return '';
       // These values must never be emitted by the code-load path, including
       // when they are embedded in the combined المجموعة text.
