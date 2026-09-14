@@ -1283,8 +1283,22 @@
       return normalized.includes(softNormalize('بالوحدات الداخلية'));
     }
 
+    // Remove only the excluded/default organization fragments from a combined
+    // group path. The rest of the path (group, department, and sector) remains
+    // valid and must still be available for the group placeholder autofill.
+    function removeExcludedOrganizationParts(value) {
+      return String(value || '')
+        .replace(/ب?\s*بدون\s+(?:إدارة|ادارة)\s+(?:عامة|عامه)/gi, ' ')
+        .replace(/ب?\s*(?:ب?الوحدات)\s+الداخلية/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/(^|\s)ب(?=\s|$)/g, ' ')
+        .trim();
+    }
+
     function cleanOrganizationValue(value, kind) {
-      const candidate = String(value || '').trim();
+      const candidate = kind === 'group'
+        ? removeExcludedOrganizationParts(value)
+        : String(value || '').trim();
       if (!candidate) return '';
       // These values must never be emitted by the code-load path, including
       // when they are embedded in the combined المجموعة text.
