@@ -43,6 +43,14 @@
 
 // Sheet tabs read by the tagging.html "Deadlines to track" dashboard.
 var DASHBOARD_SHEETS = ['اجازات', 'جزاءات', 'ايقاف'];
+// The dashboard is read far more often than these sheets are written. A short
+// cache prevents each page visit from making three Spreadsheet service reads,
+// which is the main source of intermittent slow/cold web-app responses. It is
+// cleared after every valid write request below, so updates made through the
+// site appear on the next dashboard load. Direct edits in the spreadsheet can
+// take up to this TTL to appear in the dashboard.
+var DASHBOARD_CACHE_KEY = 'tagging-dashboard-v1';
+var DASHBOARD_CACHE_TTL_SECONDS = 30;
 
 // Returns true if the caller supplied the correct SYNC_TOKEN, OR if no
 // SYNC_TOKEN Script Property has been configured yet (opt-in — see the
@@ -61,13 +69,18 @@ function doPost(e) {
     var sheet = ss.getSheetByName(body.sheet);
     if (!sheet) return respond(false, 'لم يتم العثور على الشيت: ' + body.sheet);
 
+    var result;
     switch (body.action) {
-      case 'append':        return handleAppend(sheet, body);
-      case 'update':         return handleUpdate(sheet, body);
-      case 'updatePenalty':  return handleUpdatePenalty(sheet, body);
-      case 'deletePenalty':  return handleDeletePenalty(sheet, body);
+      case 'append':        result = handleAppend(sheet, body); break;
+      case 'update':         result = handleUpdate(sheet, body); break;
+      case 'updatePenalty':  result = handleUpdatePenalty(sheet, body); break;
+      case 'deletePenalty':  result = handleDeletePenalty(sheet, body); break;
       default: return respond(false, 'إجراء غير معروف: ' + body.action);
     }
+    // Invalidating even for a no-op write is harmless and prevents a stale
+    // dashboard after any successful sheet mutation.
+    clearDashboardCache();
+    return result;
   } catch (err) {
     return respond(false, 'خطأ في الخادم: ' + err.message);
   }
@@ -84,12 +97,7 @@ function doGet(e) {
 
     if (action === 'dashboard') {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
-      var out = {};
-      DASHBOARD_SHEETS.forEach(function (name) {
-        var sheet = findSheetByName(ss, name);
-        out[name] = sheet ? getFilledRecords(sheet) : [];
-      });
-      return respond(true, 'تم تحميل البيانات.', out);
+      return respond(true, 'تم تحميل البيانات.', getDashboardData(ss));
     }
 
     return ContentService.createTextOutput('بيانات.xlsx sync endpoint is running.');
@@ -102,6 +110,49 @@ function respond(ok, message, data) {
   return ContentService.createTextOutput(
     JSON.stringify({ ok: ok, message: message, data: data || null })
   ).setMimeType(ContentService.MimeType.JSON);
+}
+
+// Uses the shared script cache rather than a browser cache: every visitor can
+// benefit, and a reload does not have to read all three sheets again. Cache
+// failures never block the dashboard; the function simply falls back to a
+// fresh spreadsheet read.
+function getDashboardData(ss) {
+  var cache;
+  try {
+    cache = CacheService.getScriptCache();
+    var cached = cache.get(DASHBOARD_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+  } catch (err) {
+    cache = null;
+  }
+
+  var out = {};
+  DASHBOARD_SHEETS.forEach(function (name) {
+    var sheet = findSheetByName(ss, name);
+    out[name] = sheet ? getFilledRecords(sheet) : [];
+  });
+
+  if (cache) {
+    try {
+      // CacheService stores at most 100 KB per entry. Skip caching unusually
+      // large future datasets rather than risking a cache error.
+      var serialized = JSON.stringify(out);
+      if (Utilities.newBlob(serialized).getBytes().length <= 95000) {
+        cache.put(DASHBOARD_CACHE_KEY, serialized, DASHBOARD_CACHE_TTL_SECONDS);
+      }
+    } catch (err) {
+      // A cache miss is a performance concern, not a dashboard failure.
+    }
+  }
+  return out;
+}
+
+function clearDashboardCache() {
+  try {
+    CacheService.getScriptCache().remove(DASHBOARD_CACHE_KEY);
+  } catch (err) {
+    // Never fail a successful sheet write just because cache cleanup failed.
+  }
 }
 
 // ── Arabic-aware header matching (mirrors the client's normalizeArabicVariants) ──
