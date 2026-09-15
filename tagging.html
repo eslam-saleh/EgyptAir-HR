@@ -8,7 +8,10 @@
   <link rel="icon" href="egyptair-logo_.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Non-blocking font load: a stalled Google Fonts request must not hold back the page's own scripts, otherwise the dashboard columns sit on "Loading…" forever. -->
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="portal.css">
   <style>
     /* EgyptAir Portal Continuation — concise upload-only workflow. */
@@ -1939,27 +1942,133 @@ async function tagDocx(file, options = {}) {
         if (input) input.addEventListener('input', renderFilteredCards);
       });
 
-      async function loadDashboard() {
-        Object.values(SHEETS).forEach(({ listId }) => renderLoading(document.getElementById(listId)));
+      // Google Apps Script web apps can be slow after inactivity. The timeout
+      // below races the entire request *and* JSON decoding, so the cards always
+      // leave their loading state even in a browser that does not promptly
+      // reject fetch() after AbortController.abort().
+      const FETCH_TIMEOUT_MS = 45000;
+      const FETCH_ATTEMPTS = 2;
+      const RETRY_DELAY_MS = 750;
+      let dashboardRequestId = 0;
+
+      const dashboardContainers = () => Object.values(SHEETS)
+        .map(({ listId }) => document.getElementById(listId))
+        .filter(Boolean);
+
+      const showDashboardMessage = (renderer, en, ar) => {
+        dashboardContainers().forEach((container) => renderer(container, en, ar));
+      };
+
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+      const fetchDashboardPayload = async (url, timeoutMs) => {
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        let timer;
+        const timeout = new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            if (controller) controller.abort();
+            reject(new Error('The dashboard request timed out.'));
+          }, timeoutMs);
+        });
+        const options = { method: 'GET', cache: 'no-store' };
+        if (controller) options.signal = controller.signal;
+
         try {
+          return await Promise.race([
+            fetch(url, options).then(async (res) => {
+              if (!res.ok) throw new Error('Dashboard request failed (' + res.status + ').');
+              return res.json();
+            }),
+            timeout
+          ]);
+        } finally {
+          clearTimeout(timer);
+        }
+      };
+
+      async function loadDashboard() {
+        const requestId = ++dashboardRequestId;
+        const isCurrentRequest = () => requestId === dashboardRequestId;
+        const renderCurrent = (renderer, en, ar) => {
+          if (isCurrentRequest()) showDashboardMessage(renderer, en, ar);
+        };
+        let lastError = null;
+
+        if (refreshBtn) {
+          refreshBtn.disabled = true;
+          refreshBtn.setAttribute('aria-busy', 'true');
+        }
+
+        try {
+          renderCurrent(renderLoading);
           const tokenParam = DASHBOARD_TOKEN ? '&token=' + encodeURIComponent(DASHBOARD_TOKEN) : '';
-          const res = await fetch(DASHBOARD_URL + '?action=dashboard' + tokenParam, { method: 'GET' });
-          const payload = await res.json();
-          if (!payload || !payload.ok) throw new Error((payload && payload.message) || 'Unknown error');
-          const data = payload.data || {};
-          sheetRecords.leave = data[SHEETS.leave.key] || [];
-          sheetRecords.penalty = data[SHEETS.penalty.key] || [];
-          sheetRecords.suspension = data[SHEETS.suspension.key] || [];
-          renderFilteredCards();
-          if (updatedEl) {
-            const now = new Date();
-            bilingual(updatedEl, 'Updated ' + now.toLocaleTimeString('en-GB'), 'آخر تحديث ' + now.toLocaleTimeString('ar-EG'));
+          const url = DASHBOARD_URL + '?action=dashboard' + tokenParam;
+
+          for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+            let slowNoticeTimer;
+            try {
+              // Let a normal cold start complete, but reassure the user that a
+              // request is still active instead of leaving an unexplained
+              // static "Loading…" message on screen.
+              slowNoticeTimer = setTimeout(() => {
+                renderCurrent(
+                  renderLoading,
+                  'Still loading data…',
+                  'ما زال تحميل البيانات جاريًا…'
+                );
+              }, 15000);
+
+              const payload = await fetchDashboardPayload(url, FETCH_TIMEOUT_MS);
+              if (!isCurrentRequest()) return;
+              if (!payload || !payload.ok) throw new Error((payload && payload.message) || 'Unknown error');
+
+              const data = payload.data || {};
+              sheetRecords.leave = Array.isArray(data[SHEETS.leave.key]) ? data[SHEETS.leave.key] : [];
+              sheetRecords.penalty = Array.isArray(data[SHEETS.penalty.key]) ? data[SHEETS.penalty.key] : [];
+              sheetRecords.suspension = Array.isArray(data[SHEETS.suspension.key]) ? data[SHEETS.suspension.key] : [];
+              renderFilteredCards();
+              if (updatedEl) {
+                const now = new Date();
+                bilingual(updatedEl, 'Updated ' + now.toLocaleTimeString('en-GB'), 'آخر تحديث ' + now.toLocaleTimeString('ar-EG'));
+              }
+              return;
+            } catch (err) {
+              lastError = err;
+              console.error(`Dashboard load attempt ${attempt} of ${FETCH_ATTEMPTS} failed:`, err);
+              if (attempt < FETCH_ATTEMPTS) {
+                renderCurrent(
+                  renderLoading,
+                  'Connection delayed — trying again…',
+                  'تأخر الاتصال — جارٍ إعادة المحاولة…'
+                );
+                await wait(RETRY_DELAY_MS);
+              }
+            } finally {
+              clearTimeout(slowNoticeTimer);
+            }
           }
+
+          console.error(lastError);
+          renderCurrent(
+            renderError,
+            'Could not load data. Check your connection and try again.',
+            'تعذر تحميل البيانات. تحقق من الاتصال وحاول مرة أخرى.'
+          );
         } catch (err) {
-          console.error(err);
-          Object.values(SHEETS).forEach(({ listId }) => {
-            renderError(document.getElementById(listId), 'Could not load data. Check your connection and try again.', 'تعذر تحميل البيانات. تحقق من الاتصال وحاول مرة أخرى.');
-          });
+          // This also protects against a rendering/configuration error before
+          // the request begins, which previously could leave the initial
+          // server-rendered "Loading…" markup visible indefinitely.
+          console.error('Dashboard loader failed unexpectedly:', err);
+          renderCurrent(
+            renderError,
+            'Could not start the data load. Please refresh and try again.',
+            'تعذر بدء تحميل البيانات. حدّث الصفحة وحاول مرة أخرى.'
+          );
+        } finally {
+          if (isCurrentRequest() && refreshBtn) {
+            refreshBtn.disabled = false;
+            refreshBtn.removeAttribute('aria-busy');
+          }
         }
       }
 
