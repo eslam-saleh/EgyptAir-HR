@@ -1260,6 +1260,17 @@
       return softNormalize(label).includes(softNormalize(keyword));
     }
 
+    // Ordinal scope for multi-person docs (e.g. "كود المذكور الأول" / "اسم الثاني").
+    // softNormalize strips leading ال and folds alef/yeh/taa, so "الأول"/"الاول" → "اول"
+    // and "الثاني"/"الثانى" → "ثاني".
+    function getFieldOrdinal(label) {
+      const n = softNormalize(label);
+      if (!n) return null;
+      if (n.includes('ثاني') || n.includes('2') || n.includes('٢')) return 'second';
+      if (n.includes('اول') || n.includes('1') || n.includes('١')) return 'first';
+      return null;
+    }
+
     // Organization data occasionally contains umbrella/default values that are
     // not valid values for the employee's actual unit. Never write those values
     // into document placeholders: they make the generated wording misleading.
@@ -1501,7 +1512,7 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
      *       · "عامة" / "عامه"  → prefer department (الادارة العامة)
      *       · otherwise        → innermost unit
      */
-    function fillEmployeeFields(employee) {
+    function fillEmployeeFields(employee, scopeOrdinal) {
       if (!employee) return 0;
       const fields = Array.from(formFields.querySelectorAll('[data-placeholder-index]'));
       let filled = 0;
@@ -1546,6 +1557,17 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
         const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
         if (!group) return;
         const label = group.label || '';
+
+        // Multi-person documents: only fill fields that share the same ordinal
+        // as the code field that triggered the load (الأول / الثاني).
+        // Unscoped load (no ordinal on the code) only touches unlabeled fields.
+        const fieldOrd = getFieldOrdinal(label);
+        if (scopeOrdinal) {
+          if (fieldOrd !== scopeOrdinal) return;
+        } else if (fieldOrd) {
+          return;
+        }
+
         let value = null;
 		
         if (labelContains(label, 'اسم') && (!labelContains(label, 'متقدم')&& !labelContains(label, 'مذكور'))) {}
@@ -1663,7 +1685,10 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
             if (!emp) {
               setFormStatus(t(`No employee found for code ${code}.`, `لم يتم العثور على موظف بالكود ${code}.`), true);
             } else {
-              const n = fillEmployeeFields(emp);
+              // Scope autofill to matching ordinal (الأول / الثاني) when present
+              // on this code field, so a second code does not overwrite the first.
+              const scopeOrdinal = getFieldOrdinal(group.label);
+              const n = fillEmployeeFields(emp, scopeOrdinal);
               if (window.jobTreeError) {
                 setFormStatus(t(
                   `Loaded ${n} field(s) for ${String(emp.name).split('').reverse().join('')}, but orgTree.js's job tree could not be loaded — the "مجموعة" (group) field could not be resolved.`,

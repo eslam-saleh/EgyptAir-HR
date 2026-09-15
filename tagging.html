@@ -1939,11 +1939,29 @@ async function tagDocx(file, options = {}) {
         if (input) input.addEventListener('input', renderFilteredCards);
       });
 
+      let dashboardLoading = false;
+      let dashboardAbort = null;
+
       async function loadDashboard() {
+        // Avoid overlapping fetches (Refresh while still loading left the UI stuck
+        // on "Loading…" when an earlier request never settled).
+        if (dashboardLoading && dashboardAbort) {
+          try { dashboardAbort.abort(); } catch (_) { /* ignore */ }
+        }
+        dashboardLoading = true;
+        const controller = new AbortController();
+        dashboardAbort = controller;
+        const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+
         Object.values(SHEETS).forEach(({ listId }) => renderLoading(document.getElementById(listId)));
         try {
           const tokenParam = DASHBOARD_TOKEN ? '&token=' + encodeURIComponent(DASHBOARD_TOKEN) : '';
-          const res = await fetch(DASHBOARD_URL + '?action=dashboard' + tokenParam, { method: 'GET' });
+          const res = await fetch(DASHBOARD_URL + '?action=dashboard' + tokenParam, {
+            method: 'GET',
+            cache: 'no-store',
+            signal: controller.signal
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
           const payload = await res.json();
           if (!payload || !payload.ok) throw new Error((payload && payload.message) || 'Unknown error');
           const data = payload.data || {};
@@ -1957,9 +1975,20 @@ async function tagDocx(file, options = {}) {
           }
         } catch (err) {
           console.error(err);
+          const timedOut = err && (err.name === 'AbortError' || /aborted/i.test(String(err.message || '')));
+          const en = timedOut
+            ? 'Request timed out. Tap Refresh to try again.'
+            : 'Could not load data. Check your connection and try again.';
+          const ar = timedOut
+            ? 'انتهت مهلة الطلب. اضغط تحديث للمحاولة مرة أخرى.'
+            : 'تعذر تحميل البيانات. تحقق من الاتصال وحاول مرة أخرى.';
           Object.values(SHEETS).forEach(({ listId }) => {
-            renderError(document.getElementById(listId), 'Could not load data. Check your connection and try again.', 'تعذر تحميل البيانات. تحقق من الاتصال وحاول مرة أخرى.');
+            renderError(document.getElementById(listId), en, ar);
           });
+        } finally {
+          window.clearTimeout(timeoutId);
+          if (dashboardAbort === controller) dashboardAbort = null;
+          dashboardLoading = false;
         }
       }
 
