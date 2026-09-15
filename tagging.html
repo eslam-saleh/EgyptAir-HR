@@ -1470,6 +1470,7 @@ async function tagDocx(file, options = {}) {
       const updatedEl = document.getElementById('dashboard-updated');
       const text = (en, ar) => document.documentElement.lang === 'ar' ? ar : en;
       const sheetRecords = { leave: [], penalty: [], suspension: [] };
+      const dashboardState = { leave: 'loading', penalty: 'loading', suspension: 'loading' };
 
       const normalizeSearch = (value) => normalizeAr(String(value == null ? '' : value))
         .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
@@ -1929,9 +1930,15 @@ async function tagDocx(file, options = {}) {
         const leaveQuery = document.getElementById('leave-search')?.value || '';
         const penaltyQuery = document.getElementById('penalty-search')?.value || '';
         const suspensionQuery = document.getElementById('suspension-search')?.value || '';
-        renderLeaveCard(sheetRecords.leave.filter((rec) => recordMatchesSearch(rec, leaveQuery)));
-        renderPenaltyCard(sheetRecords.penalty.filter((rec) => recordMatchesSearch(rec, penaltyQuery)));
-        renderSuspensionCard(sheetRecords.suspension.filter((rec) => recordMatchesSearch(rec, suspensionQuery)));
+        if (dashboardState.leave === 'ready') {
+          renderLeaveCard(sheetRecords.leave.filter((rec) => recordMatchesSearch(rec, leaveQuery)));
+        }
+        if (dashboardState.penalty === 'ready') {
+          renderPenaltyCard(sheetRecords.penalty.filter((rec) => recordMatchesSearch(rec, penaltyQuery)));
+        }
+        if (dashboardState.suspension === 'ready') {
+          renderSuspensionCard(sheetRecords.suspension.filter((rec) => recordMatchesSearch(rec, suspensionQuery)));
+        }
       };
 
       ['leave', 'penalty', 'suspension'].forEach((sheet) => {
@@ -1940,97 +1947,153 @@ async function tagDocx(file, options = {}) {
       });
 
       let dashboardLoading = false;
-      let dashboardAbort = null;
+      let dashboardControllers = {};
+      let dashboardGeneration = 0;
 
-      // Apps Script /exec often 302s to a one-shot googleusercontent echo URL that
-      // intermittently 404s. Retry a few times with backoff before giving up.
-      async function fetchDashboardPayload(signal) {
+      // Each dashboard card is fetched independently. This prevents one slow or
+      // failing sheet from keeping all three cards on "Loading…".
+      const DASHBOARD_TIMEOUT_MS = 15000;
+      const DASHBOARD_MAX_ATTEMPTS = 3;
+
+      const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+      const abortError = () => {
+        try { return new DOMException('Aborted', 'AbortError'); }
+        catch (_) { const e = new Error('Aborted'); e.name = 'AbortError'; return e; }
+      };
+
+      async function fetchDashboardSheet(sheetName, signal) {
         const tokenParam = DASHBOARD_TOKEN ? '&token=' + encodeURIComponent(DASHBOARD_TOKEN) : '';
-        const url = DASHBOARD_URL + '?action=dashboard' + tokenParam + '&_ts=' + Date.now();
-        const maxAttempts = 4;
+        const sheetParam = '&sheet=' + encodeURIComponent(sheetName);
+        const maxAttempts = DASHBOARD_MAX_ATTEMPTS;
         let lastError = null;
 
         for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-          if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+          if (signal && signal.aborted) throw abortError();
+
+          const controller = new AbortController();
+          const onAbort = () => controller.abort();
+          if (signal) {
+            if (signal.aborted) throw abortError();
+            signal.addEventListener('abort', onAbort, { once: true });
+          }
+          const timeoutId = window.setTimeout(() => controller.abort(), DASHBOARD_TIMEOUT_MS);
+
           try {
+            const url = DASHBOARD_URL + '?action=dashboard' + sheetParam + tokenParam + '&_ts=' + Date.now();
             const res = await fetch(url, {
               method: 'GET',
               cache: 'no-store',
               redirect: 'follow',
               credentials: 'omit',
               mode: 'cors',
-              signal
+              signal: controller.signal
             });
-            const text = await res.text();
+            const responseText = await res.text();
             if (!res.ok) {
-              throw new Error('HTTP ' + res.status + (text ? ': ' + text.slice(0, 80) : ''));
+              throw new Error('HTTP ' + res.status + (responseText ? ': ' + responseText.slice(0, 120) : ''));
             }
+
             let payload;
             try {
-              payload = JSON.parse(text);
+              payload = JSON.parse(responseText);
             } catch (_) {
               throw new Error('Non-JSON response from sheet service');
             }
             if (!payload || !payload.ok) {
               throw new Error((payload && payload.message) || 'Unknown error');
             }
-            return payload;
-          } catch (err) {
-            lastError = err;
-            if (err && err.name === 'AbortError') throw err;
-            if (attempt < maxAttempts) {
-              // Short backoff; new _ts on next loop avoids sticky bad redirects.
-              await new Promise((r) => window.setTimeout(r, 400 * attempt));
+
+            const data = payload.data || {};
+            if (!Object.prototype.hasOwnProperty.call(data, sheetName)) {
+              throw new Error('Sheet data missing from server response');
             }
+            return data[sheetName] || [];
+          } catch (err) {
+            if (controller.signal.aborted) {
+              if (signal && signal.aborted) throw abortError();
+              lastError = new Error('Request timed out');
+              lastError.name = 'TimeoutError';
+            } else {
+              lastError = err;
+            }
+            if (attempt < maxAttempts) {
+              await sleep(350 * attempt);
+            }
+          } finally {
+            window.clearTimeout(timeoutId);
+            if (signal) signal.removeEventListener('abort', onAbort);
           }
         }
-        throw lastError || new Error('Failed to load dashboard');
+        throw lastError || new Error('Failed to load ' + sheetName);
       }
 
-      async function loadDashboard() {
-        // Avoid overlapping fetches (Refresh while still loading left the UI stuck
-        // on "Loading…" when an earlier request never settled).
-        if (dashboardLoading && dashboardAbort) {
-          try { dashboardAbort.abort(); } catch (_) { /* ignore */ }
-        }
-        dashboardLoading = true;
-        const controller = new AbortController();
-        dashboardAbort = controller;
-        const timeoutId = window.setTimeout(() => controller.abort(), 45000);
+      const renderDashboardSheetError = (type, err) => {
+        const cfg = SHEETS[type];
+        const container = document.getElementById(cfg.listId);
+        if (!container) return;
+        console.error('Dashboard sheet failed:', type, err);
+        const timedOut = err && (err.name === 'TimeoutError' || err.name === 'AbortError' || /timed out|timeout|aborted/i.test(String(err.message || '')));
+        renderError(
+          container,
+          timedOut ? 'This section timed out. Tap Refresh to try again.' : 'Could not load this section. Tap Refresh to try again.',
+          timedOut ? 'انتهت مهلة هذا القسم. اضغط تحديث للمحاولة مرة أخرى.' : 'تعذر تحميل هذا القسم. اضغط تحديث للمحاولة مرة أخرى.'
+        );
+      };
 
-        Object.values(SHEETS).forEach(({ listId }) => renderLoading(document.getElementById(listId)));
+      async function loadDashboardSheet(type, generation) {
+        const cfg = SHEETS[type];
+        const container = document.getElementById(cfg.listId);
+        if (!container) return;
+
+        dashboardState[type] = 'loading';
+        renderLoading(container);
+        const controller = new AbortController();
+        dashboardControllers[type] = controller;
+
         try {
-          const payload = await fetchDashboardPayload(controller.signal);
-          const data = payload.data || {};
-          sheetRecords.leave = data[SHEETS.leave.key] || [];
-          sheetRecords.penalty = data[SHEETS.penalty.key] || [];
-          sheetRecords.suspension = data[SHEETS.suspension.key] || [];
+          const records = await fetchDashboardSheet(cfg.key, controller.signal);
+          if (generation !== dashboardGeneration || controller.signal.aborted) return;
+          sheetRecords[type] = Array.isArray(records) ? records : [];
+          dashboardState[type] = 'ready';
           renderFilteredCards();
           if (updatedEl) {
             const now = new Date();
             bilingual(updatedEl, 'Updated ' + now.toLocaleTimeString('en-GB'), 'آخر تحديث ' + now.toLocaleTimeString('ar-EG'));
           }
         } catch (err) {
-          console.error(err);
-          const timedOut = err && (err.name === 'AbortError' || /aborted/i.test(String(err.message || '')));
-          const en = timedOut
-            ? 'Request timed out. Tap Refresh to try again.'
-            : 'Could not load data. Check your connection and try again.';
-          const ar = timedOut
-            ? 'انتهت مهلة الطلب. اضغط تحديث للمحاولة مرة أخرى.'
-            : 'تعذر تحميل البيانات. تحقق من الاتصال وحاول مرة أخرى.';
-          Object.values(SHEETS).forEach(({ listId }) => {
-            renderError(document.getElementById(listId), en, ar);
-          });
+          if (generation !== dashboardGeneration || (err && err.name === 'AbortError')) return;
+          dashboardState[type] = 'error';
+          renderDashboardSheetError(type, err);
         } finally {
-          window.clearTimeout(timeoutId);
-          if (dashboardAbort === controller) dashboardAbort = null;
-          dashboardLoading = false;
+          if (dashboardControllers[type] === controller) dashboardControllers[type] = null;
         }
       }
 
-      if (refreshBtn) refreshBtn.addEventListener('click', loadDashboard);
-      loadDashboard();
+      async function loadDashboard() {
+        dashboardGeneration += 1;
+        const generation = dashboardGeneration;
+
+        Object.values(dashboardControllers).forEach((controller) => {
+          if (controller) {
+            try { controller.abort(); } catch (_) { /* ignore */ }
+          }
+        });
+        dashboardControllers = {};
+        dashboardLoading = true;
+        Object.keys(SHEETS).forEach((type) => { dashboardState[type] = 'loading'; });
+
+        Object.values(SHEETS).forEach(({ listId }) => renderLoading(document.getElementById(listId)));
+
+        try {
+          await Promise.allSettled(
+            Object.keys(SHEETS).map((type) => loadDashboardSheet(type, generation))
+          );
+        } finally {
+          if (generation === dashboardGeneration) dashboardLoading = false;
+        }
+      }
+
     })();
   </script>
 </body>
