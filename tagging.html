@@ -1962,70 +1962,70 @@ async function tagDocx(file, options = {}) {
         catch (_) { const e = new Error('Aborted'); e.name = 'AbortError'; return e; }
       };
 
-      async function fetchDashboardSheet(sheetName, signal) {
-        const tokenParam = DASHBOARD_TOKEN ? '&token=' + encodeURIComponent(DASHBOARD_TOKEN) : '';
-        const sheetParam = '&sheet=' + encodeURIComponent(sheetName);
-        const maxAttempts = DASHBOARD_MAX_ATTEMPTS;
-        let lastError = null;
+      let dashboardJsonpCounter = 0;
 
-        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-          if (signal && signal.aborted) throw abortError();
+      // Apps Script ContentService web apps can redirect their response to a
+      // googleusercontent URL. Fetch/CORS can occasionally stall on that
+      // redirect even though the web app itself is healthy. JSONP avoids the
+      // browser CORS layer entirely, while the timeout below still prevents a
+      // broken endpoint from leaving a card spinning forever.
+      function fetchDashboardSheet(sheetName, signal) {
+        return new Promise((resolve, reject) => {
+          if (signal && signal.aborted) return reject(abortError());
 
-          const controller = new AbortController();
-          const onAbort = () => controller.abort();
-          if (signal) {
-            if (signal.aborted) throw abortError();
-            signal.addEventListener('abort', onAbort, { once: true });
-          }
-          const timeoutId = window.setTimeout(() => controller.abort(), DASHBOARD_TIMEOUT_MS);
+          const callbackName = '__dashboardJsonp_' + Date.now() + '_' + (++dashboardJsonpCounter);
+          const script = document.createElement('script');
+          let settled = false;
+          let timeoutId = null;
 
-          try {
-            const url = DASHBOARD_URL + '?action=dashboard' + sheetParam + tokenParam + '&_ts=' + Date.now();
-            const res = await fetch(url, {
-              method: 'GET',
-              cache: 'no-store',
-              redirect: 'follow',
-              credentials: 'omit',
-              mode: 'cors',
-              signal: controller.signal
-            });
-            const responseText = await res.text();
-            if (!res.ok) {
-              throw new Error('HTTP ' + res.status + (responseText ? ': ' + responseText.slice(0, 120) : ''));
-            }
+          const cleanup = () => {
+            if (timeoutId) window.clearTimeout(timeoutId);
+            script.remove();
+            try { delete window[callbackName]; } catch (_) { window[callbackName] = undefined; }
+            if (signal) signal.removeEventListener('abort', onAbort);
+          };
+          const finish = (fn, value) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            fn(value);
+          };
+          const onAbort = () => finish(reject, abortError());
 
-            let payload;
-            try {
-              payload = JSON.parse(responseText);
-            } catch (_) {
-              throw new Error('Non-JSON response from sheet service');
-            }
+          window[callbackName] = (payload) => {
             if (!payload || !payload.ok) {
-              throw new Error((payload && payload.message) || 'Unknown error');
+              const err = new Error((payload && payload.message) || 'Unknown error');
+              return finish(reject, err);
             }
-
             const data = payload.data || {};
             if (!Object.prototype.hasOwnProperty.call(data, sheetName)) {
-              throw new Error('Sheet data missing from server response');
+              return finish(reject, new Error('Sheet data missing from server response'));
             }
-            return data[sheetName] || [];
-          } catch (err) {
-            if (controller.signal.aborted) {
-              if (signal && signal.aborted) throw abortError();
-              lastError = new Error('Request timed out');
-              lastError.name = 'TimeoutError';
-            } else {
-              lastError = err;
-            }
-            if (attempt < maxAttempts) {
-              await sleep(350 * attempt);
-            }
-          } finally {
-            window.clearTimeout(timeoutId);
-            if (signal) signal.removeEventListener('abort', onAbort);
+            finish(resolve, data[sheetName] || []);
+          };
+
+          script.onerror = () => finish(reject, new Error('Dashboard service could not be reached'));
+          script.async = true;
+          const tokenParam = DASHBOARD_TOKEN ? '&token=' + encodeURIComponent(DASHBOARD_TOKEN) : '';
+          const url = DASHBOARD_URL
+            + '?action=dashboard&sheet=' + encodeURIComponent(sheetName)
+            + tokenParam
+            + '&callback=' + encodeURIComponent(callbackName)
+            + '&_ts=' + Date.now();
+          script.src = url;
+
+          if (signal) {
+            if (signal.aborted) return onAbort();
+            signal.addEventListener('abort', onAbort, { once: true });
           }
-        }
-        throw lastError || new Error('Failed to load ' + sheetName);
+          timeoutId = window.setTimeout(() => {
+            const err = new Error('Request timed out');
+            err.name = 'TimeoutError';
+            finish(reject, err);
+          }, DASHBOARD_TIMEOUT_MS);
+
+          document.head.appendChild(script);
+        });
       }
 
       const renderDashboardSheetError = (type, err) => {
