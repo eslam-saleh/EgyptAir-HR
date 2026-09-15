@@ -1558,23 +1558,29 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
         if (!group) return;
         const label = group.label || '';
 
-        // Multi-person documents: only fill fields that share the same ordinal
-        // as the code field that triggered the load (الأول / الثاني).
-        // Unscoped load (no ordinal on the code) only touches unlabeled fields.
+        // Multi-person documents (الأول / الثاني):
+        //  • Fields tagged with an ordinal only fill from the matching code.
+        //  • Shared fields with no ordinal (وظيفة المذكورين, المجموعة…) fill from
+        //    either code, but only when still empty so the second load does not
+        //    overwrite values set by the first.
         const fieldOrd = getFieldOrdinal(label);
         if (scopeOrdinal) {
-          if (fieldOrd !== scopeOrdinal) return;
+          if (fieldOrd && fieldOrd !== scopeOrdinal) return;
+          if (!fieldOrd && String(field.value || '').trim()) return;
         } else if (fieldOrd) {
           return;
         }
 
         let value = null;
-		
-        if (labelContains(label, 'اسم') && (!labelContains(label, 'متقدم')&& !labelContains(label, 'مذكور'))) {}
-        else if (labelContains(label, 'تاريخ') && (!labelContains(label, 'ميلاد')&& !labelContains(label, 'تعيين'))) {}		
-		else{
-        if (labelContains(label, 'اسم') && !labelContains(label, 'كود')) {
-          value = displayName;
+
+        // Skip pure "كود" fields — the user just typed the code there.
+        if (labelContains(label, 'كود') && !labelContains(label, 'اسم')) {
+          // no-op
+        } else if (labelContains(label, 'اسم') && !labelContains(label, 'كود')) {
+          // Fill employee name; skip "اسم المتقدم" (applicant) only.
+          if (!labelContains(label, 'متقدم')) {
+            value = displayName;
+          }
         } else if (
           labelContains(label, 'تعيين') ||
           labelContains(label, 'تاريخالتعيين') ||
@@ -1582,20 +1588,16 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
         ) {
           value = hireFormatted;
         } else if (labelContains(label, 'ميلاد')) {
-          // أي حقل يحتوي على كلمة "ميلاد" (تاريخ الميلاد / ميلاد …)
           value = dobFormatted;
         } else if (labelContains(label, 'وظيفة') || labelContains(label, 'الوظيفة')) {
           value = employee.job;
         } else if (labelContains(label, 'مجموعة')) {
           // Full combined organisational title (group + sub/dept + sector).
-          // Sanitize the final result as well, so forbidden text cannot leak
-          // through a tree label or fallback value.
           value = cleanOrganizationValue(
             fullGroupPath || (jobInfo && jobInfo.group) || resolvedDept || '',
             'group'
           );
         } else if (labelContains(label, 'قطاع') && !labelContains(label, 'مجموعة')) {
-          // Sector only — never the full path or forbidden umbrella values.
           value = cleanOrganizationValue(resolvedSector, 'sector');
         } else if (
           (labelContains(label, 'ادارة') || labelContains(label, 'إدارة') || labelContains(label, 'قسم')) &&
@@ -1615,15 +1617,13 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
           if (wantsSub) {
             value = resolvedSub || resolvedDept || '';
           } else if (wantsGeneral) {
-            // Do not fill a general-department field with the bare word
-            // "الإدارة"; only a real named الإدارة العامة is acceptable.
             value = resolvedDept || '';
           } else {
             value = resolvedSub || resolvedDept || '';
           }
           value = cleanOrganizationValue(value, 'department');
         }
-		}
+
         if (value !== null && value !== '') {
           field.value = value;
           field.dispatchEvent(new Event('input', { bubbles: true }));
