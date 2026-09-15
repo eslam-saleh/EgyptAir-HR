@@ -1942,6 +1942,51 @@ async function tagDocx(file, options = {}) {
       let dashboardLoading = false;
       let dashboardAbort = null;
 
+      // Apps Script /exec often 302s to a one-shot googleusercontent echo URL that
+      // intermittently 404s. Retry a few times with backoff before giving up.
+      async function fetchDashboardPayload(signal) {
+        const tokenParam = DASHBOARD_TOKEN ? '&token=' + encodeURIComponent(DASHBOARD_TOKEN) : '';
+        const url = DASHBOARD_URL + '?action=dashboard' + tokenParam + '&_ts=' + Date.now();
+        const maxAttempts = 4;
+        let lastError = null;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+          if (signal && signal.aborted) throw new DOMException('Aborted', 'AbortError');
+          try {
+            const res = await fetch(url, {
+              method: 'GET',
+              cache: 'no-store',
+              redirect: 'follow',
+              credentials: 'omit',
+              mode: 'cors',
+              signal
+            });
+            const text = await res.text();
+            if (!res.ok) {
+              throw new Error('HTTP ' + res.status + (text ? ': ' + text.slice(0, 80) : ''));
+            }
+            let payload;
+            try {
+              payload = JSON.parse(text);
+            } catch (_) {
+              throw new Error('Non-JSON response from sheet service');
+            }
+            if (!payload || !payload.ok) {
+              throw new Error((payload && payload.message) || 'Unknown error');
+            }
+            return payload;
+          } catch (err) {
+            lastError = err;
+            if (err && err.name === 'AbortError') throw err;
+            if (attempt < maxAttempts) {
+              // Short backoff; new _ts on next loop avoids sticky bad redirects.
+              await new Promise((r) => window.setTimeout(r, 400 * attempt));
+            }
+          }
+        }
+        throw lastError || new Error('Failed to load dashboard');
+      }
+
       async function loadDashboard() {
         // Avoid overlapping fetches (Refresh while still loading left the UI stuck
         // on "Loading…" when an earlier request never settled).
@@ -1951,19 +1996,11 @@ async function tagDocx(file, options = {}) {
         dashboardLoading = true;
         const controller = new AbortController();
         dashboardAbort = controller;
-        const timeoutId = window.setTimeout(() => controller.abort(), 25000);
+        const timeoutId = window.setTimeout(() => controller.abort(), 45000);
 
         Object.values(SHEETS).forEach(({ listId }) => renderLoading(document.getElementById(listId)));
         try {
-          const tokenParam = DASHBOARD_TOKEN ? '&token=' + encodeURIComponent(DASHBOARD_TOKEN) : '';
-          const res = await fetch(DASHBOARD_URL + '?action=dashboard' + tokenParam, {
-            method: 'GET',
-            cache: 'no-store',
-            signal: controller.signal
-          });
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const payload = await res.json();
-          if (!payload || !payload.ok) throw new Error((payload && payload.message) || 'Unknown error');
+          const payload = await fetchDashboardPayload(controller.signal);
           const data = payload.data || {};
           sheetRecords.leave = data[SHEETS.leave.key] || [];
           sheetRecords.penalty = data[SHEETS.penalty.key] || [];
