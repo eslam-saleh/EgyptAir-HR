@@ -8,7 +8,7 @@
  * Generated: 2026-09-09
   * Updated: 2026-09-16 — updating skill — 111 employee(s) updated, 0 new hire(s) added (see change report).
   * Updated: 2026-09-16 — updating skill — 29 employee(s) updated, 4 new hire(s) added (see change report).
-  * Updated: 2026-09-18 — updating skill — 15 employee(s) updated, 1 new hire(s) added (see change report).
+  * Updated: 2026-09-18 — updating skill — 14 employee(s) updated, 1 new hire(s) added (see change report).
  */
 const jobTree = {
   "مجموعةالوظائفالفنيةوالمكتبية": {
@@ -27985,33 +27985,6 @@ const jobTree = {
                 ]
               }
             }
-          },
-          "ندب خارجى": {
-            "label": "ندب خارجى",
-            "jobs": [],
-            "subdepartments": {
-              "ندب خارجى": {
-                "label": "ندب خارجى",
-                "jobs": [
-                  {
-                    "title": "كبير كافتيرى ممتاز",
-                    "employees": [
-                      {
-                        "code": 24579,
-                        "name": "ناضمر ناير دمحا هماسا",
-                        "hireDate": "1995/02/25",
-                        "dateOfBirth": "1971/07/31",
-                        "sector": "رئيس  مجلس الادارة",
-                        "department": "ديوان عام وزارة الطيران المدني",
-                        "job": "كبير كافتيرى ممتاز",
-                        "subDepartment": "ندب خارجى",
-                        "group": "مجموعة الوظائف الاشرافية"
-                      }
-                    ]
-                  }
-                ]
-              }
-            }
           }
         }
       },
@@ -28062,7 +28035,19 @@ const jobTree = {
                   },
                   {
                     "title": "كبير كافتيرى ممتاز",
-                    "employees": []
+                    "employees": [
+                      {
+                        "code": 24579,
+                        "name": "ناضمر ناير دمحا هماسا",
+                        "hireDate": "1995/02/25",
+                        "dateOfBirth": "1971/07/31",
+                        "sector": "رئيس  مجلس الادارة",
+                        "department": "ديوان عام وزارة الطيران المدني",
+                        "job": "كبير كافتيرى ممتاز",
+                        "subDepartment": "ندب خارجى",
+                        "group": "مجموعة الوظائف الاشرافية"
+                      }
+                    ]
                   },
                   {
                     "title": "كبير سفرجيه ممتاز",
@@ -59688,7 +59673,7 @@ const allEmployees = [
     "hireDate": "1995/02/25",
     "dateOfBirth": "1971/07/31",
     "sector": "رئيس  مجلس الادارة",
-    "department": "ندب خارجى",
+    "department": "ديوان عام وزارة الطيران المدني",
     "job": "كبير كافتيرى ممتاز",
     "subDepartment": "ندب خارجى",
     "group": "مجموعة الوظائف التخصصية"
