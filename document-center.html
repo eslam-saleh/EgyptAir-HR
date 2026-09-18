@@ -676,31 +676,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="site-data.js"></script>
   <script src="portal.js"></script>
-  <script src="orgTree.js"></script>
+  <!-- Employee roster loads live from the Employees Google Sheet (data.gs web app). -->
   <script>
-    // orgTree.js defines BOTH `const jobTree = {...}` and `const allEmployees = [...]`
-    // and assigns window.jobTree / window.allEmployees directly (loaded as a plain
-    // script, so no fetch/CORS/case-sensitivity issues). Both are required:
-    //  - window.allEmployees: flat array, O(1)-ish lookup by employee code, and the
-    //    authoritative source for job/department/sector/subDepartment per employee.
-    //  - window.jobTree: nested group→sector→department→subdepartment→jobs hierarchy,
-    //    the only place the "group" (المجموعة النوعية) lives, and used to disambiguate
-    //    which subdepartment a job title belongs to.
-    window.jobTree = window.jobTree || {};
     window.allEmployees = window.allEmployees || [];
-    window.jobTreeError = (window.jobTree && Object.keys(window.jobTree).length)
-      ? null
-      : 'orgTree.js did not define window.jobTree (file missing or empty).';
-    window.allEmployeesError = (window.allEmployees && window.allEmployees.length)
-      ? null
-      : 'orgTree.js did not define window.allEmployees (file missing or empty).';
-    if (window.jobTreeError) console.warn(window.jobTreeError);
-    if (window.allEmployeesError) console.warn(window.allEmployeesError);
-    window.jobTreeReady = Promise.resolve(window.jobTree);
+    window.allEmployeesError = null;
+    window.employeesReady = null; // assigned after EMPLOYEE_DATA_URL is declared
   </script>
   <script>
     const FOLDER_ID = '1j6DuR_aAvrqJIkbRebdrIGTdUN86Jm8Q';
     const API_KEY   = 'AIzaSyAsl5N735tOpOjkcQK4kEritH6noDBH2eA';
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Live employee roster from the Employees sheet
+    // Spreadsheet: https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y
+    // Deploy data.gs as a Web App (Execute as: Me; Who has access: Anyone /
+    // organization) and paste the /exec URL here.
+    // ═══════════════════════════════════════════════════════════════════
+    const EMPLOYEE_DATA_URL = 'https://script.google.com/macros/s/AKfycbzoF2Cpp1bG18ZbZcHTTafFFhkTD6mZi7BIw_a0iEtqwBS1k2oDxDetGd3p8Jk30CVb/exec'; // ← paste deployed data.gs web-app /exec URL
+    const EMPLOYEE_DATA_TOKEN = ''; // optional; prefer ALLOWED_EMAILS in Script Properties
 
     // ═══════════════════════════════════════════════════════════════════
     // بيانات.xlsx sync — pushes a row/update to the Google Sheet whenever a
@@ -713,6 +706,210 @@
     // Script Property in Apps Script; until then the endpoint stays open
     // to anyone with the URL above, exactly as before.
     const SHEET_SYNC_TOKEN = '';
+
+    // ── Live Employees sheet → window.allEmployees ─────────────────────────
+    // Field priority (secondment overrides when present):
+    //   job:      secondedJob | secondedJob2 | jobTitle | actualJob | statisticsJob
+    //   sector:   secondedSector | currentSector
+    //   dept:     secondedGeneralDepartment | currentGeneralDepartment
+    //   subDept:  secondedDepartment | currentSubDepartment
+    //   group:    secondedJobGroup (only if one of the 3 valid groups) else newJobGroups
+    // ندب خارجي / ندب خارجى on dept/sub/job → append (currentCompany)
+    // Dates: strip time component; store as YYYY/MM/DD
+    // Names: normal order (no reverse cipher)
+    // No fallback of empty subDepartment → sector (that broke cascading filters)
+
+    const VALID_JOB_GROUPS = [
+      'مجموعة الوظائف الفنية والمكتبية',
+      'مجموعة الوظائف التخصصية',
+      'مجموعة الوظائف الحرفية والخدمات المعاونة',
+    ];
+
+    function firstNonEmpty(...vals) {
+      for (const v of vals) {
+        const s = String(v ?? '').trim();
+        if (s) return s;
+      }
+      return '';
+    }
+
+    function parseSheetDate(raw) {
+      if (raw == null || raw === '') return null;
+      let s = String(raw).trim();
+      // Strip time component (00:00:00 / 12:00:00 AM etc.)
+      s = s.replace(/\s+\d{1,2}:\d{2}(:\d{2})?(\s*[AaPp][Mm])?$/, '').trim();
+      // Excel serial number
+      if (/^\d+(\.\d+)?$/.test(s)) {
+        const serial = Number(s);
+        if (serial > 20000 && serial < 80000) {
+          const epoch = new Date(Date.UTC(1899, 11, 30));
+          const d = new Date(epoch.getTime() + Math.floor(serial) * 86400000);
+          const y = d.getUTCFullYear();
+          const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(d.getUTCDate()).padStart(2, '0');
+          return `${y}/${m}/${day}`;
+        }
+      }
+      // Already YYYY/MM/DD or YYYY-MM-DD
+      let m = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+      if (m) {
+        return `${m[1]}/${String(Number(m[2])).padStart(2, '0')}/${String(Number(m[3])).padStart(2, '0')}`;
+      }
+      // DD/MM/YYYY
+      m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+      if (m) {
+        return `${m[3]}/${String(Number(m[2])).padStart(2, '0')}/${String(Number(m[1])).padStart(2, '0')}`;
+      }
+      return null;
+    }
+
+    function isValidJobGroup(value) {
+      if (!value) return false;
+      // softNormalize is defined later; use a lightweight fold here for early map
+      const fold = (t) => String(t)
+        .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+        .replace(/[\u002D\u2010-\u2015_]+/g, ' ')
+        .replace(/[إأآا]/g, 'ا')
+        .replace(/[يى]/g, 'ي')
+        .replace(/[هة]/g, 'ه')
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/^ال/, '');
+      const key = fold(value);
+      return VALID_JOB_GROUPS.some((g) => fold(g) === key);
+    }
+
+    function isExternalSecondmentLabel(text) {
+      const n = String(text || '')
+        .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+        .replace(/[يى]/g, 'ي')
+        .toLowerCase();
+      return n.includes('ندب خارجي') || n.includes('ندب خارجى');
+    }
+
+    function appendCompanyIfExternal(label, company) {
+      const base = String(label || '').trim();
+      if (!base || !isExternalSecondmentLabel(base)) return base;
+      const co = String(company || '').trim();
+      if (!co) return base;
+      // Avoid double-append
+      if (base.includes('(') && base.includes(co)) return base;
+      return `${base} (${co})`;
+    }
+
+    function mapSheetEmployee(raw) {
+      if (!raw) return null;
+      const code = String(raw.code ?? '').trim();
+      if (!code) return null;
+
+      const currentCompany = firstNonEmpty(raw.currentCompany, raw.originalCompanyName, raw.originalCompany);
+
+      let job = firstNonEmpty(
+        raw.secondedJob,
+        raw.secondedJob2,
+        raw.jobTitle,
+        raw.actualJob,
+        raw.statisticsJob
+      );
+      let sector = firstNonEmpty(raw.secondedSector, raw.currentSector);
+      let department = firstNonEmpty(raw.secondedGeneralDepartment, raw.currentGeneralDepartment);
+      let subDepartment = firstNonEmpty(raw.secondedDepartment, raw.currentSubDepartment);
+
+      // ندب خارجي → merge company into the label that carries the secondment title
+      job = appendCompanyIfExternal(job, currentCompany);
+      department = appendCompanyIfExternal(department, currentCompany);
+      subDepartment = appendCompanyIfExternal(subDepartment, currentCompany);
+
+      // Group: seconded only if it is one of the three canonical groups
+      let group = '';
+      if (isValidJobGroup(raw.secondedJobGroup)) {
+        group = String(raw.secondedJobGroup).trim();
+      } else if (isValidJobGroup(raw.newJobGroups)) {
+        group = String(raw.newJobGroups).trim();
+      }
+
+      // Canonical display forms for the three groups (unify typos)
+      if (group) {
+        const fold = (t) => String(t)
+          .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+          .replace(/[\u002D\u2010-\u2015_]+/g, '')
+          .replace(/[إأآا]/g, 'ا')
+          .replace(/[يى]/g, 'ي')
+          .replace(/[هة]/g, 'ه')
+          .toLowerCase()
+          .replace(/\s+/g, '');
+        const key = fold(group);
+        for (const canonical of VALID_JOB_GROUPS) {
+          if (fold(canonical) === key) {
+            group = canonical;
+            break;
+          }
+        }
+      }
+
+      return {
+        code: /^\d+$/.test(code) ? Number(code) : code,
+        name: String(raw.name || '').trim(),
+        hireDate: parseSheetDate(raw.appointmentDate),
+        dateOfBirth: parseSheetDate(raw.birthDate),
+        sector: sector || '',
+        department: department || '',
+        subDepartment: subDepartment || '',
+        job: job || '',
+        group: group || '',
+        gender: String(raw.gender || '').trim(),
+        currentCompany: currentCompany || '',
+      };
+    }
+
+    async function fetchLiveEmployees() {
+      if (!EMPLOYEE_DATA_URL || EMPLOYEE_DATA_URL.includes('PLACEHOLDER')) {
+        window.allEmployeesError =
+          'EMPLOYEE_DATA_URL is not set. Deploy data.gs as a Web App and paste its /exec URL.';
+        window.allEmployees = [];
+        console.warn(window.allEmployeesError);
+        return [];
+      }
+      const url = new URL(EMPLOYEE_DATA_URL);
+      url.searchParams.set('action', 'list');
+      if (EMPLOYEE_DATA_TOKEN) url.searchParams.set('token', EMPLOYEE_DATA_TOKEN);
+
+      const res = await fetch(url.toString(), { credentials: 'omit' });
+      if (!res.ok) throw new Error(`Employee data HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data || data.ok === false) {
+        throw new Error((data && data.error) || 'Unauthorized or empty employee response');
+      }
+      const rows = Array.isArray(data.employees) ? data.employees : [];
+      const mapped = rows.map(mapSheetEmployee).filter(Boolean);
+      // Prefer first occurrence of each code (stable)
+      const byCode = new Map();
+      mapped.forEach((emp) => {
+        const key = String(emp.code);
+        if (!byCode.has(key)) byCode.set(key, emp);
+      });
+      return [...byCode.values()];
+    }
+
+    window._employeesLoading = true;
+    window.employeesReady = (async () => {
+      try {
+        const list = await fetchLiveEmployees();
+        window.allEmployees = list;
+        window.allEmployeesError = list.length
+          ? null
+          : (window.allEmployeesError || 'No employees returned from the live sheet.');
+        if (window.allEmployeesError) console.warn(window.allEmployeesError);
+        else console.info(`Loaded ${list.length} employees from live sheet.`);
+      } catch (err) {
+        window.allEmployees = [];
+        window.allEmployeesError = err.message || String(err);
+        console.warn('Failed to load live employees:', window.allEmployeesError);
+      } finally {
+        window._employeesLoading = false;
+      }
+      return window.allEmployees;
+    })();
 
     // Which document (by its filename, without extension) maps to which
     // sheet/action. "kind" selects which extra columns get filled in below.
@@ -1240,12 +1437,18 @@
     function normalizeArabicVariants(str, { stripLeadingAl = false, compact = false } = {}) {
       let value = String(str ?? '').normalize('NFKC');
       value = value
+        // Strip Arabic diacritics (harakat, tanwin, sukun, shadda, superscript alef) + tatweel/kashida
         .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
-        .replace(/[\u002D\u2010-\u2015]/g, '')
+        // Hyphen / dash / underscore → space (e.g. كبير-طباخين ≡ كبير طباخين)
+        .replace(/[\u002D\u2010-\u2015_]+/g, ' ')
+        // Alef variants → ا
         .replace(/[إأآا]/g, 'ا')
+        // Maqsura ى and yeh ي treated as equivalent
         .replace(/[يى]/g, 'ي')
+        // Taa marbuta ة and heh ه treated as equivalent
         .replace(/[هة]/g, 'ه')
         .toLowerCase()
+        .replace(/\s+/g, ' ')
         .trim();
       if (stripLeadingAl) value = value.replace(/^ال/, '');
       if (compact) value = value.replace(/[\s_\-]/g, '');
@@ -1335,148 +1538,18 @@
     }
 
     /**
-     * Walk Tree.json looking for a job title match.
-     * Returns { group, sector, department, jobTitle } or null.
-     * Tree shape (flexible):
-     *   groupKey: { label, sector?: { label, department?: { label, jobs?: { title } | [{title}] } }, department?: {...} }
-     */
-    /**
-     * Walk the restructured Tree.json:
-     * group → sectors{…} → departments{…} → subdepartments{…} → jobs[]
-     * group → departments{…} → subdepartments{…} → jobs[]
-     * Returns best match: { group, sector, department, subdepartment, jobTitle, score }
-     * Prefer exact job match; when multiple hits, prefer the path whose
-     * department/subdepartment soft-matches employee.department.
-     */
-function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
-  const tree = window.jobTree;
-  if (!tree || !jobTitle) return null;
-  const target = softNormalize(jobTitle);
-  const empDept = softNormalize(employeeDepartment || '');
-  const empSub = softNormalize(employeeSubDepartment || '');
-  const hits = [];
-
-  function jobListMatch(jobs) {
-    if (!Array.isArray(jobs)) return 0;
-    for (const j of jobs) {
-      const t = softNormalize(typeof j === 'string' ? j : (j.title || j.label || ''));
-      if (!t) continue;
-      if (t === target) return 2;
-      if (t.includes(target) || target.includes(t)) return 1;
-    }
-    return 0;
-  }
-
-  function pushHit(score, groupLabel, sectorLabel, deptLabel, subLabel) {
-    if (!score) return;
-    let bonus = 0;
-    const d = softNormalize(deptLabel);
-    const s = softNormalize(subLabel);
-    if (empDept) {
-      if (d && (d === empDept || d.includes(empDept) || empDept.includes(d))) bonus += 2;
-      if (s && (s === empDept || s.includes(empDept) || empDept.includes(s))) bonus += 3;
-    }
-    // Strongest signal: the employee's own recorded sub-department (from the
-    // HR roster) exactly identifies which branch of the department this is.
-    if (empSub) {
-      if (s && (s === empSub || s.includes(empSub) || empSub.includes(s))) {
-        bonus += 100;
-      } else if (s) {
-        // this hit has a sub-department but it's NOT the employee's recorded
-        // one — penalize it so the correct sub-department wins the tie
-        bonus -= 50;
-      }
-    }
-    hits.push({
-      group: groupLabel || '',
-      sector: sectorLabel || '',
-      department: deptLabel || '',
-      subdepartment: subLabel || '',
-      jobTitle,
-      score: score + bonus
-    });
-  }
-
-  for (const groupKey of Object.keys(tree)) {
-    const group = tree[groupKey];
-    if (!group) continue;
-    const groupLabel = group.label || groupKey;
-
-    // Handle the 'sectors' structure (new format)
-    const sectors = group.sectors || {};
-    for (const secKey of Object.keys(sectors)) {
-      const sec = sectors[secKey];
-      if (!sec) continue;
-      const sectorLabel = sec.label || secKey;
-      const departments = sec.departments || {};
-      for (const deptKey of Object.keys(departments)) {
-        const dept = departments[deptKey];
-        if (!dept) continue;
-        const deptLabel = dept.label || deptKey;
-        
-        // Check jobs directly on department
-        pushHit(jobListMatch(dept.jobs), groupLabel, sectorLabel, deptLabel, '');
-        
-        // Check subdepartments
-        const subs = dept.subdepartments || {};
-        for (const subKey of Object.keys(subs)) {
-          const sub = subs[subKey];
-          if (!sub) continue;
-          const subLabel = sub.label || subKey;
-          pushHit(jobListMatch(sub.jobs), groupLabel, sectorLabel, deptLabel, subLabel);
-        }
-      }
-    }
-
-    // Also handle top-level departments (no sector) for backward compatibility
-    const topDepts = group.departments || {};
-    for (const deptKey of Object.keys(topDepts)) {
-      const dept = topDepts[deptKey];
-      if (!dept) continue;
-      const deptLabel = dept.label || deptKey;
-      pushHit(jobListMatch(dept.jobs), groupLabel, '', deptLabel, '');
-      
-      const subs = dept.subdepartments || {};
-      for (const subKey of Object.keys(subs)) {
-        const sub = subs[subKey];
-        if (!sub) continue;
-        const subLabel = sub.label || subKey;
-        pushHit(jobListMatch(sub.jobs), groupLabel, '', deptLabel, subLabel);
-      }
-    }
-  }
-
-  if (!hits.length) return null;
-  hits.sort((a, b) => b.score - a.score);
-  return hits[0];
-}
-
-    /**
      * Build the long organisational title used in most HR forms, e.g.:
      * "مجموعة الوظائف التخصصية باداره رقابه الجوده بالاداره العامه للسلامة والجودة"
-     * "مجموعة الوظائف التخصصية باداره تموين الشركات الاجنيه بالاداره العامه للتموين بقطاع التشغيل"
      *
      * Order: group → subdepartment (if any) → department → sector
-     *
-     * allEmployees is authoritative for sector / department / subDepartment.
-     * jobTree is only needed for "group" (المجموعة النوعية).
+     * All values come from the live Employees sheet (no org tree).
      * Sector "رئيس مجلس الادارة" is an org umbrella, not a real قطاع — omit it.
      */
-    function buildGroupPath(info, employee) {
-      const group = (info && info.group) || '';
-      // Prefer HR roster fields; fall back to the tree walk only if missing.
-      const sector = cleanOrganizationValue(
-        (employee && employee.sector) || (info && info.sector) || '',
-        'sector'
-      );
-      const department = cleanOrganizationValue(
-        (employee && employee.department) || (info && info.department) || '',
-        'department'
-      );
-      const subdepartment = cleanOrganizationValue(
-        (employee && employee.subDepartment) || (info && info.subdepartment) || '',
-        'department'
-      );
+    function buildGroupPath(employee) {
+      const group = (employee && employee.group) || '';
+      const sector = cleanOrganizationValue((employee && employee.sector) || '', 'sector');
+      const department = cleanOrganizationValue((employee && employee.department) || '', 'department');
+      const subdepartment = cleanOrganizationValue((employee && employee.subDepartment) || '', 'department');
 
       if (!group && !sector && !department && !subdepartment) return '';
 
@@ -1499,7 +1572,7 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
     }
 
     /**
-     * Fill form fields from an employee record + optional jobTree match.
+     * Fill form fields from a live employee record.
      *
      * Label rules (first match wins):
      *   اسم (not كود)          → name
@@ -1533,25 +1606,13 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
           })()
         : '';
 
-      // Names are stored reversed in orgTree as a simple cipher; reverse them back for display.
-      const displayName = employee.name ? String(employee.name).split('').reverse().join('') : '';
+      const displayName = employee.name ? String(employee.name).trim() : '';
+      const fullGroupPath = buildGroupPath(employee);
 
-      const jobInfo = findJobInTree(employee.job, employee.department, employee.subDepartment);
-      const fullGroupPath = buildGroupPath(jobInfo, employee);
-
-      // Resolved units (HR roster first, tree as fallback)
-      const resolvedSector = cleanOrganizationValue(
-        employee.sector || (jobInfo && jobInfo.sector) || '',
-        'sector'
-      );
-      const resolvedDept = cleanOrganizationValue(
-        employee.department || (jobInfo && jobInfo.department) || '',
-        'department'
-      );
-      const resolvedSub = cleanOrganizationValue(
-        employee.subDepartment || (jobInfo && jobInfo.subdepartment) || '',
-        'department'
-      );
+      // Resolved units from the live roster only (never invent sector from a missing sub-dept)
+      const resolvedSector = cleanOrganizationValue(employee.sector || '', 'sector');
+      const resolvedDept = cleanOrganizationValue(employee.department || '', 'department');
+      const resolvedSub = cleanOrganizationValue(employee.subDepartment || '', 'department');
 
       fields.forEach((field) => {
         const group = selectedPlaceholders[Number(field.dataset.placeholderIndex)];
@@ -1588,10 +1649,8 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
           value = employee.job;
         } else if (labelContains(label, 'مجموعة')) {
           // Full combined organisational title (group + sub/dept + sector).
-          // Sanitize the final result as well, so forbidden text cannot leak
-          // through a tree label or fallback value.
           value = cleanOrganizationValue(
-            fullGroupPath || (jobInfo && jobInfo.group) || resolvedDept || '',
+            fullGroupPath || employee.group || resolvedDept || '',
             'group'
           );
         } else if (labelContains(label, 'قطاع') && !labelContains(label, 'مجموعة')) {
@@ -1679,8 +1738,8 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
           btn.disabled = true;
           btn.style.opacity = '0.6';
           try {
-            // Ensure job hierarchy is loaded before resolving مجموعة / قطاع / ادارة
-            if (window.jobTreeReady) await window.jobTreeReady;
+            // Ensure live roster is loaded before resolving fields
+            if (window.employeesReady) await window.employeesReady;
             const emp = findEmployeeByCode(code);
             if (!emp) {
               setFormStatus(t(`No employee found for code ${code}.`, `لم يتم العثور على موظف بالكود ${code}.`), true);
@@ -1689,15 +1748,16 @@ function findJobInTree(jobTitle, employeeDepartment, employeeSubDepartment) {
               // on this code field, so a second code does not overwrite the first.
               const scopeOrdinal = getFieldOrdinal(group.label);
               const n = fillEmployeeFields(emp, scopeOrdinal);
-              if (window.jobTreeError) {
+              const empLabel = String(emp.name || code).trim();
+              if (window.allEmployeesError) {
                 setFormStatus(t(
-                  `Loaded ${n} field(s) for ${String(emp.name).split('').reverse().join('')}, but orgTree.js's job tree could not be loaded — the "مجموعة" (group) field could not be resolved.`,
-                  `تم تحميل ${n} حقل/حقول للموظف ${String(emp.name).split('').reverse().join('')}، لكن تعذر تحميل شجرة الوظائف من orgTree.js — لم يتم تحديد "المجموعة".`
+                  `Loaded ${n} field(s) for ${empLabel}, but the live employee roster had a problem: ${window.allEmployeesError}`,
+                  `تم تحميل ${n} حقل/حقول للموظف ${empLabel}، لكن حدثت مشكلة في بيانات الموظفين: ${window.allEmployeesError}`
                 ), true);
               } else {
                 setFormStatus(t(
-                  `Loaded ${n} field(s) for ${String(emp.name).split('').reverse().join('')}.`,
-                  `تم تحميل ${n} حقل/حقول للموظف ${String(emp.name).split('').reverse().join('')}.`
+                  `Loaded ${n} field(s) for ${empLabel}.`,
+                  `تم تحميل ${n} حقل/حقول للموظف ${empLabel}.`
                 ));
               }
             }
@@ -2652,9 +2712,9 @@ function renderPlaceholderForm(doc, placeholders) {
       tabEmployees.addEventListener('click', () => switchSearchMode('employees'));
     }
 
-    /** Reverse the cipher used in orgTree (names stored reversed). */
+    /** Live sheet stores names in normal reading order (no reverse cipher). */
     function displayEmployeeName(storedName) {
-      return storedName ? String(storedName).split('').reverse().join('') : '';
+      return storedName ? String(storedName).trim() : '';
     }
 
     function formatDateDisplay(yyyyMmDd) {
@@ -2768,7 +2828,28 @@ function renderPlaceholderForm(doc, placeholders) {
       const shown = matched.slice(0, limit);
 
       if (!shown.length) {
-        employeeResults.innerHTML = `<div class="empty-state">${t('No employees found.', 'لم يتم العثور على موظفين.')}</div>`;
+        const loadErr = window.allEmployeesError;
+        const emptyRoster = !(window.allEmployees && window.allEmployees.length);
+        let msg;
+        if (window._employeesLoading) {
+          msg = t('Loading employees…', 'جارٍ تحميل بيانات الموظفين…');
+          employeeResults.innerHTML = `<div class="empty-state">${msg}</div>`;
+          return;
+        }
+        if (loadErr && emptyRoster) {
+          msg = t(
+            `Could not load employees: ${loadErr}`,
+            `تعذر تحميل بيانات الموظفين: ${loadErr}`
+          );
+        } else if (emptyRoster) {
+          msg = t(
+            'Employee roster is empty. Check EMPLOYEE_DATA_URL and the Apps Script deployment.',
+            'قائمة الموظفين فارغة. تحقق من EMPLOYEE_DATA_URL ومن نشر سكربت التطبيقات.'
+          );
+        } else {
+          msg = t('No employees found.', 'لم يتم العثور على موظفين.');
+        }
+        employeeResults.innerHTML = `<div class="empty-state" style="color:var(--danger, #cf222e)">${msg}</div>`;
         return;
       }
 
@@ -2829,21 +2910,16 @@ function renderPlaceholderForm(doc, placeholders) {
       });
     }
 
-    function initializeEmployeeFilters(attempt = 0) {
-      const employees = window.allEmployees || [];
-      if (employees.length) {
-        populateEmployeeFilters(false);
-        if (currentSearchMode === 'employees') {
-          renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
-        }
-        return;
-      }
-      if (attempt < 20) {
-        window.setTimeout(() => initializeEmployeeFilters(attempt + 1), 100);
+    function initializeEmployeeFilters() {
+      populateEmployeeFilters(false);
+      if (currentSearchMode === 'employees') {
+        renderEmployeeResults(employeeSearchInput ? employeeSearchInput.value : '');
       }
     }
-    if (window.jobTreeReady && typeof window.jobTreeReady.then === 'function') {
-      window.jobTreeReady.then(() => initializeEmployeeFilters());
+    if (window.employeesReady && typeof window.employeesReady.then === 'function') {
+      // Always refresh after the live fetch settles (success or failure).
+      // The roster JSON is large (~6MB / 2400+ rows) so this may take a few seconds.
+      window.employeesReady.then(() => initializeEmployeeFilters());
     } else {
       initializeEmployeeFilters();
     }
