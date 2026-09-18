@@ -161,11 +161,20 @@
 
       .toolbar {
         display: grid;
-        grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(145px, 1fr)) auto;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         gap: 10px;
         align-items: end;
         margin-bottom: 18px;
         padding: 16px;
+      }
+
+      .toolbar .search-field {
+        grid-column: span 2;
+        min-width: 200px;
+      }
+
+      .toolbar .clear-action {
+        align-self: end;
       }
 
       .filter-field {
@@ -199,7 +208,7 @@
 
       .layout {
         display: grid;
-        grid-template-columns: minmax(0, 1.42fr) minmax(290px, .58fr);
+        grid-template-columns: 1fr;
         gap: 18px;
         align-items: start;
       }
@@ -789,16 +798,6 @@
         .layout {
           grid-template-columns: 1fr;
         }
-
-        .analytics {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 24px;
-        }
-
-        .analytics h2+.bars {
-          margin-bottom: 0;
-        }
       }
 
       @media (max-width: 760px) {
@@ -893,7 +892,17 @@
         <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><select class="select" id="sector"></select></div>
         <div class="filter-field"><label for="department" data-en="General department" data-ar="الإدارة العامة">General department</label><select class="select" id="department"></select></div>
         <div class="filter-field"><label for="section" data-en="Section" data-ar="القسم الفرعي">Section</label><select class="select" id="section"></select></div>
-        <div class="filter-field"><label for="status" data-en="Status" data-ar="الحالة">Status</label><select class="select" id="status"></select></div><button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
+        <div class="filter-field"><label for="status" data-en="Status" data-ar="الحالة">Status</label><select class="select" id="status"></select></div>
+        <div class="filter-field"><label for="appointmentType" data-en="Appointment type" data-ar="نوع التعيين">Appointment type</label><select class="select" id="appointmentType"></select></div>
+        <div class="filter-field"><label for="gender" data-en="Gender" data-ar="النوع">Gender</label><select class="select" id="gender"></select></div>
+        <div class="filter-field"><label for="company" data-en="Company" data-ar="الشركة الحالية">Company</label><select class="select" id="company"></select></div>
+        <div class="filter-field"><label for="grade" data-en="Grade" data-ar="الدرجة">Grade</label><select class="select" id="grade"></select></div>
+        <div class="filter-field"><label for="workType" data-en="Work type" data-ar="نوع العمل">Work type</label><select class="select" id="workType"></select></div>
+        <div class="filter-field"><label for="serviceType" data-en="Service type" data-ar="نوع الخدمة">Service type</label><select class="select" id="serviceType"></select></div>
+        <div class="filter-field"><label for="governorate" data-en="Governorate" data-ar="المحافظة">Governorate</label><select class="select" id="governorate"></select></div>
+        <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="الفئة العمرية">Age group</label><select class="select" id="ageGroup"></select></div>
+        <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="مسمى الوظيفة">Job title</label><select class="select" id="jobTitle"></select></div>
+        <button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
       </section>
       <section class="layout">
         <section class="panel" aria-labelledby="tableHeading">
@@ -924,16 +933,6 @@
               </select><button id="prevPage" class="icon-btn" type="button" aria-label="Previous page">‹</button><span id="pageLabel" class="subtle"></span><button id="nextPage" class="icon-btn" type="button" aria-label="Next page">›</button></div>
           </div>
         </section>
-        <aside class="panel analytics" aria-label="Workforce distribution">
-          <div>
-            <h2 data-en="By general department" data-ar="حسب الإدارة العامة">By general department</h2>
-            <div id="deptBars" class="bars"></div>
-          </div>
-          <div>
-            <h2 data-en="By section" data-ar="حسب القسم الفرعي">By section</h2>
-            <div id="sectionBars" class="bars"></div>
-          </div>
-        </aside>
       </section>
     </main>
     <footer class="portal-footer">
@@ -997,6 +996,15 @@
           allDepartments: 'All departments',
           allSections: 'All sections',
           allStatuses: 'All statuses',
+          allAppointmentTypes: 'All appointment types',
+          allGenders: 'All genders',
+          allCompanies: 'All companies',
+          allGrades: 'All grades',
+          allWorkTypes: 'All work types',
+          allServiceTypes: 'All service types',
+          allGovernorates: 'All governorates',
+          allAgeGroups: 'All age groups',
+          allJobs: 'All job titles',
           noData: 'No matching employee records.',
           noDistribution: 'No matching records.',
           showing: 'Showing {from}–{to} of {total}',
@@ -1026,13 +1034,28 @@
           inactive: 'Inactive',
           retirement: 'Retires within 12 months',
           dataUnavailable: 'The employee service did not return any records.',
-          exportName: 'employee-records'
+          exportName: 'employee-records',
+          reason: 'Reason',
+          networkError: 'Network or connection error',
+          serverError: 'Server returned an error',
+          notFound: 'Service not found (404). The Apps Script deployment may need to be updated.',
+          unauthorized: 'Unauthorized (check access / token).',
+          badResponse: 'Invalid response from the server.'
         },
         ar: {
           allSectors: 'كل القطاعات',
           allDepartments: 'كل الإدارات العامة',
           allSections: 'كل الأقسام الفرعية',
           allStatuses: 'كل الحالات',
+          allAppointmentTypes: 'كل أنواع التعيين',
+          allGenders: 'كل الأنواع',
+          allCompanies: 'كل الشركات',
+          allGrades: 'كل الدرجات',
+          allWorkTypes: 'كل أنواع العمل',
+          allServiceTypes: 'كل أنواع الخدمة',
+          allGovernorates: 'كل المحافظات',
+          allAgeGroups: 'كل الفئات العمرية',
+          allJobs: 'كل المسميات الوظيفية',
           noData: 'لا توجد سجلات موظفين مطابقة.',
           noDistribution: 'لا توجد سجلات مطابقة.',
           showing: 'عرض {from}–{to} من {total}',
@@ -1062,7 +1085,13 @@
           inactive: 'غير نشط',
           retirement: 'يتقاعد خلال 12 شهراً',
           dataUnavailable: 'لم تُرجع خدمة الموظفين أي سجلات.',
-          exportName: 'سجلات-الموظفين'
+          exportName: 'سجلات-الموظفين',
+          reason: 'السبب',
+          networkError: 'خطأ في الشبكة أو الاتصال',
+          serverError: 'الخادم أرجع خطأ',
+          notFound: 'الخدمة غير موجودة (404). قد تحتاج إعادة نشر تطبيق Apps Script.',
+          unauthorized: 'غير مصرح (تحقق من الصلاحيات / التوكن).',
+          badResponse: 'استجابة غير صالحة من الخادم.'
         }
       };
       const schema = [
@@ -1173,9 +1202,24 @@
         let months = (reference.getFullYear() - date.getFullYear()) * 12 + reference.getMonth() - date.getMonth();
         if (reference.getDate() < date.getDate()) months--;
         if (months < 0) return '';
-        const years = Math.floor(months / 12),
-          rest = months % 12;
-        return lang() === 'ar' ? `${years} سنة${rest ? ` و ${rest} شهر` : ''}` : `${years} year${years === 1 ? '' : 's'}${rest ? `, ${rest} month${rest === 1 ? '' : 's'}` : ''}`;
+        const years = Math.floor(months / 12);
+        // Years only (ignore months)
+        return lang() === 'ar' ? `${years} سنة` : `${years} year${years === 1 ? '' : 's'}`;
+      }
+
+      function formatPhone(value) {
+        const raw = clean(value);
+        if (!raw) return '';
+        const digits = raw.replace(/[^\d+]/g, '');
+        if (!digits) return raw;
+        if (/^\+?20/.test(digits)) {
+          return digits.startsWith('+') ? digits : '+' + digits;
+        }
+        // Egyptian local numbers: ensure leading zero
+        if (/^[1-9]\d{8,10}$/.test(digits) && !digits.startsWith('0')) {
+          return '0' + digits;
+        }
+        return digits;
       }
 
       function computed(employee) {
@@ -1197,6 +1241,7 @@
           e.retirementDate = e.retirementDate || '';
         }
         e.totalService = serviceSince(appointment);
+        e.phone = formatPhone(e.phone);
         return e;
       }
 
@@ -1300,33 +1345,66 @@
         select.value = values.includes(current) ? current : '';
       }
 
+      const FILTER_CONTROLS = [
+        { id: 'sector', key: 'currentSector', allKey: 'allSectors' },
+        { id: 'department', key: 'currentGeneralDepartment', allKey: 'allDepartments' },
+        { id: 'section', key: 'currentSubDepartment', allKey: 'allSections' },
+        { id: 'appointmentType', key: 'appointmentType', allKey: 'allAppointmentTypes', normalize: true },
+        { id: 'gender', key: 'gender', allKey: 'allGenders' },
+        { id: 'company', key: 'currentCompany', allKey: 'allCompanies' },
+        { id: 'grade', key: 'currentGrade', allKey: 'allGrades' },
+        { id: 'workType', key: 'workType', allKey: 'allWorkTypes' },
+        { id: 'serviceType', key: 'serviceType', allKey: 'allServiceTypes' },
+        { id: 'governorate', key: 'governorate', allKey: 'allGovernorates' },
+        { id: 'ageGroup', key: 'ageGroup', allKey: 'allAgeGroups', computed: true },
+        { id: 'jobTitle', key: 'jobTitle', allKey: 'allJobs' }
+      ];
+
       function refreshFilters() {
-        fillSelect('sector', 'currentSector', t('allSectors'));
-        fillSelect('department', 'currentGeneralDepartment', t('allDepartments'));
-        fillSelect('section', 'currentSubDepartment', t('allSections'));
-        const select = $('status'),
-          current = select.value,
-          values = unique('status');
-        select.innerHTML = `<option value="">${t('allStatuses')}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(displayStatus(value).label)}</option>`).join('')}`;
-        select.value = values.includes(current) ? current : '';
+        const source = state.employees.map(computed);
+        FILTER_CONTROLS.forEach(ctrl => {
+          const select = $(ctrl.id);
+          if (!select) return;
+          const current = select.value;
+          let values;
+          if (ctrl.normalize) {
+            values = [...new Set(source.map(e => normalizeAppointmentType(e[ctrl.key])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
+          } else if (ctrl.computed) {
+            values = [...new Set(source.map(e => clean(e[ctrl.key])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
+          } else {
+            values = unique(ctrl.key, source);
+          }
+          select.innerHTML = `<option value="">${escapeHtml(t(ctrl.allKey))}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
+          select.value = values.includes(current) ? current : '';
+        });
+        const statusSelect = $('status');
+        if (statusSelect) {
+          const current = statusSelect.value;
+          const values = unique('status');
+          statusSelect.innerHTML = `<option value="">${t('allStatuses')}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(displayStatus(value).label)}</option>`).join('')}`;
+          statusSelect.value = values.includes(current) ? current : '';
+        }
       }
 
       function filtersActive() {
-        return Boolean(clean($('search').value) || $('sector').value || $('department').value || $('section').value || $('status').value);
+        if (clean($('search').value)) return true;
+        if ($('status') && $('status').value) return true;
+        return FILTER_CONTROLS.some(ctrl => $(ctrl.id) && $(ctrl.id).value);
       }
 
       function getFiltered() {
         const query = normal($('search').value);
-        const selected = {
-          currentSector: $('sector').value,
-          currentGeneralDepartment: $('department').value,
-          currentSubDepartment: $('section').value,
-          status: $('status').value
-        };
+        const statusVal = $('status') ? $('status').value : '';
         const list = state.employees.map(computed).filter(employee => {
           const matchesSearch = !query || normal(employee.code).includes(query) || normal(employee.name).includes(query);
-          const matchesFilters = Object.entries(selected).every(([key, value]) => !value || clean(employee[key]) === value);
-          return matchesSearch && matchesFilters;
+          if (!matchesSearch) return false;
+          if (statusVal && clean(employee.status) !== statusVal) return false;
+          return FILTER_CONTROLS.every(ctrl => {
+            const selected = $(ctrl.id) ? $(ctrl.id).value : '';
+            if (!selected) return true;
+            if (ctrl.normalize) return normalizeAppointmentType(employee[ctrl.key]) === selected;
+            return clean(employee[ctrl.key]) === selected;
+          });
         });
         const key = state.sort;
         return list.sort((left, right) => {
@@ -1399,8 +1477,6 @@
         state.filtered = list;
         renderStats(list);
         renderRows(list);
-        renderBars('deptBars', 'currentGeneralDepartment', list);
-        renderBars('sectionBars', 'currentSubDepartment', list);
         renderSortIcons();
       }
 
@@ -1612,7 +1688,7 @@
           state.employees = [];
           refreshFilters();
           render();
-          const message = `${t('loadFailed')} ${clean(error.message)}`;
+          const message = formatFailure('loadFailed', error);
           showNotice(message);
           toast(message, 'error');
         } finally {
@@ -1620,9 +1696,79 @@
           render();
         }
       }
+      function explainError(error) {
+        const raw = clean(error && (error.message || error));
+        if (!raw) return t('serverError');
+        const lower = raw.toLowerCase();
+        if (lower.includes('404') || lower.includes('not found')) return `${t('notFound')} (${raw})`;
+        if (lower.includes('401') || lower.includes('403') || lower.includes('unauthorized') || lower.includes('forbidden')) return `${t('unauthorized')} (${raw})`;
+        if (lower.includes('failed to fetch') || lower.includes('network') || lower.includes('cors') || lower.includes('typeerror')) return `${t('networkError')} (${raw})`;
+        if (lower.includes('json') || lower.includes('unexpected token') || lower.includes('syntax')) return `${t('badResponse')} (${raw})`;
+        return raw;
+      }
+
+      function formatFailure(prefixKey, error) {
+        const reason = explainError(error);
+        return `${t(prefixKey)} ${t('reason')}: ${reason}`;
+      }
+
+      async function postEmployee(employee, isEdit) {
+        // Apps Script web apps can return intermittent 404 on the redirect hop.
+        const maxAttempts = 3;
+        let lastError;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            const response = await fetch(withToken(API_URL), {
+              method: 'POST',
+              redirect: 'follow',
+              headers: {
+                'Content-Type': 'text/plain;charset=utf-8'
+              },
+              body: JSON.stringify({
+                action: isEdit ? 'update' : 'create',
+                employee,
+                token: API_TOKEN || undefined
+              })
+            });
+            if (response.status === 404 && attempt < maxAttempts) {
+              await new Promise(r => setTimeout(r, 400 * attempt));
+              continue;
+            }
+            if (!response.ok) {
+              let bodyHint = '';
+              try {
+                const text = await response.text();
+                if (text) {
+                  try {
+                    const j = JSON.parse(text);
+                    bodyHint = j.error || j.message || text.slice(0, 200);
+                  } catch {
+                    bodyHint = text.slice(0, 200);
+                  }
+                }
+              } catch (_) {}
+              throw new Error(bodyHint ? `${response.status} ${response.statusText} — ${bodyHint}` : `${response.status} ${response.statusText}`);
+            }
+            const payload = await readApi(response);
+            if (!payload.ok) throw new Error(payload.error || payload.message || t('saveFailed'));
+            return payload;
+          } catch (err) {
+            lastError = err;
+            const msg = clean(err && err.message);
+            if ((msg.includes('404') || msg.includes('Failed to fetch') || msg.includes('Network')) && attempt < maxAttempts) {
+              await new Promise(r => setTimeout(r, 400 * attempt));
+              continue;
+            }
+            throw err;
+          }
+        }
+        throw lastError || new Error('404');
+      }
+
       async function saveEmployee(event) {
         event.preventDefault();
         const data = Object.fromEntries(new FormData($('employeeForm')).entries());
+        if (data.phone) data.phone = formatPhone(data.phone);
         const error = validateEmployee(data);
         if (error) {
           $('formError').textContent = error;
@@ -1636,30 +1782,19 @@
           const employee = {
             ...data,
             ...computed(data),
-            id: clean(data.id || data.code)
+            id: clean(data.id || data.code),
+            phone: formatPhone(data.phone || '')
           };
-          const response = await fetch(withToken(API_URL), {
-            method: 'POST',
-            redirect: 'follow',
-            headers: {
-              'Content-Type': 'text/plain;charset=utf-8'
-            },
-            body: JSON.stringify({
-              action: isEdit ? 'update' : 'create',
-              employee,
-              token: API_TOKEN || undefined
-            })
-          });
-          if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
-          const payload = await readApi(response);
-          if (!payload.ok) throw new Error(payload.error || payload.message || t('saveFailed'));
+          await postEmployee(employee, isEdit);
           closeModal('formModal');
           toast(isEdit ? t('saved') : t('created'), 'success');
           await load({
             quiet: true
           });
         } catch (error) {
-          $('formError').textContent = `${t('saveFailed')} ${clean(error.message)}`;
+          const message = formatFailure('saveFailed', error);
+          $('formError').textContent = message;
+          toast(message, 'error');
         } finally {
           $('saveBtn').disabled = false;
           $('saveBtn').textContent = lang() === 'ar' ? 'حفظ التغييرات' : 'Save changes';
@@ -1680,10 +1815,11 @@
           applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
         });
         $('search').addEventListener('input', applyFilter);
-        ['sector', 'department', 'section', 'status'].forEach(id => $(id).addEventListener('change', applyFilter));
+        ['status', ...FILTER_CONTROLS.map(c => c.id)].forEach(id => { const el = $(id); if (el) el.addEventListener('change', applyFilter); });
         $('clearBtn').addEventListener('click', () => {
           $('search').value = '';
-          ['sector', 'department', 'section', 'status'].forEach(id => $(id).value = '');
+          if ($('status')) $('status').value = '';
+          FILTER_CONTROLS.forEach(ctrl => { if ($(ctrl.id)) $(ctrl.id).value = ''; });
           applyFilter();
           toast(t('filtersCleared'), 'success');
         });
