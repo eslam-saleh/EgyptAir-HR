@@ -301,60 +301,230 @@ function createEmployee(input) {
   return rowToObject(sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0], row);
 }
 
-/** Apply yyyy/mm/dd display format (no time) to every date column on a row. */
+/** Force date cells to plain text so Sheets never stores/shows a time component. */
 function applyDateFormats(sh, row) {
   DATE_FIELDS.forEach(key => {
     const col = FIELDS.findIndex(f => f[0] === key) + 1;
     if (col > 0) {
-      sh.getRange(row, col).setNumberFormat('yyyy/mm/dd');
+      const cell = sh.getRange(row, col);
+      const parsed = parseSheetDate(cell.getValue());
+      cell.setNumberFormat('@');
+      cell.setValue(parsed ? formatDateYmd(parsed) : '');
     }
   });
 }
 
 /**
- * Sheet formulas for computed columns (1-based):
- *   M = birthDate, N = retirementDate, O = appointmentDate
- *   P = age, Q = ageGroup, R = ageAtAppointment, S = totalService
+ * Parse a cell value into a Date at local midnight, or null.
+ * Handles Date objects, "yyyy-mm-dd", "yyyy/mm/dd", and values with a time part.
+ */
+function parseSheetDate(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+  const s = String(value).trim().replace(/[T\s].*$/, '');
+  const m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function ageInYears(fromDate, toDate) {
+  if (!fromDate || !toDate || toDate < fromDate) return '';
+  let age = toDate.getFullYear() - fromDate.getFullYear();
+  if (
+    toDate.getMonth() < fromDate.getMonth() ||
+    (toDate.getMonth() === fromDate.getMonth() && toDate.getDate() < fromDate.getDate())
+  ) {
+    age--;
+  }
+  return age >= 0 && age < 120 ? age : '';
+}
+
+function ageGroupLabel(age) {
+  if (age === '' || age == null) return '';
+  const n = Number(age);
+  if (isNaN(n)) return '';
+  if (n < 20) return 'أقل من 20';
+  if (n < 25) return '20-24';
+  if (n < 30) return '25-29';
+  if (n < 35) return '30-34';
+  if (n < 40) return '35-39';
+  if (n < 45) return '40-44';
+  if (n < 50) return '45-49';
+  if (n < 55) return '50-54';
+  if (n < 60) return '55-59';
+  if (n < 65) return '60-64';
+  return '65 فأكثر';
+}
+
+function serviceDurationLabel(appointmentDate, today) {
+  if (!appointmentDate || appointmentDate > today) return '';
+  let months =
+    (today.getFullYear() - appointmentDate.getFullYear()) * 12 +
+    (today.getMonth() - appointmentDate.getMonth());
+  if (today.getDate() < appointmentDate.getDate()) months--;
+  if (months < 0) return '';
+  const years = Math.floor(months / 12);
+  const rest = months % 12;
+  if (years === 0 && rest === 0) return 'أقل من شهر';
+  if (years === 0) return rest + ' شهر';
+  if (rest === 0) return years + ' سنة';
+  return years + ' سنة و ' + rest + ' شهر';
+}
+
+function formatDateYmd(date) {
+  if (!date) return '';
+  const pad = n => (n < 10 ? '0' + n : String(n));
+  return date.getFullYear() + '/' + pad(date.getMonth() + 1) + '/' + pad(date.getDate());
+}
+
+/**
+ * Compute derived values from birth (col M) and appointment (col O).
+ * Writes plain VALUES (not formulas) into N, P, Q, R, S so Arabic-locale
+ * sheets never hit #ERROR! from comma-based formula syntax.
  *
- * السن الان          = whole years from birth to today
- * تاريخ المعاش       = birth + 60 years (standard pension age)
- * الفئة العمرية      = 5-year bands from current age
- * السن عند التعيين   = whole years from birth to appointment
- * مدة الخدمة الكلية  = years + months from appointment to today
+ *   N تاريخ المعاش      = birth + 60 years
+ *   P السن الان         = years from birth to today
+ *   Q الفئة العمرية     = 5-year band from current age
+ *   R السن عند التعيين  = years from birth to appointment
+ *   S مدة الخدمة الكلية = years + months from appointment to today
  */
 function writeDerivedFormulas(sh, row) {
-  // N — تاريخ المعاش (birth + 60)
-  sh.getRange(row, 14).setFormula(
-    '=IFERROR(DATE(YEAR(M' + row + ')+' + RETIREMENT_AGE_YEARS +
-      ',MONTH(M' + row + '),DAY(M' + row + ')),"")'
-  );
-  // P — السن الان
-  sh.getRange(row, 16).setFormula(
-    '=IFERROR(DATEDIF(M' + row + ',TODAY(),"Y"),"")'
-  );
-  // Q — الفئة العمرية (every 5 years)
-  sh.getRange(row, 17).setFormula(
-    '=IF(P' + row + '="","",' +
-      'IF(P' + row + '<20,"أقل من 20",' +
-      'IF(P' + row + '<25,"20–24",' +
-      'IF(P' + row + '<30,"25–29",' +
-      'IF(P' + row + '<35,"30–34",' +
-      'IF(P' + row + '<40,"35–39",' +
-      'IF(P' + row + '<45,"40–44",' +
-      'IF(P' + row + '<50,"45–49",' +
-      'IF(P' + row + '<55,"50–54",' +
-      'IF(P' + row + '<60,"55–59",' +
-      'IF(P' + row + '<65,"60–64","65 فأكثر"))))))))))'
-  );
-  // R — السن عند التعيين
-  sh.getRange(row, 18).setFormula(
-    '=IFERROR(DATEDIF(M' + row + ',O' + row + ',"Y"),"")'
-  );
-  // S — مدة الخدمة الكلية
-  sh.getRange(row, 19).setFormula(
-    '=IFERROR(DATEDIF(O' + row + ',TODAY(),"Y")&" سنة و "&' +
-      'DATEDIF(O' + row + ',TODAY(),"YM")&" شهر","")'
-  );
+  const birth = parseSheetDate(sh.getRange(row, 13).getValue()); // M
+  const appointment = parseSheetDate(sh.getRange(row, 15).getValue()); // O
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const age = ageInYears(birth, today);
+  const pension = birth
+    ? new Date(birth.getFullYear() + RETIREMENT_AGE_YEARS, birth.getMonth(), birth.getDate())
+    : null;
+  const ageAtAppt = ageInYears(birth, appointment);
+  const group = ageGroupLabel(age);
+  const service = serviceDurationLabel(appointment, today);
+
+  // N P Q R S = columns 14,16,17,18,19 — plain values only (no formulas)
+  const pensionCell = sh.getRange(row, 14);
+  pensionCell.setNumberFormat('@');
+  pensionCell.setValue(formatDateYmd(pension));
+  sh.getRange(row, 16).setValue(age === '' ? '' : age);
+  sh.getRange(row, 17).setValue(group);
+  sh.getRange(row, 18).setValue(ageAtAppt === '' ? '' : ageAtAppt);
+  sh.getRange(row, 19).setValue(service);
+}
+
+/**
+ * One-time backfill for EVERY existing row.
+ *
+ * ONLY touches specific columns — never rewrites a whole row —
+ * so other fields cannot shift or pick up values from the wrong column.
+ *
+ *  - N/P/Q/R/S recalculated as plain values (fixes #ERROR! and bad ages like 126)
+ *  - all date columns forced to plain-text yyyy/mm/dd (no 00:00:00)
+ *  - status: activ → active
+ *  - header labels refreshed (تاريح → تاريخ)
+ *
+ * Run once: select backfillDerivedFormulas → Run. Safe to re-run.
+ */
+function backfillDerivedFormulas() {
+  const sh = getSheet();
+  ensureSheetShape(sh);
+  // Header labels only — does not move data
+  sh.getRange(1, 1, 1, HEADER_KEYS.length).setValues([HEADER_KEYS]);
+
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) {
+    return { ok: true, updated: 0, message: 'No data rows to update.' };
+  }
+
+  const numRows = lastRow - 1;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Read ONLY the source columns we need
+  const codeVals = sh.getRange(2, 1, numRows, 1).getDisplayValues();
+  const birthVals = sh.getRange(2, 13, numRows, 1).getValues(); // M
+  const apptVals = sh.getRange(2, 15, numRows, 1).getValues(); // O
+  const statusVals = sh.getRange(2, 54, numRows, 1).getValues(); // status
+
+  const pensionOut = [];
+  const ageOut = [];
+  const groupOut = [];
+  const ageAtOut = [];
+  const serviceOut = [];
+  const statusOut = [];
+  let updated = 0;
+
+  for (let i = 0; i < numRows; i++) {
+    if (!String(codeVals[i][0] || '').trim()) {
+      pensionOut.push(['']);
+      ageOut.push(['']);
+      groupOut.push(['']);
+      ageAtOut.push(['']);
+      serviceOut.push(['']);
+      statusOut.push([statusVals[i][0]]);
+      continue;
+    }
+
+    const birth = parseSheetDate(birthVals[i][0]);
+    const appointment = parseSheetDate(apptVals[i][0]);
+    const age = ageInYears(birth, today);
+    const pension = birth
+      ? new Date(birth.getFullYear() + RETIREMENT_AGE_YEARS, birth.getMonth(), birth.getDate())
+      : null;
+    const ageAt = ageInYears(birth, appointment);
+
+    pensionOut.push([formatDateYmd(pension)]);
+    ageOut.push([age === '' ? '' : age]);
+    groupOut.push([ageGroupLabel(age)]);
+    ageAtOut.push([ageAt === '' ? '' : ageAt]);
+    serviceOut.push([serviceDurationLabel(appointment, today)]);
+    statusOut.push([normalizeStatus(statusVals[i][0])]);
+    updated++;
+  }
+
+  // Write ONLY derived + status columns (in-place, no full-row rewrite)
+  const nRange = sh.getRange(2, 14, numRows, 1);
+  nRange.setNumberFormat('@');
+  nRange.setValues(pensionOut);
+
+  sh.getRange(2, 16, numRows, 1).setValues(ageOut);
+  sh.getRange(2, 17, numRows, 1).setValues(groupOut);
+  sh.getRange(2, 18, numRows, 1).setValues(ageAtOut);
+  sh.getRange(2, 19, numRows, 1).setValues(serviceOut);
+  sh.getRange(2, 54, numRows, 1).setValues(statusOut);
+
+  // Strip time from every date column: store as plain text yyyy/mm/dd
+  DATE_FIELDS.forEach(key => {
+    const col = FIELDS.findIndex(f => f[0] === key) + 1;
+    if (col < 1) return;
+    const r = sh.getRange(2, col, numRows, 1);
+    const raw = r.getValues();
+    const cleaned = raw.map(cell => {
+      const parsed = parseSheetDate(cell[0]);
+      if (parsed) {
+        const year = parsed.getFullYear();
+        // Drop nonsense dates (e.g. 1111-11-11)
+        if (year < 1920 || year > 2100) return [''];
+        return [formatDateYmd(parsed)];
+      }
+      return [''];
+    });
+    r.setNumberFormat('@'); // plain text — Sheets will not re-add 00:00:00
+    r.setValues(cleaned);
+  });
+
+  SpreadsheetApp.flush();
+  return {
+    ok: true,
+    updated: updated,
+    message:
+      'Recalculated ' +
+      updated +
+      ' row(s) in-place (derived cols only). Dates stored as plain yyyy/mm/dd text with no time. Status activ→active.'
+  };
 }
 
 function json(x) {
