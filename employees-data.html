@@ -716,6 +716,67 @@
         line-height: 1;
       }
 
+
+      .report-table-wrap {
+        overflow: auto;
+        max-height: 70vh;
+      }
+
+      .report-table {
+        width: 100%;
+        min-width: 900px;
+        border-collapse: collapse;
+        font-size: .82rem;
+      }
+
+      .report-table th,
+      .report-table td {
+        padding: 8px 10px;
+        border: 1px solid var(--line);
+        text-align: center;
+        white-space: nowrap;
+      }
+
+      .report-table th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--surface-2);
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .report-table th.sticky-col,
+      .report-table td.sticky-col {
+        position: sticky;
+        inset-inline-start: 0;
+        z-index: 2;
+        text-align: start;
+        background: var(--surface);
+        font-weight: 700;
+        min-width: 180px;
+      }
+
+      .report-table th.sticky-col {
+        z-index: 3;
+        background: var(--surface-2);
+      }
+
+      .report-table tr.sector-row td {
+        background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+        font-weight: 800;
+        text-align: start;
+      }
+
+      .report-table tr.total-row td {
+        background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+        font-weight: 800;
+      }
+
+      .report-table td.num {
+        font-variant-numeric: tabular-nums;
+      }
+
       @media (max-width: 1180px) {
         .toolbar {
           grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -818,7 +879,7 @@
           <h1 id="pageTitle" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</h1>
           <p data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p>
         </div>
-        <div class="actions"><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn secondary" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn secondary" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
+        <div class="actions"><button class="btn secondary" id="reportBtn" type="button" data-en="Appointment report" data-ar="تقرير نوع التعيين">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn secondary" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn secondary" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
       </section>
       <div class="notice" id="notice" role="status" hidden></div>
       <section class="stats" aria-label="Employee statistics">
@@ -881,6 +942,17 @@
         <div class="footer-copyright">© 2026 Egyptair inflight services. All rights reserved.</div>
       </div>
     </footer>
+    <div class="modal" id="reportModal" hidden>
+      <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+        <div class="dialog-head">
+          <h2 id="reportTitle" data-en="Appointment type by department" data-ar="نوع التعيين حسب الإدارة">Appointment type by department</h2>
+          <button class="icon-btn" type="button" data-close="reportModal" aria-label="Close">×</button>
+        </div>
+        <div class="dialog-body">
+          <div class="report-table-wrap" id="reportBody"></div>
+        </div>
+      </section>
+    </div>
     <div class="modal" id="profileModal" hidden>
       <section class="dialog narrow" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
         <div class="dialog-head">
@@ -1005,8 +1077,8 @@
           ['ageGroup', 'Age group', 'الفئة العمرية', 'computed'],
           ['ageAtAppointment', 'Age at appointment', 'السن عند التعيين', 'computed'],
           ['address', 'Address', 'العنوان', 'text'],
-                 ['governorate', 'Governorate', 'المحافظة', 'text'],
-   ['phone', 'Phone number', 'رقم التليفون', 'tel'],
+          ['governorate', 'Governorate', 'المحافظة', 'text'],
+          ['phone', 'Phone number', 'رقم التليفون', 'tel'],
           ['militaryStatus', 'Military status', 'نوع المعاملة العسكرية', 'text'],
           ['exemptionReason', 'Exemption reason', 'سبب الإعفاء', 'text'],
           ['unpaidLeaveType', 'Unpaid leave type', 'نوع الإجازة بدون مرتب', 'text'],
@@ -1031,7 +1103,7 @@
           ['jobTitle', 'Job title', 'مسمى الوظيفة', 'text'],
           ['actualJob', 'Actual job', 'الوظيفة الفعلية', 'text'],
           ['statisticsJob', 'Job title for statistics', 'مسمى الوظيفة للإحصائيات', 'text'],
-          ['appointmentType', 'Appointment type', 'نوع التعيين', 'text'],
+          ['appointmentType', 'Appointment type', 'نوع التعيين', 'select'],
           ['currentGrade', 'Current grade', 'الدرجة الحالية', 'text'],
           ['gradeDate', 'Grade date', 'تاريخ الدرجة', 'date'],
           ['workSchedule', 'Work schedule', 'توقيت العمل', 'text'],
@@ -1371,20 +1443,121 @@
         openModal('profileModal', opener);
       }
 
+      const APPOINTMENT_TYPES = [
+        'تثبيت',
+        'دائم',
+        'عقد محدد المده',
+        'عقد محدد المدة',
+        'عقد مؤقت ( موسمى )',
+        'عقد مؤقت (موسمى)',
+        'مكافأة شاملة',
+        'تعاقد بعد سن الستين'
+      ];
+
       function selectOptions(key, selected) {
-        const options = key === 'gender' ? [
-          ['', '—'],
-          ['ذكور', lang() === 'ar' ? 'ذكور' : 'Male'],
-          ['اناث', lang() === 'ar' ? 'اناث' : 'Female']
-        ] : [
-          ['', '—'],
-          ['active', t('active')],
-          ['على رأس العمل', t('active')],
-          ['إجازة', t('leave')],
-          ['منتدب', lang() === 'ar' ? 'منتدب' : 'Seconded'],
-          ['غير نشط', t('inactive')]
-        ];
+        let options;
+        if (key === 'gender') {
+          options = [
+            ['', '—'],
+            ['ذكور', lang() === 'ar' ? 'ذكور' : 'Male'],
+            ['اناث', lang() === 'ar' ? 'اناث' : 'Female']
+          ];
+        } else if (key === 'appointmentType') {
+          const known = [
+            'تثبيت',
+            'دائم',
+            'عقد محدد المده',
+            'عقد مؤقت ( موسمى )',
+            'مكافأة شاملة',
+            'تعاقد بعد سن الستين'
+          ];
+          const extra = clean(selected) && !known.includes(clean(selected)) ? [clean(selected)] : [];
+          options = [['', '—'], ...[...known, ...extra].map(v => [v, v])];
+        } else {
+          options = [
+            ['', '—'],
+            ['active', t('active')],
+            ['على رأس العمل', t('active')],
+            ['إجازة', t('leave')],
+            ['منتدب', lang() === 'ar' ? 'منتدب' : 'Seconded'],
+            ['غير نشط', t('inactive')]
+          ];
+        }
         return options.map(([value, label]) => `<option value="${escapeHtml(value)}" ${clean(selected) === value ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+      }
+
+      function normalizeAppointmentType(value) {
+        const s = clean(value);
+        if (!s) return '';
+        const n = s.replace(/\s+/g, ' ');
+        if (/تثبيت/i.test(n)) return 'تثبيت';
+        if (/دائم/.test(n) && !/تعاقد/.test(n)) return 'دائم';
+        if (/محدد/.test(n)) return 'عقد محدد المده';
+        if (/مؤقت|موسم/.test(n)) return 'عقد مؤقت ( موسمى )';
+        if (/مكافأة|مكافاه/.test(n)) return 'مكافأة شاملة';
+        if (/ستين|60/.test(n)) return 'تعاقد بعد سن الستين';
+        return s;
+      }
+
+      function buildAppointmentReport(list) {
+        const typeOrder = [
+          'تثبيت',
+          'تعاقد بعد سن الستين',
+          'دائم',
+          'عقد محدد المده',
+          'عقد مؤقت ( موسمى )',
+          'مكافأة شاملة'
+        ];
+        // sector → department → type → count
+        const tree = {};
+        list.forEach(emp => {
+          const sector = clean(emp.currentSector) || (lang() === 'ar' ? 'بدون قطاع' : 'No sector');
+          const dept = clean(emp.currentGeneralDepartment) || (lang() === 'ar' ? 'بدون اداره عامه' : 'No department');
+          const type = normalizeAppointmentType(emp.appointmentType) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified');
+          if (!tree[sector]) tree[sector] = {};
+          if (!tree[sector][dept]) tree[sector][dept] = {};
+          tree[sector][dept][type] = (tree[sector][dept][type] || 0) + 1;
+        });
+        const allTypes = [...typeOrder];
+        Object.values(tree).forEach(depts => {
+          Object.values(depts).forEach(counts => {
+            Object.keys(counts).forEach(t => {
+              if (!allTypes.includes(t)) allTypes.push(t);
+            });
+          });
+        });
+        const sectors = Object.keys(tree).sort((a, b) => a.localeCompare(b, 'ar'));
+        const colTotals = Object.fromEntries(allTypes.map(t => [t, 0]));
+        let grand = 0;
+        let body = '';
+        sectors.forEach(sector => {
+          const depts = Object.keys(tree[sector]).sort((a, b) => a.localeCompare(b, 'ar'));
+          body += `<tr class="sector-row"><td class="sticky-col" colspan="${allTypes.length + 2}">${escapeHtml(sector)}</td></tr>`;
+          depts.forEach(dept => {
+            const counts = tree[sector][dept];
+            let rowSum = 0;
+            const cells = allTypes.map(t => {
+              const n = counts[t] || 0;
+              rowSum += n;
+              colTotals[t] += n;
+              return `<td class="num">${n || ''}</td>`;
+            }).join('');
+            grand += rowSum;
+            body += `<tr><td class="sticky-col">${escapeHtml(dept)}</td>${cells}<td class="num"><strong>${rowSum}</strong></td></tr>`;
+          });
+        });
+        const totalCells = allTypes.map(t => `<td class="num"><strong>${colTotals[t] || ''}</strong></td>`).join('');
+        body += `<tr class="total-row"><td class="sticky-col">${lang() === 'ar' ? 'الاجمالى' : 'Total'}</td>${totalCells}<td class="num"><strong>${grand}</strong></td></tr>`;
+        const head = `<tr><th class="sticky-col">${lang() === 'ar' ? 'الاداره العامه' : 'General department'}</th>${allTypes.map(t => `<th>${escapeHtml(t)}</th>`).join('')}<th>${lang() === 'ar' ? 'الاجمالى' : 'Total'}</th></tr>`;
+        return `<table class="report-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+      }
+
+      function openAppointmentReport(opener) {
+        const list = state.employees.length ? state.employees : [];
+        $('reportBody').innerHTML = list.length
+          ? buildAppointmentReport(list)
+          : `<p class="empty">${t('noData')}</p>`;
+        openModal('reportModal', opener);
       }
 
       function openForm(employee = {}, opener) {
@@ -1517,6 +1690,7 @@
         $('refreshBtn').addEventListener('click', () => load({
           quiet: false
         }));
+        $('reportBtn').addEventListener('click', event => openAppointmentReport(event.currentTarget));
         $('newBtn').addEventListener('click', event => openForm({}, event.currentTarget));
         $('employeeForm').addEventListener('submit', saveEmployee);
         document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => closeModal(button.dataset.close)));
