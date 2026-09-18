@@ -1,243 +1,1572 @@
 <!doctype html>
 <html lang="en" dir="ltr" data-theme="light">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="EgyptAir employee directory and workforce overview.">
-  <title>Employee Data | EgyptAir Work Tools</title>
-  <link rel="icon" href="egyptair-logo_.png" type="image/png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="portal.css">
-  <style>
-    :root { --employee-blue: #005daa; --employee-blue-dark: #003f73; --employee-gold: #c99c39; --employee-good: #12805c; --employee-warn: #b97800; }
-    body { background: radial-gradient(circle at 96% 0, color-mix(in srgb, var(--primary) 13%, transparent), transparent 27rem), var(--bg); }
-    button, input, select { font: inherit; }
-    .wrap { width: min(1480px, calc(100% - 32px)); margin: 0 auto; padding: clamp(28px, 5vw, 54px) 0 60px; }
-    .hero { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
-    .eyebrow { margin-bottom: 7px; color: var(--accent); }
-    .hero h1 { margin: 0; color: var(--text); font-size: clamp(2rem, 4.3vw, 3.25rem); line-height: 1.05; }
-    .hero p:not(.eyebrow) { max-width: 760px; margin: 10px 0 0; color: var(--muted); line-height: 1.65; }
-    .actions, .button-row { display: flex; flex-wrap: wrap; gap: 9px; }
-    .btn { min-height: 42px; border: 1px solid transparent; border-radius: 8px; padding: 0 15px; background: var(--primary); color: #fff; font-weight: 800; cursor: pointer; transition: transform .16s ease, background .16s ease, border-color .16s ease; }
-    .btn:hover { transform: translateY(-1px); background: var(--primary-2); }
-    .btn:focus-visible, .input:focus-visible, .select:focus-visible, .icon-btn:focus-visible, summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 30%, transparent); outline-offset: 2px; }
-    .btn.secondary { border-color: var(--line); background: var(--surface); color: var(--text); }
-    .btn.secondary:hover { background: var(--surface-2); }
-    .btn.danger { border-color: color-mix(in srgb, var(--danger) 34%, var(--line)); background: color-mix(in srgb, var(--danger) 11%, var(--surface)); color: var(--danger); }
-    .btn[disabled] { cursor: wait; opacity: .65; transform: none; }
-    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
-    .stat, .panel { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 12px 30px rgba(18,59,115,.08); }
-    .stat { padding: 18px; }
-    .stat span { display: block; color: var(--muted); font-size: .84rem; font-weight: 700; }
-    .stat strong { display: block; margin-top: 5px; color: var(--primary); font-size: clamp(1.55rem, 3vw, 2rem); line-height: 1; }
-    .stat small { display: block; min-height: 1.2em; margin-top: 7px; color: var(--muted); font-size: .76rem; }
-    .toolbar { display: grid; grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(145px, 1fr)) auto; gap: 10px; align-items: end; margin-bottom: 18px; padding: 16px; }
-    .filter-field { display: grid; gap: 5px; }
-    .filter-field label { color: var(--muted); font-size: .76rem; font-weight: 800; }
-    .input, .select, .field input, .field select { width: 100%; min-height: 42px; border: 1px solid var(--line); border-radius: 8px; padding: 0 11px; background: var(--surface); color: var(--text); }
-    .input::placeholder { color: var(--muted); opacity: .85; }
-    .layout { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(290px, .58fr); gap: 18px; align-items: start; }
-    .panel { overflow: hidden; }
-    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 72px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
-    .panel-head h2 { margin: 0; color: var(--text); font-size: 1.06rem; }
-    .result-note { color: var(--muted); font-size: .84rem; font-weight: 500; }
-    .table-wrap { overflow: auto; max-height: 660px; }
-    table { width: 100%; min-width: 770px; border-collapse: collapse; }
-    th, td { padding: 12px 14px; border-bottom: 1px solid var(--line); text-align: start; vertical-align: middle; }
-    th { position: sticky; top: 0; z-index: 1; background: var(--surface-2); color: var(--muted); font-size: .76rem; font-weight: 800; white-space: nowrap; }
-    th button { display: inline-flex; align-items: center; gap: 4px; border: 0; padding: 0; background: transparent; color: inherit; font: inherit; font-weight: inherit; cursor: pointer; }
-    th button:hover { color: var(--primary); }
-    tbody tr { cursor: pointer; transition: background .14s ease; }
-    tbody tr:hover, tbody tr:focus-within { background: var(--surface-2); }
-    td { font-size: .89rem; }
-    .employee-name { display: block; color: var(--text); font-weight: 800; }
-    .subtle { display: block; margin-top: 2px; color: var(--muted); font-size: .77rem; }
-    .pill { display: inline-flex; align-items: center; min-height: 25px; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--success) 12%, var(--surface)); color: var(--success); font-size: .74rem; font-weight: 800; white-space: nowrap; }
-    .pill.leave { background: color-mix(in srgb, var(--employee-warn) 14%, var(--surface)); color: var(--employee-warn); }
-    .pill.inactive { background: color-mix(in srgb, var(--danger) 12%, var(--surface)); color: var(--danger); }
-    .empty { padding: 34px 18px; color: var(--muted); text-align: center; }
-    .pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; }
-    .pagination p { margin: 0; color: var(--muted); font-size: .83rem; }
-    .pagination-controls { display: inline-flex; align-items: center; gap: 7px; }
-    .page-size { min-height: 35px; border: 1px solid var(--line); border-radius: 7px; padding: 0 7px; background: var(--surface); color: var(--text); }
-    .icon-btn { display: grid; width: 35px; height: 35px; place-items: center; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--text); cursor: pointer; font-size: 1.05rem; }
-    .icon-btn:hover:not([disabled]) { color: var(--primary); background: var(--surface-2); }
-    .icon-btn:disabled { cursor: not-allowed; opacity: .45; }
-    .analytics { padding: 18px; }
-    .analytics h2 { margin: 0 0 15px; color: var(--text); font-size: 1.02rem; }
-    .analytics h2 + .bars { margin-bottom: 25px; }
-    .bars { display: grid; gap: 12px; }
-    .bar-row { display: grid; gap: 5px; }
-    .bar-head { display: flex; justify-content: space-between; gap: 12px; color: var(--text); font-size: .81rem; }
-    .bar-head span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .bar-head b { color: var(--muted); }
-    .track { height: 8px; overflow: hidden; border-radius: 99px; background: var(--surface-2); }
-    .fill { height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--primary), var(--primary-2)); }
-    .notice { margin-bottom: 16px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--employee-warn) 32%, var(--line)); border-radius: 9px; background: color-mix(in srgb, var(--employee-warn) 10%, var(--surface)); color: var(--text); font-size: .87rem; line-height: 1.55; }
-    .notice[hidden] { display: none; }
-    .loading { display: grid; gap: 10px; padding: 34px 18px; color: var(--muted); text-align: center; }
-    .loading::before { width: 28px; height: 28px; margin: auto; border: 3px solid var(--line); border-top-color: var(--primary); border-radius: 50%; content: ''; animation: spin .8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 18px; background: rgba(3, 18, 34, .62); }
-    .modal[hidden] { display: none; }
-    .dialog { width: min(1120px, 100%); max-height: 94vh; overflow: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 28px 80px rgba(0, 0, 0, .4); }
-    .dialog.narrow { width: min(760px, 100%); }
-    .dialog-head, .dialog-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 20px; background: var(--surface); }
-    .dialog-head { position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--line); }
-    .dialog-head h2 { margin: 0; color: var(--text); font-size: 1.2rem; }
-    .dialog-foot { position: sticky; bottom: 0; border-top: 1px solid var(--line); }
-    .dialog-body, .form { padding: 20px; }
-    .profile-hero { display: flex; justify-content: space-between; gap: 18px; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
-    .profile-hero h3 { margin: 0; color: var(--text); font-size: 1.22rem; }
-    .profile-hero p { margin: 5px 0 0; color: var(--muted); }
-    .profile-sections { display: grid; gap: 18px; margin-top: 20px; }
-    .profile-section { padding-top: 18px; border-top: 1px solid var(--line); }
-    .profile-section h3 { margin: 0 0 12px; color: var(--primary); font-size: .98rem; }
-    .details-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; }
-    .detail { min-width: 0; padding: 10px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-    .detail dt { color: var(--muted); font-size: .72rem; font-weight: 800; }
-    .detail dd { margin: 4px 0 0; overflow-wrap: anywhere; color: var(--text); font-size: .89rem; }
-    .form { display: grid; gap: 13px; }
-    .form-section { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-    .form-section summary { padding: 14px 16px; color: var(--text); font-size: .98rem; font-weight: 800; cursor: pointer; }
-    .form-section[open] summary { border-bottom: 1px solid var(--line); }
-    .fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; padding: 16px; }
-    .field { min-width: 0; }
-    .field label { display: block; margin: 0 0 5px; color: var(--muted); font-size: .76rem; font-weight: 800; }
-    .field.computed input { background: var(--surface-2); color: var(--muted); }
-    .required::after { margin-inline-start: 3px; color: var(--danger); content: '*'; }
-    .form-error { margin: 0; color: var(--danger); font-size: .85rem; }
-    .toast-region { position: fixed; top: 86px; right: 18px; z-index: 100; display: grid; gap: 9px; width: min(390px, calc(100vw - 32px)); pointer-events: none; }
-    [dir="rtl"] .toast-region { right: auto; left: 18px; }
-    .toast { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-inline-start: 4px solid var(--primary); border-radius: 9px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-size: .86rem; line-height: 1.5; pointer-events: auto; }
-    .toast.success { border-inline-start-color: var(--success); }.toast.error { border-inline-start-color: var(--danger); }
-    .toast button { margin-inline-start: auto; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 1.1rem; line-height: 1; }
-    @media (max-width: 1180px) { .toolbar { grid-template-columns: repeat(3, minmax(0, 1fr)); }.toolbar .search-field { grid-column: span 2; }.layout { grid-template-columns: 1fr; }.analytics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }.analytics h2 + .bars { margin-bottom: 0; } }
-    @media (max-width: 760px) { .wrap { width: min(100% - 20px, 1480px); }.hero { display: block; }.actions { margin-top: 17px; }.stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }.stat { padding: 14px; }.toolbar { grid-template-columns: 1fr 1fr; }.toolbar .search-field { grid-column: span 2; }.toolbar .clear-action { grid-column: span 2; }.details-grid, .fields, .analytics { grid-template-columns: 1fr; }.profile-hero { display: block; }.profile-hero .button-row { margin-top: 14px; }.pagination { align-items: flex-start; flex-direction: column; }.dialog-body, .form { padding: 14px; }.dialog-head, .dialog-foot { padding: 13px 14px; } }
-  </style>
-</head>
-<body>
-  <header class="portal-header">
-    <a class="brand" href="index.html" aria-label="EgyptAir home">
-      <img src="egyptair-logo_.png" alt="EgyptAir logo">
-      <span><strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong><small data-en="Human Resources Management" data-ar="إدارة الموارد البشرية">Human Resources Management</small></span>
-    </a>
-    <nav class="portal-nav" aria-label="Main navigation">
-      <a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a><a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a><a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a><a href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a><a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a><a class="active" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a><a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">Penalties & Salaries</a><a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a>
-    </nav>
-    <div class="portal-actions" aria-label="Display controls"><button class="segmented-btn active" type="button" data-lang-option="en">EN</button><button class="segmented-btn" type="button" data-lang-option="ar">AR</button><button class="theme-btn" type="button" data-theme-toggle>Dark</button></div>
-  </header>
-  <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
-  <main class="wrap">
-    <section class="hero" aria-labelledby="pageTitle">
-      <div><p class="eyebrow" data-en="Employee directory" data-ar="دليل الموظفين">Employee directory</p><h1 id="pageTitle" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</h1><p data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p></div>
-      <div class="actions"><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn secondary" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn secondary" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
-    </section>
-    <div class="notice" id="notice" role="status" hidden></div>
-    <section class="stats" aria-label="Employee statistics">
-      <div class="stat"><span data-en="Total employees" data-ar="إجمالي الموظفين">Total employees</span><strong id="totalCount">—</strong><small id="totalHint"></small></div>
-      <div class="stat"><span data-en="Matching records" data-ar="السجلات المطابقة">Matching records</span><strong id="shownCount">—</strong><small id="shownHint"></small></div>
-      <div class="stat"><span data-en="General departments" data-ar="الإدارات العامة">General departments</span><strong id="deptCount">—</strong><small id="deptHint"></small></div>
-      <div class="stat"><span data-en="Upcoming retirements" data-ar="التقاعد خلال 12 شهراً">Upcoming retirements</span><strong id="retirementCount">—</strong><small id="retirementHint"></small></div>
-    </section>
-    <section class="panel toolbar" aria-label="Employee filters">
-      <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
-      <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><select class="select" id="sector"></select></div>
-      <div class="filter-field"><label for="department" data-en="General department" data-ar="الإدارة العامة">General department</label><select class="select" id="department"></select></div>
-      <div class="filter-field"><label for="section" data-en="Section" data-ar="القسم الفرعي">Section</label><select class="select" id="section"></select></div>
-      <div class="filter-field"><label for="status" data-en="Status" data-ar="الحالة">Status</label><select class="select" id="status"></select></div>
-      <button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
-    </section>
-    <section class="layout">
-      <section class="panel" aria-labelledby="tableHeading">
-        <div class="panel-head"><h2 id="tableHeading" data-en="Employee list" data-ar="قائمة الموظفين">Employee list <span id="resultNote" class="result-note"></span></h2><span id="loadingState" class="result-note" aria-live="polite"></span></div>
-        <div class="table-wrap"><table><thead><tr><th><button type="button" data-sort="code"><span data-en="Code" data-ar="الكود">Code</span> <span aria-hidden="true" data-sort-icon="code"></span></button></th><th><button type="button" data-sort="name"><span data-en="Employee" data-ar="الموظف">Employee</span> <span aria-hidden="true" data-sort-icon="name">↑</span></button></th><th data-en="Job" data-ar="الوظيفة">Job</th><th><button type="button" data-sort="currentGeneralDepartment"><span data-en="General department" data-ar="الإدارة العامة">General department</span> <span aria-hidden="true" data-sort-icon="currentGeneralDepartment"></span></button></th><th><button type="button" data-sort="status"><span data-en="Status" data-ar="الحالة">Status</span> <span aria-hidden="true" data-sort-icon="status"></span></button></th><th><button type="button" data-sort="age"><span data-en="Age" data-ar="العمر">Age</span> <span aria-hidden="true" data-sort-icon="age"></span></button></th></tr></thead><tbody id="rows"></tbody></table></div>
-        <div class="pagination"><p id="paginationLabel"></p><div class="pagination-controls"><label class="subtle" for="pageSize" data-en="Rows" data-ar="صفوف">Rows</label><select id="pageSize" class="page-size" aria-label="Rows per page"><option value="25">25</option><option value="50">50</option><option value="100">100</option></select><button id="prevPage" class="icon-btn" type="button" aria-label="Previous page">‹</button><span id="pageLabel" class="subtle"></span><button id="nextPage" class="icon-btn" type="button" aria-label="Next page">›</button></div></div>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="EgyptAir employee directory and workforce overview.">
+    <title>Employee Data | EgyptAir Work Tools</title>
+    <link rel="icon" href="egyptair-logo_.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="portal.css">
+    <style>
+      :root {
+        --employee-blue: #005daa;
+        --employee-blue-dark: #003f73;
+        --employee-gold: #c99c39;
+        --employee-good: #12805c;
+        --employee-warn: #b97800;
+      }
+
+      body {
+        background: radial-gradient(circle at 96% 0, color-mix(in srgb, var(--primary) 13%, transparent), transparent 27rem), var(--bg);
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+      }
+
+      .wrap {
+        width: min(1480px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: clamp(28px, 5vw, 54px) 0 60px;
+      }
+
+      .hero {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 22px;
+      }
+
+      .eyebrow {
+        margin-bottom: 7px;
+        color: var(--accent);
+      }
+
+      .hero h1 {
+        margin: 0;
+        color: var(--text);
+        font-size: clamp(2rem, 4.3vw, 3.25rem);
+        line-height: 1.05;
+      }
+
+      .hero p:not(.eyebrow) {
+        max-width: 760px;
+        margin: 10px 0 0;
+        color: var(--muted);
+        line-height: 1.65;
+      }
+
+      .actions,
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+      }
+
+      .btn {
+        min-height: 42px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 0 15px;
+        background: var(--primary);
+        color: #fff;
+        font-weight: 800;
+        cursor: pointer;
+        transition: transform .16s ease, background .16s ease, border-color .16s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+        background: var(--primary-2);
+      }
+
+      .btn:focus-visible,
+      .input:focus-visible,
+      .select:focus-visible,
+      .icon-btn:focus-visible,
+      summary:focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--primary) 30%, transparent);
+        outline-offset: 2px;
+      }
+
+      .btn.secondary {
+        border-color: var(--line);
+        background: var(--surface);
+        color: var(--text);
+      }
+
+      .btn.secondary:hover {
+        background: var(--surface-2);
+      }
+
+      .btn.danger {
+        border-color: color-mix(in srgb, var(--danger) 34%, var(--line));
+        background: color-mix(in srgb, var(--danger) 11%, var(--surface));
+        color: var(--danger);
+      }
+
+      .btn[disabled] {
+        cursor: wait;
+        opacity: .65;
+        transform: none;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+
+      .stat,
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface);
+        box-shadow: 0 12px 30px rgba(18, 59, 115, .08);
+      }
+
+      .stat {
+        padding: 18px;
+      }
+
+      .stat span {
+        display: block;
+        color: var(--muted);
+        font-size: .84rem;
+        font-weight: 700;
+      }
+
+      .stat strong {
+        display: block;
+        margin-top: 5px;
+        color: var(--primary);
+        font-size: clamp(1.55rem, 3vw, 2rem);
+        line-height: 1;
+      }
+
+      .stat small {
+        display: block;
+        min-height: 1.2em;
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: .76rem;
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(145px, 1fr)) auto;
+        gap: 10px;
+        align-items: end;
+        margin-bottom: 18px;
+        padding: 16px;
+      }
+
+      .filter-field {
+        display: grid;
+        gap: 5px;
+      }
+
+      .filter-field label {
+        color: var(--muted);
+        font-size: .76rem;
+        font-weight: 800;
+      }
+
+      .input,
+      .select,
+      .field input,
+      .field select {
+        width: 100%;
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 11px;
+        background: var(--surface);
+        color: var(--text);
+      }
+
+      .input::placeholder {
+        color: var(--muted);
+        opacity: .85;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.42fr) minmax(290px, .58fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .panel {
+        overflow: hidden;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 72px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .panel-head h2 {
+        margin: 0;
+        color: var(--text);
+        font-size: 1.06rem;
+      }
+
+      .result-note {
+        color: var(--muted);
+        font-size: .84rem;
+        font-weight: 500;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        max-height: 660px;
+      }
+
+      table {
+        width: 100%;
+        min-width: 770px;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: start;
+        vertical-align: middle;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--surface-2);
+        color: var(--muted);
+        font-size: .76rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      th button {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-weight: inherit;
+        cursor: pointer;
+      }
+
+      th button:hover {
+        color: var(--primary);
+      }
+
+      tbody tr {
+        cursor: pointer;
+        transition: background .14s ease;
+      }
+
+      tbody tr:hover,
+      tbody tr:focus-within {
+        background: var(--surface-2);
+      }
+
+      td {
+        font-size: .89rem;
+      }
+
+      .employee-name {
+        display: block;
+        color: var(--text);
+        font-weight: 800;
+      }
+
+      .subtle {
+        display: block;
+        margin-top: 2px;
+        color: var(--muted);
+        font-size: .77rem;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 25px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--success) 12%, var(--surface));
+        color: var(--success);
+        font-size: .74rem;
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .pill.leave {
+        background: color-mix(in srgb, var(--employee-warn) 14%, var(--surface));
+        color: var(--employee-warn);
+      }
+
+      .pill.inactive {
+        background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+        color: var(--danger);
+      }
+
+      .empty {
+        padding: 34px 18px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+      }
+
+      .pagination p {
+        margin: 0;
+        color: var(--muted);
+        font-size: .83rem;
+      }
+
+      .pagination-controls {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .page-size {
+        min-height: 35px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: 0 7px;
+        background: var(--surface);
+        color: var(--text);
+      }
+
+      .icon-btn {
+        display: grid;
+        width: 35px;
+        height: 35px;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+        font-size: 1.05rem;
+      }
+
+      .icon-btn:hover:not([disabled]) {
+        color: var(--primary);
+        background: var(--surface-2);
+      }
+
+      .icon-btn:disabled {
+        cursor: not-allowed;
+        opacity: .45;
+      }
+
+      .analytics {
+        padding: 18px;
+      }
+
+      .analytics h2 {
+        margin: 0 0 15px;
+        color: var(--text);
+        font-size: 1.02rem;
+      }
+
+      .analytics h2+.bars {
+        margin-bottom: 25px;
+      }
+
+      .bars {
+        display: grid;
+        gap: 12px;
+      }
+
+      .bar-row {
+        display: grid;
+        gap: 5px;
+      }
+
+      .bar-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: var(--text);
+        font-size: .81rem;
+      }
+
+      .bar-head span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bar-head b {
+        color: var(--muted);
+      }
+
+      .track {
+        height: 8px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: var(--surface-2);
+      }
+
+      .fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--primary), var(--primary-2));
+      }
+
+      .notice {
+        margin-bottom: 16px;
+        padding: 12px 14px;
+        border: 1px solid color-mix(in srgb, var(--employee-warn) 32%, var(--line));
+        border-radius: 9px;
+        background: color-mix(in srgb, var(--employee-warn) 10%, var(--surface));
+        color: var(--text);
+        font-size: .87rem;
+        line-height: 1.55;
+      }
+
+      .notice[hidden] {
+        display: none;
+      }
+
+      .loading {
+        display: grid;
+        gap: 10px;
+        padding: 34px 18px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .loading::before {
+        width: 28px;
+        height: 28px;
+        margin: auto;
+        border: 3px solid var(--line);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        content: '';
+        animation: spin .8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: grid;
+        place-items: center;
+        padding: 18px;
+        background: rgba(3, 18, 34, .62);
+      }
+
+      .modal[hidden] {
+        display: none;
+      }
+
+      .dialog {
+        width: min(1120px, 100%);
+        max-height: 94vh;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, .4);
+      }
+
+      .dialog.narrow {
+        width: min(760px, 100%);
+      }
+
+      .dialog-head,
+      .dialog-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 16px 20px;
+        background: var(--surface);
+      }
+
+      .dialog-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .dialog-head h2 {
+        margin: 0;
+        color: var(--text);
+        font-size: 1.2rem;
+      }
+
+      .dialog-foot {
+        position: sticky;
+        bottom: 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .dialog-body,
+      .form {
+        padding: 20px;
+      }
+
+      .profile-hero {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface-2);
+      }
+
+      .profile-hero h3 {
+        margin: 0;
+        color: var(--text);
+        font-size: 1.22rem;
+      }
+
+      .profile-hero p {
+        margin: 5px 0 0;
+        color: var(--muted);
+      }
+
+      .profile-sections {
+        display: grid;
+        gap: 18px;
+        margin-top: 20px;
+      }
+
+      .profile-section {
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .profile-section h3 {
+        margin: 0 0 12px;
+        color: var(--primary);
+        font-size: .98rem;
+      }
+
+      .details-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 11px;
+      }
+
+      .detail {
+        min-width: 0;
+        padding: 10px 11px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+
+      .detail dt {
+        color: var(--muted);
+        font-size: .72rem;
+        font-weight: 800;
+      }
+
+      .detail dd {
+        margin: 4px 0 0;
+        overflow-wrap: anywhere;
+        color: var(--text);
+        font-size: .89rem;
+      }
+
+      .form {
+        display: grid;
+        gap: 13px;
+      }
+
+      .form-section {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+      }
+
+      .form-section summary {
+        padding: 14px 16px;
+        color: var(--text);
+        font-size: .98rem;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .form-section[open] summary {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .fields {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 13px;
+        padding: 16px;
+      }
+
+      .field {
+        min-width: 0;
+      }
+
+      .field label {
+        display: block;
+        margin: 0 0 5px;
+        color: var(--muted);
+        font-size: .76rem;
+        font-weight: 800;
+      }
+
+      .field.computed input {
+        background: var(--surface-2);
+        color: var(--muted);
+      }
+
+      .required::after {
+        margin-inline-start: 3px;
+        color: var(--danger);
+        content: '*';
+      }
+
+      .form-error {
+        margin: 0;
+        color: var(--danger);
+        font-size: .85rem;
+      }
+
+      .toast-region {
+        position: fixed;
+        top: 86px;
+        right: 18px;
+        z-index: 100;
+        display: grid;
+        gap: 9px;
+        width: min(390px, calc(100vw - 32px));
+        pointer-events: none;
+      }
+
+      [dir="rtl"] .toast-region {
+        right: auto;
+        left: 18px;
+      }
+
+      .toast {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-inline-start: 4px solid var(--primary);
+        border-radius: 9px;
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: var(--shadow);
+        font-size: .86rem;
+        line-height: 1.5;
+        pointer-events: auto;
+      }
+
+      .toast.success {
+        border-inline-start-color: var(--success);
+      }
+
+      .toast.error {
+        border-inline-start-color: var(--danger);
+      }
+
+      .toast button {
+        margin-inline-start: auto;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 1.1rem;
+        line-height: 1;
+      }
+
+      @media (max-width: 1180px) {
+        .toolbar {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .toolbar .search-field {
+          grid-column: span 2;
+        }
+
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .analytics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 24px;
+        }
+
+        .analytics h2+.bars {
+          margin-bottom: 0;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .wrap {
+          width: min(100% - 20px, 1480px);
+        }
+
+        .hero {
+          display: block;
+        }
+
+        .actions {
+          margin-top: 17px;
+        }
+
+        .stats {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .stat {
+          padding: 14px;
+        }
+
+        .toolbar {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        .toolbar .search-field {
+          grid-column: span 2;
+        }
+
+        .toolbar .clear-action {
+          grid-column: span 2;
+        }
+
+        .details-grid,
+        .fields,
+        .analytics {
+          grid-template-columns: 1fr;
+        }
+
+        .profile-hero {
+          display: block;
+        }
+
+        .profile-hero .button-row {
+          margin-top: 14px;
+        }
+
+        .pagination {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .dialog-body,
+        .form {
+          padding: 14px;
+        }
+
+        .dialog-head,
+        .dialog-foot {
+          padding: 13px 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="portal-header"><a class="brand" href="index.html" aria-label="EgyptAir home"><img src="egyptair-logo_.png" alt="EgyptAir logo"><span><strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong><small data-en="Human Resources Management" data-ar="إدارة الموارد البشرية">Human Resources Management</small></span></a>
+      <nav class="portal-nav" aria-label="Main navigation"><a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a><a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a><a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a><a href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a><a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a><a class="active" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a><a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">Penalties & Salaries</a><a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a></nav>
+      <div class="portal-actions" aria-label="Display controls"><button class="segmented-btn active" type="button" data-lang-option="en">EN</button><button class="segmented-btn" type="button" data-lang-option="ar">AR</button><button class="theme-btn" type="button" data-theme-toggle>Dark</button></div>
+    </header>
+    <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+    <main class="wrap">
+      <section class="hero" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow" data-en="Employee directory" data-ar="دليل الموظفين">Employee directory</p>
+          <h1 id="pageTitle" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</h1>
+          <p data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p>
+        </div>
+        <div class="actions"><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn secondary" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn secondary" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
       </section>
-      <aside class="panel analytics" aria-label="Workforce distribution"><div><h2 data-en="By general department" data-ar="حسب الإدارة العامة">By general department</h2><div id="deptBars" class="bars"></div></div><div><h2 data-en="By section" data-ar="حسب القسم الفرعي">By section</h2><div id="sectionBars" class="bars"></div></div></aside>
-    </section>
-  </main>
-  <footer class="portal-footer">
-    <div class="footer-content"><div class="footer-info"><span><strong>Contact Us</strong></span><span><a href="mailto:eslamsaleh1999@gmail.com">eslamsaleh1999@gmail.com</a></span><span><a href="tel:+201061438871">+201061438871</a></span></div><div class="footer-copyright">© 2026 Egyptair inflight services. All rights reserved.</div></div>
-  </footer>
-  <div class="modal" id="profileModal" hidden><section class="dialog narrow" role="dialog" aria-modal="true" aria-labelledby="profileTitle"><div class="dialog-head"><h2 id="profileTitle"></h2><button class="icon-btn" type="button" data-close="profileModal" aria-label="Close">×</button></div><div class="dialog-body" id="profileBody"></div></section></div>
-  <div class="modal" id="formModal" hidden><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="formTitle"><div class="dialog-head"><h2 id="formTitle"></h2><button class="icon-btn" type="button" data-close="formModal" aria-label="Close">×</button></div><form id="employeeForm" class="form" novalidate></form><div class="dialog-foot"><p class="form-error" id="formError" role="alert"></p><div class="button-row"><button class="btn secondary" type="button" data-close="formModal" data-en="Cancel" data-ar="إلغاء">Cancel</button><button class="btn" type="submit" form="employeeForm" id="saveBtn" data-en="Save changes" data-ar="حفظ التغييرات">Save changes</button></div></div></section></div>
-  <script>
-  /* API_TOKEN is only a compatibility fallback. For HR data, restrict the Apps Script deployment and use its email allowlist. */
-  const API_URL = 'https://script.google.com/macros/s/AKfycbzoF2Cpp1bG18ZbZcHTTafFFhkTD6mZi7BIw_a0iEtqwBS1k2oDxDetGd3p8Jk30CVb/exec';
-  const API_TOKEN = '';
-  const $ = id => document.getElementById(id);
-  const clean = value => String(value ?? '').trim();
-  const normal = value => clean(value).toLocaleLowerCase('ar-EG');
-  const state = { employees: [], filtered: [], page: 1, pageSize: 25, sort: 'name', direction: 1, editingKey: null, lastFocus: null, loading: false };
-  const i18n = {
-    en: { allSectors: 'All sectors', allDepartments: 'All departments', allSections: 'All sections', allStatuses: 'All statuses', noData: 'No matching employee records.', noDistribution: 'No matching records.', showing: 'Showing {from}–{to} of {total}', page: 'Page {page} of {pages}', rows: '{count} records', loaded: 'Employee data loaded.', refreshed: 'Employee data refreshed.', filtersCleared: 'Filters cleared.', filterApplied: 'Filters applied.', exportReady: 'Exported {count} employee records.', profile: 'Employee profile', edit: 'Edit record', newEmployee: 'Add employee', editEmployee: 'Edit employee', saveFailed: 'Unable to save the employee record.', loadFailed: 'Unable to load employee data.', saved: 'Employee record saved.', created: 'Employee added.', required: 'Employee code and name are required.', duplicate: 'This employee code already exists.', saving: 'Saving…', loading: 'Loading employee records…', records: 'records', unknown: 'Not specified', active: 'Active', leave: 'On leave', inactive: 'Inactive', retirement: 'Retires within 12 months', dataUnavailable: 'The employee service did not return any records.', exportName: 'employee-records' },
-    ar: { allSectors: 'كل القطاعات', allDepartments: 'كل الإدارات العامة', allSections: 'كل الأقسام الفرعية', allStatuses: 'كل الحالات', noData: 'لا توجد سجلات موظفين مطابقة.', noDistribution: 'لا توجد سجلات مطابقة.', showing: 'عرض {from}–{to} من {total}', page: 'الصفحة {page} من {pages}', rows: '{count} سجل', loaded: 'تم تحميل بيانات الموظفين.', refreshed: 'تم تحديث بيانات الموظفين.', filtersCleared: 'تم مسح عوامل التصفية.', filterApplied: 'تم تطبيق عوامل التصفية.', exportReady: 'تم تصدير {count} سجل موظف.', profile: 'ملف الموظف', edit: 'تعديل السجل', newEmployee: 'إضافة موظف', editEmployee: 'تعديل بيانات الموظف', saveFailed: 'تعذر حفظ سجل الموظف.', loadFailed: 'تعذر تحميل بيانات الموظفين.', saved: 'تم حفظ سجل الموظف.', created: 'تمت إضافة الموظف.', required: 'كود الموظف والاسم مطلوبان.', duplicate: 'كود الموظف مستخدم بالفعل.', saving: 'جارٍ الحفظ…', loading: 'جارٍ تحميل سجلات الموظفين…', records: 'سجل', unknown: 'غير محدد', active: 'على رأس العمل', leave: 'في إجازة', inactive: 'غير نشط', retirement: 'يتقاعد خلال 12 شهراً', dataUnavailable: 'لم تُرجع خدمة الموظفين أي سجلات.', exportName: 'سجلات-الموظفين' }
-  };
-  const schema = [
-    ['personal', 'Personal details', 'البيانات الشخصية', [
-      ['code','Employee code','الكود','text',true], ['name','Full name','الاسم','text',true], ['gender','Gender','النوع','select'], ['birthDate','Date of birth','تاريخ الميلاد','date'], ['retirementDate','Retirement date','تاريخ المعاش','date'], ['appointmentDate','Appointment date','تاريخ التعيين','date'], ['age','Current age','السن الحالي','computed'], ['ageGroup','Age group','الفئة العمرية','computed'], ['ageAtAppointment','Age at appointment','السن عند التعيين','computed'], ['address','Address','العنوان','text'], ['governorate','Governorate','المحافظة','text'], ['phone','Phone number','رقم التليفون','tel'], ['militaryStatus','Military status','نوع المعاملة العسكرية','text'], ['exemptionReason','Exemption reason','سبب الإعفاء','text'], ['unpaidLeaveType','Unpaid leave type','نوع الإجازة بدون مرتب','text'], ['leaveMandatory','Leave requirement','وجوبية الإجازة','text'], ['leaveStart','Leave start date','تاريخ بداية الإجازة','date'], ['leaveEnd','Leave end date','تاريخ نهاية الإجازة','date'], ['currentQualificationTitle','Current qualification title','مسمى المؤهل الحالي','text'], ['currentQualificationType','Current qualification type','نوع المؤهل الحالي','text'], ['studySpecialization','Study specialization','التخصص الدراسي','text'], ['disabilityType','Disability type','نوع الإعاقة','text'], ['addressExtra','Work location','الموقع','text']
-    ]],
-    ['employment', 'Employment details', 'بيانات وظيفية', [
-      ['originalCompany','Original company','الشركة الأساسية','text'], ['originalCompanyName','Original company name','مسمى الشركة الأساسية','text'], ['currentCompany','Current company','الشركة الحالية','text'], ['currentSector','Current sector','القطاع الحالي','text'], ['currentGeneralDepartment','Current general department','الإدارة العامة الحالية','text'], ['currentSubDepartment','Current section','الإدارة الفرعية الحالية','text'], ['originalGeneralDepartment','Original general department','الإدارة العامة الأساسية','text'], ['originalSubDepartment','Original section','مسمى الإدارة الفرعية الأساسية','text'], ['jobTitle','Job title','مسمى الوظيفة','text'], ['actualJob','Actual job','الوظيفة الفعلية','text'], ['statisticsJob','Job title for statistics','مسمى الوظيفة للإحصائيات','text'], ['appointmentType','Appointment type','نوع التعيين','text'], ['currentGrade','Current grade','الدرجة الحالية','text'], ['gradeDate','Grade date','تاريخ الدرجة','date'], ['workSchedule','Work schedule','توقيت العمل','text'], ['appointmentJob','Job at appointment','الوظيفة عند التعيين','text'], ['jobDate','Job date','تاريخ الوظيفة','date']
-    ]],
-    ['secondment', 'Secondment details', 'بيانات الانتداب', [
-      ['secondedJob','Seconded job','الوظيفة المنتدب عليها','text'], ['secondedJob2','Seconded job (2)','الوظيفة المنتدب عليها 2','text'], ['secondedCompany','Seconded company','الشركة المنتدب إليها','text'], ['secondedSector','Seconded sector','قطاع المنتدب إليه','text'], ['secondedGeneralDepartment','Seconded general department','إدارة عامة منتدب إليها','text'], ['secondedDepartment','Seconded department','الإدارة المنتدب إليها','text'], ['secondmentStart','Secondment start','تاريخ الانتداب','date'], ['secondmentEnd','Secondment end','تاريخ نهاية الانتداب','date'], ['secondedJobGroup','Seconded job group','المجموعة النوعية الجديدة المنتدب عليها','text']
-    ]],
-    ['other', 'Additional details', 'بيانات متنوعة', [
-      ['uniform','Uniform','الزي','text'], ['appointmentQualificationTitle','Qualification at appointment','مسمى المؤهل عند التعيين','text'], ['appointmentQualificationType','Qualification type at appointment','نوع المؤهل عند التعيين','text'], ['appointmentQualificationTitle2','Second qualification at appointment','مسمى مؤهل التعيين 2','text'], ['appointmentQualificationType2','Second qualification type','نوع مؤهل التعيين 2','text'], ['newJobGroups','New job groups','المجموعات النوعية الجديدة','text'], ['qualificationDate','Qualification date','تاريخ المؤهل','date'], ['contractStart','Contract start','تاريخ بداية التعاقد','date'], ['contractEnd','Contract end','تاريخ نهاية التعاقد','date'], ['totalService','Total service','مدة الخدمة الكلية','computed'], ['serviceType','Service type','نوع الخدمة','text'], ['workType','Work type','نوع العمل','text'], ['status','Status','الحالة','select']
-    ]]
-  ];
-  const lang = () => document.documentElement.lang === 'ar' ? 'ar' : 'en';
-  const t = (key, vars = {}) => Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), i18n[lang()][key] || key);
-  const fieldLabel = field => field[lang() === 'ar' ? 2 : 1];
-  const sectionLabel = section => section[lang() === 'ar' ? 2 : 1];
-  const escapeHtml = value => clean(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[char]));
-  const recordKey = employee => clean(employee.rowNumber || employee.id || employee.code);
-  const parseDate = value => { const match = clean(value).match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/); return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null; };
-  const dateValue = value => { const date = parseDate(value); return date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : ''; };
-  const now = () => new Date();
-  function ageOn(date, reference = now()) { if (!date) return ''; let age = reference.getFullYear() - date.getFullYear(); if (reference.getMonth() < date.getMonth() || (reference.getMonth() === date.getMonth() && reference.getDate() < date.getDate())) age--; return age >= 0 && age < 120 ? age : ''; }
-  function serviceSince(date, reference = now()) { if (!date || date > reference) return ''; let months = (reference.getFullYear() - date.getFullYear()) * 12 + reference.getMonth() - date.getMonth(); if (reference.getDate() < date.getDate()) months--; if (months < 0) return ''; const years = Math.floor(months / 12), rest = months % 12; return lang() === 'ar' ? `${years} سنة${rest ? ` و ${rest} شهر` : ''}` : `${years} year${years === 1 ? '' : 's'}${rest ? `, ${rest} month${rest === 1 ? '' : 's'}` : ''}`; }
-  function computed(employee) { const e = {...employee}; const birth = parseDate(e.birthDate), appointment = parseDate(e.appointmentDate); const currentAge = ageOn(birth); e.age = currentAge; e.ageAtAppointment = birth && appointment ? ageOn(birth, appointment) : ''; e.ageGroup = currentAge === '' ? '' : currentAge < 30 ? (lang() === 'ar' ? 'أقل من 30' : 'Under 30') : currentAge < 40 ? (lang() === 'ar' ? 'من 30 إلى 39' : '30–39') : currentAge < 50 ? (lang() === 'ar' ? 'من 40 إلى 49' : '40–49') : currentAge < 60 ? (lang() === 'ar' ? 'من 50 إلى 59' : '50–59') : (lang() === 'ar' ? '60 فأكثر' : '60+'); e.totalService = serviceSince(appointment); return e; }
-  function displayStatus(value) { const text = normal(value); if (!text) return {label: t('unknown'), className: 'inactive'}; if (text.includes('leave') || text.includes('إجاز')) return {label: t('leave'), className: 'leave'}; if (text === 'activ' || text === 'active' || text.includes('رأس العمل')) return {label: t('active'), className: ''}; if (text.includes('inactive') || text.includes('غير نشط')) return {label: t('inactive'), className: 'inactive'}; return {label: clean(value), className: ''}; }
-  function isUpcomingRetirement(employee) { const date = parseDate(employee.retirementDate); if (!date) return false; const start = new Date(); start.setHours(0, 0, 0, 0); const end = new Date(start); end.setFullYear(end.getFullYear() + 1); return date >= start && date <= end; }
-  function toast(message, type = 'info') { const el = document.createElement('div'); el.className = `toast ${type}`; el.innerHTML = `<span>${escapeHtml(message)}</span><button type="button" aria-label="Close">×</button>`; const timer = setTimeout(() => el.remove(), 7000); el.querySelector('button').onclick = () => { clearTimeout(timer); el.remove(); }; $('toastRegion').appendChild(el); }
-  function showNotice(message) { $('notice').textContent = message; $('notice').hidden = !message; }
-  function setLoading(loading) { state.loading = loading; $('loadingState').textContent = loading ? t('loading') : ''; $('refreshBtn').disabled = loading; $('newBtn').disabled = loading; }
-  function updateStaticText() { document.querySelectorAll('[data-en][data-ar]').forEach(el => { const preserved = [...el.children].filter(child => child.id === 'resultNote'); el.textContent = el.dataset[lang()]; preserved.forEach(child => el.appendChild(child)); }); document.querySelectorAll('[data-en-placeholder][data-ar-placeholder]').forEach(el => { el.placeholder = el.dataset[`${lang()}Placeholder`]; }); document.querySelectorAll('[data-lang-option]').forEach(el => el.classList.toggle('active', el.dataset.langOption === lang())); const themeButton = document.querySelector('[data-theme-toggle]'); if (themeButton) themeButton.textContent = document.documentElement.dataset.theme === 'dark' ? (lang() === 'ar' ? 'فاتح' : 'Light') : (lang() === 'ar' ? 'داكن' : 'Dark'); document.title = lang() === 'ar' ? 'بيانات الموظفين | أدوات عمل مصر للطيران' : 'Employee Data | EgyptAir Work Tools'; }
-  function applyLanguage(next) { document.documentElement.lang = next; document.documentElement.dir = next === 'ar' ? 'rtl' : 'ltr'; localStorage.setItem('portal-language', next); updateStaticText(); refreshFilters(); render(); }
-  function applyTheme(next) { document.documentElement.dataset.theme = next; localStorage.setItem('portal-theme', next); updateStaticText(); }
-  function unique(key, source = state.employees) { return [...new Set(source.map(item => clean(item[key])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar')); }
-  function fillSelect(id, key, label) { const select = $(id), current = select.value, values = unique(key); select.innerHTML = `<option value="">${escapeHtml(label)}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`; select.value = values.includes(current) ? current : ''; }
-  function refreshFilters() { fillSelect('sector', 'currentSector', t('allSectors')); fillSelect('department', 'currentGeneralDepartment', t('allDepartments')); fillSelect('section', 'currentSubDepartment', t('allSections')); const select = $('status'), current = select.value, values = unique('status'); select.innerHTML = `<option value="">${t('allStatuses')}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(displayStatus(value).label)}</option>`).join('')}`; select.value = values.includes(current) ? current : ''; }
-  function filtersActive() { return Boolean(clean($('search').value) || $('sector').value || $('department').value || $('section').value || $('status').value); }
-  function getFiltered() { const query = normal($('search').value); const selected = { currentSector: $('sector').value, currentGeneralDepartment: $('department').value, currentSubDepartment: $('section').value, status: $('status').value }; const list = state.employees.map(computed).filter(employee => { const matchesSearch = !query || normal(employee.code).includes(query) || normal(employee.name).includes(query); const matchesFilters = Object.entries(selected).every(([key, value]) => !value || clean(employee[key]) === value); return matchesSearch && matchesFilters; }); const key = state.sort; return list.sort((left, right) => { const a = key === 'age' ? Number(left[key]) || -1 : normal(left[key]); const b = key === 'age' ? Number(right[key]) || -1 : normal(right[key]); return typeof a === 'number' ? (a - b) * state.direction : a.localeCompare(b, 'ar') * state.direction; }); }
-  function renderBars(id, key, list) { const counts = {}; list.forEach(employee => { const value = clean(employee[key]) || t('unknown'); counts[value] = (counts[value] || 0) + 1; }); const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10), max = entries[0]?.[1] || 1; $(id).innerHTML = entries.length ? entries.map(([label, count]) => `<div class="bar-row"><div class="bar-head"><span title="${escapeHtml(label)}">${escapeHtml(label)}</span><b>${count}</b></div><div class="track"><div class="fill" style="width:${(count / max * 100).toFixed(1)}%"></div></div></div>`).join('') : `<p class="empty">${t('noDistribution')}</p>`; }
-  function renderStats(list) { const total = state.employees.length, upcoming = state.employees.filter(isUpcomingRetirement).length; $('totalCount').textContent = total.toLocaleString(); $('shownCount').textContent = list.length.toLocaleString(); $('deptCount').textContent = unique('currentGeneralDepartment').length.toLocaleString(); $('retirementCount').textContent = upcoming.toLocaleString(); $('totalHint').textContent = total ? t('rows', {count: total.toLocaleString()}) : ''; $('shownHint').textContent = filtersActive() ? t('filterApplied') : t('rows', {count: list.length.toLocaleString()}); $('deptHint').textContent = total ? t('records') : ''; $('retirementHint').textContent = t('retirement'); }
-  function renderSortIcons() { document.querySelectorAll('[data-sort-icon]').forEach(icon => { icon.textContent = icon.dataset.sortIcon === state.sort ? (state.direction === 1 ? '↑' : '↓') : ''; }); }
-  function renderRows(list) { const pages = Math.max(1, Math.ceil(list.length / state.pageSize)); state.page = Math.min(state.page, pages); const start = (state.page - 1) * state.pageSize, pageRows = list.slice(start, start + state.pageSize); const to = Math.min(start + state.pageSize, list.length); $('resultNote').textContent = list.length ? ` · ${t('showing', {from: start + 1, to, total: list.length.toLocaleString()})}` : ''; $('paginationLabel').textContent = list.length ? t('showing', {from: start + 1, to, total: list.length.toLocaleString()}) : ''; $('pageLabel').textContent = t('page', {page: state.page, pages}); $('prevPage').disabled = state.page <= 1; $('nextPage').disabled = state.page >= pages; $('rows').innerHTML = state.loading ? `<tr><td colspan="6"><div class="loading">${t('loading')}</div></td></tr>` : pageRows.length ? pageRows.map(employee => { const status = displayStatus(employee.status); return `<tr tabindex="0" data-key="${escapeHtml(recordKey(employee))}" aria-label="${escapeHtml(employee.name || employee.code)}"><td>${escapeHtml(employee.code || '—')}</td><td><span class="employee-name">${escapeHtml(employee.name || t('unknown'))}</span><span class="subtle">${escapeHtml(employee.currentCompany || '')}</span></td><td>${escapeHtml(employee.actualJob || employee.jobTitle || '—')}</td><td>${escapeHtml(employee.currentGeneralDepartment || '—')}<span class="subtle">${escapeHtml(employee.currentSubDepartment || '')}</span></td><td><span class="pill ${status.className}">${escapeHtml(status.label)}</span></td><td>${employee.age === '' ? '—' : escapeHtml(employee.age)}</td></tr>`; }).join('') : `<tr><td colspan="6"><div class="empty">${t('noData')}</div></td></tr>`; }
-  function render() { const list = getFiltered(); state.filtered = list; renderStats(list); renderRows(list); renderBars('deptBars', 'currentGeneralDepartment', list); renderBars('sectionBars', 'currentSubDepartment', list); renderSortIcons(); }
-  function dateText(value) { const date = parseDate(value); return date ? new Intl.DateTimeFormat(lang() === 'ar' ? 'ar-EG' : 'en-GB', {year: 'numeric', month: 'short', day: 'numeric'}).format(date) : clean(value); }
-  function openModal(id, opener) { state.lastFocus = opener || document.activeElement; $(id).hidden = false; $(id).querySelector('button, input, select, summary')?.focus(); }
-  function closeModal(id) { $(id).hidden = true; if (state.lastFocus instanceof HTMLElement) state.lastFocus.focus(); state.lastFocus = null; }
-  function openProfile(key, opener) { const employee = state.employees.find(item => recordKey(item) === String(key)); if (!employee) return; const e = computed(employee); const overview = `${clean(e.actualJob || e.jobTitle) || t('unknown')} · ${clean(e.currentCompany) || t('unknown')}`; const profileSections = schema.map(section => { const entries = section[3].filter(field => clean(e[field[0]])).map(field => `<div class="detail"><dt>${escapeHtml(fieldLabel(field))}</dt><dd>${escapeHtml(field[3] === 'date' ? dateText(e[field[0]]) : e[field[0]])}</dd></div>`).join(''); return entries ? `<section class="profile-section"><h3>${escapeHtml(sectionLabel(section))}</h3><dl class="details-grid">${entries}</dl></section>` : ''; }).join(''); $('profileTitle').textContent = t('profile'); $('profileBody').innerHTML = `<div class="profile-hero"><div><h3>${escapeHtml(e.name || t('unknown'))}</h3><p>${escapeHtml(e.code ? `${lang() === 'ar' ? 'كود الموظف: ' : 'Employee code: '}${e.code}` : overview)}</p><p>${escapeHtml(overview)}</p></div><div class="button-row"><button class="btn" type="button" id="editProfileBtn">${escapeHtml(t('edit'))}</button></div></div><div class="profile-sections">${profileSections || `<p class="empty">${t('noData')}</p>`}</div>`; $('editProfileBtn').onclick = () => { closeModal('profileModal'); openForm(employee, opener); }; openModal('profileModal', opener); }
-  function selectOptions(key, selected) { const options = key === 'gender' ? [['','—'], ['ذكور', lang() === 'ar' ? 'ذكور' : 'Male'], ['اناث', lang() === 'ar' ? 'اناث' : 'Female']] : [['','—'], ['activ', t('active')], ['active', t('active')], ['على رأس العمل', t('active')], ['إجازة', t('leave')], ['منتدب', lang() === 'ar' ? 'منتدب' : 'Seconded'], ['غير نشط', t('inactive')]]; return options.map(([value, label]) => `<option value="${escapeHtml(value)}" ${clean(selected) === value ? 'selected' : ''}>${escapeHtml(label)}</option>`).join(''); }
-  function openForm(employee = {}, opener) { state.editingKey = recordKey(employee) || null; const e = computed(employee); $('formTitle').textContent = state.editingKey ? t('editEmployee') : t('newEmployee'); $('formError').textContent = ''; $('employeeForm').innerHTML = `<input type="hidden" name="id" value="${escapeHtml(employee.id || '')}"><input type="hidden" name="rowNumber" value="${escapeHtml(employee.rowNumber || '')}">` + schema.map((section, index) => `<details class="form-section" ${index < 2 ? 'open' : ''}><summary>${escapeHtml(sectionLabel(section))}</summary><div class="fields">${section[3].map(field => { const [key, en, ar, type, required] = field, value = e[key] ?? '', label = lang() === 'ar' ? ar : en; if (type === 'computed') return `<div class="field computed"><label>${escapeHtml(label)}</label><input type="text" readonly value="${escapeHtml(value)}"></div>`; if (type === 'select') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><select id="field-${key}" name="${key}" ${required ? 'required' : ''}>${selectOptions(key, value)}</select></div>`; return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="${type === 'date' ? 'date' : type === 'tel' ? 'tel' : 'text'}" value="${escapeHtml(type === 'date' ? dateValue(value) : value)}" ${required ? 'required' : ''}></div>`; }).join('')}</div></details>`).join(''); openModal('formModal', opener); }
-  function validateEmployee(data) { if (!clean(data.code) || !clean(data.name)) return t('required'); const duplicate = state.employees.find(item => clean(item.code) === clean(data.code) && recordKey(item) !== state.editingKey); return duplicate ? t('duplicate') : ''; }
-  async function readApi(response) { const text = await response.text(); try { return JSON.parse(text); } catch { throw new Error(text || `${response.status} ${response.statusText}`); } }
-  function withToken(url) { return API_TOKEN ? `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(API_TOKEN)}` : url; }
-  async function load({quiet = false} = {}) { setLoading(true); showNotice(''); render(); try { const response = await fetch(withToken(`${API_URL}?action=list`), {redirect: 'follow', cache: 'no-store'}); if (!response.ok) throw new Error(`${response.status} ${response.statusText}`); const payload = await readApi(response); if (!payload.ok || !Array.isArray(payload.employees)) throw new Error(payload.error || payload.message || t('dataUnavailable')); state.employees = payload.employees.map(employee => ({...employee, id: clean(employee.id || employee.code || employee.rowNumber)})); refreshFilters(); state.page = 1; render(); if (!quiet) toast(t('loaded'), 'success'); } catch (error) { state.employees = []; refreshFilters(); render(); const message = `${t('loadFailed')} ${clean(error.message)}`; showNotice(message); toast(message, 'error'); } finally { setLoading(false); render(); } }
-  async function saveEmployee(event) { event.preventDefault(); const data = Object.fromEntries(new FormData($('employeeForm')).entries()); const error = validateEmployee(data); if (error) { $('formError').textContent = error; return; } const isEdit = Boolean(state.editingKey); $('formError').textContent = ''; $('saveBtn').disabled = true; $('saveBtn').textContent = t('saving'); try { const employee = {...data, ...computed(data), id: clean(data.id || data.code)}; const response = await fetch(withToken(API_URL), {method: 'POST', redirect: 'follow', headers: {'Content-Type': 'text/plain;charset=utf-8'}, body: JSON.stringify({action: isEdit ? 'update' : 'create', employee, token: API_TOKEN || undefined})}); if (!response.ok) throw new Error(`${response.status} ${response.statusText}`); const payload = await readApi(response); if (!payload.ok) throw new Error(payload.error || payload.message || t('saveFailed')); closeModal('formModal'); toast(isEdit ? t('saved') : t('created'), 'success'); await load({quiet: true}); } catch (error) { $('formError').textContent = `${t('saveFailed')} ${clean(error.message)}`; } finally { $('saveBtn').disabled = false; $('saveBtn').textContent = lang() === 'ar' ? 'حفظ التغييرات' : 'Save changes'; } }
-  /* exportExcel removed — button links directly to original Google Sheet export */
-  function applyFilter() { state.page = 1; render(); }
-  function initEvents() { document.querySelectorAll('[data-lang-option]').forEach(button => button.addEventListener('click', () => { applyLanguage(button.dataset.langOption); toast(lang() === 'ar' ? 'تم تغيير اللغة.' : 'Language changed.', 'success'); })); document.querySelector('[data-theme-toggle]').addEventListener('click', () => { applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); }); $('search').addEventListener('input', applyFilter); ['sector','department','section','status'].forEach(id => $(id).addEventListener('change', applyFilter)); $('clearBtn').addEventListener('click', () => { $('search').value = ''; ['sector','department','section','status'].forEach(id => $(id).value = ''); applyFilter(); toast(t('filtersCleared'), 'success'); }); $('refreshBtn').addEventListener('click', () => load({quiet: false})); $('newBtn').addEventListener('click', event => openForm({}, event.currentTarget)); $('employeeForm').addEventListener('submit', saveEmployee); document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => closeModal(button.dataset.close))); document.querySelectorAll('.modal').forEach(modal => modal.addEventListener('click', event => { if (event.target === modal) closeModal(modal.id); })); document.addEventListener('keydown', event => { if (event.key === 'Escape') { const modal = [...document.querySelectorAll('.modal')].find(item => !item.hidden); if (modal) closeModal(modal.id); } }); $('rows').addEventListener('click', event => { const row = event.target.closest('tr[data-key]'); if (row) openProfile(row.dataset.key, row); }); $('rows').addEventListener('keydown', event => { const row = event.target.closest('tr[data-key]'); if (row && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); openProfile(row.dataset.key, row); } }); document.querySelectorAll('[data-sort]').forEach(button => button.addEventListener('click', () => { const key = button.dataset.sort; state.direction = state.sort === key ? state.direction * -1 : 1; state.sort = key; state.page = 1; render(); })); $('pageSize').addEventListener('change', () => { state.pageSize = Number($('pageSize').value); state.page = 1; render(); }); $('prevPage').addEventListener('click', () => { state.page--; render(); }); $('nextPage').addEventListener('click', () => { state.page++; render(); }); }
-  applyTheme(localStorage.getItem('portal-theme') || 'light');
-  applyLanguage(localStorage.getItem('portal-language') || 'en');
-  initEvents();
-  load({quiet: true});
-  </script>
-</body>
+      <div class="notice" id="notice" role="status" hidden></div>
+      <section class="stats" aria-label="Employee statistics">
+        <div class="stat"><span data-en="Total employees" data-ar="إجمالي الموظفين">Total employees</span><strong id="totalCount">—</strong><small id="totalHint"></small></div>
+        <div class="stat"><span data-en="Matching records" data-ar="السجلات المطابقة">Matching records</span><strong id="shownCount">—</strong><small id="shownHint"></small></div>
+        <div class="stat"><span data-en="General departments" data-ar="الإدارات العامة">General departments</span><strong id="deptCount">—</strong><small id="deptHint"></small></div>
+        <div class="stat"><span data-en="Upcoming retirements" data-ar="التقاعد خلال 12 شهراً">Upcoming retirements</span><strong id="retirementCount">—</strong><small id="retirementHint"></small></div>
+      </section>
+      <section class="panel toolbar" aria-label="Employee filters">
+        <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
+        <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><select class="select" id="sector"></select></div>
+        <div class="filter-field"><label for="department" data-en="General department" data-ar="الإدارة العامة">General department</label><select class="select" id="department"></select></div>
+        <div class="filter-field"><label for="section" data-en="Section" data-ar="القسم الفرعي">Section</label><select class="select" id="section"></select></div>
+        <div class="filter-field"><label for="status" data-en="Status" data-ar="الحالة">Status</label><select class="select" id="status"></select></div><button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
+      </section>
+      <section class="layout">
+        <section class="panel" aria-labelledby="tableHeading">
+          <div class="panel-head">
+            <h2 id="tableHeading" data-en="Employee list" data-ar="قائمة الموظفين">Employee list <span id="resultNote" class="result-note"></span></h2><span id="loadingState" class="result-note" aria-live="polite"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th><button type="button" data-sort="code"><span data-en="Code" data-ar="الكود">Code</span><span aria-hidden="true" data-sort-icon="code"></span></button></th>
+                  <th><button type="button" data-sort="name"><span data-en="Employee" data-ar="الموظف">Employee</span><span aria-hidden="true" data-sort-icon="name">↑</span></button></th>
+                  <th data-en="Job" data-ar="الوظيفة">Job</th>
+                  <th><button type="button" data-sort="currentGeneralDepartment"><span data-en="General department" data-ar="الإدارة العامة">General department</span><span aria-hidden="true" data-sort-icon="currentGeneralDepartment"></span></button></th>
+                  <th><button type="button" data-sort="status"><span data-en="Status" data-ar="الحالة">Status</span><span aria-hidden="true" data-sort-icon="status"></span></button></th>
+                  <th><button type="button" data-sort="age"><span data-en="Age" data-ar="العمر">Age</span><span aria-hidden="true" data-sort-icon="age"></span></button></th>
+                </tr>
+              </thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+          <div class="pagination">
+            <p id="paginationLabel"></p>
+            <div class="pagination-controls"><label class="subtle" for="pageSize" data-en="Rows" data-ar="صفوف">Rows</label><select id="pageSize" class="page-size" aria-label="Rows per page">
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select><button id="prevPage" class="icon-btn" type="button" aria-label="Previous page">‹</button><span id="pageLabel" class="subtle"></span><button id="nextPage" class="icon-btn" type="button" aria-label="Next page">›</button></div>
+          </div>
+        </section>
+        <aside class="panel analytics" aria-label="Workforce distribution">
+          <div>
+            <h2 data-en="By general department" data-ar="حسب الإدارة العامة">By general department</h2>
+            <div id="deptBars" class="bars"></div>
+          </div>
+          <div>
+            <h2 data-en="By section" data-ar="حسب القسم الفرعي">By section</h2>
+            <div id="sectionBars" class="bars"></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <footer class="portal-footer">
+      <div class="footer-content">
+        <div class="footer-info"><span><strong>Contact Us</strong></span><span><a href="mailto:eslamsaleh1999@gmail.com">eslamsaleh1999@gmail.com</a></span><span><a href="tel:+201061438871">+201061438871</a></span></div>
+        <div class="footer-copyright">© 2026 Egyptair inflight services. All rights reserved.</div>
+      </div>
+    </footer>
+    <div class="modal" id="profileModal" hidden>
+      <section class="dialog narrow" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+        <div class="dialog-head">
+          <h2 id="profileTitle"></h2><button class="icon-btn" type="button" data-close="profileModal" aria-label="Close">×</button>
+        </div>
+        <div class="dialog-body" id="profileBody"></div>
+      </section>
+    </div>
+    <div class="modal" id="formModal" hidden>
+      <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+        <div class="dialog-head">
+          <h2 id="formTitle"></h2><button class="icon-btn" type="button" data-close="formModal" aria-label="Close">×</button>
+        </div>
+        <form id="employeeForm" class="form" novalidate></form>
+        <div class="dialog-foot">
+          <p class="form-error" id="formError" role="alert"></p>
+          <div class="button-row"><button class="btn secondary" type="button" data-close="formModal" data-en="Cancel" data-ar="إلغاء">Cancel</button><button class="btn" type="submit" form="employeeForm" id="saveBtn" data-en="Save changes" data-ar="حفظ التغييرات">Save changes</button></div>
+        </div>
+      </section>
+    </div>
+    <script>
+      /* API_TOKEN is only a compatibility fallback. For HR data, restrict the Apps Script deployment and use its email allowlist. */
+      const API_URL = 'https://script.google.com/macros/s/AKfycbzoF2Cpp1bG18ZbZcHTTafFFhkTD6mZi7BIw_a0iEtqwBS1k2oDxDetGd3p8Jk30CVb/exec';
+      const API_TOKEN = '';
+      const $ = id => document.getElementById(id);
+      const clean = value => String(value ?? '').trim();
+      const normal = value => clean(value).toLocaleLowerCase('ar-EG');
+      const state = {
+        employees: [],
+        filtered: [],
+        page: 1,
+        pageSize: 25,
+        sort: 'name',
+        direction: 1,
+        editingKey: null,
+        lastFocus: null,
+        loading: false
+      };
+      const i18n = {
+        en: {
+          allSectors: 'All sectors',
+          allDepartments: 'All departments',
+          allSections: 'All sections',
+          allStatuses: 'All statuses',
+          noData: 'No matching employee records.',
+          noDistribution: 'No matching records.',
+          showing: 'Showing {from}–{to} of {total}',
+          page: 'Page {page} of {pages}',
+          rows: '{count} records',
+          loaded: 'Employee data loaded.',
+          refreshed: 'Employee data refreshed.',
+          filtersCleared: 'Filters cleared.',
+          filterApplied: 'Filters applied.',
+          exportReady: 'Exported {count} employee records.',
+          profile: 'Employee profile',
+          edit: 'Edit record',
+          newEmployee: 'Add employee',
+          editEmployee: 'Edit employee',
+          saveFailed: 'Unable to save the employee record.',
+          loadFailed: 'Unable to load employee data.',
+          saved: 'Employee record saved.',
+          created: 'Employee added.',
+          required: 'Employee code and name are required.',
+          duplicate: 'This employee code already exists.',
+          saving: 'Saving…',
+          loading: 'Loading employee records…',
+          records: 'records',
+          unknown: 'Not specified',
+          active: 'Active',
+          leave: 'On leave',
+          inactive: 'Inactive',
+          retirement: 'Retires within 12 months',
+          dataUnavailable: 'The employee service did not return any records.',
+          exportName: 'employee-records'
+        },
+        ar: {
+          allSectors: 'كل القطاعات',
+          allDepartments: 'كل الإدارات العامة',
+          allSections: 'كل الأقسام الفرعية',
+          allStatuses: 'كل الحالات',
+          noData: 'لا توجد سجلات موظفين مطابقة.',
+          noDistribution: 'لا توجد سجلات مطابقة.',
+          showing: 'عرض {from}–{to} من {total}',
+          page: 'الصفحة {page} من {pages}',
+          rows: '{count} سجل',
+          loaded: 'تم تحميل بيانات الموظفين.',
+          refreshed: 'تم تحديث بيانات الموظفين.',
+          filtersCleared: 'تم مسح عوامل التصفية.',
+          filterApplied: 'تم تطبيق عوامل التصفية.',
+          exportReady: 'تم تصدير {count} سجل موظف.',
+          profile: 'ملف الموظف',
+          edit: 'تعديل السجل',
+          newEmployee: 'إضافة موظف',
+          editEmployee: 'تعديل بيانات الموظف',
+          saveFailed: 'تعذر حفظ سجل الموظف.',
+          loadFailed: 'تعذر تحميل بيانات الموظفين.',
+          saved: 'تم حفظ سجل الموظف.',
+          created: 'تمت إضافة الموظف.',
+          required: 'كود الموظف والاسم مطلوبان.',
+          duplicate: 'كود الموظف مستخدم بالفعل.',
+          saving: 'جارٍ الحفظ…',
+          loading: 'جارٍ تحميل سجلات الموظفين…',
+          records: 'سجل',
+          unknown: 'غير محدد',
+          active: 'على رأس العمل',
+          leave: 'في إجازة',
+          inactive: 'غير نشط',
+          retirement: 'يتقاعد خلال 12 شهراً',
+          dataUnavailable: 'لم تُرجع خدمة الموظفين أي سجلات.',
+          exportName: 'سجلات-الموظفين'
+        }
+      };
+      const schema = [
+        ['personal', 'Personal details', 'البيانات الشخصية', [
+          ['code', 'Employee code', 'الكود', 'text', true],
+          ['name', 'Full name', 'الاسم', 'text', true],
+          ['gender', 'Gender', 'النوع', 'select'],
+          ['birthDate', 'Date of birth', 'تاريخ الميلاد', 'date'],
+          ['retirementDate', 'Retirement date', 'تاريخ المعاش', 'computed'],
+          ['appointmentDate', 'Appointment date', 'تاريخ التعيين', 'date'],
+          ['age', 'Current age', 'السن الحالي', 'computed'],
+          ['ageGroup', 'Age group', 'الفئة العمرية', 'computed'],
+          ['ageAtAppointment', 'Age at appointment', 'السن عند التعيين', 'computed'],
+          ['address', 'Address', 'العنوان', 'text'],
+          ['governorate', 'Governorate', 'المحافظة', 'text'],
+          ['phone', 'Phone number', 'رقم التليفون', 'tel'],
+          ['militaryStatus', 'Military status', 'نوع المعاملة العسكرية', 'text'],
+          ['exemptionReason', 'Exemption reason', 'سبب الإعفاء', 'text'],
+          ['unpaidLeaveType', 'Unpaid leave type', 'نوع الإجازة بدون مرتب', 'text'],
+          ['leaveMandatory', 'Leave requirement', 'وجوبية الإجازة', 'text'],
+          ['leaveStart', 'Leave start date', 'تاريخ بداية الإجازة', 'date'],
+          ['leaveEnd', 'Leave end date', 'تاريخ نهاية الإجازة', 'date'],
+          ['currentQualificationTitle', 'Current qualification title', 'مسمى المؤهل الحالي', 'text'],
+          ['currentQualificationType', 'Current qualification type', 'نوع المؤهل الحالي', 'text'],
+          ['studySpecialization', 'Study specialization', 'التخصص الدراسي', 'text'],
+          ['disabilityType', 'Disability type', 'نوع الإعاقة', 'text'],
+          ['addressExtra', 'Work location', 'الموقع', 'text']
+        ]],
+        ['employment', 'Employment details', 'بيانات وظيفية', [
+          ['originalCompany', 'Original company', 'الشركة الأساسية', 'text'],
+          ['originalCompanyName', 'Original company name', 'مسمى الشركة الأساسية', 'text'],
+          ['currentCompany', 'Current company', 'الشركة الحالية', 'text'],
+          ['currentSector', 'Current sector', 'القطاع الحالي', 'text'],
+          ['currentGeneralDepartment', 'Current general department', 'الإدارة العامة الحالية', 'text'],
+          ['currentSubDepartment', 'Current section', 'الإدارة الفرعية الحالية', 'text'],
+          ['originalGeneralDepartment', 'Original general department', 'الإدارة العامة الأساسية', 'text'],
+          ['originalSubDepartment', 'Original section', 'مسمى الإدارة الفرعية الأساسية', 'text'],
+          ['jobTitle', 'Job title', 'مسمى الوظيفة', 'text'],
+          ['actualJob', 'Actual job', 'الوظيفة الفعلية', 'text'],
+          ['statisticsJob', 'Job title for statistics', 'مسمى الوظيفة للإحصائيات', 'text'],
+          ['appointmentType', 'Appointment type', 'نوع التعيين', 'text'],
+          ['currentGrade', 'Current grade', 'الدرجة الحالية', 'text'],
+          ['gradeDate', 'Grade date', 'تاريخ الدرجة', 'date'],
+          ['workSchedule', 'Work schedule', 'توقيت العمل', 'text'],
+          ['appointmentJob', 'Job at appointment', 'الوظيفة عند التعيين', 'text'],
+          ['jobDate', 'Job date', 'تاريخ الوظيفة', 'date']
+        ]],
+        ['secondment', 'Secondment details', 'بيانات الانتداب', [
+          ['secondedJob', 'Seconded job', 'الوظيفة المنتدب عليها', 'text'],
+          ['secondedJob2', 'Seconded job (2)', 'الوظيفة المنتدب عليها 2', 'text'],
+          ['secondedCompany', 'Seconded company', 'الشركة المنتدب إليها', 'text'],
+          ['secondedSector', 'Seconded sector', 'قطاع المنتدب إليه', 'text'],
+          ['secondedGeneralDepartment', 'Seconded general department', 'إدارة عامة منتدب إليها', 'text'],
+          ['secondedDepartment', 'Seconded department', 'الإدارة المنتدب إليها', 'text'],
+          ['secondmentStart', 'Secondment start', 'تاريخ الانتداب', 'date'],
+          ['secondmentEnd', 'Secondment end', 'تاريخ نهاية الانتداب', 'date'],
+          ['secondedJobGroup', 'Seconded job group', 'المجموعة النوعية الجديدة المنتدب عليها', 'text']
+        ]],
+        ['other', 'Additional details', 'بيانات متنوعة', [
+          ['uniform', 'Uniform', 'الزي', 'text'],
+          ['appointmentQualificationTitle', 'Qualification at appointment', 'مسمى المؤهل عند التعيين', 'text'],
+          ['appointmentQualificationType', 'Qualification type at appointment', 'نوع المؤهل عند التعيين', 'text'],
+          ['appointmentQualificationTitle2', 'Second qualification at appointment', 'مسمى مؤهل التعيين 2', 'text'],
+          ['appointmentQualificationType2', 'Second qualification type', 'نوع مؤهل التعيين 2', 'text'],
+          ['newJobGroups', 'New job groups', 'المجموعات النوعية الجديدة', 'text'],
+          ['qualificationDate', 'Qualification date', 'تاريخ المؤهل', 'date'],
+          ['contractStart', 'Contract start', 'تاريخ بداية التعاقد', 'date'],
+          ['contractEnd', 'Contract end', 'تاريخ نهاية التعاقد', 'date'],
+          ['totalService', 'Total service', 'مدة الخدمة الكلية', 'computed'],
+          ['serviceType', 'Service type', 'نوع الخدمة', 'text'],
+          ['workType', 'Work type', 'نوع العمل', 'text'],
+          ['status', 'Status', 'الحالة', 'select']
+        ]]
+      ];
+      const lang = () => document.documentElement.lang === 'ar' ? 'ar' : 'en';
+      const t = (key, vars = {}) => Object.entries(vars).reduce((text, [name, value]) => text.replace(`{${name}}`, value), i18n[lang()][key] || key);
+      const fieldLabel = field => field[lang() === 'ar' ? 2 : 1];
+      const sectionLabel = section => section[lang() === 'ar' ? 2 : 1];
+      const escapeHtml = value => clean(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      } [char]));
+      const recordKey = employee => clean(employee.rowNumber || employee.id || employee.code);
+      const parseDate = value => {
+        // Strip any time component first (e.g. "2020/05/12 00:00:00")
+        const cleaned = clean(value).replace(/[T\s].*$/, '');
+        const match = cleaned.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+        return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+      };
+      const dateValue = value => {
+        const date = parseDate(value);
+        return date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : '';
+      };
+      const now = () => new Date();
+
+      function ageOn(date, reference = now()) {
+        if (!date) return '';
+        let age = reference.getFullYear() - date.getFullYear();
+        if (reference.getMonth() < date.getMonth() || (reference.getMonth() === date.getMonth() && reference.getDate() < date.getDate())) age--;
+        return age >= 0 && age < 120 ? age : '';
+      }
+
+      function serviceSince(date, reference = now()) {
+        if (!date || date > reference) return '';
+        let months = (reference.getFullYear() - date.getFullYear()) * 12 + reference.getMonth() - date.getMonth();
+        if (reference.getDate() < date.getDate()) months--;
+        if (months < 0) return '';
+        const years = Math.floor(months / 12),
+          rest = months % 12;
+        return lang() === 'ar' ? `${years} سنة${rest ? ` و ${rest} شهر` : ''}` : `${years} year${years === 1 ? '' : 's'}${rest ? `, ${rest} month${rest === 1 ? '' : 's'}` : ''}`;
+      }
+
+      function computed(employee) {
+        const e = {
+          ...employee
+        };
+        const birth = parseDate(e.birthDate),
+          appointment = parseDate(e.appointmentDate);
+        const currentAge = ageOn(birth);
+        e.age = currentAge;
+        e.ageAtAppointment = birth && appointment ? ageOn(birth, appointment) : '';
+        e.ageGroup = currentAge === '' ? '' : currentAge < 20 ? (lang() === 'ar' ? 'أقل من 20' : 'Under 20') : currentAge < 25 ? '20–24' : currentAge < 30 ? '25–29' : currentAge < 35 ? '30–34' : currentAge < 40 ? '35–39' : currentAge < 45 ? '40–44' : currentAge < 50 ? '45–49' : currentAge < 55 ? '50–54' : currentAge < 60 ? '55–59' : currentAge < 65 ? '60–64' : (lang() === 'ar' ? '65 فأكثر' : '65+');
+        // تاريخ المعاش = birth + 60 years (matches Apps Script formula)
+        if (birth) {
+          const pension = new Date(birth.getFullYear() + 60, birth.getMonth(), birth.getDate());
+          const pad = n => (n < 10 ? '0' + n : String(n));
+          e.retirementDate = pension.getFullYear() + '/' + pad(pension.getMonth() + 1) + '/' + pad(pension.getDate());
+        } else {
+          e.retirementDate = e.retirementDate || '';
+        }
+        e.totalService = serviceSince(appointment);
+        return e;
+      }
+
+      function displayStatus(value) {
+        const text = normal(value);
+        if (!text) return {
+          label: t('unknown'),
+          className: 'inactive'
+        };
+        if (text.includes('leave') || text.includes('إجاز')) return {
+          label: t('leave'),
+          className: 'leave'
+        };
+        if (text === 'active' || text === 'activ' || text.includes('رأس العمل')) return {
+          label: t('active'),
+          className: ''
+        };
+        if (text.includes('inactive') || text.includes('غير نشط')) return {
+          label: t('inactive'),
+          className: 'inactive'
+        };
+        return {
+          label: clean(value),
+          className: ''
+        };
+      }
+
+      function isUpcomingRetirement(employee) {
+        const date = parseDate(employee.retirementDate);
+        if (!date) return false;
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(start);
+        end.setFullYear(end.getFullYear() + 1);
+        return date >= start && date <= end;
+      }
+
+      function toast(message, type = 'info') {
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.innerHTML = `<span>${escapeHtml(message)}</span><button type="button" aria-label="Close">×</button>`;
+        const timer = setTimeout(() => el.remove(), 7000);
+        el.querySelector('button').onclick = () => {
+          clearTimeout(timer);
+          el.remove();
+        };
+        $('toastRegion').appendChild(el);
+      }
+
+      function showNotice(message) {
+        $('notice').textContent = message;
+        $('notice').hidden = !message;
+      }
+
+      function setLoading(loading) {
+        state.loading = loading;
+        $('loadingState').textContent = loading ? t('loading') : '';
+        $('refreshBtn').disabled = loading;
+        $('newBtn').disabled = loading;
+      }
+
+      function updateStaticText() {
+        document.querySelectorAll('[data-en][data-ar]').forEach(el => {
+          const preserved = [...el.children].filter(child => child.id === 'resultNote');
+          el.textContent = el.dataset[lang()];
+          preserved.forEach(child => el.appendChild(child));
+        });
+        document.querySelectorAll('[data-en-placeholder][data-ar-placeholder]').forEach(el => {
+          el.placeholder = el.dataset[`${lang()}Placeholder`];
+        });
+        document.querySelectorAll('[data-lang-option]').forEach(el => el.classList.toggle('active', el.dataset.langOption === lang()));
+        const themeButton = document.querySelector('[data-theme-toggle]');
+        if (themeButton) themeButton.textContent = document.documentElement.dataset.theme === 'dark' ? (lang() === 'ar' ? 'فاتح' : 'Light') : (lang() === 'ar' ? 'داكن' : 'Dark');
+        document.title = lang() === 'ar' ? 'بيانات الموظفين | أدوات عمل مصر للطيران' : 'Employee Data | EgyptAir Work Tools';
+      }
+
+      function applyLanguage(next) {
+        document.documentElement.lang = next;
+        document.documentElement.dir = next === 'ar' ? 'rtl' : 'ltr';
+        localStorage.setItem('portal-language', next);
+        updateStaticText();
+        refreshFilters();
+        render();
+      }
+
+      function applyTheme(next) {
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem('portal-theme', next);
+        updateStaticText();
+      }
+
+      function unique(key, source = state.employees) {
+        return [...new Set(source.map(item => clean(item[key])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
+      }
+
+      function fillSelect(id, key, label) {
+        const select = $(id),
+          current = select.value,
+          values = unique(key);
+        select.innerHTML = `<option value="">${escapeHtml(label)}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
+        select.value = values.includes(current) ? current : '';
+      }
+
+      function refreshFilters() {
+        fillSelect('sector', 'currentSector', t('allSectors'));
+        fillSelect('department', 'currentGeneralDepartment', t('allDepartments'));
+        fillSelect('section', 'currentSubDepartment', t('allSections'));
+        const select = $('status'),
+          current = select.value,
+          values = unique('status');
+        select.innerHTML = `<option value="">${t('allStatuses')}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(displayStatus(value).label)}</option>`).join('')}`;
+        select.value = values.includes(current) ? current : '';
+      }
+
+      function filtersActive() {
+        return Boolean(clean($('search').value) || $('sector').value || $('department').value || $('section').value || $('status').value);
+      }
+
+      function getFiltered() {
+        const query = normal($('search').value);
+        const selected = {
+          currentSector: $('sector').value,
+          currentGeneralDepartment: $('department').value,
+          currentSubDepartment: $('section').value,
+          status: $('status').value
+        };
+        const list = state.employees.map(computed).filter(employee => {
+          const matchesSearch = !query || normal(employee.code).includes(query) || normal(employee.name).includes(query);
+          const matchesFilters = Object.entries(selected).every(([key, value]) => !value || clean(employee[key]) === value);
+          return matchesSearch && matchesFilters;
+        });
+        const key = state.sort;
+        return list.sort((left, right) => {
+          const a = key === 'age' ? Number(left[key]) || -1 : normal(left[key]);
+          const b = key === 'age' ? Number(right[key]) || -1 : normal(right[key]);
+          return typeof a === 'number' ? (a - b) * state.direction : a.localeCompare(b, 'ar') * state.direction;
+        });
+      }
+
+      function renderBars(id, key, list) {
+        const counts = {};
+        list.forEach(employee => {
+          const value = clean(employee[key]) || t('unknown');
+          counts[value] = (counts[value] || 0) + 1;
+        });
+        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10),
+          max = entries[0]?.[1] || 1;
+        $(id).innerHTML = entries.length ? entries.map(([label, count]) => `<div class="bar-row"><div class="bar-head"><span title="${escapeHtml(label)}">${escapeHtml(label)}</span><b>${count}</b></div><div class="track"><div class="fill" style="width:${(count / max * 100).toFixed(1)}%"></div></div></div>`).join('') : `<p class="empty">${t('noDistribution')}</p>`;
+      }
+
+      function renderStats(list) {
+        const total = state.employees.length,
+          upcoming = state.employees.filter(isUpcomingRetirement).length;
+        $('totalCount').textContent = total.toLocaleString();
+        $('shownCount').textContent = list.length.toLocaleString();
+        $('deptCount').textContent = unique('currentGeneralDepartment').length.toLocaleString();
+        $('retirementCount').textContent = upcoming.toLocaleString();
+        $('totalHint').textContent = total ? t('rows', {
+          count: total.toLocaleString()
+        }) : '';
+        $('shownHint').textContent = filtersActive() ? t('filterApplied') : t('rows', {
+          count: list.length.toLocaleString()
+        });
+        $('deptHint').textContent = total ? t('records') : '';
+        $('retirementHint').textContent = t('retirement');
+      }
+
+      function renderSortIcons() {
+        document.querySelectorAll('[data-sort-icon]').forEach(icon => {
+          icon.textContent = icon.dataset.sortIcon === state.sort ? (state.direction === 1 ? '↑' : '↓') : '';
+        });
+      }
+
+      function renderRows(list) {
+        const pages = Math.max(1, Math.ceil(list.length / state.pageSize));
+        state.page = Math.min(state.page, pages);
+        const start = (state.page - 1) * state.pageSize,
+          pageRows = list.slice(start, start + state.pageSize);
+        const to = Math.min(start + state.pageSize, list.length);
+        $('resultNote').textContent = list.length ? ` · ${t('showing', {from: start + 1, to, total: list.length.toLocaleString()})}` : '';
+        $('paginationLabel').textContent = list.length ? t('showing', {
+          from: start + 1,
+          to,
+          total: list.length.toLocaleString()
+        }) : '';
+        $('pageLabel').textContent = t('page', {
+          page: state.page,
+          pages
+        });
+        $('prevPage').disabled = state.page <= 1;
+        $('nextPage').disabled = state.page >= pages;
+        $('rows').innerHTML = state.loading ? `<tr><td colspan="6"><div class="loading">${t('loading')}</div></td></tr>` : pageRows.length ? pageRows.map(employee => {
+          const status = displayStatus(employee.status);
+          return `<tr tabindex="0" data-key="${escapeHtml(recordKey(employee))}" aria-label="${escapeHtml(employee.name || employee.code)}"><td>${escapeHtml(employee.code || '—')}</td><td><span class="employee-name">${escapeHtml(employee.name || t('unknown'))}</span><span class="subtle">${escapeHtml(employee.currentCompany || '')}</span></td><td>${escapeHtml(employee.actualJob || employee.jobTitle || '—')}</td><td>${escapeHtml(employee.currentGeneralDepartment || '—')}<span class="subtle">${escapeHtml(employee.currentSubDepartment || '')}</span></td><td><span class="pill ${status.className}">${escapeHtml(status.label)}</span></td><td>${employee.age === '' ? '—' : escapeHtml(employee.age)}</td></tr>`;
+        }).join('') : `<tr><td colspan="6"><div class="empty">${t('noData')}</div></td></tr>`;
+      }
+
+      function render() {
+        const list = getFiltered();
+        state.filtered = list;
+        renderStats(list);
+        renderRows(list);
+        renderBars('deptBars', 'currentGeneralDepartment', list);
+        renderBars('sectionBars', 'currentSubDepartment', list);
+        renderSortIcons();
+      }
+
+      function dateText(value) {
+        const date = parseDate(value);
+        return date ? new Intl.DateTimeFormat(lang() === 'ar' ? 'ar-EG' : 'en-GB', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        }).format(date) : clean(value);
+      }
+
+      function openModal(id, opener) {
+        state.lastFocus = opener || document.activeElement;
+        $(id).hidden = false;
+        $(id).querySelector('button, input, select, summary')?.focus();
+      }
+
+      function closeModal(id) {
+        $(id).hidden = true;
+        if (state.lastFocus instanceof HTMLElement) state.lastFocus.focus();
+        state.lastFocus = null;
+      }
+
+      function openProfile(key, opener) {
+        const employee = state.employees.find(item => recordKey(item) === String(key));
+        if (!employee) return;
+        const e = computed(employee);
+        const overview = `${clean(e.actualJob || e.jobTitle) || t('unknown')} · ${clean(e.currentCompany) || t('unknown')}`;
+        const profileSections = schema.map(section => {
+          const entries = section[3].filter(field => clean(e[field[0]])).map(field => `<div class="detail"><dt>${escapeHtml(fieldLabel(field))}</dt><dd>${escapeHtml(field[3] === 'date' ? dateText(e[field[0]]) : e[field[0]])}</dd></div>`).join('');
+          return entries ? `<section class="profile-section"><h3>${escapeHtml(sectionLabel(section))}</h3><dl class="details-grid">${entries}</dl></section>` : '';
+        }).join('');
+        $('profileTitle').textContent = t('profile');
+        $('profileBody').innerHTML = `<div class="profile-hero"><div><h3>${escapeHtml(e.name || t('unknown'))}</h3><p>${escapeHtml(e.code ? `${lang() === 'ar' ? 'كود الموظف: ' : 'Employee code: '}${e.code}` : overview)}</p><p>${escapeHtml(overview)}</p></div><div class="button-row"><button class="btn" type="button" id="editProfileBtn">${escapeHtml(t('edit'))}</button></div></div><div class="profile-sections">${profileSections || `<p class="empty">${t('noData')}</p>`}</div>`;
+        $('editProfileBtn').onclick = () => {
+          closeModal('profileModal');
+          openForm(employee, opener);
+        };
+        openModal('profileModal', opener);
+      }
+
+      function selectOptions(key, selected) {
+        const options = key === 'gender' ? [
+          ['', '—'],
+          ['ذكور', lang() === 'ar' ? 'ذكور' : 'Male'],
+          ['اناث', lang() === 'ar' ? 'اناث' : 'Female']
+        ] : [
+          ['', '—'],
+          ['active', t('active')],
+          ['على رأس العمل', t('active')],
+          ['إجازة', t('leave')],
+          ['منتدب', lang() === 'ar' ? 'منتدب' : 'Seconded'],
+          ['غير نشط', t('inactive')]
+        ];
+        return options.map(([value, label]) => `<option value="${escapeHtml(value)}" ${clean(selected) === value ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+      }
+
+      function openForm(employee = {}, opener) {
+        state.editingKey = recordKey(employee) || null;
+        const e = computed(employee);
+        $('formTitle').textContent = state.editingKey ? t('editEmployee') : t('newEmployee');
+        $('formError').textContent = '';
+        $('employeeForm').innerHTML = `<input type="hidden" name="id" value="${escapeHtml(employee.id || '')}"><input type="hidden" name="rowNumber" value="${escapeHtml(employee.rowNumber || '')}">` + schema.map((section, index) => `<details class="form-section" ${index < 2 ? 'open' : ''}><summary>${escapeHtml(sectionLabel(section))}</summary><div class="fields">${section[3].map(field => { const [key, en, ar, type, required] = field, value = e[key] ?? '', label = lang() === 'ar' ? ar : en; if (type === 'computed') return `<div class="field computed"><label>${escapeHtml(label)}</label><input type="text" readonly value="${escapeHtml(value)}"></div>`; if (type === 'select') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><select id="field-${key}" name="${key}" ${required ? 'required' : ''}>${selectOptions(key, value)}</select></div>`; return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="${type === 'date' ? 'date' : type === 'tel' ? 'tel' : 'text'}" value="${escapeHtml(type === 'date' ? dateValue(value) : value)}" ${required ? 'required' : ''}></div>`; }).join('')}</div></details>`).join('');
+        openModal('formModal', opener);
+      }
+
+      function validateEmployee(data) {
+        if (!clean(data.code) || !clean(data.name)) return t('required');
+        const duplicate = state.employees.find(item => clean(item.code) === clean(data.code) && recordKey(item) !== state.editingKey);
+        return duplicate ? t('duplicate') : '';
+      }
+      async function readApi(response) {
+        const text = await response.text();
+        try {
+          return JSON.parse(text);
+        } catch {
+          throw new Error(text || `${response.status} ${response.statusText}`);
+        }
+      }
+
+      function withToken(url) {
+        return API_TOKEN ? `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(API_TOKEN)}` : url;
+      }
+      async function load({
+        quiet = false
+      } = {}) {
+        setLoading(true);
+        showNotice('');
+        render();
+        try {
+          const response = await fetch(withToken(`${API_URL}?action=list`), {
+            redirect: 'follow',
+            cache: 'no-store'
+          });
+          if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+          const payload = await readApi(response);
+          if (!payload.ok || !Array.isArray(payload.employees)) throw new Error(payload.error || payload.message || t('dataUnavailable'));
+          state.employees = payload.employees.map(employee => ({
+            ...employee,
+            id: clean(employee.id || employee.code || employee.rowNumber)
+          }));
+          refreshFilters();
+          state.page = 1;
+          render();
+          if (!quiet) toast(t('loaded'), 'success');
+        } catch (error) {
+          state.employees = [];
+          refreshFilters();
+          render();
+          const message = `${t('loadFailed')} ${clean(error.message)}`;
+          showNotice(message);
+          toast(message, 'error');
+        } finally {
+          setLoading(false);
+          render();
+        }
+      }
+      async function saveEmployee(event) {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData($('employeeForm')).entries());
+        const error = validateEmployee(data);
+        if (error) {
+          $('formError').textContent = error;
+          return;
+        }
+        const isEdit = Boolean(state.editingKey);
+        $('formError').textContent = '';
+        $('saveBtn').disabled = true;
+        $('saveBtn').textContent = t('saving');
+        try {
+          const employee = {
+            ...data,
+            ...computed(data),
+            id: clean(data.id || data.code)
+          };
+          const response = await fetch(withToken(API_URL), {
+            method: 'POST',
+            redirect: 'follow',
+            headers: {
+              'Content-Type': 'text/plain;charset=utf-8'
+            },
+            body: JSON.stringify({
+              action: isEdit ? 'update' : 'create',
+              employee,
+              token: API_TOKEN || undefined
+            })
+          });
+          if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+          const payload = await readApi(response);
+          if (!payload.ok) throw new Error(payload.error || payload.message || t('saveFailed'));
+          closeModal('formModal');
+          toast(isEdit ? t('saved') : t('created'), 'success');
+          await load({
+            quiet: true
+          });
+        } catch (error) {
+          $('formError').textContent = `${t('saveFailed')} ${clean(error.message)}`;
+        } finally {
+          $('saveBtn').disabled = false;
+          $('saveBtn').textContent = lang() === 'ar' ? 'حفظ التغييرات' : 'Save changes';
+        }
+      }
+      /* exportExcel removed — button links directly to original Google Sheet export */
+      function applyFilter() {
+        state.page = 1;
+        render();
+      }
+
+      function initEvents() {
+        document.querySelectorAll('[data-lang-option]').forEach(button => button.addEventListener('click', () => {
+          applyLanguage(button.dataset.langOption);
+          toast(lang() === 'ar' ? 'تم تغيير اللغة.' : 'Language changed.', 'success');
+        }));
+        document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
+          applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+        });
+        $('search').addEventListener('input', applyFilter);
+        ['sector', 'department', 'section', 'status'].forEach(id => $(id).addEventListener('change', applyFilter));
+        $('clearBtn').addEventListener('click', () => {
+          $('search').value = '';
+          ['sector', 'department', 'section', 'status'].forEach(id => $(id).value = '');
+          applyFilter();
+          toast(t('filtersCleared'), 'success');
+        });
+        $('refreshBtn').addEventListener('click', () => load({
+          quiet: false
+        }));
+        $('newBtn').addEventListener('click', event => openForm({}, event.currentTarget));
+        $('employeeForm').addEventListener('submit', saveEmployee);
+        document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => closeModal(button.dataset.close)));
+        document.querySelectorAll('.modal').forEach(modal => modal.addEventListener('click', event => {
+          if (event.target === modal) closeModal(modal.id);
+        }));
+        document.addEventListener('keydown', event => {
+          if (event.key === 'Escape') {
+            const modal = [...document.querySelectorAll('.modal')].find(item => !item.hidden);
+            if (modal) closeModal(modal.id);
+          }
+        });
+        $('rows').addEventListener('click', event => {
+          const row = event.target.closest('tr[data-key]');
+          if (row) openProfile(row.dataset.key, row);
+        });
+        $('rows').addEventListener('keydown', event => {
+          const row = event.target.closest('tr[data-key]');
+          if (row && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault();
+            openProfile(row.dataset.key, row);
+          }
+        });
+        document.querySelectorAll('[data-sort]').forEach(button => button.addEventListener('click', () => {
+          const key = button.dataset.sort;
+          state.direction = state.sort === key ? state.direction * -1 : 1;
+          state.sort = key;
+          state.page = 1;
+          render();
+        }));
+        $('pageSize').addEventListener('change', () => {
+          state.pageSize = Number($('pageSize').value);
+          state.page = 1;
+          render();
+        });
+        $('prevPage').addEventListener('click', () => {
+          state.page--;
+          render();
+        });
+        $('nextPage').addEventListener('click', () => {
+          state.page++;
+          render();
+        });
+      }
+      applyTheme(localStorage.getItem('portal-theme') || 'light');
+      applyLanguage(localStorage.getItem('portal-language') || 'en');
+      initEvents();
+      load({
+        quiet: true
+      });
+    </script>
+  </body>
 </html>
