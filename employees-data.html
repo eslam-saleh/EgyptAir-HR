@@ -727,13 +727,16 @@
 
       .access-gate { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 20px; background: color-mix(in srgb, var(--bg) 92%, #003f73 8%); }
       .access-gate[hidden] { display: none; }
-      .access-card { width: min(440px, 100%); padding: 28px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 28px 80px rgba(0, 0, 0, .22); }
-      .access-card h1 { margin: 0; color: var(--text); font-size: 1.45rem; }
-      .access-card p { margin: 9px 0 20px; color: var(--muted); line-height: 1.55; }
-      .access-form { display: grid; gap: 10px; }
-      .access-form label { color: var(--muted); font-size: .82rem; font-weight: 800; }
-      .access-form input { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; background: var(--surface); color: var(--text); }
-      .access-error { min-height: 1.3em; margin: 0 !important; color: var(--danger) !important; font-size: .84rem; }
+      .access-card { width: min(560px, 100%); padding: 28px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 28px 80px rgba(0, 0, 0, .22); }
+      .access-card h1 { margin: 0 0 8px; color: var(--primary); font-size: 1.45rem; }
+      .access-card > p:not(.eyebrow):not(.status-line) { margin-bottom: 0; color: var(--muted); line-height: 1.6; }
+      .access-form { display: grid; grid-template-columns: minmax(220px, 320px) auto; gap: 10px; align-items: end; margin-top: 16px; }
+      .access-form .access-field label { display: block; margin-bottom: 6px; color: var(--text); font-weight: 800; }
+      .access-form input { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--text); outline: none; }
+      .access-form input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12); }
+      .access-error { min-height: 1.3em; margin-top: 12px !important; color: var(--muted) !important; font-weight: 700; }
+      .access-error.error { color: var(--danger) !important; }
+      @media (max-width: 760px) { .access-form { grid-template-columns: 1fr; } .access-form .primary-btn { width: 100%; } }
 
 
       .report-table-wrap {
@@ -878,14 +881,17 @@
   <body>
     <section class="access-gate" id="accessGate" aria-labelledby="accessTitle">
       <div class="access-card">
-        <h1 id="accessTitle">Employee Data Access</h1>
-        <p>Enter the shared password to load the employee directory.</p>
+        <p class="eyebrow" data-en="Employee directory" data-ar="دليل الموظفين">Employee directory</p>
+        <h1 id="accessTitle" data-en="Employee data access" data-ar="الدخول إلى بيانات الموظفين">Employee data access</h1>
+        <p data-en="Enter the password to unlock the employee directory." data-ar="أدخل كلمة المرور لفتح دليل الموظفين.">Enter the password to unlock the employee directory.</p>
         <form class="access-form" id="accessForm">
-          <label for="accessPassword">Password</label>
-          <input id="accessPassword" name="password" type="password" autocomplete="current-password" inputmode="numeric" required autofocus>
-          <button class="btn" type="submit">Load employee data</button>
-          <p class="access-error" id="accessError" role="alert" aria-live="polite"></p>
+          <div class="access-field">
+            <label for="accessPassword" data-en="Password" data-ar="كلمة المرور">Password</label>
+            <input id="accessPassword" name="password" type="password" autocomplete="current-password" inputmode="numeric" required autofocus>
+          </div>
+          <button class="primary-btn" type="submit" data-en="Unlock" data-ar="فتح">Unlock</button>
         </form>
+        <p class="access-error status-line" id="accessError" role="alert" aria-live="polite"></p>
       </div>
     </section>
     <header class="portal-header"><a class="brand" href="index.html" aria-label="EgyptAir home"><img src="egyptair-logo_.png" alt="EgyptAir logo"><span><strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong><small data-en="Human Resources Management" data-ar="إدارة الموارد البشرية">Human Resources Management</small></span></a>
@@ -1012,6 +1018,7 @@
         lastFocus: null,
         loading: false
       };
+      let employeeDataLoadPromise = null;
       const i18n = {
         en: {
           allSectors: 'All sectors',
@@ -1754,16 +1761,19 @@
         const button = event.submitter || $('accessForm').querySelector('button[type="submit"]');
         const expectedHash = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb';
         error.textContent = '';
+        error.classList.remove('error');
         button.disabled = true;
         try {
           if ((await sha256Hex(input.value)) !== expectedHash) {
-            error.textContent = 'Incorrect password.';
+            error.textContent = lang() === 'ar' ? 'كلمة المرور غير صحيحة.' : 'Incorrect password.';
+            error.classList.add('error');
             input.select();
             return;
           }
           sessionStorage.setItem('employee-data-unlocked', expectedHash);
           $('accessGate').hidden = true;
-          await load({ quiet: true });
+          const loaded = await employeeDataLoadPromise;
+          if (!loaded) await load({ quiet: true });
         } finally {
           button.disabled = false;
         }
@@ -1772,9 +1782,12 @@
       async function initAccessGate() {
         $('accessForm').addEventListener('submit', unlockEmployeeData);
         const expectedHash = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb';
+        // Begin loading behind the access overlay so the directory is ready
+        // by the time the user finishes entering the password.
+        employeeDataLoadPromise = load({ quiet: true });
         if (sessionStorage.getItem('employee-data-unlocked') === expectedHash) {
           $('accessGate').hidden = true;
-          await load({ quiet: true });
+          await employeeDataLoadPromise;
         }
       }
 
