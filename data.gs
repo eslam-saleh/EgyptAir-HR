@@ -146,8 +146,13 @@ function doGet(e) {
     if (!isAuthorized(parameters.token)) return json({ ok: false, error: 'Unauthorized request.' });
     const action = parameters.action || 'list';
     if (action === 'download') return csvDownload();
+    // Lean mapped records for Document Center only.
+    if (action === 'directory') {
+      return json({ ok: true, kind: 'directory', employees: readDirectoryEmployees() });
+    }
+    // Full sheet records for Employee Data (every mapped column, plus extras).
     if (action !== 'list') return json({ ok: false, error: 'Unknown action' });
-    return json({ ok: true, employees: readEmployees() });
+    return json({ ok: true, kind: 'list', employees: readEmployees() });
   } catch (err) {
     return json({ ok: false, error: errorMessage(err) });
   }
@@ -162,12 +167,16 @@ function doPost(e) {
       return json({ ok: false, error: 'Unknown action' });
     }
     lock = LockService.getScriptLock();
-    lock.waitLock(30000);
+    if (!lock.tryLock(25000)) {
+      lock = null;
+      throw new Error('The employee sheet is busy. Please try again.');
+    }
     const employee =
       body.action === 'update'
         ? updateEmployee(body.employee || {})
         : createEmployee(body.employee || {});
-    return json({ ok: true, employee: employee });
+    invalidateDirectoryCache();
+    return json({ ok: true, saved: true, employee: employee });
   } catch (err) {
     return json({ ok: false, error: errorMessage(err) });
   } finally {
@@ -179,14 +188,209 @@ function errorMessage(err) {
   return err && err.message ? err.message : String(err);
 }
 
+const DIRECTORY_CACHE_KEY = 'emp_dir_v2';
+// Keep direct spreadsheet edits visible quickly; cache is only a short-lived optimization.
+const DIRECTORY_CACHE_TTL = 15;
+const DIRECTORY_JOB_GROUPS = [
+  'مجموعة الوظائف الفنية والمكتبية',
+  'مجموعة الوظائف التخصصية',
+  'مجموعة الوظائف الحرفية والخدمات المعاونة'
+];
+
 function readEmployees() {
   const sh = getSheet();
   ensureSheetShape(sh);
-  const values = sh.getDataRange().getDisplayValues();
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return [];
+  const values = sh.getRange(2, 1, lastRow - 1, FIELDS.length).getDisplayValues();
   return values
-    .slice(1)
     .filter(row => row.some(Boolean))
     .map((row, index) => rowToObject(row, index + 2));
+}
+
+function fieldIndex(key) {
+  return FIELDS.findIndex(field => field[0] === key);
+}
+
+function cellAt(row, key) {
+  const index = fieldIndex(key);
+  return index < 0 ? '' : row[index] || '';
+}
+
+function firstNonEmpty_() {
+  for (let i = 0; i < arguments.length; i++) {
+    const s = String(arguments[i] == null ? '' : arguments[i]).trim();
+    if (s) return s;
+  }
+  return '';
+}
+
+function foldDirectoryText(value) {
+  return String(value || '')
+    .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+    .replace(/[\u002D\u2010-\u2015_]+/g, ' ')
+    .replace(/[إأآا]/g, 'ا')
+    .replace(/[يى]/g, 'ي')
+    .replace(/[هة]/g, 'ه')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/^ال/, '');
+}
+
+function isValidDirectoryJobGroup(value) {
+  if (!value) return false;
+  const key = foldDirectoryText(value);
+  return DIRECTORY_JOB_GROUPS.some(group => foldDirectoryText(group) === key);
+}
+
+function isExternalSecondmentLabel(text) {
+  const n = String(text || '')
+    .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
+    .replace(/[يى]/g, 'ي')
+    .toLowerCase();
+  return n.indexOf('ندب خارجي') !== -1 || n.indexOf('ندب خارجى') !== -1;
+}
+
+function appendCompanyIfExternal(label, company) {
+  const base = String(label || '').trim();
+  if (!base || !isExternalSecondmentLabel(base)) return base;
+  const co = String(company || '').trim();
+  if (!co) return base;
+  if (base.indexOf('(') !== -1 && base.indexOf(co) !== -1) return base;
+  return base + ' (' + co + ')';
+}
+
+function directoryDate(value) {
+  return formatDateYmd(parseSheetDate(value));
+}
+
+function mapDirectoryEmployee(row) {
+  const codeRaw = normalizeCode(cellAt(row, 'code'));
+  if (!codeRaw) return null;
+  const currentCompany = firstNonEmpty_(
+    cellAt(row, 'currentCompany'),
+    cellAt(row, 'originalCompanyName'),
+    cellAt(row, 'originalCompany')
+  );
+  let job = firstNonEmpty_(
+    cellAt(row, 'secondedJob'),
+    cellAt(row, 'secondedJob2'),
+    cellAt(row, 'jobTitle'),
+    cellAt(row, 'actualJob'),
+    cellAt(row, 'statisticsJob')
+  );
+  let sector = firstNonEmpty_(cellAt(row, 'secondedSector'), cellAt(row, 'currentSector'));
+  let department = firstNonEmpty_(
+    cellAt(row, 'secondedGeneralDepartment'),
+    cellAt(row, 'currentGeneralDepartment')
+  );
+  let subDepartment = firstNonEmpty_(
+    cellAt(row, 'secondedDepartment'),
+    cellAt(row, 'currentSubDepartment')
+  );
+  job = appendCompanyIfExternal(job, currentCompany);
+  department = appendCompanyIfExternal(department, currentCompany);
+  subDepartment = appendCompanyIfExternal(subDepartment, currentCompany);
+
+  let group = '';
+  const secondedGroup = cellAt(row, 'secondedJobGroup');
+  const newGroups = cellAt(row, 'newJobGroups');
+  if (isValidDirectoryJobGroup(secondedGroup)) group = String(secondedGroup).trim();
+  else if (isValidDirectoryJobGroup(newGroups)) group = String(newGroups).trim();
+  if (group) {
+    const key = foldDirectoryText(group);
+    for (let i = 0; i < DIRECTORY_JOB_GROUPS.length; i++) {
+      if (foldDirectoryText(DIRECTORY_JOB_GROUPS[i]) === key) {
+        group = DIRECTORY_JOB_GROUPS[i];
+        break;
+      }
+    }
+  }
+
+  return {
+    code: /^\d+$/.test(codeRaw) ? Number(codeRaw) : codeRaw,
+    name: String(cellAt(row, 'name') || '').trim(),
+    hireDate: directoryDate(cellAt(row, 'appointmentDate')),
+    dateOfBirth: directoryDate(cellAt(row, 'birthDate')),
+    sector: sector || '',
+    department: department || '',
+    subDepartment: subDepartment || '',
+    job: job || '',
+    group: group || '',
+    gender: String(cellAt(row, 'gender') || '').trim(),
+    currentCompany: currentCompany || ''
+  };
+}
+
+function getCachedDirectory() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const n = Number(cache.get(DIRECTORY_CACHE_KEY + '_n') || 0);
+    if (!n) return null;
+    const parts = [];
+    for (let i = 0; i < n; i++) {
+      const part = cache.get(DIRECTORY_CACHE_KEY + '_' + i);
+      if (part == null) return null;
+      parts.push(part);
+    }
+    return JSON.parse(parts.join(''));
+  } catch (err) {
+    return null;
+  }
+}
+
+function putCachedDirectory(employees) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const str = JSON.stringify(employees);
+    // CacheService limits each value to 100 KB; use a conservative character
+    // size because JSON may contain multi-byte Arabic UTF-8 text.
+    const chunk = 60000;
+    const n = Math.ceil(str.length / chunk);
+    if (!n || n > 40) return;
+    const payload = {};
+    payload[DIRECTORY_CACHE_KEY + '_n'] = String(n);
+    for (let i = 0; i < n; i++) {
+      payload[DIRECTORY_CACHE_KEY + '_' + i] = str.substr(i * chunk, chunk);
+    }
+    cache.putAll(payload, DIRECTORY_CACHE_TTL);
+  } catch (err) {
+    // Cache is optional; the live sheet read still succeeds.
+  }
+}
+
+function invalidateDirectoryCache() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const n = Number(cache.get(DIRECTORY_CACHE_KEY + '_n') || 0);
+    const keys = [DIRECTORY_CACHE_KEY + '_n'];
+    for (let i = 0; i < n; i++) keys.push(DIRECTORY_CACHE_KEY + '_' + i);
+    cache.removeAll(keys);
+  } catch (err) {
+    // ignore
+  }
+}
+
+function readDirectoryEmployees() {
+  const cached = getCachedDirectory();
+  if (cached && Array.isArray(cached)) return cached;
+  const sh = getSheet();
+  ensureSheetShape(sh);
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return [];
+  const values = sh.getRange(2, 1, lastRow - 1, FIELDS.length).getDisplayValues();
+  const byCode = {};
+  const employees = [];
+  values.forEach(row => {
+    const mapped = mapDirectoryEmployee(row);
+    if (!mapped) return;
+    const key = String(mapped.code);
+    if (byCode[key]) return;
+    byCode[key] = true;
+    employees.push(mapped);
+  });
+  putCachedDirectory(employees);
+  return employees;
 }
 
 function rowToObject(row, rowNumber) {
@@ -194,12 +398,30 @@ function rowToObject(row, rowNumber) {
   FIELDS.forEach((field, index) => {
     employee[field[0]] = row[index] || '';
   });
+  const normalizedCode = normalizeCode(employee.code);
+  if (normalizedCode) employee.code = normalizedCode;
   employee.id = employee.code || String(rowNumber);
+  employee.version = rowVersion(row);
   return employee;
 }
 
+function rowVersion(row) {
+  const bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    JSON.stringify(row.map(value => value == null ? '' : String(value)))
+  );
+  return bytes.map(byte => {
+    const n = byte < 0 ? byte + 256 : byte;
+    return ('0' + n.toString(16)).slice(-2);
+  }).join('');
+}
+
 function normalizeCode(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .replace(/[٠-٩]/g, digit => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+    .toLowerCase();
 }
 
 /**
@@ -259,26 +481,58 @@ function validateEmployee(sh, input, rowNumber) {
   if (duplicate) throw new Error('An employee with this code already exists.');
 }
 
-function valuesForWrite(input) {
-  return FIELDS.map(field => {
+function valuesForWrite(input, existing) {
+  return FIELDS.map((field, index) => {
     const key = field[0];
-    if (COMPUTED.has(key)) return null; // formulas own these cells
-    let value = input[key] === undefined ? '' : input[key];
+    if (COMPUTED.has(key)) return existing && existing[index] != null ? existing[index] : '';
+    let value = input[key] === undefined || input[key] === null ? '' : input[key];
+    if (key === 'code') value = normalizeCode(value);
     if (DATE_FIELDS.has(key)) value = normalizeDateOnly(value);
     if (key === 'status') value = normalizeStatus(value);
     return value;
   });
 }
 
+function findRowByCode(sh, code) {
+  const target = normalizeCode(code);
+  if (!target) return 0;
+  const lastRow = sh.getLastRow();
+  if (lastRow < 2) return 0;
+  const codes = sh.getRange(2, 1, lastRow - 1, 1).getDisplayValues();
+  for (let i = 0; i < codes.length; i++) {
+    if (normalizeCode(codes[i][0]) === target) return i + 2;
+  }
+  return 0;
+}
+
+function resolveEmployeeRow(sh, input) {
+  const lastRow = sh.getLastRow();
+  const requested = Number(String(input.rowNumber == null ? '' : input.rowNumber).trim());
+  const rowOk = Number.isInteger(requested) && requested >= 2 && requested <= lastRow;
+  const code = String(input.code || '').trim();
+  if (rowOk) {
+    const codeAtRow = String(sh.getRange(requested, 1).getDisplayValue() || '').trim();
+    if (code && codeAtRow && normalizeCode(codeAtRow) === normalizeCode(code)) {
+      return requested;
+    }
+    throw new Error('The employee row changed. Reload the list and try again.');
+  }
+  const byCode = findRowByCode(sh, code);
+  if (byCode) return byCode;
+  throw new Error('The employee row was not found.');
+}
+
 function updateEmployee(input) {
   const sh = getSheet();
-  const row = Number(input.rowNumber);
   ensureSheetShape(sh);
-  if (!Number.isInteger(row) || row < 2 || row > sh.getLastRow()) {
-    throw new Error('The employee row was not found.');
+  const row = resolveEmployeeRow(sh, input);
+  const existing = sh.getRange(row, 1, 1, FIELDS.length).getValues()[0];
+  const existingDisplay = sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0];
+  if (!input.version || input.version !== rowVersion(existingDisplay)) {
+    throw new Error('This employee record changed since it was loaded. Reload the list and try again.');
   }
   validateEmployee(sh, input, row);
-  const values = valuesForWrite(input);
+  const values = valuesForWrite(input, existing);
   sh.getRange(row, 1, 1, FIELDS.length).setValues([values]);
   // Force plain-text / date format on date columns so Sheets does not
   // re-attach a time component.

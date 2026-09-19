@@ -862,52 +862,83 @@
       };
     }
 
+    function normalizeDirectoryEmployee(raw) {
+      if (!raw) return null;
+      if (raw.job != null || raw.hireDate != null || raw.dateOfBirth != null) {
+        const code = String(raw.code ?? '').trim();
+        if (!code) return null;
+        return {
+          code: /^\d+$/.test(code) ? Number(code) : code,
+          name: String(raw.name || '').trim(),
+          hireDate: raw.hireDate || parseSheetDate(raw.appointmentDate),
+          dateOfBirth: raw.dateOfBirth || parseSheetDate(raw.birthDate),
+          sector: String(raw.sector || '').trim(),
+          department: String(raw.department || '').trim(),
+          subDepartment: String(raw.subDepartment || '').trim(),
+          job: String(raw.job || '').trim(),
+          group: String(raw.group || '').trim(),
+          gender: String(raw.gender || '').trim(),
+          currentCompany: String(raw.currentCompany || '').trim(),
+        };
+      }
+      return mapSheetEmployee(raw);
+    }
+
     async function fetchLiveEmployees() {
       if (!EMPLOYEE_DATA_URL || EMPLOYEE_DATA_URL.includes('PLACEHOLDER')) {
-        window.allEmployeesError =
-          'EMPLOYEE_DATA_URL is not set. Deploy data.gs as a Web App and paste its /exec URL.';
         window.allEmployees = [];
-        console.warn(window.allEmployeesError);
         return [];
       }
-      const url = new URL(EMPLOYEE_DATA_URL);
-      url.searchParams.set('action', 'list');
-      if (EMPLOYEE_DATA_TOKEN) url.searchParams.set('token', EMPLOYEE_DATA_TOKEN);
+      const maxAttempts = 5;
+      let lastError;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const url = new URL(EMPLOYEE_DATA_URL);
+          // Never fall back to the full HR record list. Document Center only
+          // needs the compact directory response.
+          url.searchParams.set('action', 'directory');
+          url.searchParams.set('_', String(Date.now()));
+          if (EMPLOYEE_DATA_TOKEN) url.searchParams.set('token', EMPLOYEE_DATA_TOKEN);
 
-      const res = await fetch(url.toString(), { credentials: 'omit' });
-      if (!res.ok) throw new Error(`Employee data HTTP ${res.status}`);
-      const data = await res.json();
-      if (!data || data.ok === false) {
-        throw new Error((data && data.error) || 'Unauthorized or empty employee response');
+          const res = await fetch(url.toString(), { credentials: 'omit', cache: 'no-store', redirect: 'follow' });
+          if (!res.ok) throw new Error(`Employee data HTTP ${res.status}`);
+          const data = await res.json();
+          if (!data || data.ok === false) {
+            throw new Error((data && data.error) || 'Unauthorized or empty employee response');
+          }
+          const rows = Array.isArray(data.employees) ? data.employees : [];
+          const mapped = rows.map(row => normalizeDirectoryEmployee(row) || mapSheetEmployee(row)).filter(Boolean);
+          const byCode = new Map();
+          mapped.forEach((emp) => {
+            const key = String(emp.code);
+            if (!byCode.has(key)) byCode.set(key, emp);
+          });
+          return [...byCode.values()];
+        } catch (err) {
+          lastError = err;
+          await new Promise(r => setTimeout(r, 350 * attempt));
+        }
       }
-      const rows = Array.isArray(data.employees) ? data.employees : [];
-      const mapped = rows.map(mapSheetEmployee).filter(Boolean);
-      // Prefer first occurrence of each code (stable)
-      const byCode = new Map();
-      mapped.forEach((emp) => {
-        const key = String(emp.code);
-        if (!byCode.has(key)) byCode.set(key, emp);
-      });
-      return [...byCode.values()];
+      throw lastError || new Error('directory');
     }
 
     window._employeesLoading = true;
     window.employeesReady = (async () => {
-      try {
-        const list = await fetchLiveEmployees();
-        window.allEmployees = list;
-        window.allEmployeesError = list.length
-          ? null
-          : (window.allEmployeesError || 'No employees returned from the live sheet.');
-        if (window.allEmployeesError) console.warn(window.allEmployeesError);
-        else console.info(`Loaded ${list.length} employees from live sheet.`);
-      } catch (err) {
-        window.allEmployees = [];
-        window.allEmployeesError = err.message || String(err);
-        console.warn('Failed to load live employees:', window.allEmployeesError);
-      } finally {
-        window._employeesLoading = false;
+      for (let round = 0; round < 8; round++) {
+        try {
+          const list = await fetchLiveEmployees();
+          window.allEmployees = list;
+          window.allEmployeesError = null;
+          window._employeesLoading = false;
+          if (list.length) console.info(`Loaded ${list.length} employees from live sheet.`);
+          return list;
+        } catch (err) {
+          window.allEmployeesError = err;
+          await new Promise(r => setTimeout(r, 1200 * (round + 1)));
+        }
       }
+      window.allEmployees = window.allEmployees || [];
+      window._employeesLoading = false;
       return window.allEmployees;
     })();
 
@@ -1749,17 +1780,10 @@
               const scopeOrdinal = getFieldOrdinal(group.label);
               const n = fillEmployeeFields(emp, scopeOrdinal);
               const empLabel = String(emp.name || code).trim();
-              if (window.allEmployeesError) {
-                setFormStatus(t(
-                  `Loaded ${n} field(s) for ${empLabel}, but the live employee roster had a problem: ${window.allEmployeesError}`,
-                  `تم تحميل ${n} حقل/حقول للموظف ${empLabel}، لكن حدثت مشكلة في بيانات الموظفين: ${window.allEmployeesError}`
-                ), true);
-              } else {
-                setFormStatus(t(
-                  `Loaded ${n} field(s) for ${empLabel}.`,
-                  `تم تحميل ${n} حقل/حقول للموظف ${empLabel}.`
-                ));
-              }
+              setFormStatus(t(
+                `Loaded ${n} field(s) for ${empLabel}.`,
+                `تم تحميل ${n} حقل/حقول للموظف ${empLabel}.`
+              ));
             }
           } catch (err) {
             setFormStatus(err.message || t('Failed to load employee.', 'فشل تحميل بيانات الموظف.'), true);
@@ -2828,28 +2852,16 @@ function renderPlaceholderForm(doc, placeholders) {
       const shown = matched.slice(0, limit);
 
       if (!shown.length) {
-        const loadErr = window.allEmployeesError;
-        const emptyRoster = !(window.allEmployees && window.allEmployees.length);
-        let msg;
         if (window._employeesLoading) {
-          msg = t('Loading employees…', 'جارٍ تحميل بيانات الموظفين…');
-          employeeResults.innerHTML = `<div class="empty-state">${msg}</div>`;
+          employeeResults.innerHTML = `<div class="empty-state">${t('Loading employees…', 'جارٍ تحميل بيانات الموظفين…')}</div>`;
           return;
         }
-        if (loadErr && emptyRoster) {
-          msg = t(
-            `Could not load employees: ${loadErr}`,
-            `تعذر تحميل بيانات الموظفين: ${loadErr}`
-          );
-        } else if (emptyRoster) {
-          msg = t(
-            'Employee roster is empty. Check EMPLOYEE_DATA_URL and the Apps Script deployment.',
-            'قائمة الموظفين فارغة. تحقق من EMPLOYEE_DATA_URL ومن نشر سكربت التطبيقات.'
-          );
-        } else {
-          msg = t('No employees found.', 'لم يتم العثور على موظفين.');
+        if (window.allEmployeesError) {
+          const detail = escapeHtml(window.allEmployeesError.message || String(window.allEmployeesError));
+          employeeResults.innerHTML = `<div class="empty-state" style="color:var(--danger)">${t('Employee directory unavailable.', 'تعذر تحميل دليل الموظفين.')}<br><small>${detail}</small></div>`;
+          return;
         }
-        employeeResults.innerHTML = `<div class="empty-state" style="color:var(--danger, #cf222e)">${msg}</div>`;
+        employeeResults.innerHTML = `<div class="empty-state">${t('No employees found.', 'لم يتم العثور على موظفين.')}</div>`;
         return;
       }
 
@@ -2917,12 +2929,23 @@ function renderPlaceholderForm(doc, placeholders) {
       }
     }
     if (window.employeesReady && typeof window.employeesReady.then === 'function') {
-      // Always refresh after the live fetch settles (success or failure).
-      // The roster JSON is large (~6MB / 2400+ rows) so this may take a few seconds.
       window.employeesReady.then(() => initializeEmployeeFilters());
     } else {
       initializeEmployeeFilters();
     }
+    (async function refreshDirectoryIfEmpty() {
+      if (window.employeesReady) await window.employeesReady;
+      for (let i = 0; i < 12 && !(window.allEmployees && window.allEmployees.length); i++) {
+        await new Promise(r => setTimeout(r, 4000));
+        try {
+          const list = await fetchLiveEmployees();
+          window.allEmployees = list;
+          window._employeesLoading = false;
+          initializeEmployeeFilters();
+          if (list.length) return;
+        } catch (_) {}
+      }
+    })();
 
     // Initial UI state
     updateSearchModeUI();

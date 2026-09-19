@@ -725,6 +725,16 @@
         line-height: 1;
       }
 
+      .access-gate { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 20px; background: color-mix(in srgb, var(--bg) 92%, #003f73 8%); }
+      .access-gate[hidden] { display: none; }
+      .access-card { width: min(440px, 100%); padding: 28px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 28px 80px rgba(0, 0, 0, .22); }
+      .access-card h1 { margin: 0; color: var(--text); font-size: 1.45rem; }
+      .access-card p { margin: 9px 0 20px; color: var(--muted); line-height: 1.55; }
+      .access-form { display: grid; gap: 10px; }
+      .access-form label { color: var(--muted); font-size: .82rem; font-weight: 800; }
+      .access-form input { width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; background: var(--surface); color: var(--text); }
+      .access-error { min-height: 1.3em; margin: 0 !important; color: var(--danger) !important; font-size: .84rem; }
+
 
       .report-table-wrap {
         overflow: auto;
@@ -866,6 +876,18 @@
     </style>
   </head>
   <body>
+    <section class="access-gate" id="accessGate" aria-labelledby="accessTitle">
+      <div class="access-card">
+        <h1 id="accessTitle">Employee Data Access</h1>
+        <p>Enter the shared password to load the employee directory.</p>
+        <form class="access-form" id="accessForm">
+          <label for="accessPassword">Password</label>
+          <input id="accessPassword" name="password" type="password" autocomplete="current-password" inputmode="numeric" required autofocus>
+          <button class="btn" type="submit">Load employee data</button>
+          <p class="access-error" id="accessError" role="alert" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
     <header class="portal-header"><a class="brand" href="index.html" aria-label="EgyptAir home"><img src="egyptair-logo_.png" alt="EgyptAir logo"><span><strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong><small data-en="Human Resources Management" data-ar="إدارة الموارد البشرية">Human Resources Management</small></span></a>
       <nav class="portal-nav" aria-label="Main navigation"><a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a><a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a><a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a><a href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a><a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a><a class="active" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a><a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">Penalties & Salaries</a><a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a></nav>
       <div class="portal-actions" aria-label="Display controls"><button class="segmented-btn active" type="button" data-lang-option="en">EN</button><button class="segmented-btn" type="button" data-lang-option="ar">AR</button><button class="theme-btn" type="button" data-theme-toggle>Dark</button></div>
@@ -1027,6 +1049,7 @@
           duplicate: 'This employee code already exists.',
           saving: 'Saving…',
           loading: 'Loading employee records…',
+          reloadFailed: 'Saved, but the full list could not be refreshed yet.',
           records: 'records',
           unknown: 'Not specified',
           active: 'Active',
@@ -1078,6 +1101,7 @@
           duplicate: 'كود الموظف مستخدم بالفعل.',
           saving: 'جارٍ الحفظ…',
           loading: 'جارٍ تحميل سجلات الموظفين…',
+          reloadFailed: 'تم الحفظ، لكن تعذر تحديث القائمة كاملة الآن.',
           records: 'سجل',
           unknown: 'غير محدد',
           active: 'على رأس العمل',
@@ -1186,7 +1210,9 @@
       };
       const dateValue = value => {
         const date = parseDate(value);
-        return date && !Number.isNaN(date.getTime()) ? date.toISOString().slice(0, 10) : '';
+        if (!date || Number.isNaN(date.getTime())) return '';
+        const pad = number => String(number).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
       };
       const now = () => new Date();
 
@@ -1641,7 +1667,7 @@
         const e = computed(employee);
         $('formTitle').textContent = state.editingKey ? t('editEmployee') : t('newEmployee');
         $('formError').textContent = '';
-        $('employeeForm').innerHTML = `<input type="hidden" name="id" value="${escapeHtml(employee.id || '')}"><input type="hidden" name="rowNumber" value="${escapeHtml(employee.rowNumber || '')}">` + schema.map((section, index) => `<details class="form-section" ${index < 2 ? 'open' : ''}><summary>${escapeHtml(sectionLabel(section))}</summary><div class="fields">${section[3].map(field => { const [key, en, ar, type, required] = field, value = e[key] ?? '', label = lang() === 'ar' ? ar : en; if (type === 'computed') return `<div class="field computed"><label>${escapeHtml(label)}</label><input type="text" readonly value="${escapeHtml(value)}"></div>`; if (type === 'select') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><select id="field-${key}" name="${key}" ${required ? 'required' : ''}>${selectOptions(key, value)}</select></div>`; return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="${type === 'date' ? 'date' : type === 'tel' ? 'tel' : 'text'}" value="${escapeHtml(type === 'date' ? dateValue(value) : value)}" ${required ? 'required' : ''}></div>`; }).join('')}</div></details>`).join('');
+        $('employeeForm').innerHTML = `<input type="hidden" name="id" value="${escapeHtml(employee.id || '')}"><input type="hidden" name="rowNumber" value="${escapeHtml(employee.rowNumber || '')}"><input type="hidden" name="version" value="${escapeHtml(employee.version || '')}">` + schema.map((section, index) => `<details class="form-section" ${index < 2 ? 'open' : ''}><summary>${escapeHtml(sectionLabel(section))}</summary><div class="fields">${section[3].map(field => { const [key, en, ar, type, required] = field, value = e[key] ?? '', label = lang() === 'ar' ? ar : en; if (type === 'computed') return `<div class="field computed"><label>${escapeHtml(label)}</label><input type="text" readonly value="${escapeHtml(value)}"></div>`; if (type === 'select') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><select id="field-${key}" name="${key}" ${required ? 'required' : ''}>${selectOptions(key, value)}</select></div>`; return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="${type === 'date' ? 'date' : type === 'tel' ? 'tel' : 'text'}" value="${escapeHtml(type === 'date' ? dateValue(value) : value)}" ${required ? 'required' : ''}></div>`; }).join('')}</div></details>`).join('');
         openModal('formModal', opener);
       }
 
@@ -1684,13 +1710,16 @@
           state.page = 1;
           render();
           if (!quiet) toast(t('loaded'), 'success');
+          return true;
         } catch (error) {
-          state.employees = [];
-          refreshFilters();
-          render();
-          const message = formatFailure('loadFailed', error);
-          showNotice(message);
-          toast(message, 'error');
+          if (!state.employees.length) {
+            refreshFilters();
+            render();
+            const message = formatFailure('loadFailed', error);
+            showNotice(message);
+            toast(message, 'error');
+          }
+          return false;
         } finally {
           setLoading(false);
           render();
@@ -1712,15 +1741,54 @@
         return `${t(prefixKey)} ${t('reason')}: ${reason}`;
       }
 
+      async function sha256Hex(value) {
+        const bytes = new TextEncoder().encode(value);
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+      }
+
+      async function unlockEmployeeData(event) {
+        event.preventDefault();
+        const input = $('accessPassword');
+        const error = $('accessError');
+        const button = event.submitter || $('accessForm').querySelector('button[type="submit"]');
+        const expectedHash = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb';
+        error.textContent = '';
+        button.disabled = true;
+        try {
+          if ((await sha256Hex(input.value)) !== expectedHash) {
+            error.textContent = 'Incorrect password.';
+            input.select();
+            return;
+          }
+          sessionStorage.setItem('employee-data-unlocked', expectedHash);
+          $('accessGate').hidden = true;
+          await load({ quiet: true });
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function initAccessGate() {
+        $('accessForm').addEventListener('submit', unlockEmployeeData);
+        const expectedHash = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb';
+        if (sessionStorage.getItem('employee-data-unlocked') === expectedHash) {
+          $('accessGate').hidden = true;
+          await load({ quiet: true });
+        }
+      }
+
       async function postEmployee(employee, isEdit) {
-        // Apps Script web apps can return intermittent 404 on the redirect hop.
-        const maxAttempts = 3;
+        // Apps Script web apps can return intermittent 404 on the redirect hop,
+        // or convert POST to GET so the body never reaches doPost.
+        const maxAttempts = 5;
         let lastError;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
             const response = await fetch(withToken(API_URL), {
               method: 'POST',
               redirect: 'follow',
+              cache: 'no-store',
               headers: {
                 'Content-Type': 'text/plain;charset=utf-8'
               },
@@ -1730,8 +1798,8 @@
                 token: API_TOKEN || undefined
               })
             });
-            if (response.status === 404 && attempt < maxAttempts) {
-              await new Promise(r => setTimeout(r, 400 * attempt));
+            if ((response.status === 404 || response.status === 302 || response.status === 405) && attempt < maxAttempts) {
+              await new Promise(r => setTimeout(r, 500 * attempt));
               continue;
             }
             if (!response.ok) {
@@ -1751,18 +1819,35 @@
             }
             const payload = await readApi(response);
             if (!payload.ok) throw new Error(payload.error || payload.message || t('saveFailed'));
+            if (!payload.employee || typeof payload.employee !== 'object') {
+              throw new Error(t('badResponse'));
+            }
             return payload;
           } catch (err) {
             lastError = err;
             const msg = clean(err && err.message);
-            if ((msg.includes('404') || msg.includes('Failed to fetch') || msg.includes('Network')) && attempt < maxAttempts) {
-              await new Promise(r => setTimeout(r, 400 * attempt));
+            if ((msg.includes('404') || msg.includes('405') || msg.includes('Failed to fetch') || msg.includes('Network') || msg.includes('busy') || msg.includes('lock') || msg.includes('Invalid response')) && attempt < maxAttempts) {
+              await new Promise(r => setTimeout(r, 500 * attempt));
               continue;
             }
             throw err;
           }
         }
         throw lastError || new Error('404');
+      }
+
+      function upsertLocalEmployee(employee) {
+        if (!employee) return;
+        const saved = {
+          ...employee,
+          id: clean(employee.id || employee.code || employee.rowNumber)
+        };
+        const key = recordKey(saved);
+        const index = state.employees.findIndex(item => recordKey(item) === key || clean(item.code) === clean(saved.code));
+        if (index >= 0) state.employees[index] = { ...state.employees[index], ...saved };
+        else state.employees.push(saved);
+        refreshFilters();
+        render();
       }
 
       async function saveEmployee(event) {
@@ -1783,14 +1868,15 @@
             ...data,
             ...computed(data),
             id: clean(data.id || data.code),
+            rowNumber: clean(data.rowNumber),
             phone: formatPhone(data.phone || '')
           };
-          await postEmployee(employee, isEdit);
+          const payload = await postEmployee(employee, isEdit);
+          upsertLocalEmployee(payload.employee || employee);
           closeModal('formModal');
           toast(isEdit ? t('saved') : t('created'), 'success');
-          await load({
-            quiet: true
-          });
+          const refreshed = await load({ quiet: true });
+          if (!refreshed) toast(t('reloadFailed'), 'info');
         } catch (error) {
           const message = formatFailure('saveFailed', error);
           $('formError').textContent = message;
@@ -1874,9 +1960,7 @@
       applyTheme(localStorage.getItem('portal-theme') || 'light');
       applyLanguage(localStorage.getItem('portal-language') || 'en');
       initEvents();
-      load({
-        quiet: true
-      });
+      initAccessGate();
     </script>
   </body>
 </html>
