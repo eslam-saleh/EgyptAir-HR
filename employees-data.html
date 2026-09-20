@@ -1811,7 +1811,7 @@
                 token: API_TOKEN || undefined
               })
             });
-            if ((response.status === 404 || response.status === 302 || response.status === 405) && attempt < maxAttempts) {
+            if ((response.status === 404 || response.status === 405) && attempt < maxAttempts) {
               await new Promise(r => setTimeout(r, 500 * attempt));
               continue;
             }

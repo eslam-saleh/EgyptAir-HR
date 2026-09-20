@@ -203,9 +203,20 @@ function readEmployees() {
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
   const values = sh.getRange(2, 1, lastRow - 1, FIELDS.length).getDisplayValues();
-  return values
-    .filter(row => row.some(Boolean))
-    .map((row, index) => rowToObject(row, index + 2));
+  // Number rows from their REAL sheet position (i + 2, since values[0] is
+  // sheet row 2), and only SKIP blank rows rather than filtering-then-
+  // reindexing. The previous version filtered blanks out first and then
+  // numbered what was left, so every employee after a blank row got a
+  // rowNumber that pointed at the wrong sheet row. That's what let
+  // updateEmployee()/resolveEmployeeRow() reject good edits with "The
+  // employee row changed" for any employee sitting after a blank row.
+  const employees = [];
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    if (!row.some(Boolean)) continue; // skip fully blank rows, keep true row numbers
+    employees.push(rowToObject(row, i + 2));
+  }
+  return employees;
 }
 
 function fieldIndex(key) {
@@ -327,9 +338,12 @@ function getCachedDirectory() {
     const cache = CacheService.getScriptCache();
     const n = Number(cache.get(DIRECTORY_CACHE_KEY + '_n') || 0);
     if (!n) return null;
+    const keys = [];
+    for (let i = 0; i < n; i++) keys.push(DIRECTORY_CACHE_KEY + '_' + i);
+    const fetched = cache.getAll(keys); // one round trip instead of n
     const parts = [];
     for (let i = 0; i < n; i++) {
-      const part = cache.get(DIRECTORY_CACHE_KEY + '_' + i);
+      const part = fetched[DIRECTORY_CACHE_KEY + '_' + i];
       if (part == null) return null;
       parts.push(part);
     }
@@ -509,14 +523,20 @@ function resolveEmployeeRow(sh, input) {
   const lastRow = sh.getLastRow();
   const requested = Number(String(input.rowNumber == null ? '' : input.rowNumber).trim());
   const rowOk = Number.isInteger(requested) && requested >= 2 && requested <= lastRow;
+  if (rowOk) return requested;
+  // No usable rowNumber (missing, or out of range because rows were added/
+  // removed since the client loaded the list) — fall back to locating the
+  // row by the employee's code.
+  //
+  // Deliberately NOT also checking "does this row's current code match the
+  // submitted code" here: that would misfire the moment someone edits an
+  // employee's own code field (a normal, supported edit) — the row is
+  // still the right one, it just no longer matches the code it had at
+  // load time. Whether the row changed underneath the client at all is
+  // updateEmployee()'s job, via the full-row rowVersion hash check right
+  // after this call, which covers a code edit correctly instead of
+  // mistaking it for "wrong row".
   const code = String(input.code || '').trim();
-  if (rowOk) {
-    const codeAtRow = String(sh.getRange(requested, 1).getDisplayValue() || '').trim();
-    if (code && codeAtRow && normalizeCode(codeAtRow) === normalizeCode(code)) {
-      return requested;
-    }
-    throw new Error('The employee row changed. Reload the list and try again.');
-  }
   const byCode = findRowByCode(sh, code);
   if (byCode) return byCode;
   throw new Error('The employee row was not found.');

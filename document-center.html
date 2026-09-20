@@ -707,207 +707,66 @@
     // to anyone with the URL above, exactly as before.
     const SHEET_SYNC_TOKEN = '';
 
-    // ── Live Employees sheet → window.allEmployees ─────────────────────────
-    // Field priority (secondment overrides when present):
-    //   job:      secondedJob | secondedJob2 | jobTitle | actualJob | statisticsJob
-    //   sector:   secondedSector | currentSector
-    //   dept:     secondedGeneralDepartment | currentGeneralDepartment
-    //   subDept:  secondedDepartment | currentSubDepartment
-    //   group:    secondedJobGroup (only if one of the 3 valid groups) else newJobGroups
-    // ندب خارجي / ندب خارجى on dept/sub/job → append (currentCompany)
-    // Dates: strip time component; store as YYYY/MM/DD
-    // Names: normal order (no reverse cipher)
-    // No fallback of empty subDepartment → sector (that broke cascading filters)
-
-    const VALID_JOB_GROUPS = [
-      'مجموعة الوظائف الفنية والمكتبية',
-      'مجموعة الوظائف التخصصية',
-      'مجموعة الوظائف الحرفية والخدمات المعاونة',
-    ];
-
-    function firstNonEmpty(...vals) {
-      for (const v of vals) {
-        const s = String(v ?? '').trim();
-        if (s) return s;
-      }
-      return '';
-    }
-
-    function parseSheetDate(raw) {
-      if (raw == null || raw === '') return null;
-      let s = String(raw).trim();
-      // Strip time component (00:00:00 / 12:00:00 AM etc.)
-      s = s.replace(/\s+\d{1,2}:\d{2}(:\d{2})?(\s*[AaPp][Mm])?$/, '').trim();
-      // Excel serial number
-      if (/^\d+(\.\d+)?$/.test(s)) {
-        const serial = Number(s);
-        if (serial > 20000 && serial < 80000) {
-          const epoch = new Date(Date.UTC(1899, 11, 30));
-          const d = new Date(epoch.getTime() + Math.floor(serial) * 86400000);
-          const y = d.getUTCFullYear();
-          const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-          const day = String(d.getUTCDate()).padStart(2, '0');
-          return `${y}/${m}/${day}`;
-        }
-      }
-      // Already YYYY/MM/DD or YYYY-MM-DD
-      let m = s.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
-      if (m) {
-        return `${m[1]}/${String(Number(m[2])).padStart(2, '0')}/${String(Number(m[3])).padStart(2, '0')}`;
-      }
-      // DD/MM/YYYY
-      m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
-      if (m) {
-        return `${m[3]}/${String(Number(m[2])).padStart(2, '0')}/${String(Number(m[1])).padStart(2, '0')}`;
-      }
-      return null;
-    }
-
-    function isValidJobGroup(value) {
-      if (!value) return false;
-      // softNormalize is defined later; use a lightweight fold here for early map
-      const fold = (t) => String(t)
-        .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
-        .replace(/[\u002D\u2010-\u2015_]+/g, ' ')
-        .replace(/[إأآا]/g, 'ا')
-        .replace(/[يى]/g, 'ي')
-        .replace(/[هة]/g, 'ه')
-        .toLowerCase()
-        .replace(/\s+/g, '')
-        .replace(/^ال/, '');
-      const key = fold(value);
-      return VALID_JOB_GROUPS.some((g) => fold(g) === key);
-    }
-
-    function isExternalSecondmentLabel(text) {
-      const n = String(text || '')
-        .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
-        .replace(/[يى]/g, 'ي')
-        .toLowerCase();
-      return n.includes('ندب خارجي') || n.includes('ندب خارجى');
-    }
-
-    function appendCompanyIfExternal(label, company) {
-      const base = String(label || '').trim();
-      if (!base || !isExternalSecondmentLabel(base)) return base;
-      const co = String(company || '').trim();
-      if (!co) return base;
-      // Avoid double-append
-      if (base.includes('(') && base.includes(co)) return base;
-      return `${base} (${co})`;
-    }
-
-    function mapSheetEmployee(raw) {
-      if (!raw) return null;
-      const code = String(raw.code ?? '').trim();
-      if (!code) return null;
-
-      const currentCompany = firstNonEmpty(raw.currentCompany, raw.originalCompanyName, raw.originalCompany);
-
-      let job = firstNonEmpty(
-        raw.secondedJob,
-        raw.secondedJob2,
-        raw.jobTitle,
-        raw.actualJob,
-        raw.statisticsJob
-      );
-      let sector = firstNonEmpty(raw.secondedSector, raw.currentSector);
-      let department = firstNonEmpty(raw.secondedGeneralDepartment, raw.currentGeneralDepartment);
-      let subDepartment = firstNonEmpty(raw.secondedDepartment, raw.currentSubDepartment);
-
-      // ندب خارجي → merge company into the label that carries the secondment title
-      job = appendCompanyIfExternal(job, currentCompany);
-      department = appendCompanyIfExternal(department, currentCompany);
-      subDepartment = appendCompanyIfExternal(subDepartment, currentCompany);
-
-      // Group: seconded only if it is one of the three canonical groups
-      let group = '';
-      if (isValidJobGroup(raw.secondedJobGroup)) {
-        group = String(raw.secondedJobGroup).trim();
-      } else if (isValidJobGroup(raw.newJobGroups)) {
-        group = String(raw.newJobGroups).trim();
-      }
-
-      // Canonical display forms for the three groups (unify typos)
-      if (group) {
-        const fold = (t) => String(t)
-          .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
-          .replace(/[\u002D\u2010-\u2015_]+/g, '')
-          .replace(/[إأآا]/g, 'ا')
-          .replace(/[يى]/g, 'ي')
-          .replace(/[هة]/g, 'ه')
-          .toLowerCase()
-          .replace(/\s+/g, '');
-        const key = fold(group);
-        for (const canonical of VALID_JOB_GROUPS) {
-          if (fold(canonical) === key) {
-            group = canonical;
-            break;
-          }
-        }
-      }
-
-      return {
-        code: /^\d+$/.test(code) ? Number(code) : code,
-        name: String(raw.name || '').trim(),
-        hireDate: parseSheetDate(raw.appointmentDate),
-        dateOfBirth: parseSheetDate(raw.birthDate),
-        sector: sector || '',
-        department: department || '',
-        subDepartment: subDepartment || '',
-        job: job || '',
-        group: group || '',
-        gender: String(raw.gender || '').trim(),
-        currentCompany: currentCompany || '',
-      };
-    }
+    // ── Live Employees directory → window.allEmployees ─────────────────────
+    // data.gs's action=directory now does the field-priority mapping
+    // server-side (job/sector/department secondment overrides, external-
+    // secondment company-append, job-group canonicalization, YYYY/MM/DD
+    // dates — see data.gs's mapDirectoryEmployee()) and only ships the
+    // ~10 fields this page actually uses. normalizeDirectoryEmployee()
+    // below just trims/shapes that response; it no longer re-derives
+    // anything client-side.
 
     function normalizeDirectoryEmployee(raw) {
       if (!raw) return null;
-      if (raw.job != null || raw.hireDate != null || raw.dateOfBirth != null) {
-        const code = String(raw.code ?? '').trim();
-        if (!code) return null;
-        return {
-          code: /^\d+$/.test(code) ? Number(code) : code,
-          name: String(raw.name || '').trim(),
-          hireDate: raw.hireDate || parseSheetDate(raw.appointmentDate),
-          dateOfBirth: raw.dateOfBirth || parseSheetDate(raw.birthDate),
-          sector: String(raw.sector || '').trim(),
-          department: String(raw.department || '').trim(),
-          subDepartment: String(raw.subDepartment || '').trim(),
-          job: String(raw.job || '').trim(),
-          group: String(raw.group || '').trim(),
-          gender: String(raw.gender || '').trim(),
-          currentCompany: String(raw.currentCompany || '').trim(),
-        };
-      }
-      return mapSheetEmployee(raw);
+      const code = String(raw.code ?? '').trim();
+      if (!code) return null;
+      return {
+        code: /^\d+$/.test(code) ? Number(code) : code,
+        name: String(raw.name || '').trim(),
+        hireDate: raw.hireDate || null,
+        dateOfBirth: raw.dateOfBirth || null,
+        sector: String(raw.sector || '').trim(),
+        department: String(raw.department || '').trim(),
+        subDepartment: String(raw.subDepartment || '').trim(),
+        job: String(raw.job || '').trim(),
+        group: String(raw.group || '').trim(),
+        gender: String(raw.gender || '').trim(),
+        currentCompany: String(raw.currentCompany || '').trim(),
+      };
     }
 
     async function fetchLiveEmployees() {
       if (!EMPLOYEE_DATA_URL || EMPLOYEE_DATA_URL.includes('PLACEHOLDER')) {
         window.allEmployees = [];
+        console.warn('EMPLOYEE_DATA_URL is not set. Deploy data.gs as a Web App and paste its /exec URL.');
         return [];
       }
-      const maxAttempts = 5;
+      // A handful of attempts with a short backoff is enough to ride out a
+      // transient blip. This used to be wrapped in two more retry layers on
+      // top of this one (up to ~100 requests over 2-3 minutes on a genuine
+      // failure) — that risked tripping Apps Script's own quota/concurrency
+      // limits for every page sharing this script, document-center.html
+      // included, which made outages worse rather than better.
+      const maxAttempts = 3;
       let lastError;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           const url = new URL(EMPLOYEE_DATA_URL);
-          // Never fall back to the full HR record list. Document Center only
-          // needs the compact directory response.
+          // Document Center only ever needs the compact, already-mapped
+          // directory response — never the full HR record list.
           url.searchParams.set('action', 'directory');
-          url.searchParams.set('_', String(Date.now()));
           if (EMPLOYEE_DATA_TOKEN) url.searchParams.set('token', EMPLOYEE_DATA_TOKEN);
 
-          const res = await fetch(url.toString(), { credentials: 'omit', cache: 'no-store', redirect: 'follow' });
+          const res = await fetch(url.toString(), { credentials: 'omit', cache: 'no-store' });
           if (!res.ok) throw new Error(`Employee data HTTP ${res.status}`);
           const data = await res.json();
           if (!data || data.ok === false) {
             throw new Error((data && data.error) || 'Unauthorized or empty employee response');
           }
           const rows = Array.isArray(data.employees) ? data.employees : [];
-          const mapped = rows.map(row => normalizeDirectoryEmployee(row) || mapSheetEmployee(row)).filter(Boolean);
+          const mapped = rows.map(normalizeDirectoryEmployee).filter(Boolean);
+          // Prefer first occurrence of each code (stable). data.gs already
+          // dedupes server-side; this is just a client-side safety net.
           const byCode = new Map();
           mapped.forEach((emp) => {
             const key = String(emp.code);
@@ -916,30 +775,34 @@
           return [...byCode.values()];
         } catch (err) {
           lastError = err;
-          await new Promise(r => setTimeout(r, 350 * attempt));
+          if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 400 * attempt));
         }
       }
-      throw lastError || new Error('directory');
+      throw lastError || new Error('Failed to load the employee directory.');
     }
 
+    // One bounded load (with its own small retry above), not a retry of
+    // retries. On failure this resolves to an empty list rather than
+    // rejecting, so nothing here ever hangs waiting on it; window.allEmployeesError
+    // records the real reason for the console, but renderEmployeeResults()
+    // below deliberately never shows it to the person using the page — a
+    // calm "No employees found." is all they see.
     window._employeesLoading = true;
     window.employeesReady = (async () => {
-      for (let round = 0; round < 8; round++) {
-        try {
-          const list = await fetchLiveEmployees();
-          window.allEmployees = list;
-          window.allEmployeesError = null;
-          window._employeesLoading = false;
-          if (list.length) console.info(`Loaded ${list.length} employees from live sheet.`);
-          return list;
-        } catch (err) {
-          window.allEmployeesError = err;
-          await new Promise(r => setTimeout(r, 1200 * (round + 1)));
-        }
+      try {
+        const list = await fetchLiveEmployees();
+        window.allEmployees = list;
+        window.allEmployeesError = null;
+        if (list.length) console.info(`Loaded ${list.length} employees from live sheet.`);
+        return list;
+      } catch (err) {
+        window.allEmployees = [];
+        window.allEmployeesError = err.message || String(err);
+        console.warn('Failed to load live employees:', window.allEmployeesError);
+        return [];
+      } finally {
+        window._employeesLoading = false;
       }
-      window.allEmployees = window.allEmployees || [];
-      window._employeesLoading = false;
-      return window.allEmployees;
     })();
 
     // Which document (by its filename, without extension) maps to which
@@ -2852,16 +2715,13 @@ function renderPlaceholderForm(doc, placeholders) {
       const shown = matched.slice(0, limit);
 
       if (!shown.length) {
-        if (window._employeesLoading) {
-          employeeResults.innerHTML = `<div class="empty-state">${t('Loading employees…', 'جارٍ تحميل بيانات الموظفين…')}</div>`;
-          return;
-        }
-        if (window.allEmployeesError) {
-          const detail = escapeHtml(window.allEmployeesError.message || String(window.allEmployeesError));
-          employeeResults.innerHTML = `<div class="empty-state" style="color:var(--danger)">${t('Employee directory unavailable.', 'تعذر تحميل دليل الموظفين.')}<br><small>${detail}</small></div>`;
-          return;
-        }
-        employeeResults.innerHTML = `<div class="empty-state">${t('No employees found.', 'لم يتم العثور على موظفين.')}</div>`;
+        // A load failure is logged to the console (window.allEmployeesError)
+        // but deliberately never shown here — this stays a calm, neutral
+        // empty state either way, not an alarming error banner.
+        const msg = window._employeesLoading
+          ? t('Loading employees…', 'جارٍ تحميل بيانات الموظفين…')
+          : t('No employees found.', 'لم يتم العثور على موظفين.');
+        employeeResults.innerHTML = `<div class="empty-state">${msg}</div>`;
         return;
       }
 
@@ -2929,23 +2789,13 @@ function renderPlaceholderForm(doc, placeholders) {
       }
     }
     if (window.employeesReady && typeof window.employeesReady.then === 'function') {
+      // Always refresh after the live fetch settles (success or failure) —
+      // fetchLiveEmployees() already retries a few times internally, so
+      // there's no need for another retry loop wrapped around this one.
       window.employeesReady.then(() => initializeEmployeeFilters());
     } else {
       initializeEmployeeFilters();
     }
-    (async function refreshDirectoryIfEmpty() {
-      if (window.employeesReady) await window.employeesReady;
-      for (let i = 0; i < 12 && !(window.allEmployees && window.allEmployees.length); i++) {
-        await new Promise(r => setTimeout(r, 4000));
-        try {
-          const list = await fetchLiveEmployees();
-          window.allEmployees = list;
-          window._employeesLoading = false;
-          initializeEmployeeFilters();
-          if (list.length) return;
-        } catch (_) {}
-      }
-    })();
 
     // Initial UI state
     updateSearchModeUI();
