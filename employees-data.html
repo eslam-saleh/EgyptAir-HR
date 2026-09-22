@@ -205,6 +205,99 @@
         font-size: .76rem;
       }
 
+      .stat.clickable {
+        cursor: pointer;
+        transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease;
+      }
+
+      .stat.clickable:hover {
+        border-color: color-mix(in srgb, var(--primary) 40%, var(--line));
+        box-shadow: 0 12px 30px rgba(18, 59, 115, .12);
+        transform: translateY(-1px);
+      }
+
+      .stat.clickable.active {
+        border-color: color-mix(in srgb, var(--employee-warn) 50%, var(--line));
+        background: color-mix(in srgb, var(--employee-warn) 10%, var(--surface));
+      }
+
+      .stat.clickable.active strong {
+        color: var(--employee-warn);
+      }
+
+      .stat.clickable:focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--primary) 30%, transparent);
+        outline-offset: 2px;
+      }
+
+      /* Search + clear sit alone, above the filter grid */
+      .search-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 12px;
+        padding: 16px;
+      }
+
+      .search-bar .search-field {
+        flex: 1 1 280px;
+        min-width: 200px;
+      }
+
+      .search-bar .clear-action {
+        flex: 0 0 auto;
+        min-width: 140px;
+      }
+
+      /* Shared concept: date-range / period filters (hire range + retirement) */
+      .date-filters {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 10px;
+        align-items: end;
+        margin-bottom: 12px;
+        padding: 16px;
+      }
+
+      .date-filters .chip-field {
+        display: flex;
+        align-items: end;
+      }
+
+      .filter-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 42px;
+        padding: 0 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+        color: var(--text);
+        font-weight: 800;
+        cursor: pointer;
+        transition: background .14s ease, border-color .14s ease, color .14s ease;
+      }
+
+      .filter-chip:hover {
+        background: var(--surface-2);
+        border-color: color-mix(in srgb, var(--primary) 35%, var(--line));
+      }
+
+      .filter-chip.active {
+        border-color: color-mix(in srgb, var(--employee-warn) 55%, var(--line));
+        background: color-mix(in srgb, var(--employee-warn) 14%, var(--surface));
+        color: var(--employee-warn);
+      }
+
+      .filter-chip:focus-visible {
+        outline: 3px solid color-mix(in srgb, var(--primary) 30%, transparent);
+        outline-offset: 2px;
+      }
+
       .toolbar {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -212,15 +305,6 @@
         align-items: end;
         margin-bottom: 18px;
         padding: 16px;
-      }
-
-      .toolbar .search-field {
-        grid-column: span 2;
-        min-width: 200px;
-      }
-
-      .toolbar .clear-action {
-        align-self: end;
       }
 
       .filter-field {
@@ -560,7 +644,8 @@
       }
 
       .dialog.narrow {
-        width: min(760px, 100%);
+        /* Employee profile — wider so details grid is readable */
+        width: min(1080px, 100%);
       }
 
       .dialog-head,
@@ -850,8 +935,8 @@
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
-        .toolbar .search-field {
-          grid-column: span 2;
+        .date-filters {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
         .layout {
@@ -885,12 +970,17 @@
           grid-template-columns: 1fr 1fr;
         }
 
-        .toolbar .search-field {
-          grid-column: span 2;
+        .search-bar {
+          flex-direction: column;
+          align-items: stretch;
         }
 
-        .toolbar .clear-action {
-          grid-column: span 2;
+        .search-bar .clear-action {
+          width: 100%;
+        }
+
+        .date-filters {
+          grid-template-columns: 1fr;
         }
 
         .details-grid,
@@ -963,10 +1053,26 @@
         <div class="stat"><span id="totalLabel" data-en="Total employees" data-ar="إجمالي الموظفين">Total employees</span><strong id="totalCount">—</strong><small id="totalHint"></small></div>
         <div class="stat"><span id="shownLabel" data-en="Matching records" data-ar="السجلات المطابقة">Matching records</span><strong id="shownCount">—</strong><small id="shownHint"></small></div>
         <div class="stat"><span id="deptLabel" data-en="General departments" data-ar="الإدارات العامة">General departments</span><strong id="deptCount">—</strong><small id="deptHint"></small></div>
-        <div class="stat"><span id="retirementLabel" data-en="Upcoming retirements" data-ar="التقاعد خلال 12 شهراً">Upcoming retirements</span><strong id="retirementCount">—</strong><small id="retirementHint"></small></div>
+        <div class="stat clickable" id="retirementStat" role="button" tabindex="0" aria-pressed="false" title="Show employees retiring within 12 months">
+          <span id="retirementLabel" data-en="Upcoming retirements" data-ar="التقاعد خلال 12 شهراً">Upcoming retirements</span>
+          <strong id="retirementCount">—</strong>
+          <small id="retirementHint"></small>
+        </div>
+      </section>
+      <section class="panel search-bar" aria-label="Search">
+        <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
+        <button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
+      </section>
+      <section class="panel date-filters" aria-label="Date filters">
+        <div class="filter-field"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date"></div>
+        <div class="filter-field"><label for="hireTo" data-en="Hired until" data-ar="التعيين حتى">Hired until</label><input class="input" id="hireTo" type="date"></div>
+        <div class="filter-field chip-field">
+          <button type="button" class="filter-chip" id="upcomingChip" aria-pressed="false">
+            <span data-en="Retiring in 12 months" data-ar="يتقاعد خلال 12 شهراً">Retiring in 12 months</span>
+          </button>
+        </div>
       </section>
       <section class="panel toolbar" aria-label="Employee filters">
-        <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
         <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><select class="select" id="sector"></select></div>
         <div class="filter-field"><label for="department" data-en="General department" data-ar="الإدارة العامة">General department</label><select class="select" id="department"></select></div>
         <div class="filter-field"><label for="section" data-en="Section" data-ar="القسم الفرعي">Section</label><select class="select" id="section"></select></div>
@@ -980,7 +1086,6 @@
         <div class="filter-field"><label for="governorate" data-en="Governorate" data-ar="المحافظة">Governorate</label><select class="select" id="governorate"></select></div>
         <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="الفئة العمرية">Age group</label><select class="select" id="ageGroup"></select></div>
         <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="مسمى الوظيفة">Job title</label><select class="select" id="jobTitle"></select></div>
-        <button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
       </section>
       <section class="layout">
         <section class="panel" aria-labelledby="tableHeading">
@@ -1067,7 +1172,8 @@
         editingKey: null,
         lastFocus: null,
         loading: false,
-        view: 'active' // 'active' | 'retired' — separate lists, never merged
+        view: 'active', // 'active' | 'retired' — separate lists, never merged
+        upcomingOnly: false // date-period filter: retiring within 12 months
       };
       let employeeDataLoadPromise = null;
       const i18n = {
@@ -1179,7 +1285,7 @@
           reloadFailed: 'تم الحفظ، لكن تعذر تحديث القائمة كاملة الآن.',
           records: 'سجل',
           unknown: 'غير محدد',
-          active: 'على رأس العمل',
+          active: 'نشط',
           leave: 'في إجازة',
           inactive: 'غير نشط',
           retirement: 'يتقاعد خلال 12 شهراً',
@@ -1363,28 +1469,44 @@
         return e;
       }
 
+      /**
+       * Canonical status keys used for filtering & storage:
+       *   active | inactive | leave | seconded | (other raw trimmed)
+       * Maps spreadsheet variants: "non activ", "غير نشط", "على رأس العمل", etc.
+       */
+      function normalizeStatusKey(value) {
+        const text = normal(value).replace(/\s+/g, ' ');
+        if (!text) return '';
+        if (text.includes('leave') || text.includes('اجاز') || text.includes('إجاز')) return 'leave';
+        if (
+          text === 'active' ||
+          text === 'activ' ||
+          text.includes('راس العمل') ||
+          text.includes('رأس العمل') ||
+          text.includes('على رأس') ||
+          text.includes('على راس')
+        ) return 'active';
+        if (
+          text === 'inactive' ||
+          text === 'non active' ||
+          text === 'non activ' ||
+          text === 'non-active' ||
+          text === 'nonactiv' ||
+          text.includes('غير نشط') ||
+          text.includes('غير نشط')
+        ) return 'inactive';
+        if (text.includes('منتدب') || text.includes('second')) return 'seconded';
+        return clean(value);
+      }
+
       function displayStatus(value) {
-        const text = normal(value);
-        if (!text) return {
-          label: t('unknown'),
-          className: 'inactive'
-        };
-        if (text.includes('leave') || text.includes('إجاز')) return {
-          label: t('leave'),
-          className: 'leave'
-        };
-        if (text === 'active' || text === 'activ' || text.includes('رأس العمل')) return {
-          label: t('active'),
-          className: ''
-        };
-        if (text.includes('inactive') || text.includes('غير نشط')) return {
-          label: t('inactive'),
-          className: 'inactive'
-        };
-        return {
-          label: clean(value),
-          className: ''
-        };
+        const key = normalizeStatusKey(value);
+        if (!key) return { label: t('unknown'), className: 'inactive' };
+        if (key === 'leave') return { label: t('leave'), className: 'leave' };
+        if (key === 'active') return { label: t('active'), className: '' };
+        if (key === 'inactive') return { label: t('inactive'), className: 'inactive' };
+        if (key === 'seconded') return { label: lang() === 'ar' ? 'منتدب' : 'Seconded', className: '' };
+        return { label: clean(value), className: '' };
       }
 
       function isUpcomingRetirement(employee) {
@@ -1482,18 +1604,13 @@
         return [...new Set(source.map(item => clean(item[key])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
       }
 
-      function fillSelect(id, key, label) {
-        const select = $(id),
-          current = select.value,
-          values = unique(key);
-        select.innerHTML = `<option value="">${escapeHtml(label)}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
-        select.value = values.includes(current) ? current : '';
-      }
-
+      // Filter controls. Hierarchy parents limit child options:
+      // sector → department → section. All other filters cascade against the
+      // currently selected set so options stay realistic (no empty results).
       const FILTER_CONTROLS = [
         { id: 'sector', key: 'currentSector', allKey: 'allSectors' },
-        { id: 'department', key: 'currentGeneralDepartment', allKey: 'allDepartments' },
-        { id: 'section', key: 'currentSubDepartment', allKey: 'allSections' },
+        { id: 'department', key: 'currentGeneralDepartment', allKey: 'allDepartments', parents: ['sector'] },
+        { id: 'section', key: 'currentSubDepartment', allKey: 'allSections', parents: ['sector', 'department'] },
         { id: 'appointmentType', key: 'appointmentType', allKey: 'allAppointmentTypes', normalize: true },
         { id: 'gender', key: 'gender', allKey: 'allGenders' },
         { id: 'company', key: 'currentCompany', allKey: 'allCompanies' },
@@ -1505,50 +1622,129 @@
         { id: 'jobTitle', key: 'jobTitle', allKey: 'allJobs' }
       ];
 
-      function refreshFilters() {
+      function filterValueFor(employee, ctrl) {
+        if (ctrl.normalize) return normalizeAppointmentType(employee[ctrl.key]);
+        if (ctrl.id === 'status' || ctrl.key === 'status') return normalizeStatusKey(employee.status);
+        return clean(employee[ctrl.key]);
+      }
+
+      /** Employees that match every selected filter except those listed in exceptIds. */
+      function employeesMatchingExcept(exceptIds = []) {
+        const except = new Set(exceptIds);
+        const query = normal($('search')?.value);
+        const statusVal = except.has('status') ? '' : ($('status')?.value || '');
         const source = state.employees.map(computed);
+        return source.filter(employee => {
+          if (query && !normal(employee.code).includes(query) && !normal(employee.name).includes(query)) {
+            return false;
+          }
+          if (statusVal && normalizeStatusKey(employee.status) !== statusVal) return false;
+          if (!except.has('upcoming') && state.upcomingOnly && !isUpcomingRetirement(employee)) return false;
+          if (!except.has('hireRange') && !matchesHireRange(employee)) return false;
+          return FILTER_CONTROLS.every(ctrl => {
+            if (except.has(ctrl.id)) return true;
+            const selected = $(ctrl.id)?.value || '';
+            if (!selected) return true;
+            return filterValueFor(employee, ctrl) === selected;
+          });
+        });
+      }
+
+      function uniqueFrom(source, getValue) {
+        return [...new Set(source.map(getValue).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
+      }
+
+      function refreshFilters() {
+        // Rebuild each dropdown from rows that match all *other* selected filters
+        // so choosing Sector narrows Departments/Sections (and everything else).
         FILTER_CONTROLS.forEach(ctrl => {
           const select = $(ctrl.id);
           if (!select) return;
           const current = select.value;
-          let values;
-          if (ctrl.normalize) {
-            values = [...new Set(source.map(e => normalizeAppointmentType(e[ctrl.key])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
-          } else if (ctrl.computed) {
-            values = [...new Set(source.map(e => clean(e[ctrl.key])).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ar'));
+          // Hierarchical children (department, section): options come from
+          // rows matching parent filters only (sector → dept → section).
+          // Other filters cascade against the full current selection so
+          // options stay realistic (no empty combinations).
+          let pool;
+          if (ctrl.parents && ctrl.parents.length) {
+            pool = state.employees.map(computed).filter(employee => {
+              const query = normal($('search')?.value);
+              if (query && !normal(employee.code).includes(query) && !normal(employee.name).includes(query)) return false;
+              return (ctrl.parents || []).every(parentId => {
+                const parentCtrl = FILTER_CONTROLS.find(c => c.id === parentId);
+                if (!parentCtrl) return true;
+                const selected = $(parentId)?.value || '';
+                if (!selected) return true;
+                return filterValueFor(employee, parentCtrl) === selected;
+              });
+            });
           } else {
-            values = unique(ctrl.key, source);
+            pool = employeesMatchingExcept([ctrl.id]);
           }
+          const values = uniqueFrom(pool, e => filterValueFor(e, ctrl));
           select.innerHTML = `<option value="">${escapeHtml(t(ctrl.allKey))}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
           select.value = values.includes(current) ? current : '';
         });
+
+        // Status: always show canonical keys present in the current pool
         const statusSelect = $('status');
         if (statusSelect) {
           const current = statusSelect.value;
-          const values = unique('status');
-          statusSelect.innerHTML = `<option value="">${t('allStatuses')}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(displayStatus(value).label)}</option>`).join('')}`;
-          statusSelect.value = values.includes(current) ? current : '';
+          const pool = employeesMatchingExcept(['status']);
+          const keys = uniqueFrom(pool, e => normalizeStatusKey(e.status));
+          // Stable preferred order
+          const order = ['active', 'leave', 'seconded', 'inactive'];
+          const ordered = [
+            ...order.filter(k => keys.includes(k)),
+            ...keys.filter(k => !order.includes(k))
+          ];
+          statusSelect.innerHTML = `<option value="">${t('allStatuses')}</option>${ordered.map(key => {
+            const label = displayStatus(key).label;
+            return `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`;
+          }).join('')}`;
+          statusSelect.value = ordered.includes(current) ? current : '';
         }
       }
 
       function filtersActive() {
-        if (clean($('search').value)) return true;
-        if ($('status') && $('status').value) return true;
-        return FILTER_CONTROLS.some(ctrl => $(ctrl.id) && $(ctrl.id).value);
+        if (clean($('search')?.value)) return true;
+        if ($('status')?.value) return true;
+        if (state.upcomingOnly) return true;
+        if (clean($('hireFrom')?.value) || clean($('hireTo')?.value)) return true;
+        return FILTER_CONTROLS.some(ctrl => $(ctrl.id)?.value);
+      }
+
+      /** Inclusive date-range check on appointmentDate (hire date). */
+      function matchesHireRange(employee) {
+        const fromStr = clean($('hireFrom')?.value);
+        const toStr = clean($('hireTo')?.value);
+        if (!fromStr && !toStr) return true;
+        const hired = parseDate(employee.appointmentDate);
+        if (!hired) return false;
+        if (fromStr) {
+          const from = parseDate(fromStr);
+          if (from && hired < from) return false;
+        }
+        if (toStr) {
+          const to = parseDate(toStr);
+          if (to && hired > to) return false;
+        }
+        return true;
       }
 
       function getFiltered() {
-        const query = normal($('search').value);
-        const statusVal = $('status') ? $('status').value : '';
+        const query = normal($('search')?.value);
+        const statusVal = $('status')?.value || '';
         const list = state.employees.map(computed).filter(employee => {
           const matchesSearch = !query || normal(employee.code).includes(query) || normal(employee.name).includes(query);
           if (!matchesSearch) return false;
-          if (statusVal && clean(employee.status) !== statusVal) return false;
+          if (statusVal && normalizeStatusKey(employee.status) !== statusVal) return false;
+          if (state.upcomingOnly && !isUpcomingRetirement(employee)) return false;
+          if (!matchesHireRange(employee)) return false;
           return FILTER_CONTROLS.every(ctrl => {
-            const selected = $(ctrl.id) ? $(ctrl.id).value : '';
+            const selected = $(ctrl.id)?.value || '';
             if (!selected) return true;
-            if (ctrl.normalize) return normalizeAppointmentType(employee[ctrl.key]) === selected;
-            return clean(employee[ctrl.key]) === selected;
+            return filterValueFor(employee, ctrl) === selected;
           });
         });
         const key = state.sort;
@@ -1557,6 +1753,26 @@
           const b = key === 'age' ? Number(right[key]) || -1 : normal(right[key]);
           return typeof a === 'number' ? (a - b) * state.direction : a.localeCompare(b, 'ar') * state.direction;
         });
+      }
+
+      function setUpcomingOnly(on) {
+        state.upcomingOnly = Boolean(on);
+        const chip = $('upcomingChip');
+        const stat = $('retirementStat');
+        if (chip) {
+          chip.classList.toggle('active', state.upcomingOnly);
+          chip.setAttribute('aria-pressed', String(state.upcomingOnly));
+        }
+        if (stat) {
+          stat.classList.toggle('active', state.upcomingOnly);
+          stat.setAttribute('aria-pressed', String(state.upcomingOnly));
+        }
+      }
+
+      function toggleUpcomingOnly() {
+        if (state.view === 'retired') return;
+        setUpcomingOnly(!state.upcomingOnly);
+        applyFilter();
       }
 
       function renderBars(id, key, list) {
@@ -1585,7 +1801,20 @@
         $('totalHint').textContent = total ? t('rows', { count: total.toLocaleString() }) : '';
         $('shownHint').textContent = filtersActive() ? t('filterApplied') : t('rows', { count: list.length.toLocaleString() });
         $('deptHint').textContent = total ? t('records') : '';
-        $('retirementHint').textContent = isRetired ? '' : t('retirement');
+        $('retirementHint').textContent = isRetired
+          ? ''
+          : (state.upcomingOnly
+            ? (lang() === 'ar' ? 'تصفية مفعّلة — اضغط للإلغاء' : 'Filter on — click to clear')
+            : (lang() === 'ar' ? 'اضغط للعرض' : 'Click to view'));
+        const retStat = $('retirementStat');
+        if (retStat) {
+          retStat.classList.toggle('clickable', !isRetired);
+          retStat.style.pointerEvents = isRetired ? 'none' : '';
+          retStat.setAttribute('aria-disabled', String(isRetired));
+        }
+        const chip = $('upcomingChip');
+        if (chip) chip.disabled = isRetired;
+        if (isRetired && state.upcomingOnly) setUpcomingOnly(false);
       }
 
       function renderSortIcons() {
@@ -1791,17 +2020,32 @@
           ];
           const extra = clean(selected) && !known.includes(clean(selected)) ? [clean(selected)] : [];
           options = [['', '—'], ...[...known, ...extra].map(v => [v, v])];
+        } else if (key === 'status') {
+          // Canonical values only — matches spreadsheet (active / inactive) and
+          // known HR labels. No legacy "على رأس العمل" option.
+          const canonical = normalizeStatusKey(selected);
+          options = [
+            ['', '—'],
+            ['active', t('active')],
+            ['leave', t('leave')],
+            ['seconded', lang() === 'ar' ? 'منتدب' : 'Seconded'],
+            ['inactive', t('inactive')]
+          ];
+          // Keep selected if it was a weird legacy value that maps to a canonical key
+          if (canonical && !options.some(([v]) => v === canonical) && canonical !== clean(selected)) {
+            options.push([canonical, displayStatus(selected).label]);
+          }
+          selected = canonical || selected;
         } else {
           options = [
             ['', '—'],
             ['active', t('active')],
-            ['على رأس العمل', t('active')],
-            ['إجازة', t('leave')],
-            ['منتدب', lang() === 'ar' ? 'منتدب' : 'Seconded'],
-            ['غير نشط', t('inactive')]
+            ['leave', t('leave')],
+            ['seconded', lang() === 'ar' ? 'منتدب' : 'Seconded'],
+            ['inactive', t('inactive')]
           ];
         }
-        return options.map(([value, label]) => `<option value="${escapeHtml(value)}" ${clean(selected) === value ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
+        return options.map(([value, label]) => `<option value="${escapeHtml(value)}" ${clean(selected) === value || normalizeStatusKey(selected) === value ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('');
       }
 
       function normalizeAppointmentType(value) {
@@ -1960,6 +2204,9 @@
         // Clear filters so retired/active don't inherit each other's selections
         if ($('search')) $('search').value = '';
         if ($('status')) $('status').value = '';
+        if ($('hireFrom')) $('hireFrom').value = '';
+        if ($('hireTo')) $('hireTo').value = '';
+        setUpcomingOnly(false);
         FILTER_CONTROLS.forEach(ctrl => { if ($(ctrl.id)) $(ctrl.id).value = ''; });
         applyViewChrome();
         await load({ quiet: false });
@@ -2134,6 +2381,9 @@
       /* exportExcel removed — button links directly to original Google Sheet export */
       function applyFilter() {
         state.page = 1;
+        // Rebuild dependent options so Sector → Department → Section cascade,
+        // and other filters only show values that still exist under the selection.
+        refreshFilters();
         render();
       }
 
@@ -2148,9 +2398,25 @@
         });
         $('search').addEventListener('input', applyFilter);
         ['status', ...FILTER_CONTROLS.map(c => c.id)].forEach(id => { const el = $(id); if (el) el.addEventListener('change', applyFilter); });
+        $('hireFrom')?.addEventListener('change', applyFilter);
+        $('hireTo')?.addEventListener('change', applyFilter);
+        $('upcomingChip')?.addEventListener('click', toggleUpcomingOnly);
+        const retStat = $('retirementStat');
+        if (retStat) {
+          retStat.addEventListener('click', toggleUpcomingOnly);
+          retStat.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              toggleUpcomingOnly();
+            }
+          });
+        }
         $('clearBtn').addEventListener('click', () => {
           $('search').value = '';
           if ($('status')) $('status').value = '';
+          if ($('hireFrom')) $('hireFrom').value = '';
+          if ($('hireTo')) $('hireTo').value = '';
+          setUpcomingOnly(false);
           FILTER_CONTROLS.forEach(ctrl => { if ($(ctrl.id)) $(ctrl.id).value = ''; });
           applyFilter();
           toast(t('filtersCleared'), 'success');

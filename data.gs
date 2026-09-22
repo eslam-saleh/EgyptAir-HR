@@ -523,23 +523,45 @@ function normalizeDateOnly(value) {
 }
 
 /**
- * Normalize status values: activ → active, non active / nonactive → inactive.
- * Other known Arabic labels are left as-is.
+ * Normalize status to canonical spreadsheet values:
+ *   active | inactive | leave | seconded
+ * Maps legacy / typo variants from the sheet and UI:
+ *   activ, على رأس العمل → active
+ *   non activ, non active, غير نشط → inactive
  */
 function normalizeStatus(value) {
-  const s = String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
-  if (!s) return '';
-  if (s === 'activ' || s === 'active') return 'active';
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  const s = raw.toLowerCase().replace(/\s+/g, ' ');
+  // Active variants (including legacy Arabic label)
+  if (
+    s === 'activ' ||
+    s === 'active' ||
+    s.indexOf('راس العمل') !== -1 ||
+    s.indexOf('رأس العمل') !== -1 ||
+    s.indexOf('على رأس') !== -1 ||
+    s.indexOf('على راس') !== -1
+  ) {
+    return 'active';
+  }
+  // Inactive variants (including "non activ" typo in the sheet)
   if (
     s === 'non active' ||
-    s === 'nonactive' ||
+    s === 'non activ' ||
     s === 'non-active' ||
-    s === 'inactive'
+    s === 'nonactiv' ||
+    s === 'inactive' ||
+    s.indexOf('غير نشط') !== -1
   ) {
     return 'inactive';
   }
-  // Preserve original casing for Arabic / other labels
-  return String(value).trim();
+  if (s.indexOf('leave') !== -1 || s.indexOf('اجاز') !== -1 || s.indexOf('إجاز') !== -1) {
+    return 'leave';
+  }
+  if (s.indexOf('منتدب') !== -1 || s.indexOf('second') !== -1) {
+    return 'seconded';
+  }
+  return raw;
 }
 
 function validateEmployee(sh, input, rowNumber) {
