@@ -260,6 +260,7 @@ function readEmployees(sheetName) {
   ensureSheetShape(sh, name);
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
+  // Single bulk read is much faster than per-row access.
   const values = sh.getRange(2, 1, lastRow - 1, FIELDS.length).getDisplayValues();
   // Number rows from their REAL sheet position (i + 2, since values[0] is
   // sheet row 2), and only SKIP blank rows rather than filtering-then-
@@ -469,9 +470,36 @@ function readDirectoryEmployees() {
 }
 
 function rowToObject(row, rowNumber) {
+  // Always keep these keys so the client can filter/edit/retire reliably.
+  const keepEmpty = {
+    code: true,
+    name: true,
+    status: true,
+    currentSector: true,
+    currentGeneralDepartment: true,
+    currentSubDepartment: true,
+    appointmentType: true,
+    gender: true,
+    currentCompany: true,
+    currentGrade: true,
+    workType: true,
+    serviceType: true,
+    governorate: true,
+    jobTitle: true,
+    actualJob: true,
+    birthDate: true,
+    appointmentDate: true,
+    retirementDate: true,
+    age: true,
+    ageGroup: true
+  };
   const employee = { rowNumber: rowNumber };
   FIELDS.forEach((field, index) => {
-    employee[field[0]] = row[index] || '';
+    const key = field[0];
+    const value = row[index] == null ? '' : String(row[index]);
+    // Drop empty strings for sparse columns — cuts list JSON ~40–60% and
+    // is the main reason the portal felt slow (multi‑MB payload).
+    if (value !== '' || keepEmpty[key]) employee[key] = value;
   });
   const normalizedCode = normalizeCode(employee.code);
   if (normalizedCode) employee.code = normalizedCode;

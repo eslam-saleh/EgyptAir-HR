@@ -69,6 +69,22 @@
         gap: 9px;
       }
 
+      .profile-hero .button-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        min-width: 180px;
+      }
+
+      .profile-hero .button-row .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .profile-hero .button-row .btn.danger-solid {
+        margin-top: 4px;
+      }
+
       .btn {
         min-height: 42px;
         border: 1px solid transparent;
@@ -250,54 +266,6 @@
         min-width: 140px;
       }
 
-      /* Shared concept: date-range / period filters (hire range + retirement) */
-      .date-filters {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 10px;
-        align-items: end;
-        margin-bottom: 12px;
-        padding: 16px;
-      }
-
-      .date-filters .chip-field {
-        display: flex;
-        align-items: end;
-      }
-
-      .filter-chip {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        width: 100%;
-        min-height: 42px;
-        padding: 0 14px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: var(--surface);
-        color: var(--text);
-        font-weight: 800;
-        cursor: pointer;
-        transition: background .14s ease, border-color .14s ease, color .14s ease;
-      }
-
-      .filter-chip:hover {
-        background: var(--surface-2);
-        border-color: color-mix(in srgb, var(--primary) 35%, var(--line));
-      }
-
-      .filter-chip.active {
-        border-color: color-mix(in srgb, var(--employee-warn) 55%, var(--line));
-        background: color-mix(in srgb, var(--employee-warn) 14%, var(--surface));
-        color: var(--employee-warn);
-      }
-
-      .filter-chip:focus-visible {
-        outline: 3px solid color-mix(in srgb, var(--primary) 30%, transparent);
-        outline-offset: 2px;
-      }
-
       .toolbar {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -305,6 +273,18 @@
         align-items: end;
         margin-bottom: 18px;
         padding: 16px;
+      }
+
+      /* Hire-date range sits at the end of the filter grid with a thin border */
+      .filter-field.hire-date {
+        padding: 8px 10px 10px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--surface-2) 55%, var(--surface));
+      }
+
+      .filter-field.hire-date label {
+        margin-bottom: 2px;
       }
 
       .filter-field {
@@ -722,7 +702,7 @@
 
       .details-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 11px;
       }
 
@@ -935,8 +915,8 @@
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
-        .date-filters {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+        .details-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
         .layout {
@@ -977,10 +957,6 @@
 
         .search-bar .clear-action {
           width: 100%;
-        }
-
-        .date-filters {
-          grid-template-columns: 1fr;
         }
 
         .details-grid,
@@ -1063,15 +1039,6 @@
         <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
         <button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
       </section>
-      <section class="panel date-filters" aria-label="Date filters">
-        <div class="filter-field"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date"></div>
-        <div class="filter-field"><label for="hireTo" data-en="Hired until" data-ar="التعيين حتى">Hired until</label><input class="input" id="hireTo" type="date"></div>
-        <div class="filter-field chip-field">
-          <button type="button" class="filter-chip" id="upcomingChip" aria-pressed="false">
-            <span data-en="Retiring in 12 months" data-ar="يتقاعد خلال 12 شهراً">Retiring in 12 months</span>
-          </button>
-        </div>
-      </section>
       <section class="panel toolbar" aria-label="Employee filters">
         <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><select class="select" id="sector"></select></div>
         <div class="filter-field"><label for="department" data-en="General department" data-ar="الإدارة العامة">General department</label><select class="select" id="department"></select></div>
@@ -1086,6 +1053,8 @@
         <div class="filter-field"><label for="governorate" data-en="Governorate" data-ar="المحافظة">Governorate</label><select class="select" id="governorate"></select></div>
         <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="الفئة العمرية">Age group</label><select class="select" id="ageGroup"></select></div>
         <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="مسمى الوظيفة">Job title</label><select class="select" id="jobTitle"></select></div>
+        <div class="filter-field hire-date"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date"></div>
+        <div class="filter-field hire-date"><label for="hireTo" data-en="Hired until" data-ar="التعيين حتى">Hired until</label><input class="input" id="hireTo" type="date"></div>
       </section>
       <section class="layout">
         <section class="panel" aria-labelledby="tableHeading">
@@ -1152,6 +1121,24 @@
         <div class="dialog-foot">
           <p class="form-error" id="formError" role="alert"></p>
           <div class="button-row"><button class="btn secondary" type="button" data-close="formModal" data-en="Cancel" data-ar="إلغاء">Cancel</button><button class="btn" type="submit" form="employeeForm" id="saveBtn" data-en="Save changes" data-ar="حفظ التغييرات">Save changes</button></div>
+        </div>
+      </section>
+    </div>
+    <div class="modal" id="retireConfirmModal" hidden>
+      <section class="dialog" style="width:min(480px,100%)" role="dialog" aria-modal="true" aria-labelledby="retireConfirmTitle">
+        <div class="dialog-head">
+          <h2 id="retireConfirmTitle" data-en="Confirm move to retired" data-ar="تأكيد النقل إلى المتقاعدين">Confirm move to retired</h2>
+          <button class="icon-btn" type="button" data-close="retireConfirmModal" aria-label="Close">×</button>
+        </div>
+        <div class="dialog-body">
+          <p id="retireConfirmText" style="margin:0;line-height:1.6;color:var(--text)"></p>
+          <p style="margin:12px 0 0;color:var(--muted);font-size:.88rem;line-height:1.55" data-en="This cannot be undone from this screen. The employee will leave the active list and appear under Retired / Former." data-ar="لا يمكن التراجع من هذه الشاشة. سيُزال الموظف من القائمة النشطة ويظهر تحت المتقاعدين / السابقين.">This cannot be undone from this screen. The employee will leave the active list and appear under Retired / Former.</p>
+        </div>
+        <div class="dialog-foot">
+          <div class="button-row" style="margin-inline-start:auto;gap:12px">
+            <button class="btn secondary" type="button" data-close="retireConfirmModal" data-en="Cancel" data-ar="إلغاء">Cancel</button>
+            <button class="btn danger-solid" type="button" id="retireConfirmBtn" data-en="Yes, move to retired" data-ar="نعم، انقل إلى المتقاعدين">Yes, move to retired</button>
+          </div>
         </div>
       </section>
     </div>
@@ -1239,6 +1226,9 @@
           retiredOk: 'Employee moved to Retired sheet.',
           retireFailed: 'Unable to move the employee to Retired.',
           retireConfirm: 'Move this employee to the Retired sheet? They will be removed from the active Employees list.',
+          retireConfirmNamed: 'Move “{name}” (code {code}) to the Retired sheet?',
+          retireConfirmTitle: 'Confirm move to retired',
+          retireConfirmYes: 'Yes, move to retired',
           listActive: 'Employee list',
           listRetired: 'Retired / former list',
           subtitleActive: 'Find employee records quickly, review workforce distribution, and keep employee details up to date.',
@@ -1308,6 +1298,9 @@
           retiredOk: 'تم نقل الموظف إلى شيت المتقاعدين.',
           retireFailed: 'تعذر نقل الموظف إلى المتقاعدين.',
           retireConfirm: 'نقل هذا الموظف إلى شيت المتقاعدين؟ سيتم حذفه من قائمة الموظفين النشطين.',
+          retireConfirmNamed: 'نقل «{name}» (كود {code}) إلى شيت المتقاعدين؟',
+          retireConfirmTitle: 'تأكيد النقل إلى المتقاعدين',
+          retireConfirmYes: 'نعم، انقل إلى المتقاعدين',
           listActive: 'قائمة الموظفين',
           listRetired: 'قائمة المتقاعدين / السابقين',
           subtitleActive: 'ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.',
@@ -1757,12 +1750,7 @@
 
       function setUpcomingOnly(on) {
         state.upcomingOnly = Boolean(on);
-        const chip = $('upcomingChip');
         const stat = $('retirementStat');
-        if (chip) {
-          chip.classList.toggle('active', state.upcomingOnly);
-          chip.setAttribute('aria-pressed', String(state.upcomingOnly));
-        }
         if (stat) {
           stat.classList.toggle('active', state.upcomingOnly);
           stat.setAttribute('aria-pressed', String(state.upcomingOnly));
@@ -1812,8 +1800,6 @@
           retStat.style.pointerEvents = isRetired ? 'none' : '';
           retStat.setAttribute('aria-disabled', String(isRetired));
         }
-        const chip = $('upcomingChip');
-        if (chip) chip.disabled = isRetired;
         if (isRetired && state.upcomingOnly) setUpcomingOnly(false);
       }
 
@@ -1899,42 +1885,70 @@
           };
         }
         if (canRetire && $('retireProfileBtn')) {
-          $('retireProfileBtn').onclick = () => retireEmployee(employee);
+          $('retireProfileBtn').onclick = () => askRetireConfirm(employee);
         }
         openModal('profileModal', opener);
       }
 
+      let pendingRetireEmployee = null;
+
+      function askRetireConfirm(employee) {
+        if (!employee || state.view !== 'active') return;
+        pendingRetireEmployee = employee;
+        const name = clean(employee.name) || t('unknown');
+        const code = clean(employee.code) || '—';
+        $('retireConfirmText').textContent = t('retireConfirmNamed', { name, code });
+        const title = $('retireConfirmTitle');
+        if (title) title.textContent = t('retireConfirmTitle');
+        const yesBtn = $('retireConfirmBtn');
+        if (yesBtn) {
+          yesBtn.disabled = false;
+          yesBtn.textContent = t('retireConfirmYes');
+        }
+        openModal('retireConfirmModal', $('retireProfileBtn') || document.activeElement);
+      }
+
       async function retireEmployee(employee) {
         if (!employee || state.view !== 'active') return;
-        if (!window.confirm(t('retireConfirm'))) return;
-        const btn = $('retireProfileBtn');
+        const btn = $('retireConfirmBtn');
+        const profileBtn = $('retireProfileBtn');
         if (btn) {
           btn.disabled = true;
           btn.textContent = t('moving');
         }
+        if (profileBtn) {
+          profileBtn.disabled = true;
+          profileBtn.textContent = t('moving');
+        }
         try {
-          const payload = await postRetire(employee);
-          // Remove from local active list immediately
+          await postRetire(employee);
+          // Update local list only — do NOT full-reload the 6MB sheet (that was
+          // the main reason move felt like it took a full minute).
           const key = recordKey(employee);
           state.employees = state.employees.filter(item => recordKey(item) !== key);
+          pendingRetireEmployee = null;
+          closeModal('retireConfirmModal');
           closeModal('profileModal');
           toast(t('retiredOk'), 'success');
           refreshFilters();
           render();
-          // Quiet refresh to stay in sync
-          await load({ quiet: true });
         } catch (error) {
           const message = formatFailure('retireFailed', error);
           toast(message, 'error');
           if (btn) {
             btn.disabled = false;
-            btn.textContent = t('moveToRetired');
+            btn.textContent = t('retireConfirmYes');
+          }
+          if (profileBtn) {
+            profileBtn.disabled = false;
+            profileBtn.textContent = t('moveToRetired');
           }
         }
       }
 
       async function postRetire(employee) {
-        const maxAttempts = 5;
+        // Fewer retries — Apps Script 404 hop is rare; long backoff made moves feel stuck.
+        const maxAttempts = 3;
         let lastError;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
@@ -1956,7 +1970,7 @@
               })
             });
             if ((response.status === 404 || response.status === 405) && attempt < maxAttempts) {
-              await new Promise(r => setTimeout(r, 500 * attempt));
+              await new Promise(r => setTimeout(r, 300 * attempt));
               continue;
             }
             if (!response.ok) {
@@ -1981,7 +1995,7 @@
             lastError = err;
             const msg = clean(err && err.message);
             if ((msg.includes('404') || msg.includes('405') || msg.includes('Failed to fetch') || msg.includes('Network') || msg.includes('busy') || msg.includes('lock')) && attempt < maxAttempts) {
-              await new Promise(r => setTimeout(r, 500 * attempt));
+              await new Promise(r => setTimeout(r, 300 * attempt));
               continue;
             }
             throw err;
@@ -2154,7 +2168,8 @@
         setLoading(true);
         showNotice('');
         applyViewChrome();
-        render();
+        // One light loading state — avoid triple full-table renders during fetch.
+        if ($('loadingState')) $('loadingState').textContent = t('loading');
         try {
           const isRetired = state.view === 'retired';
           const url = isRetired
@@ -2173,15 +2188,10 @@
           }));
           refreshFilters();
           state.page = 1;
-          applyViewChrome();
-          render();
           if (!quiet) toast(isRetired ? t('loadedRetired') : t('loaded'), 'success');
           return true;
         } catch (error) {
           if (!state.employees.length) {
-            refreshFilters();
-            applyViewChrome();
-            render();
             const message = formatFailure('loadFailed', error);
             showNotice(message);
             toast(message, 'error');
@@ -2367,8 +2377,7 @@
           upsertLocalEmployee(payload.employee || employee);
           closeModal('formModal');
           toast(isEdit ? t('saved') : t('created'), 'success');
-          const refreshed = await load({ quiet: true });
-          if (!refreshed) toast(t('reloadFailed'), 'info');
+          // Local upsert is enough — a full list reload was the main slowdown.
         } catch (error) {
           const message = formatFailure('saveFailed', error);
           $('formError').textContent = message;
@@ -2400,7 +2409,6 @@
         ['status', ...FILTER_CONTROLS.map(c => c.id)].forEach(id => { const el = $(id); if (el) el.addEventListener('change', applyFilter); });
         $('hireFrom')?.addEventListener('change', applyFilter);
         $('hireTo')?.addEventListener('change', applyFilter);
-        $('upcomingChip')?.addEventListener('click', toggleUpcomingOnly);
         const retStat = $('retirementStat');
         if (retStat) {
           retStat.addEventListener('click', toggleUpcomingOnly);
@@ -2429,6 +2437,9 @@
         $('viewActiveBtn')?.addEventListener('click', () => switchView('active'));
         $('viewRetiredBtn')?.addEventListener('click', () => switchView('retired'));
         $('employeeForm').addEventListener('submit', saveEmployee);
+        $('retireConfirmBtn')?.addEventListener('click', () => {
+          if (pendingRetireEmployee) retireEmployee(pendingRetireEmployee);
+        });
         document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => closeModal(button.dataset.close)));
         document.querySelectorAll('.modal').forEach(modal => modal.addEventListener('click', event => {
           if (event.target === modal) closeModal(modal.id);
