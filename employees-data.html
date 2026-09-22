@@ -117,6 +117,52 @@
         transform: none;
       }
 
+      .btn.danger-solid {
+        background: color-mix(in srgb, var(--danger) 88%, #000);
+        color: #fff;
+        border-color: transparent;
+      }
+
+      .btn.danger-solid:hover {
+        background: var(--danger);
+      }
+
+      .view-tabs {
+        display: inline-flex;
+        gap: 0;
+        margin-bottom: 18px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--surface);
+      }
+
+      .view-tab {
+        min-height: 42px;
+        padding: 0 18px;
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        font-weight: 800;
+        cursor: pointer;
+        transition: background .14s ease, color .14s ease;
+      }
+
+      .view-tab:hover {
+        color: var(--primary);
+        background: var(--surface-2);
+      }
+
+      .view-tab.active {
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .view-tab.active:hover {
+        background: var(--primary-2);
+        color: #fff;
+      }
+
       .stats {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -904,16 +950,20 @@
         <div>
           <p class="eyebrow" data-en="Employee directory" data-ar="دليل الموظفين">Employee directory</p>
           <h1 id="pageTitle" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</h1>
-          <p data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p>
+          <p id="pageSubtitle" data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p>
         </div>
         <div class="actions"><button class="btn secondary" id="reportBtn" type="button" data-en="Appointment report" data-ar="تقرير نوع التعيين">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn secondary" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn secondary" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
       </section>
+      <div class="view-tabs" role="tablist" aria-label="Employee view">
+        <button type="button" class="view-tab active" id="viewActiveBtn" data-view="active" role="tab" aria-selected="true" data-en="Active employees" data-ar="الموظفون النشطون">Active employees</button>
+        <button type="button" class="view-tab" id="viewRetiredBtn" data-view="retired" role="tab" aria-selected="false" data-en="Retired / Former" data-ar="المتقاعدون / السابقون">Retired / Former</button>
+      </div>
       <div class="notice" id="notice" role="status" hidden></div>
       <section class="stats" aria-label="Employee statistics">
-        <div class="stat"><span data-en="Total employees" data-ar="إجمالي الموظفين">Total employees</span><strong id="totalCount">—</strong><small id="totalHint"></small></div>
-        <div class="stat"><span data-en="Matching records" data-ar="السجلات المطابقة">Matching records</span><strong id="shownCount">—</strong><small id="shownHint"></small></div>
-        <div class="stat"><span data-en="General departments" data-ar="الإدارات العامة">General departments</span><strong id="deptCount">—</strong><small id="deptHint"></small></div>
-        <div class="stat"><span data-en="Upcoming retirements" data-ar="التقاعد خلال 12 شهراً">Upcoming retirements</span><strong id="retirementCount">—</strong><small id="retirementHint"></small></div>
+        <div class="stat"><span id="totalLabel" data-en="Total employees" data-ar="إجمالي الموظفين">Total employees</span><strong id="totalCount">—</strong><small id="totalHint"></small></div>
+        <div class="stat"><span id="shownLabel" data-en="Matching records" data-ar="السجلات المطابقة">Matching records</span><strong id="shownCount">—</strong><small id="shownHint"></small></div>
+        <div class="stat"><span id="deptLabel" data-en="General departments" data-ar="الإدارات العامة">General departments</span><strong id="deptCount">—</strong><small id="deptHint"></small></div>
+        <div class="stat"><span id="retirementLabel" data-en="Upcoming retirements" data-ar="التقاعد خلال 12 شهراً">Upcoming retirements</span><strong id="retirementCount">—</strong><small id="retirementHint"></small></div>
       </section>
       <section class="panel toolbar" aria-label="Employee filters">
         <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
@@ -1016,7 +1066,8 @@
         direction: 1,
         editingKey: null,
         lastFocus: null,
-        loading: false
+        loading: false,
+        view: 'active' // 'active' | 'retired' — separate lists, never merged
       };
       let employeeDataLoadPromise = null;
       const i18n = {
@@ -1070,7 +1121,24 @@
           serverError: 'Server returned an error',
           notFound: 'Service not found (404). The Apps Script deployment may need to be updated.',
           unauthorized: 'Unauthorized (check access / token).',
-          badResponse: 'Invalid response from the server.'
+          badResponse: 'Invalid response from the server.',
+          totalActive: 'Total employees',
+          totalRetired: 'Total retired / former',
+          matching: 'Matching records',
+          departments: 'General departments',
+          upcomingRetirements: 'Upcoming retirements',
+          retiredHint: 'Archived from active roster',
+          moveToRetired: 'Move to retired',
+          moving: 'Moving…',
+          retiredOk: 'Employee moved to Retired sheet.',
+          retireFailed: 'Unable to move the employee to Retired.',
+          retireConfirm: 'Move this employee to the Retired sheet? They will be removed from the active Employees list.',
+          listActive: 'Employee list',
+          listRetired: 'Retired / former list',
+          subtitleActive: 'Find employee records quickly, review workforce distribution, and keep employee details up to date.',
+          subtitleRetired: 'View employees who left service (retirement, termination, or other). This list is separate from active staff.',
+          loadedRetired: 'Retired records loaded.',
+          refreshedRetired: 'Retired records refreshed.'
         },
         ar: {
           allSectors: 'كل القطاعات',
@@ -1122,7 +1190,24 @@
           serverError: 'الخادم أرجع خطأ',
           notFound: 'الخدمة غير موجودة (404). قد تحتاج إعادة نشر تطبيق Apps Script.',
           unauthorized: 'غير مصرح (تحقق من الصلاحيات / التوكن).',
-          badResponse: 'استجابة غير صالحة من الخادم.'
+          badResponse: 'استجابة غير صالحة من الخادم.',
+          totalActive: 'إجمالي الموظفين',
+          totalRetired: 'إجمالي المتقاعدين / السابقين',
+          matching: 'السجلات المطابقة',
+          departments: 'الإدارات العامة',
+          upcomingRetirements: 'التقاعد خلال 12 شهراً',
+          retiredHint: 'مؤرشف من القائمة النشطة',
+          moveToRetired: 'نقل إلى المتقاعدين',
+          moving: 'جارٍ النقل…',
+          retiredOk: 'تم نقل الموظف إلى شيت المتقاعدين.',
+          retireFailed: 'تعذر نقل الموظف إلى المتقاعدين.',
+          retireConfirm: 'نقل هذا الموظف إلى شيت المتقاعدين؟ سيتم حذفه من قائمة الموظفين النشطين.',
+          listActive: 'قائمة الموظفين',
+          listRetired: 'قائمة المتقاعدين / السابقين',
+          subtitleActive: 'ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.',
+          subtitleRetired: 'عرض الموظفين الذين تركوا الخدمة (تقاعد أو إنهاء أو غير ذلك). هذه القائمة منفصلة عن الموظفين النشطين.',
+          loadedRetired: 'تم تحميل سجلات المتقاعدين.',
+          refreshedRetired: 'تم تحديث سجلات المتقاعدين.'
         }
       };
       const schema = [
@@ -1333,7 +1418,34 @@
         state.loading = loading;
         $('loadingState').textContent = loading ? t('loading') : '';
         $('refreshBtn').disabled = loading;
-        $('newBtn').disabled = loading;
+        $('newBtn').disabled = loading || state.view === 'retired';
+        $('reportBtn').disabled = loading;
+        const activeTab = $('viewActiveBtn');
+        const retiredTab = $('viewRetiredBtn');
+        if (activeTab) activeTab.disabled = loading;
+        if (retiredTab) retiredTab.disabled = loading;
+      }
+
+      function applyViewChrome() {
+        const isRetired = state.view === 'retired';
+        $('viewActiveBtn')?.classList.toggle('active', !isRetired);
+        $('viewRetiredBtn')?.classList.toggle('active', isRetired);
+        $('viewActiveBtn')?.setAttribute('aria-selected', String(!isRetired));
+        $('viewRetiredBtn')?.setAttribute('aria-selected', String(isRetired));
+        if ($('newBtn')) $('newBtn').hidden = isRetired;
+        if ($('reportBtn')) $('reportBtn').hidden = isRetired;
+        const subtitle = $('pageSubtitle');
+        if (subtitle) {
+          subtitle.textContent = isRetired ? t('subtitleRetired') : t('subtitleActive');
+        }
+        const tableHeading = $('tableHeading');
+        if (tableHeading) {
+          const note = $('resultNote');
+          const label = isRetired ? t('listRetired') : t('listActive');
+          tableHeading.textContent = '';
+          tableHeading.appendChild(document.createTextNode(label + ' '));
+          if (note) tableHeading.appendChild(note);
+        }
       }
 
       function updateStaticText() {
@@ -1459,20 +1571,21 @@
       }
 
       function renderStats(list) {
-        const total = state.employees.length,
-          upcoming = state.employees.filter(isUpcomingRetirement).length;
+        const isRetired = state.view === 'retired';
+        const total = state.employees.length;
+        const upcoming = isRetired ? 0 : state.employees.filter(isUpcomingRetirement).length;
         $('totalCount').textContent = total.toLocaleString();
         $('shownCount').textContent = list.length.toLocaleString();
         $('deptCount').textContent = unique('currentGeneralDepartment').length.toLocaleString();
-        $('retirementCount').textContent = upcoming.toLocaleString();
-        $('totalHint').textContent = total ? t('rows', {
-          count: total.toLocaleString()
-        }) : '';
-        $('shownHint').textContent = filtersActive() ? t('filterApplied') : t('rows', {
-          count: list.length.toLocaleString()
-        });
+        $('retirementCount').textContent = isRetired ? '—' : upcoming.toLocaleString();
+        if ($('totalLabel')) $('totalLabel').textContent = isRetired ? t('totalRetired') : t('totalActive');
+        if ($('shownLabel')) $('shownLabel').textContent = t('matching');
+        if ($('deptLabel')) $('deptLabel').textContent = t('departments');
+        if ($('retirementLabel')) $('retirementLabel').textContent = isRetired ? t('retiredHint') : t('upcomingRetirements');
+        $('totalHint').textContent = total ? t('rows', { count: total.toLocaleString() }) : '';
+        $('shownHint').textContent = filtersActive() ? t('filterApplied') : t('rows', { count: list.length.toLocaleString() });
         $('deptHint').textContent = total ? t('records') : '';
-        $('retirementHint').textContent = t('retirement');
+        $('retirementHint').textContent = isRetired ? '' : t('retirement');
       }
 
       function renderSortIcons() {
@@ -1544,12 +1657,108 @@
           return entries ? `<section class="profile-section"><h3>${escapeHtml(sectionLabel(section))}</h3><dl class="details-grid">${entries}</dl></section>` : '';
         }).join('');
         $('profileTitle').textContent = t('profile');
-        $('profileBody').innerHTML = `<div class="profile-hero"><div><h3>${escapeHtml(e.name || t('unknown'))}</h3><p>${escapeHtml(e.code ? `${lang() === 'ar' ? 'كود الموظف: ' : 'Employee code: '}${e.code}` : overview)}</p><p>${escapeHtml(overview)}</p></div><div class="button-row"><button class="btn" type="button" id="editProfileBtn">${escapeHtml(t('edit'))}</button></div></div><div class="profile-sections">${profileSections || `<p class="empty">${t('noData')}</p>`}</div>`;
-        $('editProfileBtn').onclick = () => {
-          closeModal('profileModal');
-          openForm(employee, opener);
-        };
+        const canEdit = state.view === 'active';
+        const canRetire = state.view === 'active';
+        const actions = [];
+        if (canEdit) actions.push(`<button class="btn" type="button" id="editProfileBtn">${escapeHtml(t('edit'))}</button>`);
+        if (canRetire) actions.push(`<button class="btn danger-solid" type="button" id="retireProfileBtn">${escapeHtml(t('moveToRetired'))}</button>`);
+        $('profileBody').innerHTML = `<div class="profile-hero"><div><h3>${escapeHtml(e.name || t('unknown'))}</h3><p>${escapeHtml(e.code ? `${lang() === 'ar' ? 'كود الموظف: ' : 'Employee code: '}${e.code}` : overview)}</p><p>${escapeHtml(overview)}</p></div><div class="button-row">${actions.join('')}</div></div><div class="profile-sections">${profileSections || `<p class="empty">${t('noData')}</p>`}</div>`;
+        if (canEdit && $('editProfileBtn')) {
+          $('editProfileBtn').onclick = () => {
+            closeModal('profileModal');
+            openForm(employee, opener);
+          };
+        }
+        if (canRetire && $('retireProfileBtn')) {
+          $('retireProfileBtn').onclick = () => retireEmployee(employee);
+        }
         openModal('profileModal', opener);
+      }
+
+      async function retireEmployee(employee) {
+        if (!employee || state.view !== 'active') return;
+        if (!window.confirm(t('retireConfirm'))) return;
+        const btn = $('retireProfileBtn');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = t('moving');
+        }
+        try {
+          const payload = await postRetire(employee);
+          // Remove from local active list immediately
+          const key = recordKey(employee);
+          state.employees = state.employees.filter(item => recordKey(item) !== key);
+          closeModal('profileModal');
+          toast(t('retiredOk'), 'success');
+          refreshFilters();
+          render();
+          // Quiet refresh to stay in sync
+          await load({ quiet: true });
+        } catch (error) {
+          const message = formatFailure('retireFailed', error);
+          toast(message, 'error');
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = t('moveToRetired');
+          }
+        }
+      }
+
+      async function postRetire(employee) {
+        const maxAttempts = 5;
+        let lastError;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          try {
+            const response = await fetch(withToken(API_URL), {
+              method: 'POST',
+              redirect: 'follow',
+              cache: 'no-store',
+              headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+              body: JSON.stringify({
+                action: 'retire',
+                employee: {
+                  code: employee.code,
+                  name: employee.name,
+                  rowNumber: employee.rowNumber,
+                  version: employee.version,
+                  id: employee.id
+                },
+                token: API_TOKEN || undefined
+              })
+            });
+            if ((response.status === 404 || response.status === 405) && attempt < maxAttempts) {
+              await new Promise(r => setTimeout(r, 500 * attempt));
+              continue;
+            }
+            if (!response.ok) {
+              let bodyHint = '';
+              try {
+                const text = await response.text();
+                if (text) {
+                  try {
+                    const j = JSON.parse(text);
+                    bodyHint = j.error || j.message || text.slice(0, 200);
+                  } catch {
+                    bodyHint = text.slice(0, 200);
+                  }
+                }
+              } catch (_) {}
+              throw new Error(bodyHint ? `${response.status} ${response.statusText} — ${bodyHint}` : `${response.status} ${response.statusText}`);
+            }
+            const payload = await readApi(response);
+            if (!payload.ok) throw new Error(payload.error || payload.message || t('retireFailed'));
+            return payload;
+          } catch (err) {
+            lastError = err;
+            const msg = clean(err && err.message);
+            if ((msg.includes('404') || msg.includes('405') || msg.includes('Failed to fetch') || msg.includes('Network') || msg.includes('busy') || msg.includes('lock')) && attempt < maxAttempts) {
+              await new Promise(r => setTimeout(r, 500 * attempt));
+              continue;
+            }
+            throw err;
+          }
+        }
+        throw lastError || new Error('404');
       }
 
       const APPOINTMENT_TYPES = [
@@ -1700,9 +1909,14 @@
       } = {}) {
         setLoading(true);
         showNotice('');
+        applyViewChrome();
         render();
         try {
-          const response = await fetch(withToken(`${API_URL}?action=list`), {
+          const isRetired = state.view === 'retired';
+          const url = isRetired
+            ? withToken(`${API_URL}?action=list&sheet=retired`)
+            : withToken(`${API_URL}?action=list`);
+          const response = await fetch(url, {
             redirect: 'follow',
             cache: 'no-store'
           });
@@ -1715,12 +1929,14 @@
           }));
           refreshFilters();
           state.page = 1;
+          applyViewChrome();
           render();
-          if (!quiet) toast(t('loaded'), 'success');
+          if (!quiet) toast(isRetired ? t('loadedRetired') : t('loaded'), 'success');
           return true;
         } catch (error) {
           if (!state.employees.length) {
             refreshFilters();
+            applyViewChrome();
             render();
             const message = formatFailure('loadFailed', error);
             showNotice(message);
@@ -1729,8 +1945,24 @@
           return false;
         } finally {
           setLoading(false);
+          applyViewChrome();
           render();
         }
+      }
+
+      async function switchView(nextView) {
+        if (nextView !== 'active' && nextView !== 'retired') return;
+        if (state.view === nextView) return;
+        state.view = nextView;
+        state.employees = [];
+        state.filtered = [];
+        state.page = 1;
+        // Clear filters so retired/active don't inherit each other's selections
+        if ($('search')) $('search').value = '';
+        if ($('status')) $('status').value = '';
+        FILTER_CONTROLS.forEach(ctrl => { if ($(ctrl.id)) $(ctrl.id).value = ''; });
+        applyViewChrome();
+        await load({ quiet: false });
       }
       function explainError(error) {
         const raw = clean(error && (error.message || error));
@@ -1908,6 +2140,7 @@
       function initEvents() {
         document.querySelectorAll('[data-lang-option]').forEach(button => button.addEventListener('click', () => {
           applyLanguage(button.dataset.langOption);
+          applyViewChrome();
           toast(lang() === 'ar' ? 'تم تغيير اللغة.' : 'Language changed.', 'success');
         }));
         document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
@@ -1927,6 +2160,8 @@
         }));
         $('reportBtn').addEventListener('click', event => openAppointmentReport(event.currentTarget));
         $('newBtn').addEventListener('click', event => openForm({}, event.currentTarget));
+        $('viewActiveBtn')?.addEventListener('click', () => switchView('active'));
+        $('viewRetiredBtn')?.addEventListener('click', () => switchView('retired'));
         $('employeeForm').addEventListener('submit', saveEmployee);
         document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => closeModal(button.dataset.close)));
         document.querySelectorAll('.modal').forEach(modal => modal.addEventListener('click', event => {
@@ -1973,6 +2208,7 @@
       applyTheme(localStorage.getItem('portal-theme') || 'light');
       applyLanguage(localStorage.getItem('portal-language') || 'en');
       initEvents();
+      applyViewChrome();
       initAccessGate();
     </script>
   </body>

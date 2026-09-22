@@ -1,6 +1,7 @@
-/** بيانات الموظفين — backend for the existing Employees sheet. */
+/** بيانات الموظفين — backend for the existing Employees + Retired sheets. */
 const SPREADSHEET_ID = '1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y';
 const SHEET_NAME = 'Employees';
+const RETIRED_SHEET_NAME = 'Retired';
 const FIELDS = [
   ['code', 'كود'],
   ['name', 'الاســـــــــــم '],
@@ -94,8 +95,8 @@ const ALLOWED_EMAILS_PROPERTY = 'EMPLOYEE_DATA_ALLOWED_EMAILS';
 const RETIREMENT_AGE_YEARS = 60;
 
 function setupEmployeesData() {
-  const sh = getSheet();
-  ensureSheetShape(sh);
+  const sh = getSheet(SHEET_NAME);
+  ensureSheetShape(sh, SHEET_NAME);
   // Ensure header row matches FIELDS (fixes old typo تاريح → تاريخ on col O).
   sh.getRange(1, 1, 1, HEADER_KEYS.length).setValues([HEADER_KEYS]);
   sh.setFrozenRows(1);
@@ -104,26 +105,58 @@ function setupEmployeesData() {
     .setBackground('#09243f')
     .setFontColor('#ffffff')
     .setWrap(true);
+  // Ensure Retired sheet exists with the same shape/headers.
+  ensureRetiredSheet();
   return {
     ok: true,
     sheet: SHEET_NAME,
+    retiredSheet: RETIRED_SHEET_NAME,
     rows: Math.max(0, sh.getLastRow() - 1),
     columns: HEADER_KEYS.length
   };
 }
 
-function getSheet() {
-  const sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(SHEET_NAME);
-  if (!sh) throw new Error('Sheet Employees was not found');
+function getSheet(name) {
+  const sheetName = name || SHEET_NAME;
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sh = ss.getSheetByName(sheetName);
+  if (!sh && sheetName === RETIRED_SHEET_NAME) {
+    sh = ensureRetiredSheet();
+  }
+  if (!sh) throw new Error('Sheet ' + sheetName + ' was not found');
   return sh;
 }
 
-function ensureSheetShape(sh) {
+function ensureSheetShape(sh, sheetName) {
   if (sh.getLastColumn() < FIELDS.length) {
     throw new Error(
-      `Sheet ${SHEET_NAME} has ${sh.getLastColumn()} columns; ${FIELDS.length} are required.`
+      'Sheet ' + (sheetName || sh.getName()) + ' has ' + sh.getLastColumn() +
+      ' columns; ' + FIELDS.length + ' are required.'
     );
   }
+}
+
+/** Create the Retired sheet (same columns/headers as Employees) if missing. */
+function ensureRetiredSheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sh = ss.getSheetByName(RETIRED_SHEET_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(RETIRED_SHEET_NAME);
+  }
+  if (sh.getLastRow() < 1 || sh.getLastColumn() < FIELDS.length) {
+    // Ensure at least header width
+    if (sh.getMaxColumns() < FIELDS.length) {
+      sh.insertColumnsAfter(sh.getMaxColumns(), FIELDS.length - sh.getMaxColumns());
+    }
+  }
+  sh.getRange(1, 1, 1, HEADER_KEYS.length).setValues([HEADER_KEYS]);
+  sh.setFrozenRows(1);
+  sh.getRange(1, 1, 1, HEADER_KEYS.length)
+    .setFontWeight('bold')
+    .setBackground('#5c2b2b')
+    .setFontColor('#ffffff')
+    .setWrap(true);
+  return sh;
 }
 
 function isAuthorized(token) {
@@ -146,13 +179,26 @@ function doGet(e) {
     if (!isAuthorized(parameters.token)) return json({ ok: false, error: 'Unauthorized request.' });
     const action = parameters.action || 'list';
     if (action === 'download') return csvDownload();
-    // Lean mapped records for Document Center only.
+    // Lean mapped records for Document Center only (active Employees only).
     if (action === 'directory') {
       return json({ ok: true, kind: 'directory', employees: readDirectoryEmployees() });
     }
-    // Full sheet records for Employee Data (every mapped column, plus extras).
-    if (action !== 'list') return json({ ok: false, error: 'Unknown action' });
-    return json({ ok: true, kind: 'list', employees: readEmployees() });
+    // Full sheet records for Employee Data.
+    // ?action=list          → active Employees
+    // ?action=list&sheet=retired  or  ?action=listRetired → Retired sheet
+    if (action === 'list' || action === 'listRetired') {
+      const sheetKey =
+        action === 'listRetired' || String(parameters.sheet || '').toLowerCase() === 'retired'
+          ? RETIRED_SHEET_NAME
+          : SHEET_NAME;
+      return json({
+        ok: true,
+        kind: sheetKey === RETIRED_SHEET_NAME ? 'listRetired' : 'list',
+        sheet: sheetKey,
+        employees: readEmployees(sheetKey)
+      });
+    }
+    return json({ ok: false, error: 'Unknown action' });
   } catch (err) {
     return json({ ok: false, error: errorMessage(err) });
   }
@@ -163,7 +209,13 @@ function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (!isAuthorized(body.token)) return json({ ok: false, error: 'Unauthorized request.' });
-    if (body.action !== 'update' && body.action !== 'create') {
+    const action = body.action;
+    if (
+      action !== 'update' &&
+      action !== 'create' &&
+      action !== 'retire' &&
+      action !== 'moveToRetired'
+    ) {
       return json({ ok: false, error: 'Unknown action' });
     }
     lock = LockService.getScriptLock();
@@ -171,10 +223,15 @@ function doPost(e) {
       lock = null;
       throw new Error('The employee sheet is busy. Please try again.');
     }
-    const employee =
-      body.action === 'update'
-        ? updateEmployee(body.employee || {})
-        : createEmployee(body.employee || {});
+    let employee;
+    if (action === 'retire' || action === 'moveToRetired') {
+      employee = moveEmployeeToRetired(body.employee || {});
+    } else if (action === 'update') {
+      // Updates only apply to the active Employees sheet.
+      employee = updateEmployee(body.employee || {});
+    } else {
+      employee = createEmployee(body.employee || {});
+    }
     invalidateDirectoryCache();
     return json({ ok: true, saved: true, employee: employee });
   } catch (err) {
@@ -197,9 +254,10 @@ const DIRECTORY_JOB_GROUPS = [
   'مجموعة الوظائف الحرفية والخدمات المعاونة'
 ];
 
-function readEmployees() {
-  const sh = getSheet();
-  ensureSheetShape(sh);
+function readEmployees(sheetName) {
+  const name = sheetName || SHEET_NAME;
+  const sh = getSheet(name);
+  ensureSheetShape(sh, name);
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
   const values = sh.getRange(2, 1, lastRow - 1, FIELDS.length).getDisplayValues();
@@ -214,7 +272,9 @@ function readEmployees() {
   for (let i = 0; i < values.length; i++) {
     const row = values[i];
     if (!row.some(Boolean)) continue; // skip fully blank rows, keep true row numbers
-    employees.push(rowToObject(row, i + 2));
+    const obj = rowToObject(row, i + 2);
+    obj._sheet = name;
+    employees.push(obj);
   }
   return employees;
 }
@@ -388,8 +448,9 @@ function invalidateDirectoryCache() {
 function readDirectoryEmployees() {
   const cached = getCachedDirectory();
   if (cached && Array.isArray(cached)) return cached;
-  const sh = getSheet();
-  ensureSheetShape(sh);
+  // Directory is always the active Employees sheet only.
+  const sh = getSheet(SHEET_NAME);
+  ensureSheetShape(sh, SHEET_NAME);
   const lastRow = sh.getLastRow();
   if (lastRow < 2) return [];
   const values = sh.getRange(2, 1, lastRow - 1, FIELDS.length).getDisplayValues();
@@ -495,6 +556,46 @@ function validateEmployee(sh, input, rowNumber) {
   if (duplicate) throw new Error('An employee with this code already exists.');
 }
 
+/**
+ * Move an employee from the active Employees sheet to the Retired sheet.
+ * Copies the full row (display values), appends to Retired, then deletes
+ * the source row. Directory cache is invalidated by the caller.
+ */
+function moveEmployeeToRetired(input) {
+  ensureRetiredSheet();
+  const activeSh = getSheet(SHEET_NAME);
+  ensureSheetShape(activeSh, SHEET_NAME);
+  const row = resolveEmployeeRow(activeSh, input);
+  const displayRow = activeSh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0];
+  if (!input.version || input.version !== rowVersion(displayRow)) {
+    throw new Error(
+      'This employee record changed since it was loaded. Reload the list and try again.'
+    );
+  }
+  // Optional: normalize status on archive if client sent a reason/status.
+  const values = displayRow.slice();
+  const statusIdx = fieldIndex('status');
+  if (statusIdx >= 0 && input.status) {
+    values[statusIdx] = normalizeStatus(input.status) || values[statusIdx];
+  }
+  const retiredSh = getSheet(RETIRED_SHEET_NAME);
+  ensureSheetShape(retiredSh, RETIRED_SHEET_NAME);
+  // Append as plain values (same column order).
+  retiredSh.appendRow(values);
+  const newRow = retiredSh.getLastRow();
+  // Keep date columns as plain text on the Retired side too.
+  applyDateFormats(retiredSh, newRow);
+  // Remove from active sheet (shifts rows below).
+  activeSh.deleteRow(row);
+  SpreadsheetApp.flush();
+  const result = rowToObject(
+    retiredSh.getRange(newRow, 1, 1, FIELDS.length).getDisplayValues()[0],
+    newRow
+  );
+  result._sheet = RETIRED_SHEET_NAME;
+  return result;
+}
+
 function valuesForWrite(input, existing) {
   return FIELDS.map((field, index) => {
     const key = field[0];
@@ -543,8 +644,9 @@ function resolveEmployeeRow(sh, input) {
 }
 
 function updateEmployee(input) {
-  const sh = getSheet();
-  ensureSheetShape(sh);
+  // Edits only apply to the active Employees sheet.
+  const sh = getSheet(SHEET_NAME);
+  ensureSheetShape(sh, SHEET_NAME);
   const row = resolveEmployeeRow(sh, input);
   const existing = sh.getRange(row, 1, 1, FIELDS.length).getValues()[0];
   const existingDisplay = sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0];
@@ -559,12 +661,15 @@ function updateEmployee(input) {
   applyDateFormats(sh, row);
   writeDerivedFormulas(sh, row);
   SpreadsheetApp.flush();
-  return rowToObject(sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0], row);
+  const result = rowToObject(sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0], row);
+  result._sheet = SHEET_NAME;
+  return result;
 }
 
 function createEmployee(input) {
-  const sh = getSheet();
-  ensureSheetShape(sh);
+  // New employees are always created on the active Employees sheet.
+  const sh = getSheet(SHEET_NAME);
+  ensureSheetShape(sh, SHEET_NAME);
   validateEmployee(sh, input, 0);
   const values = valuesForWrite(input);
   sh.appendRow(values);
@@ -572,7 +677,9 @@ function createEmployee(input) {
   applyDateFormats(sh, row);
   writeDerivedFormulas(sh, row);
   SpreadsheetApp.flush();
-  return rowToObject(sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0], row);
+  const result = rowToObject(sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0], row);
+  result._sheet = SHEET_NAME;
+  return result;
 }
 
 /** Force date cells to plain text so Sheets never stores/shows a time component. */
@@ -703,8 +810,8 @@ function writeDerivedFormulas(sh, row) {
  * Run once: select backfillDerivedFormulas → Run. Safe to re-run.
  */
 function backfillDerivedFormulas() {
-  const sh = getSheet();
-  ensureSheetShape(sh);
+  const sh = getSheet(SHEET_NAME);
+  ensureSheetShape(sh, SHEET_NAME);
   // Header labels only — does not move data
   sh.getRange(1, 1, 1, HEADER_KEYS.length).setValues([HEADER_KEYS]);
 
@@ -808,7 +915,7 @@ function json(x) {
 }
 
 function csvDownload() {
-  const values = getSheet().getDataRange().getDisplayValues();
+  const values = getSheet(SHEET_NAME).getDataRange().getDisplayValues();
   const csv =
     '\uFEFF' +
     values
