@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="portal.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <style>
       :root {
         --employee-blue: #005daa;
@@ -1059,7 +1060,11 @@
       <section class="layout">
         <section class="panel" aria-labelledby="tableHeading">
           <div class="panel-head">
-            <h2 id="tableHeading" data-en="Employee list" data-ar="قائمة الموظفين">Employee list <span id="resultNote" class="result-note"></span></h2><span id="loadingState" class="result-note" aria-live="polite"></span>
+            <h2 id="tableHeading" data-en="Employee list" data-ar="قائمة الموظفين">Employee list <span id="resultNote" class="result-note"></span></h2>
+            <div class="actions" style="gap:8px;align-items:center">
+              <span id="loadingState" class="result-note" aria-live="polite"></span>
+              <button class="btn secondary" id="exportFilteredBtn" type="button" data-en="Download filtered list" data-ar="تنزيل القائمة المفلترة">Download filtered list</button>
+            </div>
           </div>
           <div class="table-wrap">
             <table>
@@ -1195,6 +1200,8 @@
           filtersCleared: 'Filters cleared.',
           filterApplied: 'Filters applied.',
           exportReady: 'Exported {count} employee records.',
+          exportEmpty: 'No matching records to export.',
+          exporting: 'Preparing download…',
           profile: 'Employee profile',
           edit: 'Edit record',
           newEmployee: 'Add employee',
@@ -1267,6 +1274,8 @@
           filtersCleared: 'تم مسح عوامل التصفية.',
           filterApplied: 'تم تطبيق عوامل التصفية.',
           exportReady: 'تم تصدير {count} سجل موظف.',
+          exportEmpty: 'لا توجد سجلات مطابقة للتصدير.',
+          exporting: 'جارٍ تجهيز التنزيل…',
           profile: 'ملف الموظف',
           edit: 'تعديل السجل',
           newEmployee: 'إضافة موظف',
@@ -1542,6 +1551,7 @@
         $('refreshBtn').disabled = loading;
         $('newBtn').disabled = loading || state.view === 'retired';
         $('reportBtn').disabled = loading;
+        if ($('exportFilteredBtn')) $('exportFilteredBtn').disabled = loading;
         const activeTab = $('viewActiveBtn');
         const retiredTab = $('viewRetiredBtn');
         if (activeTab) activeTab.disabled = loading;
@@ -2417,7 +2427,79 @@
           $('saveBtn').textContent = lang() === 'ar' ? 'حفظ التغييرات' : 'Save changes';
         }
       }
-      /* exportExcel removed — button links directly to original Google Sheet export */
+      function exportFilteredList() {
+        const list = state.filtered.length ? state.filtered : getFiltered();
+        if (!list.length) {
+          toast(t('exportEmpty'), 'error');
+          return;
+        }
+        if (typeof XLSX === 'undefined') {
+          toast(lang() === 'ar' ? 'مكتبة التصدير غير متوفرة.' : 'Export library not available.', 'error');
+          return;
+        }
+        const btn = $('exportFilteredBtn');
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = t('exporting');
+        }
+        try {
+          // Build columns from schema (label in current language + field key)
+          const columns = [];
+          schema.forEach(section => {
+            section[3].forEach(field => {
+              columns.push({ key: field[0], label: fieldLabel(field) });
+            });
+          });
+          // Ensure core display fields are present even if schema order differs
+          const coreKeys = ['code', 'name', 'status', 'currentCompany', 'currentSector', 'currentGeneralDepartment', 'currentSubDepartment', 'jobTitle', 'actualJob', 'appointmentType', 'currentGrade', 'appointmentDate', 'birthDate', 'age', 'retirementDate', 'gender', 'governorate', 'phone'];
+          coreKeys.forEach(key => {
+            if (!columns.some(c => c.key === key)) {
+              columns.unshift({ key, label: key });
+            }
+          });
+          const rows = list.map(emp => {
+            const e = computed(emp);
+            const row = {};
+            columns.forEach(col => {
+              let val = e[col.key];
+              if (val == null || val === '') {
+                row[col.label] = '';
+                return;
+              }
+              if (col.key === 'status') {
+                row[col.label] = displayStatus(val).label;
+              } else if (typeof val === 'object') {
+                row[col.label] = String(val);
+              } else {
+                row[col.label] = val;
+              }
+            });
+            return row;
+          });
+          const ws = XLSX.utils.json_to_sheet(rows);
+          // Reasonable column widths
+          const colWidths = columns.map(c => ({ wch: Math.min(40, Math.max(12, String(c.label).length + 2)) }));
+          ws['!cols'] = colWidths;
+          const wb = XLSX.utils.book_new();
+          const sheetName = state.view === 'retired'
+            ? (lang() === 'ar' ? 'متقاعدون' : 'Retired')
+            : (lang() === 'ar' ? 'موظفون' : 'Employees');
+          XLSX.utils.book_append_sheet(wb, ws, sheetName);
+          const stamp = new Date().toISOString().slice(0, 10);
+          const fileName = `${t('exportName')}-${state.view}-${stamp}.xlsx`;
+          XLSX.writeFile(wb, fileName);
+          toast(t('exportReady', { count: list.length.toLocaleString() }), 'success');
+        } catch (err) {
+          console.error(err);
+          toast((lang() === 'ar' ? 'فشل التصدير: ' : 'Export failed: ') + (err.message || err), 'error');
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = lang() === 'ar' ? 'تنزيل القائمة المفلترة' : 'Download filtered list';
+          }
+        }
+      }
+
       function applyFilter() {
         state.page = 1;
         // Rebuild dependent options so Sector → Department → Section cascade,
@@ -2464,6 +2546,7 @@
         }));
         $('reportBtn').addEventListener('click', event => openAppointmentReport(event.currentTarget));
         $('newBtn').addEventListener('click', event => openForm({}, event.currentTarget));
+        $('exportFilteredBtn')?.addEventListener('click', exportFilteredList);
         $('viewActiveBtn')?.addEventListener('click', () => switchView('active'));
         $('viewRetiredBtn')?.addEventListener('click', () => switchView('retired'));
         $('employeeForm').addEventListener('submit', saveEmployee);
