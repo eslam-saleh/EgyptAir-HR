@@ -318,7 +318,7 @@
 
       .layout {
         display: grid;
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
         gap: 18px;
         align-items: start;
       }
@@ -624,7 +624,7 @@
       }
 
       .dialog.narrow {
-        /* Employee profile — wider so details grid is readable */
+        /* Employee profile 鈥� wider so details grid is readable */
         width: min(1080px, 100%);
       }
 
@@ -993,84 +993,84 @@
   <body>
     <section class="access-gate" id="accessGate" aria-labelledby="accessTitle">
       <div class="access-card">
-        <p class="eyebrow" data-en="Employee directory" data-ar="دليل الموظفين">Employee directory</p>
-        <h1 id="accessTitle" data-en="Employee data access" data-ar="الدخول إلى بيانات الموظفين">Employee data access</h1>
-        <p data-en="Enter the password to unlock the employee directory." data-ar="أدخل كلمة المرور لفتح دليل الموظفين.">Enter the password to unlock the employee directory.</p>
+        <p class="eyebrow" data-en="Employee directory" data-ar="丿賱賷賱 丕賱賲賵馗賮賷賳">Employee directory</p>
+        <h1 id="accessTitle" data-en="Employee data access" data-ar="丕賱丿禺賵賱 廿賱賶 亘賷丕賳丕鬲 丕賱賲賵馗賮賷賳">Employee data access</h1>
+        <p data-en="Enter the password to unlock the employee directory." data-ar="兀丿禺賱 賰賱賲丞 丕賱賲乇賵乇 賱賮鬲丨 丿賱賷賱 丕賱賲賵馗賮賷賳.">Enter the password to unlock the employee directory.</p>
         <form class="access-form" id="accessForm">
           <div class="access-field">
-            <label for="accessPassword" data-en="Password" data-ar="كلمة المرور">Password</label>
+            <label for="accessPassword" data-en="Password" data-ar="賰賱賲丞 丕賱賲乇賵乇">Password</label>
             <input id="accessPassword" name="password" type="password" autocomplete="current-password" inputmode="numeric" required autofocus>
           </div>
-          <button class="primary-btn" type="submit" data-en="Unlock" data-ar="فتح">Unlock</button>
+          <button class="primary-btn" type="submit" data-en="Unlock" data-ar="賮鬲丨">Unlock</button>
         </form>
         <p class="access-error status-line" id="accessError" role="alert" aria-live="polite"></p>
       </div>
     </section>
-    <header class="portal-header"><a class="brand" href="index.html" aria-label="EgyptAir home"><img src="egyptair-logo_.png" alt="EgyptAir logo"><span><strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong><small data-en="Human Resources Management" data-ar="إدارة الموارد البشرية">Human Resources Management</small></span></a>
-      <nav class="portal-nav" aria-label="Main navigation"><a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a><a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a><a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a><a href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a><a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a><a class="active" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a><a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">Penalties & Salaries</a><a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a></nav>
+    <header class="portal-header"><a class="brand" href="index.html" aria-label="EgyptAir home"><img src="egyptair-logo_.png" alt="EgyptAir logo"><span><strong data-en="EgyptAir Work Tools" data-ar="兀丿賵丕鬲 毓賲賱 賲氐乇 賱賱胤賷乇丕賳">EgyptAir Work Tools</strong><small data-en="Human Resources Management" data-ar="廿丿丕乇丞 丕賱賲賵丕乇丿 丕賱亘卮乇賷丞">Human Resources Management</small></span></a>
+      <nav class="portal-nav" aria-label="Main navigation"><a href="index.html" data-en="Home" data-ar="丕賱乇卅賷爻賷丞">Home</a><a href="holiday-planner.html" data-en="Holiday Planner" data-ar="賲禺胤胤 丕賱廿噩丕夭丕鬲">Holiday Planner</a><a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="丨丕爻亘丞 丕賱鬲賯賵賷賲">Calendar Calculator</a><a href="clinics.html" data-en="Clinics" data-ar="丕賱毓賷丕丿丕鬲">Clinics</a><a href="document-center.html" data-en="Document Center" data-ar="賲乇賰夭 丕賱賲爻鬲賳丿丕鬲">Document Center</a><a class="active" href="employees-data.html" data-en="Employee Data" data-ar="亘賷丕賳丕鬲 丕賱賲賵馗賮賷賳">Employee Data</a><a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="丕賱噩夭丕亍丕鬲 賵丕賱賲乇鬲亘丕鬲">Penalties & Salaries</a><a href="scanner.html" data-en="Scanner" data-ar="賲丕爻丨 囟賵卅賷">Scanner</a></nav>
       <div class="portal-actions" aria-label="Display controls"><button class="segmented-btn active" type="button" data-lang-option="en">EN</button><button class="segmented-btn" type="button" data-lang-option="ar">AR</button><button class="theme-btn" type="button" data-theme-toggle>Dark</button></div>
     </header>
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
     <main class="wrap">
       <section class="hero" aria-labelledby="pageTitle">
         <div>
-          <p class="eyebrow" data-en="Employee directory" data-ar="دليل الموظفين">Employee directory</p>
-          <h1 id="pageTitle" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</h1>
-          <p id="pageSubtitle" data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p>
+          <p class="eyebrow" data-en="Employee directory" data-ar="丿賱賷賱 丕賱賲賵馗賮賷賳">Employee directory</p>
+          <h1 id="pageTitle" data-en="Employee Data" data-ar="亘賷丕賳丕鬲 丕賱賲賵馗賮賷賳">Employee Data</h1>
+          <p id="pageSubtitle" data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="丕亘丨孬 毓賳 爻噩賱丕鬲 丕賱賲賵馗賮賷賳 亘爻乇毓丞貙 賵乇丕噩毓 鬲賵夭賷毓 丕賱賯賵賶 丕賱毓丕賲賱丞貙 賵丨丕賮馗 毓賱賶 鬲丨丿賷孬 亘賷丕賳丕鬲 丕賱賲賵馗賮賷賳.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p>
         </div>
-        <div class="actions"><button class="btn secondary" id="reportBtn" type="button" data-en="Appointment report" data-ar="تقرير نوع التعيين">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn secondary" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn secondary" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
+        <div class="actions"><button class="btn secondary" id="reportBtn" type="button" data-en="Appointment report" data-ar="鬲賯乇賷乇 賳賵毓 丕賱鬲毓賷賷賳">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="廿囟丕賮丞 賲賵馗賮">Add employee</button><button class="btn secondary" id="refreshBtn" type="button" data-en="Refresh data" data-ar="鬲丨丿賷孬 丕賱亘賷丕賳丕鬲">Refresh data</button><a class="btn secondary" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="亘賷丕賳丕鬲.xlsx" data-en="Download original sheet" data-ar="鬲賳夭賷賱 丕賱卮賷鬲 丕賱兀氐賱賷">Download original sheet</a></div>
       </section>
       <div class="view-tabs" role="tablist" aria-label="Employee view">
-        <button type="button" class="view-tab active" id="viewActiveBtn" data-view="active" role="tab" aria-selected="true" data-en="Active employees" data-ar="الموظفون النشطون">Active employees</button>
-        <button type="button" class="view-tab" id="viewRetiredBtn" data-view="retired" role="tab" aria-selected="false" data-en="Retired / Former" data-ar="المتقاعدون / السابقون">Retired / Former</button>
+        <button type="button" class="view-tab active" id="viewActiveBtn" data-view="active" role="tab" aria-selected="true" data-en="Active employees" data-ar="丕賱賲賵馗賮賵賳 丕賱賳卮胤賵賳">Active employees</button>
+        <button type="button" class="view-tab" id="viewRetiredBtn" data-view="retired" role="tab" aria-selected="false" data-en="Retired / Former" data-ar="丕賱賲鬲賯丕毓丿賵賳 / 丕賱爻丕亘賯賵賳">Retired / Former</button>
       </div>
       <div class="notice" id="notice" role="status" hidden></div>
       <section class="stats" aria-label="Employee statistics">
-        <div class="stat"><span id="totalLabel" data-en="Total employees" data-ar="إجمالي الموظفين">Total employees</span><strong id="totalCount">—</strong><small id="totalHint"></small></div>
-        <div class="stat"><span id="shownLabel" data-en="Matching records" data-ar="السجلات المطابقة">Matching records</span><strong id="shownCount">—</strong><small id="shownHint"></small></div>
-        <div class="stat"><span id="deptLabel" data-en="General departments" data-ar="الإدارات العامة">General departments</span><strong id="deptCount">—</strong><small id="deptHint"></small></div>
+        <div class="stat"><span id="totalLabel" data-en="Total employees" data-ar="廿噩賲丕賱賷 丕賱賲賵馗賮賷賳">Total employees</span><strong id="totalCount">鈥�</strong><small id="totalHint"></small></div>
+        <div class="stat"><span id="shownLabel" data-en="Matching records" data-ar="丕賱爻噩賱丕鬲 丕賱賲胤丕亘賯丞">Matching records</span><strong id="shownCount">鈥�</strong><small id="shownHint"></small></div>
+        <div class="stat"><span id="deptLabel" data-en="General departments" data-ar="丕賱廿丿丕乇丕鬲 丕賱毓丕賲丞">General departments</span><strong id="deptCount">鈥�</strong><small id="deptHint"></small></div>
         <div class="stat clickable" id="retirementStat" role="button" tabindex="0" aria-pressed="false" title="Show employees retiring within 12 months">
-          <span id="retirementLabel" data-en="Upcoming retirements" data-ar="التقاعد خلال 12 شهراً">Upcoming retirements</span>
-          <strong id="retirementCount">—</strong>
+          <span id="retirementLabel" data-en="Upcoming retirements" data-ar="丕賱鬲賯丕毓丿 禺賱丕賱 12 卮賴乇丕賸">Upcoming retirements</span>
+          <strong id="retirementCount">鈥�</strong>
           <small id="retirementHint"></small>
         </div>
       </section>
       <section class="panel search-bar" aria-label="Search">
-        <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
-        <button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
+        <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="亘丨孬">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code鈥�" data-ar-placeholder="丕賱丕爻賲 兀賵 賰賵丿 丕賱賲賵馗賮鈥�" placeholder="Name or employee code鈥�"></div>
+        <button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="賲爻丨 毓賵丕賲賱 丕賱鬲氐賮賷丞">Clear filters</button>
       </section>
       <section class="panel toolbar" aria-label="Employee filters">
-        <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><select class="select" id="sector"></select></div>
-        <div class="filter-field"><label for="department" data-en="General department" data-ar="الإدارة العامة">General department</label><select class="select" id="department"></select></div>
-        <div class="filter-field"><label for="section" data-en="Section" data-ar="القسم الفرعي">Section</label><select class="select" id="section"></select></div>
-        <div class="filter-field"><label for="status" data-en="Status" data-ar="الحالة">Status</label><select class="select" id="status"></select></div>
-        <div class="filter-field"><label for="appointmentType" data-en="Appointment type" data-ar="نوع التعيين">Appointment type</label><select class="select" id="appointmentType"></select></div>
-        <div class="filter-field"><label for="gender" data-en="Gender" data-ar="النوع">Gender</label><select class="select" id="gender"></select></div>
-        <div class="filter-field"><label for="company" data-en="Company" data-ar="الشركة الحالية">Company</label><select class="select" id="company"></select></div>
-        <div class="filter-field"><label for="grade" data-en="Grade" data-ar="الدرجة">Grade</label><select class="select" id="grade"></select></div>
-        <div class="filter-field"><label for="workType" data-en="Work type" data-ar="نوع العمل">Work type</label><select class="select" id="workType"></select></div>
-        <div class="filter-field"><label for="serviceType" data-en="Service type" data-ar="نوع الخدمة">Service type</label><select class="select" id="serviceType"></select></div>
-        <div class="filter-field"><label for="governorate" data-en="Governorate" data-ar="المحافظة">Governorate</label><select class="select" id="governorate"></select></div>
-        <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="الفئة العمرية">Age group</label><select class="select" id="ageGroup"></select></div>
-        <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="مسمى الوظيفة">Job title</label><select class="select" id="jobTitle"></select></div>
-        <div class="filter-field hire-date"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date"></div>
-        <div class="filter-field hire-date"><label for="hireTo" data-en="Hired until" data-ar="التعيين حتى">Hired until</label><input class="input" id="hireTo" type="date"></div>
+        <div class="filter-field"><label for="sector" data-en="Sector" data-ar="丕賱賯胤丕毓">Sector</label><select class="select" id="sector"></select></div>
+        <div class="filter-field"><label for="department" data-en="General department" data-ar="丕賱廿丿丕乇丞 丕賱毓丕賲丞">General department</label><select class="select" id="department"></select></div>
+        <div class="filter-field"><label for="section" data-en="Section" data-ar="丕賱賯爻賲 丕賱賮乇毓賷">Section</label><select class="select" id="section"></select></div>
+        <div class="filter-field"><label for="status" data-en="Status" data-ar="丕賱丨丕賱丞">Status</label><select class="select" id="status"></select></div>
+        <div class="filter-field"><label for="appointmentType" data-en="Appointment type" data-ar="賳賵毓 丕賱鬲毓賷賷賳">Appointment type</label><select class="select" id="appointmentType"></select></div>
+        <div class="filter-field"><label for="gender" data-en="Gender" data-ar="丕賱賳賵毓">Gender</label><select class="select" id="gender"></select></div>
+        <div class="filter-field"><label for="company" data-en="Company" data-ar="丕賱卮乇賰丞 丕賱丨丕賱賷丞">Company</label><select class="select" id="company"></select></div>
+        <div class="filter-field"><label for="grade" data-en="Grade" data-ar="丕賱丿乇噩丞">Grade</label><select class="select" id="grade"></select></div>
+        <div class="filter-field"><label for="workType" data-en="Work type" data-ar="賳賵毓 丕賱毓賲賱">Work type</label><select class="select" id="workType"></select></div>
+        <div class="filter-field"><label for="serviceType" data-en="Service type" data-ar="賳賵毓 丕賱禺丿賲丞">Service type</label><select class="select" id="serviceType"></select></div>
+        <div class="filter-field"><label for="governorate" data-en="Governorate" data-ar="丕賱賲丨丕賮馗丞">Governorate</label><select class="select" id="governorate"></select></div>
+        <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="丕賱賮卅丞 丕賱毓賲乇賷丞">Age group</label><select class="select" id="ageGroup"></select></div>
+        <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="賲爻賲賶 丕賱賵馗賷賮丞">Job title</label><select class="select" id="jobTitle"></select></div>
+        <div class="filter-field hire-date"><label for="hireFrom" data-en="Hired from" data-ar="丕賱鬲毓賷賷賳 賲賳">Hired from</label><input class="input" id="hireFrom" type="date"></div>
+        <div class="filter-field hire-date"><label for="hireTo" data-en="Hired until" data-ar="丕賱鬲毓賷賷賳 丨鬲賶">Hired until</label><input class="input" id="hireTo" type="date"></div>
       </section>
       <section class="layout">
         <section class="panel" aria-labelledby="tableHeading">
           <div class="panel-head">
-            <h2 id="tableHeading" data-en="Employee list" data-ar="قائمة الموظفين">Employee list <span id="resultNote" class="result-note"></span></h2><span id="loadingState" class="result-note" aria-live="polite"></span>
+            <h2 id="tableHeading" data-en="Employee list" data-ar="賯丕卅賲丞 丕賱賲賵馗賮賷賳">Employee list <span id="resultNote" class="result-note"></span></h2><span id="loadingState" class="result-note" aria-live="polite"></span>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th><button type="button" data-sort="code"><span data-en="Code" data-ar="الكود">Code</span><span aria-hidden="true" data-sort-icon="code"></span></button></th>
-                  <th><button type="button" data-sort="name"><span data-en="Employee" data-ar="الموظف">Employee</span><span aria-hidden="true" data-sort-icon="name">↑</span></button></th>
-                  <th data-en="Job" data-ar="الوظيفة">Job</th>
-                  <th><button type="button" data-sort="currentGeneralDepartment"><span data-en="General department" data-ar="الإدارة العامة">General department</span><span aria-hidden="true" data-sort-icon="currentGeneralDepartment"></span></button></th>
-                  <th><button type="button" data-sort="status"><span data-en="Status" data-ar="الحالة">Status</span><span aria-hidden="true" data-sort-icon="status"></span></button></th>
-                  <th><button type="button" data-sort="age"><span data-en="Age" data-ar="العمر">Age</span><span aria-hidden="true" data-sort-icon="age"></span></button></th>
+                  <th><button type="button" data-sort="code"><span data-en="Code" data-ar="丕賱賰賵丿">Code</span><span aria-hidden="true" data-sort-icon="code"></span></button></th>
+                  <th><button type="button" data-sort="name"><span data-en="Employee" data-ar="丕賱賲賵馗賮">Employee</span><span aria-hidden="true" data-sort-icon="name">鈫�</span></button></th>
+                  <th data-en="Job" data-ar="丕賱賵馗賷賮丞">Job</th>
+                  <th><button type="button" data-sort="currentGeneralDepartment"><span data-en="General department" data-ar="丕賱廿丿丕乇丞 丕賱毓丕賲丞">General department</span><span aria-hidden="true" data-sort-icon="currentGeneralDepartment"></span></button></th>
+                  <th><button type="button" data-sort="status"><span data-en="Status" data-ar="丕賱丨丕賱丞">Status</span><span aria-hidden="true" data-sort-icon="status"></span></button></th>
+                  <th><button type="button" data-sort="age"><span data-en="Age" data-ar="丕賱毓賲乇">Age</span><span aria-hidden="true" data-sort-icon="age"></span></button></th>
                 </tr>
               </thead>
               <tbody id="rows"></tbody>
@@ -1078,26 +1078,33 @@
           </div>
           <div class="pagination">
             <p id="paginationLabel"></p>
-            <div class="pagination-controls"><label class="subtle" for="pageSize" data-en="Rows" data-ar="صفوف">Rows</label><select id="pageSize" class="page-size" aria-label="Rows per page">
+            <div class="pagination-controls"><label class="subtle" for="pageSize" data-en="Rows" data-ar="氐賮賵賮">Rows</label><select id="pageSize" class="page-size" aria-label="Rows per page">
                 <option value="25">25</option>
                 <option value="50">50</option>
                 <option value="100">100</option>
-              </select><button id="prevPage" class="icon-btn" type="button" aria-label="Previous page">‹</button><span id="pageLabel" class="subtle"></span><button id="nextPage" class="icon-btn" type="button" aria-label="Next page">›</button></div>
+              </select><button id="prevPage" class="icon-btn" type="button" aria-label="Previous page">鈥�</button><span id="pageLabel" class="subtle"></span><button id="nextPage" class="icon-btn" type="button" aria-label="Next page">鈥�</button></div>
           </div>
+        </section>
+        <section class="panel analytics" aria-labelledby="analyticsHeading">
+          <h2 id="analyticsHeading" data-en="Workforce distribution" data-ar="鬲賵夭賷毓 丕賱賯賵賶 丕賱毓丕賲賱丞">Workforce distribution</h2>
+          <h2 data-en="By sector" data-ar="丨爻亘 丕賱賯胤丕毓">By sector</h2>
+          <div class="bars" id="sectorBars"></div>
+          <h2 data-en="By general department" data-ar="丨爻亘 丕賱廿丿丕乇丞 丕賱毓丕賲丞">By general department</h2>
+          <div class="bars" id="deptBars"></div>
         </section>
       </section>
     </main>
     <footer class="portal-footer">
       <div class="footer-content">
         <div class="footer-info"><span><strong>Contact Us</strong></span><span><a href="mailto:eslamsaleh1999@gmail.com">eslamsaleh1999@gmail.com</a></span><span><a href="tel:+201061438871">+201061438871</a></span></div>
-        <div class="footer-copyright">© 2026 Egyptair inflight services. All rights reserved.</div>
+        <div class="footer-copyright">漏 2026 Egyptair inflight services. All rights reserved.</div>
       </div>
     </footer>
     <div class="modal" id="reportModal" hidden>
       <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
         <div class="dialog-head">
-          <h2 id="reportTitle" data-en="Appointment type by department" data-ar="نوع التعيين حسب الإدارة">Appointment type by department</h2>
-          <button class="icon-btn" type="button" data-close="reportModal" aria-label="Close">×</button>
+          <h2 id="reportTitle" data-en="Appointment type by department" data-ar="賳賵毓 丕賱鬲毓賷賷賳 丨爻亘 丕賱廿丿丕乇丞">Appointment type by department</h2>
+          <button class="icon-btn" type="button" data-close="reportModal" aria-label="Close">脳</button>
         </div>
         <div class="dialog-body">
           <div class="report-table-wrap" id="reportBody"></div>
@@ -1107,7 +1114,7 @@
     <div class="modal" id="profileModal" hidden>
       <section class="dialog narrow" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
         <div class="dialog-head">
-          <h2 id="profileTitle"></h2><button class="icon-btn" type="button" data-close="profileModal" aria-label="Close">×</button>
+          <h2 id="profileTitle"></h2><button class="icon-btn" type="button" data-close="profileModal" aria-label="Close">脳</button>
         </div>
         <div class="dialog-body" id="profileBody"></div>
       </section>
@@ -1115,29 +1122,29 @@
     <div class="modal" id="formModal" hidden>
       <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="formTitle">
         <div class="dialog-head">
-          <h2 id="formTitle"></h2><button class="icon-btn" type="button" data-close="formModal" aria-label="Close">×</button>
+          <h2 id="formTitle"></h2><button class="icon-btn" type="button" data-close="formModal" aria-label="Close">脳</button>
         </div>
         <form id="employeeForm" class="form" novalidate></form>
         <div class="dialog-foot">
           <p class="form-error" id="formError" role="alert"></p>
-          <div class="button-row"><button class="btn secondary" type="button" data-close="formModal" data-en="Cancel" data-ar="إلغاء">Cancel</button><button class="btn" type="submit" form="employeeForm" id="saveBtn" data-en="Save changes" data-ar="حفظ التغييرات">Save changes</button></div>
+          <div class="button-row"><button class="btn secondary" type="button" data-close="formModal" data-en="Cancel" data-ar="廿賱睾丕亍">Cancel</button><button class="btn" type="submit" form="employeeForm" id="saveBtn" data-en="Save changes" data-ar="丨賮馗 丕賱鬲睾賷賷乇丕鬲">Save changes</button></div>
         </div>
       </section>
     </div>
     <div class="modal" id="retireConfirmModal" hidden>
       <section class="dialog" style="width:min(480px,100%)" role="dialog" aria-modal="true" aria-labelledby="retireConfirmTitle">
         <div class="dialog-head">
-          <h2 id="retireConfirmTitle" data-en="Confirm move to retired" data-ar="تأكيد النقل إلى المتقاعدين">Confirm move to retired</h2>
-          <button class="icon-btn" type="button" data-close="retireConfirmModal" aria-label="Close">×</button>
+          <h2 id="retireConfirmTitle" data-en="Confirm move to retired" data-ar="鬲兀賰賷丿 丕賱賳賯賱 廿賱賶 丕賱賲鬲賯丕毓丿賷賳">Confirm move to retired</h2>
+          <button class="icon-btn" type="button" data-close="retireConfirmModal" aria-label="Close">脳</button>
         </div>
         <div class="dialog-body">
           <p id="retireConfirmText" style="margin:0;line-height:1.6;color:var(--text)"></p>
-          <p style="margin:12px 0 0;color:var(--muted);font-size:.88rem;line-height:1.55" data-en="This cannot be undone from this screen. The employee will leave the active list and appear under Retired / Former." data-ar="لا يمكن التراجع من هذه الشاشة. سيُزال الموظف من القائمة النشطة ويظهر تحت المتقاعدين / السابقين.">This cannot be undone from this screen. The employee will leave the active list and appear under Retired / Former.</p>
+          <p style="margin:12px 0 0;color:var(--muted);font-size:.88rem;line-height:1.55" data-en="This cannot be undone from this screen. The employee will leave the active list and appear under Retired / Former." data-ar="賱丕 賷賲賰賳 丕賱鬲乇丕噩毓 賲賳 賴匕賴 丕賱卮丕卮丞. 爻賷購夭丕賱 丕賱賲賵馗賮 賲賳 丕賱賯丕卅賲丞 丕賱賳卮胤丞 賵賷馗賴乇 鬲丨鬲 丕賱賲鬲賯丕毓丿賷賳 / 丕賱爻丕亘賯賷賳.">This cannot be undone from this screen. The employee will leave the active list and appear under Retired / Former.</p>
         </div>
         <div class="dialog-foot">
           <div class="button-row" style="margin-inline-start:auto;gap:12px">
-            <button class="btn secondary" type="button" data-close="retireConfirmModal" data-en="Cancel" data-ar="إلغاء">Cancel</button>
-            <button class="btn danger-solid" type="button" id="retireConfirmBtn" data-en="Yes, move to retired" data-ar="نعم، انقل إلى المتقاعدين">Yes, move to retired</button>
+            <button class="btn secondary" type="button" data-close="retireConfirmModal" data-en="Cancel" data-ar="廿賱睾丕亍">Cancel</button>
+            <button class="btn danger-solid" type="button" id="retireConfirmBtn" data-en="Yes, move to retired" data-ar="賳毓賲貙 丕賳賯賱 廿賱賶 丕賱賲鬲賯丕毓丿賷賳">Yes, move to retired</button>
           </div>
         </div>
       </section>
@@ -1159,7 +1166,7 @@
         editingKey: null,
         lastFocus: null,
         loading: false,
-        view: 'active', // 'active' | 'retired' — separate lists, never merged
+        view: 'active', // 'active' | 'retired' 鈥� separate lists, never merged
         upcomingOnly: false // date-period filter: retiring within 12 months
       };
       let employeeDataLoadPromise = null;
@@ -1180,7 +1187,7 @@
           allJobs: 'All job titles',
           noData: 'No matching employee records.',
           noDistribution: 'No matching records.',
-          showing: 'Showing {from}–{to} of {total}',
+          showing: 'Showing {from}鈥搟to} of {total}',
           page: 'Page {page} of {pages}',
           rows: '{count} records',
           loaded: 'Employee data loaded.',
@@ -1198,8 +1205,8 @@
           created: 'Employee added.',
           required: 'Employee code and name are required.',
           duplicate: 'This employee code already exists.',
-          saving: 'Saving…',
-          loading: 'Loading employee records…',
+          saving: 'Saving鈥�',
+          loading: 'Loading employee records鈥�',
           reloadFailed: 'Saved, but the full list could not be refreshed yet.',
           records: 'records',
           unknown: 'Not specified',
@@ -1222,11 +1229,11 @@
           upcomingRetirements: 'Upcoming retirements',
           retiredHint: 'Archived from active roster',
           moveToRetired: 'Move to retired',
-          moving: 'Moving…',
+          moving: 'Moving鈥�',
           retiredOk: 'Employee moved to Retired sheet.',
           retireFailed: 'Unable to move the employee to Retired.',
           retireConfirm: 'Move this employee to the Retired sheet? They will be removed from the active Employees list.',
-          retireConfirmNamed: 'Move “{name}” (code {code}) to the Retired sheet?',
+          retireConfirmNamed: 'Move 鈥渰name}鈥� (code {code}) to the Retired sheet?',
           retireConfirmTitle: 'Confirm move to retired',
           retireConfirmYes: 'Yes, move to retired',
           listActive: 'Employee list',
@@ -1237,148 +1244,148 @@
           refreshedRetired: 'Retired records refreshed.'
         },
         ar: {
-          allSectors: 'كل القطاعات',
-          allDepartments: 'كل الإدارات العامة',
-          allSections: 'كل الأقسام الفرعية',
-          allStatuses: 'كل الحالات',
-          allAppointmentTypes: 'كل أنواع التعيين',
-          allGenders: 'كل الأنواع',
-          allCompanies: 'كل الشركات',
-          allGrades: 'كل الدرجات',
-          allWorkTypes: 'كل أنواع العمل',
-          allServiceTypes: 'كل أنواع الخدمة',
-          allGovernorates: 'كل المحافظات',
-          allAgeGroups: 'كل الفئات العمرية',
-          allJobs: 'كل المسميات الوظيفية',
-          noData: 'لا توجد سجلات موظفين مطابقة.',
-          noDistribution: 'لا توجد سجلات مطابقة.',
-          showing: 'عرض {from}–{to} من {total}',
-          page: 'الصفحة {page} من {pages}',
-          rows: '{count} سجل',
-          loaded: 'تم تحميل بيانات الموظفين.',
-          refreshed: 'تم تحديث بيانات الموظفين.',
-          filtersCleared: 'تم مسح عوامل التصفية.',
-          filterApplied: 'تم تطبيق عوامل التصفية.',
-          exportReady: 'تم تصدير {count} سجل موظف.',
-          profile: 'ملف الموظف',
-          edit: 'تعديل السجل',
-          newEmployee: 'إضافة موظف',
-          editEmployee: 'تعديل بيانات الموظف',
-          saveFailed: 'تعذر حفظ سجل الموظف.',
-          loadFailed: 'تعذر تحميل بيانات الموظفين.',
-          saved: 'تم حفظ سجل الموظف.',
-          created: 'تمت إضافة الموظف.',
-          required: 'كود الموظف والاسم مطلوبان.',
-          duplicate: 'كود الموظف مستخدم بالفعل.',
-          saving: 'جارٍ الحفظ…',
-          loading: 'جارٍ تحميل سجلات الموظفين…',
-          reloadFailed: 'تم الحفظ، لكن تعذر تحديث القائمة كاملة الآن.',
-          records: 'سجل',
-          unknown: 'غير محدد',
-          active: 'نشط',
-          leave: 'في إجازة',
-          inactive: 'غير نشط',
-          retirement: 'يتقاعد خلال 12 شهراً',
-          dataUnavailable: 'لم تُرجع خدمة الموظفين أي سجلات.',
-          exportName: 'سجلات-الموظفين',
-          reason: 'السبب',
-          networkError: 'خطأ في الشبكة أو الاتصال',
-          serverError: 'الخادم أرجع خطأ',
-          notFound: 'الخدمة غير موجودة (404). قد تحتاج إعادة نشر تطبيق Apps Script.',
-          unauthorized: 'غير مصرح (تحقق من الصلاحيات / التوكن).',
-          badResponse: 'استجابة غير صالحة من الخادم.',
-          totalActive: 'إجمالي الموظفين',
-          totalRetired: 'إجمالي المتقاعدين / السابقين',
-          matching: 'السجلات المطابقة',
-          departments: 'الإدارات العامة',
-          upcomingRetirements: 'التقاعد خلال 12 شهراً',
-          retiredHint: 'مؤرشف من القائمة النشطة',
-          moveToRetired: 'نقل إلى المتقاعدين',
-          moving: 'جارٍ النقل…',
-          retiredOk: 'تم نقل الموظف إلى شيت المتقاعدين.',
-          retireFailed: 'تعذر نقل الموظف إلى المتقاعدين.',
-          retireConfirm: 'نقل هذا الموظف إلى شيت المتقاعدين؟ سيتم حذفه من قائمة الموظفين النشطين.',
-          retireConfirmNamed: 'نقل «{name}» (كود {code}) إلى شيت المتقاعدين؟',
-          retireConfirmTitle: 'تأكيد النقل إلى المتقاعدين',
-          retireConfirmYes: 'نعم، انقل إلى المتقاعدين',
-          listActive: 'قائمة الموظفين',
-          listRetired: 'قائمة المتقاعدين / السابقين',
-          subtitleActive: 'ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.',
-          subtitleRetired: 'عرض الموظفين الذين تركوا الخدمة (تقاعد أو إنهاء أو غير ذلك). هذه القائمة منفصلة عن الموظفين النشطين.',
-          loadedRetired: 'تم تحميل سجلات المتقاعدين.',
-          refreshedRetired: 'تم تحديث سجلات المتقاعدين.'
+          allSectors: '賰賱 丕賱賯胤丕毓丕鬲',
+          allDepartments: '賰賱 丕賱廿丿丕乇丕鬲 丕賱毓丕賲丞',
+          allSections: '賰賱 丕賱兀賯爻丕賲 丕賱賮乇毓賷丞',
+          allStatuses: '賰賱 丕賱丨丕賱丕鬲',
+          allAppointmentTypes: '賰賱 兀賳賵丕毓 丕賱鬲毓賷賷賳',
+          allGenders: '賰賱 丕賱兀賳賵丕毓',
+          allCompanies: '賰賱 丕賱卮乇賰丕鬲',
+          allGrades: '賰賱 丕賱丿乇噩丕鬲',
+          allWorkTypes: '賰賱 兀賳賵丕毓 丕賱毓賲賱',
+          allServiceTypes: '賰賱 兀賳賵丕毓 丕賱禺丿賲丞',
+          allGovernorates: '賰賱 丕賱賲丨丕賮馗丕鬲',
+          allAgeGroups: '賰賱 丕賱賮卅丕鬲 丕賱毓賲乇賷丞',
+          allJobs: '賰賱 丕賱賲爻賲賷丕鬲 丕賱賵馗賷賮賷丞',
+          noData: '賱丕 鬲賵噩丿 爻噩賱丕鬲 賲賵馗賮賷賳 賲胤丕亘賯丞.',
+          noDistribution: '賱丕 鬲賵噩丿 爻噩賱丕鬲 賲胤丕亘賯丞.',
+          showing: '毓乇囟 {from}鈥搟to} 賲賳 {total}',
+          page: '丕賱氐賮丨丞 {page} 賲賳 {pages}',
+          rows: '{count} 爻噩賱',
+          loaded: '鬲賲 鬲丨賲賷賱 亘賷丕賳丕鬲 丕賱賲賵馗賮賷賳.',
+          refreshed: '鬲賲 鬲丨丿賷孬 亘賷丕賳丕鬲 丕賱賲賵馗賮賷賳.',
+          filtersCleared: '鬲賲 賲爻丨 毓賵丕賲賱 丕賱鬲氐賮賷丞.',
+          filterApplied: '鬲賲 鬲胤亘賷賯 毓賵丕賲賱 丕賱鬲氐賮賷丞.',
+          exportReady: '鬲賲 鬲氐丿賷乇 {count} 爻噩賱 賲賵馗賮.',
+          profile: '賲賱賮 丕賱賲賵馗賮',
+          edit: '鬲毓丿賷賱 丕賱爻噩賱',
+          newEmployee: '廿囟丕賮丞 賲賵馗賮',
+          editEmployee: '鬲毓丿賷賱 亘賷丕賳丕鬲 丕賱賲賵馗賮',
+          saveFailed: '鬲毓匕乇 丨賮馗 爻噩賱 丕賱賲賵馗賮.',
+          loadFailed: '鬲毓匕乇 鬲丨賲賷賱 亘賷丕賳丕鬲 丕賱賲賵馗賮賷賳.',
+          saved: '鬲賲 丨賮馗 爻噩賱 丕賱賲賵馗賮.',
+          created: '鬲賲鬲 廿囟丕賮丞 丕賱賲賵馗賮.',
+          required: '賰賵丿 丕賱賲賵馗賮 賵丕賱丕爻賲 賲胤賱賵亘丕賳.',
+          duplicate: '賰賵丿 丕賱賲賵馗賮 賲爻鬲禺丿賲 亘丕賱賮毓賱.',
+          saving: '噩丕乇賺 丕賱丨賮馗鈥�',
+          loading: '噩丕乇賺 鬲丨賲賷賱 爻噩賱丕鬲 丕賱賲賵馗賮賷賳鈥�',
+          reloadFailed: '鬲賲 丕賱丨賮馗貙 賱賰賳 鬲毓匕乇 鬲丨丿賷孬 丕賱賯丕卅賲丞 賰丕賲賱丞 丕賱丌賳.',
+          records: '爻噩賱',
+          unknown: '睾賷乇 賲丨丿丿',
+          active: '賳卮胤',
+          leave: '賮賷 廿噩丕夭丞',
+          inactive: '睾賷乇 賳卮胤',
+          retirement: '賷鬲賯丕毓丿 禺賱丕賱 12 卮賴乇丕賸',
+          dataUnavailable: '賱賲 鬲購乇噩毓 禺丿賲丞 丕賱賲賵馗賮賷賳 兀賷 爻噩賱丕鬲.',
+          exportName: '爻噩賱丕鬲-丕賱賲賵馗賮賷賳',
+          reason: '丕賱爻亘亘',
+          networkError: '禺胤兀 賮賷 丕賱卮亘賰丞 兀賵 丕賱丕鬲氐丕賱',
+          serverError: '丕賱禺丕丿賲 兀乇噩毓 禺胤兀',
+          notFound: '丕賱禺丿賲丞 睾賷乇 賲賵噩賵丿丞 (404). 賯丿 鬲丨鬲丕噩 廿毓丕丿丞 賳卮乇 鬲胤亘賷賯 Apps Script.',
+          unauthorized: '睾賷乇 賲氐乇丨 (鬲丨賯賯 賲賳 丕賱氐賱丕丨賷丕鬲 / 丕賱鬲賵賰賳).',
+          badResponse: '丕爻鬲噩丕亘丞 睾賷乇 氐丕賱丨丞 賲賳 丕賱禺丕丿賲.',
+          totalActive: '廿噩賲丕賱賷 丕賱賲賵馗賮賷賳',
+          totalRetired: '廿噩賲丕賱賷 丕賱賲鬲賯丕毓丿賷賳 / 丕賱爻丕亘賯賷賳',
+          matching: '丕賱爻噩賱丕鬲 丕賱賲胤丕亘賯丞',
+          departments: '丕賱廿丿丕乇丕鬲 丕賱毓丕賲丞',
+          upcomingRetirements: '丕賱鬲賯丕毓丿 禺賱丕賱 12 卮賴乇丕賸',
+          retiredHint: '賲丐乇卮賮 賲賳 丕賱賯丕卅賲丞 丕賱賳卮胤丞',
+          moveToRetired: '賳賯賱 廿賱賶 丕賱賲鬲賯丕毓丿賷賳',
+          moving: '噩丕乇賺 丕賱賳賯賱鈥�',
+          retiredOk: '鬲賲 賳賯賱 丕賱賲賵馗賮 廿賱賶 卮賷鬲 丕賱賲鬲賯丕毓丿賷賳.',
+          retireFailed: '鬲毓匕乇 賳賯賱 丕賱賲賵馗賮 廿賱賶 丕賱賲鬲賯丕毓丿賷賳.',
+          retireConfirm: '賳賯賱 賴匕丕 丕賱賲賵馗賮 廿賱賶 卮賷鬲 丕賱賲鬲賯丕毓丿賷賳責 爻賷鬲賲 丨匕賮賴 賲賳 賯丕卅賲丞 丕賱賲賵馗賮賷賳 丕賱賳卮胤賷賳.',
+          retireConfirmNamed: '賳賯賱 芦{name}禄 (賰賵丿 {code}) 廿賱賶 卮賷鬲 丕賱賲鬲賯丕毓丿賷賳責',
+          retireConfirmTitle: '鬲兀賰賷丿 丕賱賳賯賱 廿賱賶 丕賱賲鬲賯丕毓丿賷賳',
+          retireConfirmYes: '賳毓賲貙 丕賳賯賱 廿賱賶 丕賱賲鬲賯丕毓丿賷賳',
+          listActive: '賯丕卅賲丞 丕賱賲賵馗賮賷賳',
+          listRetired: '賯丕卅賲丞 丕賱賲鬲賯丕毓丿賷賳 / 丕賱爻丕亘賯賷賳',
+          subtitleActive: '丕亘丨孬 毓賳 爻噩賱丕鬲 丕賱賲賵馗賮賷賳 亘爻乇毓丞貙 賵乇丕噩毓 鬲賵夭賷毓 丕賱賯賵賶 丕賱毓丕賲賱丞貙 賵丨丕賮馗 毓賱賶 鬲丨丿賷孬 亘賷丕賳丕鬲 丕賱賲賵馗賮賷賳.',
+          subtitleRetired: '毓乇囟 丕賱賲賵馗賮賷賳 丕賱匕賷賳 鬲乇賰賵丕 丕賱禺丿賲丞 (鬲賯丕毓丿 兀賵 廿賳賴丕亍 兀賵 睾賷乇 匕賱賰). 賴匕賴 丕賱賯丕卅賲丞 賲賳賮氐賱丞 毓賳 丕賱賲賵馗賮賷賳 丕賱賳卮胤賷賳.',
+          loadedRetired: '鬲賲 鬲丨賲賷賱 爻噩賱丕鬲 丕賱賲鬲賯丕毓丿賷賳.',
+          refreshedRetired: '鬲賲 鬲丨丿賷孬 爻噩賱丕鬲 丕賱賲鬲賯丕毓丿賷賳.'
         }
       };
       const schema = [
-        ['personal', 'Personal details', 'البيانات الشخصية', [
-          ['code', 'Employee code', 'الكود', 'text', true],
-          ['name', 'Full name', 'الاسم', 'text', true],
-          ['gender', 'Gender', 'النوع', 'select'],
-          ['birthDate', 'Date of birth', 'تاريخ الميلاد', 'date'],
-          ['retirementDate', 'Retirement date', 'تاريخ المعاش', 'computed'],
-          ['appointmentDate', 'Appointment date', 'تاريخ التعيين', 'date'],
-          ['age', 'Current age', 'السن الحالي', 'computed'],
-          ['ageGroup', 'Age group', 'الفئة العمرية', 'computed'],
-          ['ageAtAppointment', 'Age at appointment', 'السن عند التعيين', 'computed'],
-          ['address', 'Address', 'العنوان', 'text'],
-          ['governorate', 'Governorate', 'المحافظة', 'text'],
-          ['phone', 'Phone number', 'رقم التليفون', 'tel'],
-          ['militaryStatus', 'Military status', 'نوع المعاملة العسكرية', 'text'],
-          ['exemptionReason', 'Exemption reason', 'سبب الإعفاء', 'text'],
-          ['unpaidLeaveType', 'Unpaid leave type', 'نوع الإجازة بدون مرتب', 'text'],
-          ['leaveMandatory', 'Leave requirement', 'وجوبية الإجازة', 'text'],
-          ['leaveStart', 'Leave start date', 'تاريخ بداية الإجازة', 'date'],
-          ['leaveEnd', 'Leave end date', 'تاريخ نهاية الإجازة', 'date'],
-          ['currentQualificationTitle', 'Current qualification title', 'مسمى المؤهل الحالي', 'text'],
-          ['currentQualificationType', 'Current qualification type', 'نوع المؤهل الحالي', 'text'],
-          ['studySpecialization', 'Study specialization', 'التخصص الدراسي', 'text'],
-          ['disabilityType', 'Disability type', 'نوع الإعاقة', 'text'],
-          ['addressExtra', 'Work location', 'الموقع', 'text']
+        ['personal', 'Personal details', '丕賱亘賷丕賳丕鬲 丕賱卮禺氐賷丞', [
+          ['code', 'Employee code', '丕賱賰賵丿', 'text', true],
+          ['name', 'Full name', '丕賱丕爻賲', 'text', true],
+          ['gender', 'Gender', '丕賱賳賵毓', 'select'],
+          ['birthDate', 'Date of birth', '鬲丕乇賷禺 丕賱賲賷賱丕丿', 'date'],
+          ['retirementDate', 'Retirement date', '鬲丕乇賷禺 丕賱賲毓丕卮', 'computed'],
+          ['appointmentDate', 'Appointment date', '鬲丕乇賷禺 丕賱鬲毓賷賷賳', 'date'],
+          ['age', 'Current age', '丕賱爻賳 丕賱丨丕賱賷', 'computed'],
+          ['ageGroup', 'Age group', '丕賱賮卅丞 丕賱毓賲乇賷丞', 'computed'],
+          ['ageAtAppointment', 'Age at appointment', '丕賱爻賳 毓賳丿 丕賱鬲毓賷賷賳', 'computed'],
+          ['address', 'Address', '丕賱毓賳賵丕賳', 'text'],
+          ['governorate', 'Governorate', '丕賱賲丨丕賮馗丞', 'text'],
+          ['phone', 'Phone number', '乇賯賲 丕賱鬲賱賷賮賵賳', 'tel'],
+          ['militaryStatus', 'Military status', '賳賵毓 丕賱賲毓丕賲賱丞 丕賱毓爻賰乇賷丞', 'text'],
+          ['exemptionReason', 'Exemption reason', '爻亘亘 丕賱廿毓賮丕亍', 'text'],
+          ['unpaidLeaveType', 'Unpaid leave type', '賳賵毓 丕賱廿噩丕夭丞 亘丿賵賳 賲乇鬲亘', 'text'],
+          ['leaveMandatory', 'Leave requirement', '賵噩賵亘賷丞 丕賱廿噩丕夭丞', 'text'],
+          ['leaveStart', 'Leave start date', '鬲丕乇賷禺 亘丿丕賷丞 丕賱廿噩丕夭丞', 'date'],
+          ['leaveEnd', 'Leave end date', '鬲丕乇賷禺 賳賴丕賷丞 丕賱廿噩丕夭丞', 'date'],
+          ['currentQualificationTitle', 'Current qualification title', '賲爻賲賶 丕賱賲丐賴賱 丕賱丨丕賱賷', 'text'],
+          ['currentQualificationType', 'Current qualification type', '賳賵毓 丕賱賲丐賴賱 丕賱丨丕賱賷', 'text'],
+          ['studySpecialization', 'Study specialization', '丕賱鬲禺氐氐 丕賱丿乇丕爻賷', 'text'],
+          ['disabilityType', 'Disability type', '賳賵毓 丕賱廿毓丕賯丞', 'text'],
+          ['addressExtra', 'Work location', '丕賱賲賵賯毓', 'text']
         ]],
-        ['employment', 'Employment details', 'بيانات وظيفية', [
-          ['originalCompany', 'Original company', 'الشركة الأساسية', 'text'],
-          ['originalCompanyName', 'Original company name', 'مسمى الشركة الأساسية', 'text'],
-          ['currentCompany', 'Current company', 'الشركة الحالية', 'text'],
-          ['currentSector', 'Current sector', 'القطاع الحالي', 'text'],
-          ['currentGeneralDepartment', 'Current general department', 'الإدارة العامة الحالية', 'text'],
-          ['currentSubDepartment', 'Current section', 'الإدارة الفرعية الحالية', 'text'],
-          ['originalGeneralDepartment', 'Original general department', 'الإدارة العامة الأساسية', 'text'],
-          ['originalSubDepartment', 'Original section', 'مسمى الإدارة الفرعية الأساسية', 'text'],
-          ['jobTitle', 'Job title', 'مسمى الوظيفة', 'text'],
-          ['actualJob', 'Actual job', 'الوظيفة الفعلية', 'text'],
-          ['statisticsJob', 'Job title for statistics', 'مسمى الوظيفة للإحصائيات', 'text'],
-          ['appointmentType', 'Appointment type', 'نوع التعيين', 'select'],
-          ['currentGrade', 'Current grade', 'الدرجة الحالية', 'text'],
-          ['gradeDate', 'Grade date', 'تاريخ الدرجة', 'date'],
-          ['workSchedule', 'Work schedule', 'توقيت العمل', 'text'],
-          ['appointmentJob', 'Job at appointment', 'الوظيفة عند التعيين', 'text'],
-          ['jobDate', 'Job date', 'تاريخ الوظيفة', 'date']
+        ['employment', 'Employment details', '亘賷丕賳丕鬲 賵馗賷賮賷丞', [
+          ['originalCompany', 'Original company', '丕賱卮乇賰丞 丕賱兀爻丕爻賷丞', 'text'],
+          ['originalCompanyName', 'Original company name', '賲爻賲賶 丕賱卮乇賰丞 丕賱兀爻丕爻賷丞', 'text'],
+          ['currentCompany', 'Current company', '丕賱卮乇賰丞 丕賱丨丕賱賷丞', 'text'],
+          ['currentSector', 'Current sector', '丕賱賯胤丕毓 丕賱丨丕賱賷', 'text'],
+          ['currentGeneralDepartment', 'Current general department', '丕賱廿丿丕乇丞 丕賱毓丕賲丞 丕賱丨丕賱賷丞', 'text'],
+          ['currentSubDepartment', 'Current section', '丕賱廿丿丕乇丞 丕賱賮乇毓賷丞 丕賱丨丕賱賷丞', 'text'],
+          ['originalGeneralDepartment', 'Original general department', '丕賱廿丿丕乇丞 丕賱毓丕賲丞 丕賱兀爻丕爻賷丞', 'text'],
+          ['originalSubDepartment', 'Original section', '賲爻賲賶 丕賱廿丿丕乇丞 丕賱賮乇毓賷丞 丕賱兀爻丕爻賷丞', 'text'],
+          ['jobTitle', 'Job title', '賲爻賲賶 丕賱賵馗賷賮丞', 'text'],
+          ['actualJob', 'Actual job', '丕賱賵馗賷賮丞 丕賱賮毓賱賷丞', 'text'],
+          ['statisticsJob', 'Job title for statistics', '賲爻賲賶 丕賱賵馗賷賮丞 賱賱廿丨氐丕卅賷丕鬲', 'text'],
+          ['appointmentType', 'Appointment type', '賳賵毓 丕賱鬲毓賷賷賳', 'select'],
+          ['currentGrade', 'Current grade', '丕賱丿乇噩丞 丕賱丨丕賱賷丞', 'text'],
+          ['gradeDate', 'Grade date', '鬲丕乇賷禺 丕賱丿乇噩丞', 'date'],
+          ['workSchedule', 'Work schedule', '鬲賵賯賷鬲 丕賱毓賲賱', 'text'],
+          ['appointmentJob', 'Job at appointment', '丕賱賵馗賷賮丞 毓賳丿 丕賱鬲毓賷賷賳', 'text'],
+          ['jobDate', 'Job date', '鬲丕乇賷禺 丕賱賵馗賷賮丞', 'date']
         ]],
-        ['secondment', 'Secondment details', 'بيانات الانتداب', [
-          ['secondedJob', 'Seconded job', 'الوظيفة المنتدب عليها', 'text'],
-          ['secondedJob2', 'Seconded job (2)', 'الوظيفة المنتدب عليها 2', 'text'],
-          ['secondedCompany', 'Seconded company', 'الشركة المنتدب إليها', 'text'],
-          ['secondedSector', 'Seconded sector', 'قطاع المنتدب إليه', 'text'],
-          ['secondedGeneralDepartment', 'Seconded general department', 'إدارة عامة منتدب إليها', 'text'],
-          ['secondedDepartment', 'Seconded department', 'الإدارة المنتدب إليها', 'text'],
-          ['secondmentStart', 'Secondment start', 'تاريخ الانتداب', 'date'],
-          ['secondmentEnd', 'Secondment end', 'تاريخ نهاية الانتداب', 'date'],
-          ['secondedJobGroup', 'Seconded job group', 'المجموعة النوعية الجديدة المنتدب عليها', 'text']
+        ['secondment', 'Secondment details', '亘賷丕賳丕鬲 丕賱丕賳鬲丿丕亘', [
+          ['secondedJob', 'Seconded job', '丕賱賵馗賷賮丞 丕賱賲賳鬲丿亘 毓賱賷賴丕', 'text'],
+          ['secondedJob2', 'Seconded job (2)', '丕賱賵馗賷賮丞 丕賱賲賳鬲丿亘 毓賱賷賴丕 2', 'text'],
+          ['secondedCompany', 'Seconded company', '丕賱卮乇賰丞 丕賱賲賳鬲丿亘 廿賱賷賴丕', 'text'],
+          ['secondedSector', 'Seconded sector', '賯胤丕毓 丕賱賲賳鬲丿亘 廿賱賷賴', 'text'],
+          ['secondedGeneralDepartment', 'Seconded general department', '廿丿丕乇丞 毓丕賲丞 賲賳鬲丿亘 廿賱賷賴丕', 'text'],
+          ['secondedDepartment', 'Seconded department', '丕賱廿丿丕乇丞 丕賱賲賳鬲丿亘 廿賱賷賴丕', 'text'],
+          ['secondmentStart', 'Secondment start', '鬲丕乇賷禺 丕賱丕賳鬲丿丕亘', 'date'],
+          ['secondmentEnd', 'Secondment end', '鬲丕乇賷禺 賳賴丕賷丞 丕賱丕賳鬲丿丕亘', 'date'],
+          ['secondedJobGroup', 'Seconded job group', '丕賱賲噩賲賵毓丞 丕賱賳賵毓賷丞 丕賱噩丿賷丿丞 丕賱賲賳鬲丿亘 毓賱賷賴丕', 'text']
         ]],
-        ['other', 'Additional details', 'بيانات متنوعة', [
-          ['uniform', 'Uniform', 'الزي', 'text'],
-          ['appointmentQualificationTitle', 'Qualification at appointment', 'مسمى المؤهل عند التعيين', 'text'],
-          ['appointmentQualificationType', 'Qualification type at appointment', 'نوع المؤهل عند التعيين', 'text'],
-          ['appointmentQualificationTitle2', 'Second qualification at appointment', 'مسمى مؤهل التعيين 2', 'text'],
-          ['appointmentQualificationType2', 'Second qualification type', 'نوع مؤهل التعيين 2', 'text'],
-          ['newJobGroups', 'New job groups', 'المجموعات النوعية الجديدة', 'text'],
-          ['qualificationDate', 'Qualification date', 'تاريخ المؤهل', 'date'],
-          ['contractStart', 'Contract start', 'تاريخ بداية التعاقد', 'date'],
-          ['contractEnd', 'Contract end', 'تاريخ نهاية التعاقد', 'date'],
-          ['totalService', 'Total service', 'مدة الخدمة الكلية', 'computed'],
-          ['serviceType', 'Service type', 'نوع الخدمة', 'text'],
-          ['workType', 'Work type', 'نوع العمل', 'text'],
-          ['status', 'Status', 'الحالة', 'select']
+        ['other', 'Additional details', '亘賷丕賳丕鬲 賲鬲賳賵毓丞', [
+          ['uniform', 'Uniform', '丕賱夭賷', 'text'],
+          ['appointmentQualificationTitle', 'Qualification at appointment', '賲爻賲賶 丕賱賲丐賴賱 毓賳丿 丕賱鬲毓賷賷賳', 'text'],
+          ['appointmentQualificationType', 'Qualification type at appointment', '賳賵毓 丕賱賲丐賴賱 毓賳丿 丕賱鬲毓賷賷賳', 'text'],
+          ['appointmentQualificationTitle2', 'Second qualification at appointment', '賲爻賲賶 賲丐賴賱 丕賱鬲毓賷賷賳 2', 'text'],
+          ['appointmentQualificationType2', 'Second qualification type', '賳賵毓 賲丐賴賱 丕賱鬲毓賷賷賳 2', 'text'],
+          ['newJobGroups', 'New job groups', '丕賱賲噩賲賵毓丕鬲 丕賱賳賵毓賷丞 丕賱噩丿賷丿丞', 'text'],
+          ['qualificationDate', 'Qualification date', '鬲丕乇賷禺 丕賱賲丐賴賱', 'date'],
+          ['contractStart', 'Contract start', '鬲丕乇賷禺 亘丿丕賷丞 丕賱鬲毓丕賯丿', 'date'],
+          ['contractEnd', 'Contract end', '鬲丕乇賷禺 賳賴丕賷丞 丕賱鬲毓丕賯丿', 'date'],
+          ['totalService', 'Total service', '賲丿丞 丕賱禺丿賲丞 丕賱賰賱賷丞', 'computed'],
+          ['serviceType', 'Service type', '賳賵毓 丕賱禺丿賲丞', 'text'],
+          ['workType', 'Work type', '賳賵毓 丕賱毓賲賱', 'text'],
+          ['status', 'Status', '丕賱丨丕賱丞', 'select']
         ]]
       ];
       const lang = () => document.documentElement.lang === 'ar' ? 'ar' : 'en';
@@ -1421,7 +1428,7 @@
         if (months < 0) return '';
         const years = Math.floor(months / 12);
         // Years only (ignore months)
-        return lang() === 'ar' ? `${years} سنة` : `${years} year${years === 1 ? '' : 's'}`;
+        return lang() === 'ar' ? `${years} 爻賳丞` : `${years} year${years === 1 ? '' : 's'}`;
       }
 
       function formatPhone(value) {
@@ -1448,8 +1455,8 @@
         const currentAge = ageOn(birth);
         e.age = currentAge;
         e.ageAtAppointment = birth && appointment ? ageOn(birth, appointment) : '';
-        e.ageGroup = currentAge === '' ? '' : currentAge < 20 ? (lang() === 'ar' ? 'أقل من 20' : 'Under 20') : currentAge < 25 ? '20–24' : currentAge < 30 ? '25–29' : currentAge < 35 ? '30–34' : currentAge < 40 ? '35–39' : currentAge < 45 ? '40–44' : currentAge < 50 ? '45–49' : currentAge < 55 ? '50–54' : currentAge < 60 ? '55–59' : currentAge < 65 ? '60–64' : (lang() === 'ar' ? '65 فأكثر' : '65+');
-        // تاريخ المعاش = birth + 60 years (matches Apps Script formula)
+        e.ageGroup = currentAge === '' ? '' : currentAge < 20 ? (lang() === 'ar' ? '兀賯賱 賲賳 20' : 'Under 20') : currentAge < 25 ? '20鈥�24' : currentAge < 30 ? '25鈥�29' : currentAge < 35 ? '30鈥�34' : currentAge < 40 ? '35鈥�39' : currentAge < 45 ? '40鈥�44' : currentAge < 50 ? '45鈥�49' : currentAge < 55 ? '50鈥�54' : currentAge < 60 ? '55鈥�59' : currentAge < 65 ? '60鈥�64' : (lang() === 'ar' ? '65 賮兀賰孬乇' : '65+');
+        // 鬲丕乇賷禺 丕賱賲毓丕卮 = birth + 60 years (matches Apps Script formula)
         if (birth) {
           const pension = new Date(birth.getFullYear() + 60, birth.getMonth(), birth.getDate());
           const pad = n => (n < 10 ? '0' + n : String(n));
@@ -1465,19 +1472,19 @@
       /**
        * Canonical status keys used for filtering & storage:
        *   active | inactive | leave | seconded | (other raw trimmed)
-       * Maps spreadsheet variants: "non activ", "غير نشط", "على رأس العمل", etc.
+       * Maps spreadsheet variants: "non activ", "睾賷乇 賳卮胤", "毓賱賶 乇兀爻 丕賱毓賲賱", etc.
        */
       function normalizeStatusKey(value) {
         const text = normal(value).replace(/\s+/g, ' ');
         if (!text) return '';
-        if (text.includes('leave') || text.includes('اجاز') || text.includes('إجاز')) return 'leave';
+        if (text.includes('leave') || text.includes('丕噩丕夭') || text.includes('廿噩丕夭')) return 'leave';
         if (
           text === 'active' ||
           text === 'activ' ||
-          text.includes('راس العمل') ||
-          text.includes('رأس العمل') ||
-          text.includes('على رأس') ||
-          text.includes('على راس')
+          text.includes('乇丕爻 丕賱毓賲賱') ||
+          text.includes('乇兀爻 丕賱毓賲賱') ||
+          text.includes('毓賱賶 乇兀爻') ||
+          text.includes('毓賱賶 乇丕爻')
         ) return 'active';
         if (
           text === 'inactive' ||
@@ -1485,10 +1492,10 @@
           text === 'non activ' ||
           text === 'non-active' ||
           text === 'nonactiv' ||
-          text.includes('غير نشط') ||
-          text.includes('غير نشط')
+          text.includes('睾賷乇 賳卮胤') ||
+          text.includes('睾賷乇 賳卮胤')
         ) return 'inactive';
-        if (text.includes('منتدب') || text.includes('second')) return 'seconded';
+        if (text.includes('賲賳鬲丿亘') || text.includes('second')) return 'seconded';
         return clean(value);
       }
 
@@ -1498,7 +1505,7 @@
         if (key === 'leave') return { label: t('leave'), className: 'leave' };
         if (key === 'active') return { label: t('active'), className: '' };
         if (key === 'inactive') return { label: t('inactive'), className: 'inactive' };
-        if (key === 'seconded') return { label: lang() === 'ar' ? 'منتدب' : 'Seconded', className: '' };
+        if (key === 'seconded') return { label: lang() === 'ar' ? '賲賳鬲丿亘' : 'Seconded', className: '' };
         return { label: clean(value), className: '' };
       }
 
@@ -1515,7 +1522,7 @@
       function toast(message, type = 'info') {
         const el = document.createElement('div');
         el.className = `toast ${type}`;
-        el.innerHTML = `<span>${escapeHtml(message)}</span><button type="button" aria-label="Close">×</button>`;
+        el.innerHTML = `<span>${escapeHtml(message)}</span><button type="button" aria-label="Close">脳</button>`;
         const timer = setTimeout(() => el.remove(), 7000);
         el.querySelector('button').onclick = () => {
           clearTimeout(timer);
@@ -1574,8 +1581,8 @@
         });
         document.querySelectorAll('[data-lang-option]').forEach(el => el.classList.toggle('active', el.dataset.langOption === lang()));
         const themeButton = document.querySelector('[data-theme-toggle]');
-        if (themeButton) themeButton.textContent = document.documentElement.dataset.theme === 'dark' ? (lang() === 'ar' ? 'فاتح' : 'Light') : (lang() === 'ar' ? 'داكن' : 'Dark');
-        document.title = lang() === 'ar' ? 'بيانات الموظفين | أدوات عمل مصر للطيران' : 'Employee Data | EgyptAir Work Tools';
+        if (themeButton) themeButton.textContent = document.documentElement.dataset.theme === 'dark' ? (lang() === 'ar' ? '賮丕鬲丨' : 'Light') : (lang() === 'ar' ? '丿丕賰賳' : 'Dark');
+        document.title = lang() === 'ar' ? '亘賷丕賳丕鬲 丕賱賲賵馗賮賷賳 | 兀丿賵丕鬲 毓賲賱 賲氐乇 賱賱胤賷乇丕賳' : 'Employee Data | EgyptAir Work Tools';
       }
 
       function applyLanguage(next) {
@@ -1598,7 +1605,7 @@
       }
 
       // Filter controls. Hierarchy parents limit child options:
-      // sector → department → section. All other filters cascade against the
+      // sector 鈫� department 鈫� section. All other filters cascade against the
       // currently selected set so options stay realistic (no empty results).
       const FILTER_CONTROLS = [
         { id: 'sector', key: 'currentSector', allKey: 'allSectors' },
@@ -1655,7 +1662,7 @@
           if (!select) return;
           const current = select.value;
           // Hierarchical children (department, section): options come from
-          // rows matching parent filters only (sector → dept → section).
+          // rows matching parent filters only (sector 鈫� dept 鈫� section).
           // Other filters cascade against the full current selection so
           // options stay realistic (no empty combinations).
           let pool;
@@ -1741,9 +1748,17 @@
           });
         });
         const key = state.sort;
+        // Status sorts by the normalized, displayed label (not the raw sheet
+        // text) so legacy spelling variants of the same status ('activ',
+        // '毓賱賶 乇兀爻 丕賱毓賲賱', etc.) group together the way they're shown.
+        const sortValue = (employee) => {
+          if (key === 'age') return Number(employee[key]) || -1;
+          if (key === 'status') return normal(displayStatus(employee.status).label);
+          return normal(employee[key]);
+        };
         return list.sort((left, right) => {
-          const a = key === 'age' ? Number(left[key]) || -1 : normal(left[key]);
-          const b = key === 'age' ? Number(right[key]) || -1 : normal(right[key]);
+          const a = sortValue(left);
+          const b = sortValue(right);
           return typeof a === 'number' ? (a - b) * state.direction : a.localeCompare(b, 'ar') * state.direction;
         });
       }
@@ -1781,7 +1796,7 @@
         $('totalCount').textContent = total.toLocaleString();
         $('shownCount').textContent = list.length.toLocaleString();
         $('deptCount').textContent = unique('currentGeneralDepartment').length.toLocaleString();
-        $('retirementCount').textContent = isRetired ? '—' : upcoming.toLocaleString();
+        $('retirementCount').textContent = isRetired ? '鈥�' : upcoming.toLocaleString();
         if ($('totalLabel')) $('totalLabel').textContent = isRetired ? t('totalRetired') : t('totalActive');
         if ($('shownLabel')) $('shownLabel').textContent = t('matching');
         if ($('deptLabel')) $('deptLabel').textContent = t('departments');
@@ -1792,8 +1807,8 @@
         $('retirementHint').textContent = isRetired
           ? ''
           : (state.upcomingOnly
-            ? (lang() === 'ar' ? 'تصفية مفعّلة — اضغط للإلغاء' : 'Filter on — click to clear')
-            : (lang() === 'ar' ? 'اضغط للعرض' : 'Click to view'));
+            ? (lang() === 'ar' ? '鬲氐賮賷丞 賲賮毓賾賱丞 鈥� 丕囟睾胤 賱賱廿賱睾丕亍' : 'Filter on 鈥� click to clear')
+            : (lang() === 'ar' ? '丕囟睾胤 賱賱毓乇囟' : 'Click to view'));
         const retStat = $('retirementStat');
         if (retStat) {
           retStat.classList.toggle('clickable', !isRetired);
@@ -1805,7 +1820,7 @@
 
       function renderSortIcons() {
         document.querySelectorAll('[data-sort-icon]').forEach(icon => {
-          icon.textContent = icon.dataset.sortIcon === state.sort ? (state.direction === 1 ? '↑' : '↓') : '';
+          icon.textContent = icon.dataset.sortIcon === state.sort ? (state.direction === 1 ? '鈫�' : '鈫�') : '';
         });
       }
 
@@ -1815,7 +1830,7 @@
         const start = (state.page - 1) * state.pageSize,
           pageRows = list.slice(start, start + state.pageSize);
         const to = Math.min(start + state.pageSize, list.length);
-        $('resultNote').textContent = list.length ? ` · ${t('showing', {from: start + 1, to, total: list.length.toLocaleString()})}` : '';
+        $('resultNote').textContent = list.length ? ` 路 ${t('showing', {from: start + 1, to, total: list.length.toLocaleString()})}` : '';
         $('paginationLabel').textContent = list.length ? t('showing', {
           from: start + 1,
           to,
@@ -1829,7 +1844,7 @@
         $('nextPage').disabled = state.page >= pages;
         $('rows').innerHTML = state.loading ? `<tr><td colspan="6"><div class="loading">${t('loading')}</div></td></tr>` : pageRows.length ? pageRows.map(employee => {
           const status = displayStatus(employee.status);
-          return `<tr tabindex="0" data-key="${escapeHtml(recordKey(employee))}" aria-label="${escapeHtml(employee.name || employee.code)}"><td>${escapeHtml(employee.code || '—')}</td><td><span class="employee-name">${escapeHtml(employee.name || t('unknown'))}</span><span class="subtle">${escapeHtml(employee.currentCompany || '')}</span></td><td>${escapeHtml(employee.actualJob || employee.jobTitle || '—')}</td><td>${escapeHtml(employee.currentGeneralDepartment || '—')}<span class="subtle">${escapeHtml(employee.currentSubDepartment || '')}</span></td><td><span class="pill ${status.className}">${escapeHtml(status.label)}</span></td><td>${employee.age === '' ? '—' : escapeHtml(employee.age)}</td></tr>`;
+          return `<tr tabindex="0" data-key="${escapeHtml(recordKey(employee))}" aria-label="${escapeHtml(employee.name || employee.code)}"><td>${escapeHtml(employee.code || '鈥�')}</td><td><span class="employee-name">${escapeHtml(employee.name || t('unknown'))}</span><span class="subtle">${escapeHtml(employee.currentCompany || '')}</span></td><td>${escapeHtml(employee.actualJob || employee.jobTitle || '鈥�')}</td><td>${escapeHtml(employee.currentGeneralDepartment || '鈥�')}<span class="subtle">${escapeHtml(employee.currentSubDepartment || '')}</span></td><td><span class="pill ${status.className}">${escapeHtml(status.label)}</span></td><td>${employee.age === '' ? '鈥�' : escapeHtml(employee.age)}</td></tr>`;
         }).join('') : `<tr><td colspan="6"><div class="empty">${t('noData')}</div></td></tr>`;
       }
 
@@ -1839,6 +1854,8 @@
         renderStats(list);
         renderRows(list);
         renderSortIcons();
+        renderBars('sectorBars', 'currentSector', list);
+        renderBars('deptBars', 'currentGeneralDepartment', list);
       }
 
       function dateText(value) {
@@ -1866,7 +1883,7 @@
         const employee = state.employees.find(item => recordKey(item) === String(key));
         if (!employee) return;
         const e = computed(employee);
-        const overview = `${clean(e.actualJob || e.jobTitle) || t('unknown')} · ${clean(e.currentCompany) || t('unknown')}`;
+        const overview = `${clean(e.actualJob || e.jobTitle) || t('unknown')} 路 ${clean(e.currentCompany) || t('unknown')}`;
         const profileSections = schema.map(section => {
           const entries = section[3].filter(field => clean(e[field[0]])).map(field => `<div class="detail"><dt>${escapeHtml(fieldLabel(field))}</dt><dd>${escapeHtml(field[3] === 'date' ? dateText(e[field[0]]) : e[field[0]])}</dd></div>`).join('');
           return entries ? `<section class="profile-section"><h3>${escapeHtml(sectionLabel(section))}</h3><dl class="details-grid">${entries}</dl></section>` : '';
@@ -1877,7 +1894,7 @@
         const actions = [];
         if (canEdit) actions.push(`<button class="btn" type="button" id="editProfileBtn">${escapeHtml(t('edit'))}</button>`);
         if (canRetire) actions.push(`<button class="btn danger-solid" type="button" id="retireProfileBtn">${escapeHtml(t('moveToRetired'))}</button>`);
-        $('profileBody').innerHTML = `<div class="profile-hero"><div><h3>${escapeHtml(e.name || t('unknown'))}</h3><p>${escapeHtml(e.code ? `${lang() === 'ar' ? 'كود الموظف: ' : 'Employee code: '}${e.code}` : overview)}</p><p>${escapeHtml(overview)}</p></div><div class="button-row">${actions.join('')}</div></div><div class="profile-sections">${profileSections || `<p class="empty">${t('noData')}</p>`}</div>`;
+        $('profileBody').innerHTML = `<div class="profile-hero"><div><h3>${escapeHtml(e.name || t('unknown'))}</h3><p>${escapeHtml(e.code ? `${lang() === 'ar' ? '賰賵丿 丕賱賲賵馗賮: ' : 'Employee code: '}${e.code}` : overview)}</p><p>${escapeHtml(overview)}</p></div><div class="button-row">${actions.join('')}</div></div><div class="profile-sections">${profileSections || `<p class="empty">${t('noData')}</p>`}</div>`;
         if (canEdit && $('editProfileBtn')) {
           $('editProfileBtn').onclick = () => {
             closeModal('profileModal');
@@ -1896,7 +1913,7 @@
         if (!employee || state.view !== 'active') return;
         pendingRetireEmployee = employee;
         const name = clean(employee.name) || t('unknown');
-        const code = clean(employee.code) || '—';
+        const code = clean(employee.code) || '鈥�';
         $('retireConfirmText').textContent = t('retireConfirmNamed', { name, code });
         const title = $('retireConfirmTitle');
         if (title) title.textContent = t('retireConfirmTitle');
@@ -1922,10 +1939,23 @@
         }
         try {
           await postRetire(employee);
-          // Update local list only — do NOT full-reload the 6MB sheet (that was
+          // Update local list only 鈥� do NOT full-reload the 6MB sheet (that was
           // the main reason move felt like it took a full minute).
           const key = recordKey(employee);
-          state.employees = state.employees.filter(item => recordKey(item) !== key);
+          const retiredRow = Number(employee.rowNumber);
+          // deleteRow() on the server shifts every row below the retired one
+          // up by one. Without this, any employee whose cached rowNumber was
+          // below the retired row would point at the wrong sheet row on the
+          // next edit/retire, causing a false "record changed" conflict.
+          state.employees = state.employees
+            .filter(item => recordKey(item) !== key)
+            .map(item => {
+              const itemRow = Number(item.rowNumber);
+              if (Number.isFinite(retiredRow) && Number.isFinite(itemRow) && itemRow > retiredRow) {
+                return { ...item, rowNumber: itemRow - 1 };
+              }
+              return item;
+            });
           pendingRetireEmployee = null;
           closeModal('retireConfirmModal');
           closeModal('profileModal');
@@ -1947,7 +1977,7 @@
       }
 
       async function postRetire(employee) {
-        // Fewer retries — Apps Script 404 hop is rare; long backoff made moves feel stuck.
+        // Fewer retries 鈥� Apps Script 404 hop is rare; long backoff made moves feel stuck.
         const maxAttempts = 3;
         let lastError;
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -1986,7 +2016,7 @@
                   }
                 }
               } catch (_) {}
-              throw new Error(bodyHint ? `${response.status} ${response.statusText} — ${bodyHint}` : `${response.status} ${response.statusText}`);
+              throw new Error(bodyHint ? `${response.status} ${response.statusText} 鈥� ${bodyHint}` : `${response.status} ${response.statusText}`);
             }
             const payload = await readApi(response);
             if (!payload.ok) throw new Error(payload.error || payload.message || t('retireFailed'));
@@ -2005,44 +2035,44 @@
       }
 
       const APPOINTMENT_TYPES = [
-        'تثبيت',
-        'دائم',
-        'عقد محدد المده',
-        'عقد محدد المدة',
-        'عقد مؤقت ( موسمى )',
-        'عقد مؤقت (موسمى)',
-        'مكافأة شاملة',
-        'تعاقد بعد سن الستين'
+        '鬲孬亘賷鬲',
+        '丿丕卅賲',
+        '毓賯丿 賲丨丿丿 丕賱賲丿賴',
+        '毓賯丿 賲丨丿丿 丕賱賲丿丞',
+        '毓賯丿 賲丐賯鬲 ( 賲賵爻賲賶 )',
+        '毓賯丿 賲丐賯鬲 (賲賵爻賲賶)',
+        '賲賰丕賮兀丞 卮丕賲賱丞',
+        '鬲毓丕賯丿 亘毓丿 爻賳 丕賱爻鬲賷賳'
       ];
 
       function selectOptions(key, selected) {
         let options;
         if (key === 'gender') {
           options = [
-            ['', '—'],
-            ['ذكور', lang() === 'ar' ? 'ذكور' : 'Male'],
-            ['اناث', lang() === 'ar' ? 'اناث' : 'Female']
+            ['', '鈥�'],
+            ['匕賰賵乇', lang() === 'ar' ? '匕賰賵乇' : 'Male'],
+            ['丕賳丕孬', lang() === 'ar' ? '丕賳丕孬' : 'Female']
           ];
         } else if (key === 'appointmentType') {
           const known = [
-            'تثبيت',
-            'دائم',
-            'عقد محدد المده',
-            'عقد مؤقت ( موسمى )',
-            'مكافأة شاملة',
-            'تعاقد بعد سن الستين'
+            '鬲孬亘賷鬲',
+            '丿丕卅賲',
+            '毓賯丿 賲丨丿丿 丕賱賲丿賴',
+            '毓賯丿 賲丐賯鬲 ( 賲賵爻賲賶 )',
+            '賲賰丕賮兀丞 卮丕賲賱丞',
+            '鬲毓丕賯丿 亘毓丿 爻賳 丕賱爻鬲賷賳'
           ];
           const extra = clean(selected) && !known.includes(clean(selected)) ? [clean(selected)] : [];
-          options = [['', '—'], ...[...known, ...extra].map(v => [v, v])];
+          options = [['', '鈥�'], ...[...known, ...extra].map(v => [v, v])];
         } else if (key === 'status') {
-          // Canonical values only — matches spreadsheet (active / inactive) and
-          // known HR labels. No legacy "على رأس العمل" option.
+          // Canonical values only 鈥� matches spreadsheet (active / inactive) and
+          // known HR labels. No legacy "毓賱賶 乇兀爻 丕賱毓賲賱" option.
           const canonical = normalizeStatusKey(selected);
           options = [
-            ['', '—'],
+            ['', '鈥�'],
             ['active', t('active')],
             ['leave', t('leave')],
-            ['seconded', lang() === 'ar' ? 'منتدب' : 'Seconded'],
+            ['seconded', lang() === 'ar' ? '賲賳鬲丿亘' : 'Seconded'],
             ['inactive', t('inactive')]
           ];
           // Keep selected if it was a weird legacy value that maps to a canonical key
@@ -2052,10 +2082,10 @@
           selected = canonical || selected;
         } else {
           options = [
-            ['', '—'],
+            ['', '鈥�'],
             ['active', t('active')],
             ['leave', t('leave')],
-            ['seconded', lang() === 'ar' ? 'منتدب' : 'Seconded'],
+            ['seconded', lang() === 'ar' ? '賲賳鬲丿亘' : 'Seconded'],
             ['inactive', t('inactive')]
           ];
         }
@@ -2066,30 +2096,30 @@
         const s = clean(value);
         if (!s) return '';
         const n = s.replace(/\s+/g, ' ');
-        if (/تثبيت/i.test(n)) return 'تثبيت';
-        if (/دائم/.test(n) && !/تعاقد/.test(n)) return 'دائم';
-        if (/محدد/.test(n)) return 'عقد محدد المده';
-        if (/مؤقت|موسم/.test(n)) return 'عقد مؤقت ( موسمى )';
-        if (/مكافأة|مكافاه/.test(n)) return 'مكافأة شاملة';
-        if (/ستين|60/.test(n)) return 'تعاقد بعد سن الستين';
+        if (/鬲孬亘賷鬲/i.test(n)) return '鬲孬亘賷鬲';
+        if (/丿丕卅賲/.test(n) && !/鬲毓丕賯丿/.test(n)) return '丿丕卅賲';
+        if (/賲丨丿丿/.test(n)) return '毓賯丿 賲丨丿丿 丕賱賲丿賴';
+        if (/賲丐賯鬲|賲賵爻賲/.test(n)) return '毓賯丿 賲丐賯鬲 ( 賲賵爻賲賶 )';
+        if (/賲賰丕賮兀丞|賲賰丕賮丕賴/.test(n)) return '賲賰丕賮兀丞 卮丕賲賱丞';
+        if (/爻鬲賷賳|60/.test(n)) return '鬲毓丕賯丿 亘毓丿 爻賳 丕賱爻鬲賷賳';
         return s;
       }
 
       function buildAppointmentReport(list) {
         const typeOrder = [
-          'تثبيت',
-          'تعاقد بعد سن الستين',
-          'دائم',
-          'عقد محدد المده',
-          'عقد مؤقت ( موسمى )',
-          'مكافأة شاملة'
+          '鬲孬亘賷鬲',
+          '鬲毓丕賯丿 亘毓丿 爻賳 丕賱爻鬲賷賳',
+          '丿丕卅賲',
+          '毓賯丿 賲丨丿丿 丕賱賲丿賴',
+          '毓賯丿 賲丐賯鬲 ( 賲賵爻賲賶 )',
+          '賲賰丕賮兀丞 卮丕賲賱丞'
         ];
-        // sector → department → type → count
+        // sector 鈫� department 鈫� type 鈫� count
         const tree = {};
         list.forEach(emp => {
-          const sector = clean(emp.currentSector) || (lang() === 'ar' ? 'بدون قطاع' : 'No sector');
-          const dept = clean(emp.currentGeneralDepartment) || (lang() === 'ar' ? 'بدون اداره عامه' : 'No department');
-          const type = normalizeAppointmentType(emp.appointmentType) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified');
+          const sector = clean(emp.currentSector) || (lang() === 'ar' ? '亘丿賵賳 賯胤丕毓' : 'No sector');
+          const dept = clean(emp.currentGeneralDepartment) || (lang() === 'ar' ? '亘丿賵賳 丕丿丕乇賴 毓丕賲賴' : 'No department');
+          const type = normalizeAppointmentType(emp.appointmentType) || (lang() === 'ar' ? '睾賷乇 賲丨丿丿' : 'Unspecified');
           if (!tree[sector]) tree[sector] = {};
           if (!tree[sector][dept]) tree[sector][dept] = {};
           tree[sector][dept][type] = (tree[sector][dept][type] || 0) + 1;
@@ -2123,8 +2153,8 @@
           });
         });
         const totalCells = allTypes.map(t => `<td class="num"><strong>${colTotals[t] || ''}</strong></td>`).join('');
-        body += `<tr class="total-row"><td class="sticky-col">${lang() === 'ar' ? 'الاجمالى' : 'Total'}</td>${totalCells}<td class="num"><strong>${grand}</strong></td></tr>`;
-        const head = `<tr><th class="sticky-col">${lang() === 'ar' ? 'الاداره العامه' : 'General department'}</th>${allTypes.map(t => `<th>${escapeHtml(t)}</th>`).join('')}<th>${lang() === 'ar' ? 'الاجمالى' : 'Total'}</th></tr>`;
+        body += `<tr class="total-row"><td class="sticky-col">${lang() === 'ar' ? '丕賱丕噩賲丕賱賶' : 'Total'}</td>${totalCells}<td class="num"><strong>${grand}</strong></td></tr>`;
+        const head = `<tr><th class="sticky-col">${lang() === 'ar' ? '丕賱丕丿丕乇賴 丕賱毓丕賲賴' : 'General department'}</th>${allTypes.map(t => `<th>${escapeHtml(t)}</th>`).join('')}<th>${lang() === 'ar' ? '丕賱丕噩賲丕賱賶' : 'Total'}</th></tr>`;
         return `<table class="report-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
       }
 
@@ -2168,7 +2198,7 @@
         setLoading(true);
         showNotice('');
         applyViewChrome();
-        // One light loading state — avoid triple full-table renders during fetch.
+        // One light loading state 鈥� avoid triple full-table renders during fetch.
         if ($('loadingState')) $('loadingState').textContent = t('loading');
         try {
           const isRetired = state.view === 'retired';
@@ -2254,7 +2284,7 @@
         button.disabled = true;
         try {
           if ((await sha256Hex(input.value)) !== expectedHash) {
-            error.textContent = lang() === 'ar' ? 'كلمة المرور غير صحيحة.' : 'Incorrect password.';
+            error.textContent = lang() === 'ar' ? '賰賱賲丞 丕賱賲乇賵乇 睾賷乇 氐丨賷丨丞.' : 'Incorrect password.';
             error.classList.add('error');
             input.select();
             return;
@@ -2317,7 +2347,7 @@
                   }
                 }
               } catch (_) {}
-              throw new Error(bodyHint ? `${response.status} ${response.statusText} — ${bodyHint}` : `${response.status} ${response.statusText}`);
+              throw new Error(bodyHint ? `${response.status} ${response.statusText} 鈥� ${bodyHint}` : `${response.status} ${response.statusText}`);
             }
             const payload = await readApi(response);
             if (!payload.ok) throw new Error(payload.error || payload.message || t('saveFailed'));
@@ -2377,20 +2407,20 @@
           upsertLocalEmployee(payload.employee || employee);
           closeModal('formModal');
           toast(isEdit ? t('saved') : t('created'), 'success');
-          // Local upsert is enough — a full list reload was the main slowdown.
+          // Local upsert is enough 鈥� a full list reload was the main slowdown.
         } catch (error) {
           const message = formatFailure('saveFailed', error);
           $('formError').textContent = message;
           toast(message, 'error');
         } finally {
           $('saveBtn').disabled = false;
-          $('saveBtn').textContent = lang() === 'ar' ? 'حفظ التغييرات' : 'Save changes';
+          $('saveBtn').textContent = lang() === 'ar' ? '丨賮馗 丕賱鬲睾賷賷乇丕鬲' : 'Save changes';
         }
       }
-      /* exportExcel removed — button links directly to original Google Sheet export */
+      /* exportExcel removed 鈥� button links directly to original Google Sheet export */
       function applyFilter() {
         state.page = 1;
-        // Rebuild dependent options so Sector → Department → Section cascade,
+        // Rebuild dependent options so Sector 鈫� Department 鈫� Section cascade,
         // and other filters only show values that still exist under the selection.
         refreshFilters();
         render();
@@ -2400,7 +2430,7 @@
         document.querySelectorAll('[data-lang-option]').forEach(button => button.addEventListener('click', () => {
           applyLanguage(button.dataset.langOption);
           applyViewChrome();
-          toast(lang() === 'ar' ? 'تم تغيير اللغة.' : 'Language changed.', 'success');
+          toast(lang() === 'ar' ? '鬲賲 鬲睾賷賷乇 丕賱賱睾丞.' : 'Language changed.', 'success');
         }));
         document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
           applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
