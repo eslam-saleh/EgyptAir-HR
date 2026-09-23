@@ -2484,6 +2484,7 @@
           const sheetName = state.view === 'retired'
             ? (lang() === 'ar' ? 'متقاعدون' : 'Retired')
             : (lang() === 'ar' ? 'موظفون' : 'Employees');
+          wb.WorkBook = { Views : [{RTL:true}]};
           XLSX.utils.book_append_sheet(wb, ws, sheetName);
           const stamp = new Date().toISOString().slice(0, 10);
           const fileName = `${t('exportName')}-${state.view}-${stamp}.xlsx`;
