@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="portal.css">
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
     <style>
       :root {
         --employee-blue: #005daa;
@@ -120,6 +120,45 @@
 
       .btn.secondary:hover {
         background: var(--surface-2);
+      }
+
+      /* <a class="btn"> (Download original sheet) must look identical to the <button class="btn"> siblings */
+      a.btn,
+      a.btn:hover,
+      a.btn:visited {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        text-decoration: none;
+      }
+
+      /* Compact button (used for the report download) */
+      .btn.btn-sm {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 35px;
+        padding: 0 12px;
+        font-size: .82rem;
+      }
+
+      .btn.btn-sm svg {
+        width: 15px;
+        height: 15px;
+        flex: none;
+      }
+
+      .dialog-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* Close button stays first in the DOM (it receives focus on open); the download
+         button is pulled in front of it visually, in both LTR and RTL. */
+      .dialog-head-actions .report-dl {
+        order: -1;
       }
 
       .btn.danger {
@@ -286,6 +325,51 @@
 
       .filter-field.hire-date label {
         margin-bottom: 2px;
+      }
+
+      /* With an Arabic browser locale Chrome lays the native date fields out right-to-left,
+         which shows the year where the day should be. Keep day / month / year in reading order. */
+      .filter-field.hire-date input[type="date"]::-webkit-datetime-edit {
+        direction: ltr;
+        unicode-bidi: isolate;
+      }
+
+      /* "Hired from" + "Hired until" sit side by side as one block, wide enough for the date + "today" button */
+      .hire-range {
+        display: grid;
+        grid-column: span 4;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .filter-field.hire-date {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .date-row {
+        display: flex;
+        gap: 6px;
+        align-items: stretch;
+        min-width: 0;
+      }
+
+      .date-row .input {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+
+      .today-btn {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 42px;
+        min-height: 42px;
+        padding: 0;
+      }
+
+      .today-btn svg {
+        width: 18px;
+        height: 18px;
       }
 
       .filter-field {
@@ -916,6 +1000,10 @@
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
 
+        .hire-range {
+          grid-column: 1 / -1;
+        }
+
         .details-grid {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
@@ -949,6 +1037,10 @@
 
         .toolbar {
           grid-template-columns: 1fr 1fr;
+        }
+
+        .hire-range {
+          grid-template-columns: 1fr;
         }
 
         .search-bar {
@@ -1019,7 +1111,7 @@
           <h1 id="pageTitle" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</h1>
           <p id="pageSubtitle" data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p>
         </div>
-        <div class="actions"><button class="btn secondary" id="reportBtn" type="button" data-en="Appointment report" data-ar="تقرير نوع التعيين">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn secondary" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn secondary" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
+        <div class="actions"><button class="btn" id="reportBtn" type="button" data-en="Appointment report" data-ar="تقرير نوع التعيين">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
       </section>
       <div class="view-tabs" role="tablist" aria-label="Employee view">
         <button type="button" class="view-tab active" id="viewActiveBtn" data-view="active" role="tab" aria-selected="true" data-en="Active employees" data-ar="الموظفون النشطون">Active employees</button>
@@ -1038,7 +1130,7 @@
       </section>
       <section class="panel search-bar" aria-label="Search">
         <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
-        <button class="btn secondary clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
+        <button class="btn clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
       </section>
       <section class="panel toolbar" aria-label="Employee filters">
         <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><select class="select" id="sector"></select></div>
@@ -1054,8 +1146,8 @@
         <div class="filter-field"><label for="governorate" data-en="Governorate" data-ar="المحافظة">Governorate</label><select class="select" id="governorate"></select></div>
         <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="الفئة العمرية">Age group</label><select class="select" id="ageGroup"></select></div>
         <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="مسمى الوظيفة">Job title</label><select class="select" id="jobTitle"></select></div>
-        <div class="filter-field hire-date"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date"></div>
-        <div class="filter-field hire-date"><label for="hireTo" data-en="Hired until" data-ar="التعيين حتى">Hired until</label><input class="input" id="hireTo" type="date"></div>
+        <div class="hire-range"><div class="filter-field hire-date"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date"></div>
+          <div class="filter-field hire-date"><label for="hireTo" data-en="Hired until" data-ar="التعيين حتى">Hired until</label><div class="date-row"><input class="input" id="hireTo" type="date"><button class="btn today-btn" id="hireToday" type="button" data-en-title="Set to today's date" data-ar-title="ضبط التاريخ على اليوم"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v15"/><path d="M6 13.5l6 6 6-6"/></svg></button></div></div></div>
       </section>
       <section class="layout">
         <section class="panel" aria-labelledby="tableHeading">
@@ -1063,7 +1155,7 @@
             <h2 id="tableHeading" data-en="Employee list" data-ar="قائمة الموظفين">Employee list <span id="resultNote" class="result-note"></span></h2>
             <div class="actions" style="gap:8px;align-items:center">
               <span id="loadingState" class="result-note" aria-live="polite"></span>
-              <button class="btn secondary" id="exportFilteredBtn" type="button" data-en="Download filtered list" data-ar="تنزيل القائمة المفلترة">Download filtered list</button>
+              <button class="btn" id="exportFilteredBtn" type="button" data-en="Download filtered list" data-ar="تنزيل القائمة المفلترة">Download filtered list</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -1109,7 +1201,10 @@
       <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
         <div class="dialog-head">
           <h2 id="reportTitle" data-en="Appointment type by department" data-ar="نوع التعيين حسب الإدارة">Appointment type by department</h2>
-          <button class="icon-btn" type="button" data-close="reportModal" aria-label="Close">×</button>
+          <div class="dialog-head-actions">
+            <button class="icon-btn" type="button" data-close="reportModal" aria-label="Close">×</button>
+            <button class="btn btn-sm report-dl" id="reportDownloadBtn" type="button" data-en-title="Download this report as an Excel file" data-ar-title="تنزيل هذا التقرير كملف Excel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M6.5 10.5L12 16l5.5-5.5"/><path d="M4 20h16"/></svg><span data-en="Download" data-ar="تنزيل">Download</span></button>
+          </div>
         </div>
         <div class="dialog-body">
           <div class="report-table-wrap" id="reportBody"></div>
@@ -1588,6 +1683,11 @@
         });
         document.querySelectorAll('[data-en-placeholder][data-ar-placeholder]').forEach(el => {
           el.placeholder = el.dataset[`${lang()}Placeholder`];
+        });
+        document.querySelectorAll('[data-en-title][data-ar-title]').forEach(el => {
+          const text = el.dataset[`${lang()}Title`];
+          el.title = text;
+          el.setAttribute('aria-label', text);
         });
         document.querySelectorAll('[data-lang-option]').forEach(el => el.classList.toggle('active', el.dataset.langOption === lang()));
         const themeButton = document.querySelector('[data-theme-toggle]');
@@ -2115,7 +2215,8 @@
         return s;
       }
 
-      function buildAppointmentReport(list) {
+      /** sector → department → appointment-type counts, in display order (shared by the popup and the Excel export). */
+      function appointmentReportModel(list) {
         const typeOrder = [
           'تثبيت',
           'تعاقد بعد سن الستين',
@@ -2137,34 +2238,40 @@
         const allTypes = [...typeOrder];
         Object.values(tree).forEach(depts => {
           Object.values(depts).forEach(counts => {
-            Object.keys(counts).forEach(t => {
-              if (!allTypes.includes(t)) allTypes.push(t);
+            Object.keys(counts).forEach(type => {
+              if (!allTypes.includes(type)) allTypes.push(type);
             });
           });
         });
-        const sectors = Object.keys(tree).sort((a, b) => a.localeCompare(b, 'ar'));
-        const colTotals = Object.fromEntries(allTypes.map(t => [t, 0]));
+        const rows = Object.keys(tree).sort((a, b) => a.localeCompare(b, 'ar')).map(sector => ({
+          sector,
+          depts: Object.keys(tree[sector]).sort((a, b) => a.localeCompare(b, 'ar')).map(dept => ({ dept, counts: tree[sector][dept] }))
+        }));
+        return { allTypes, rows };
+      }
+
+      function buildAppointmentReport(list) {
+        const { allTypes, rows } = appointmentReportModel(list);
+        const colTotals = Object.fromEntries(allTypes.map(type => [type, 0]));
         let grand = 0;
         let body = '';
-        sectors.forEach(sector => {
-          const depts = Object.keys(tree[sector]).sort((a, b) => a.localeCompare(b, 'ar'));
+        rows.forEach(({ sector, depts }) => {
           body += `<tr class="sector-row"><td class="sticky-col" colspan="${allTypes.length + 2}">${escapeHtml(sector)}</td></tr>`;
-          depts.forEach(dept => {
-            const counts = tree[sector][dept];
+          depts.forEach(({ dept, counts }) => {
             let rowSum = 0;
-            const cells = allTypes.map(t => {
-              const n = counts[t] || 0;
+            const cells = allTypes.map(type => {
+              const n = counts[type] || 0;
               rowSum += n;
-              colTotals[t] += n;
+              colTotals[type] += n;
               return `<td class="num">${n || ''}</td>`;
             }).join('');
             grand += rowSum;
             body += `<tr><td class="sticky-col">${escapeHtml(dept)}</td>${cells}<td class="num"><strong>${rowSum}</strong></td></tr>`;
           });
         });
-        const totalCells = allTypes.map(t => `<td class="num"><strong>${colTotals[t] || ''}</strong></td>`).join('');
+        const totalCells = allTypes.map(type => `<td class="num"><strong>${colTotals[type] || ''}</strong></td>`).join('');
         body += `<tr class="total-row"><td class="sticky-col">${lang() === 'ar' ? 'الاجمالى' : 'Total'}</td>${totalCells}<td class="num"><strong>${grand}</strong></td></tr>`;
-        const head = `<tr><th class="sticky-col">${lang() === 'ar' ? 'الاداره العامه' : 'General department'}</th>${allTypes.map(t => `<th>${escapeHtml(t)}</th>`).join('')}<th>${lang() === 'ar' ? 'الاجمالى' : 'Total'}</th></tr>`;
+        const head = `<tr><th class="sticky-col">${lang() === 'ar' ? 'الاداره العامه' : 'General department'}</th>${allTypes.map(type => `<th>${escapeHtml(type)}</th>`).join('')}<th>${lang() === 'ar' ? 'الاجمالى' : 'Total'}</th></tr>`;
         return `<table class="report-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
       }
 
@@ -2427,14 +2534,274 @@
           $('saveBtn').textContent = lang() === 'ar' ? 'حفظ التغييرات' : 'Save changes';
         }
       }
-      function exportFilteredList() {
+      /* ───────── Excel export helpers (ExcelJS: supports real cell styling) ───────── */
+
+      /** Column order of the source spreadsheet (Google Sheet), left → right, mapped to field keys. */
+      const SOURCE_COLUMN_ORDER = [
+        'code', 'name', 'originalCompany', 'currentCompany', 'currentSector', 'currentGeneralDepartment', 'currentSubDepartment',
+        'jobTitle', 'actualJob', 'statisticsJob', 'uniform', 'gender', 'birthDate', 'retirementDate', 'appointmentDate',
+        'age', 'ageGroup', 'ageAtAppointment', 'totalService', 'serviceType', 'workType', 'currentGrade', 'gradeDate',
+        'appointmentJob', 'jobDate', 'studySpecialization', 'qualificationDate', 'currentQualificationTitle', 'currentQualificationType',
+        'appointmentQualificationTitle2', 'appointmentQualificationType2', 'appointmentQualificationTitle', 'appointmentQualificationType',
+        'disabilityType', 'newJobGroups', 'secondedJob', 'secondedJob2', 'secondedCompany', 'secondedSector', 'secondedGeneralDepartment',
+        'secondedDepartment', 'secondmentStart', 'secondmentEnd', 'secondedJobGroup', 'unpaidLeaveType', 'leaveMandatory', 'leaveStart',
+        'leaveEnd', 'militaryStatus', 'exemptionReason', 'contractStart', 'contractEnd', 'appointmentType', 'status', 'address', 'phone',
+        'governorate', 'addressExtra', 'originalCompanyName', 'originalGeneralDepartment', 'originalSubDepartment', 'workSchedule'
+      ];
+      const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const XLSX_FONT = 'Arial';
+      const localStamp = (date = new Date()) => {
+        const pad = n => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+      };
+      const nextPaint = () => new Promise(resolve => setTimeout(resolve, 30));
+      const argb = hex => 'FF' + hex.replace('#', '').toUpperCase();
+      /** Blend a colour with white; `keep` is the share of the colour that remains (0–1). */
+      const tint = (hex, keep) => {
+        const n = parseInt(hex.replace('#', ''), 16);
+        return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+          .map(v => Math.round(255 - (255 - v) * keep).toString(16).padStart(2, '0')).join('').toUpperCase();
+      };
+      const solid = hex => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: argb(hex) } });
+      const borderAll = (hex, style = 'thin') => {
+        const side = { style, color: { argb: argb(hex) } };
+        return { top: side, left: side, bottom: side, right: side };
+      };
+
+      async function saveWorkbook(workbook, fileName) {
+        const buffer = await workbook.xlsx.writeBuffer();
+        const url = URL.createObjectURL(new Blob([buffer], { type: XLSX_MIME }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }
+
+      function exportLibraryMissing() {
+        toast(lang() === 'ar' ? 'مكتبة التصدير غير متوفرة.' : 'Export library not available.', 'error');
+      }
+
+      /** Appointment report popup → formatted .xlsx (same numbers as the popup, with live totals). */
+      async function exportAppointmentReport() {
+        const list = state.employees;
+        if (!list.length) {
+          toast(t('noData'), 'error');
+          return;
+        }
+        if (typeof ExcelJS === 'undefined') {
+          exportLibraryMissing();
+          return;
+        }
+        const ar = lang() === 'ar';
+        const btn = $('reportDownloadBtn');
+        if (btn) btn.disabled = true;
+        try {
+          await nextPaint();
+          const { allTypes, rows } = appointmentReportModel(list);
+          const NAVY = '003F73', BLUE = '005DAA', GOLD = '9A7420';
+          const TYPE_COLORS = ['1F6FB5', '6A4C93', '12805C', '0F8B8D', 'C2571A', '9C2F5A', '5B6B7B', '8A6D1D'];
+          const typeColor = i => TYPE_COLORS[i % TYPE_COLORS.length];
+          const nTypes = allTypes.length;
+          const lastCol = nTypes + 2;
+          const totalLabel = ar ? 'الاجمالى' : 'Total';
+
+          const wb = new ExcelJS.Workbook();
+          wb.creator = 'EgyptAir Work Tools';
+          wb.created = new Date();
+          const ws = wb.addWorksheet(ar ? 'تقرير نوع التعيين' : 'Appointment report', {
+            views: [{ rightToLeft: true, showGridLines: false, state: 'frozen', xSplit: 1, ySplit: 3 }],
+            properties: { tabColor: { argb: argb(BLUE) } },
+            pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '3:3' }
+          });
+          const letter = c => ws.getColumn(c).letter;
+          const lastTypeLetter = () => letter(lastCol - 1);
+          const font = (opts = {}) => ({ name: XLSX_FONT, size: 10, ...opts });
+          const readingOrder = ar ? 'rtl' : 'ltr';
+
+          // Column widths
+          const allLabels = rows.flatMap(r => [r.sector, ...r.depts.map(d => d.dept)]);
+          const longest = allLabels.reduce((m, x) => Math.max(m, String(x).length), 0);
+          ws.getColumn(1).width = Math.max(30, Math.min(55, Math.ceil(longest * 1.15) + 4));
+          allTypes.forEach((type, i) => { ws.getColumn(i + 2).width = Math.max(15, Math.min(22, Math.ceil(type.length * 1.1) + 3)); });
+          ws.getColumn(lastCol).width = 14;
+
+          // Row 1 – title banner
+          ws.mergeCells(1, 1, 1, lastCol);
+          for (let c = 1; c <= lastCol; c++) ws.getCell(1, c).fill = solid(NAVY);
+          const title = ws.getCell(1, 1);
+          title.value = ar ? 'نوع التعيين حسب الإدارة' : 'Appointment type by department';
+          title.font = font({ size: 18, bold: true, color: { argb: 'FFFFFFFF' } });
+          title.alignment = { horizontal: 'center', vertical: 'middle', readingOrder };
+          ws.getRow(1).height = 38;
+
+          // Row 2 – subtitle (date + record count)
+          ws.mergeCells(2, 1, 2, lastCol);
+          for (let c = 1; c <= lastCol; c++) ws.getCell(2, c).fill = solid(BLUE);
+          const sub = ws.getCell(2, 1);
+          sub.value = ar
+            ? `تاريخ الإنشاء: ${localStamp()}     •     عدد السجلات: ${list.length.toLocaleString('en-US')}`
+            : `Generated: ${localStamp()}     •     Records: ${list.length.toLocaleString('en-US')}`;
+          sub.font = font({ size: 10, italic: true, color: { argb: 'FFFFFFFF' } });
+          sub.alignment = { horizontal: 'center', vertical: 'middle', readingOrder };
+          ws.getRow(2).height = 22;
+
+          // Row 3 – column headers, one colour per appointment type
+          const headers = [ar ? 'الاداره العامه' : 'General department', ...allTypes, totalLabel];
+          headers.forEach((text, i) => {
+            const cell = ws.getCell(3, i + 1);
+            const color = i === 0 ? NAVY : i === lastCol - 1 ? GOLD : typeColor(i - 1);
+            cell.value = text;
+            cell.font = font({ size: 11, bold: true, color: { argb: 'FFFFFFFF' } });
+            cell.fill = solid(color);
+            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder };
+            cell.border = borderAll('FFFFFF');
+          });
+          ws.getRow(3).height = 40;
+
+          // Body: sector band (with subtotals) followed by its departments
+          const gridColor = 'C9D4E0';
+          const bandRows = [];
+          const colTotals = new Array(nTypes).fill(0);
+          let grand = 0;
+          let r = 4;
+          rows.forEach(({ sector, depts }) => {
+            const bandRow = r;
+            const first = r + 1;
+            const last = r + depts.length;
+            const subtotals = allTypes.map((type, i) => depts.reduce((sum, d) => sum + (d.counts[type] || 0), 0));
+            const bandTotal = subtotals.reduce((a, b) => a + b, 0);
+            bandRows.push(bandRow);
+
+            const label = ws.getCell(bandRow, 1);
+            label.value = sector;
+            label.font = font({ size: 11, bold: true, color: { argb: argb(NAVY) } });
+            label.fill = solid(tint(BLUE, 0.22));
+            label.alignment = { horizontal: 'right', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
+            label.border = { ...borderAll(gridColor), top: { style: 'medium', color: { argb: argb(BLUE) } } };
+            allTypes.forEach((type, i) => {
+              const cell = ws.getCell(bandRow, i + 2);
+              cell.value = { formula: `SUM(${letter(i + 2)}${first}:${letter(i + 2)}${last})`, result: subtotals[i] };
+              cell.numFmt = '#,##0';
+              cell.font = font({ size: 11, bold: true, color: { argb: argb(NAVY) } });
+              cell.fill = solid(tint(typeColor(i), 0.28));
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.border = { ...borderAll(gridColor), top: { style: 'medium', color: { argb: argb(BLUE) } } };
+            });
+            const bandTotalCell = ws.getCell(bandRow, lastCol);
+            bandTotalCell.value = { formula: `SUM(B${bandRow}:${lastTypeLetter()}${bandRow})`, result: bandTotal };
+            bandTotalCell.numFmt = '#,##0';
+            bandTotalCell.font = font({ size: 11, bold: true, color: { argb: argb(NAVY) } });
+            bandTotalCell.fill = solid(tint(GOLD, 0.4));
+            bandTotalCell.alignment = { horizontal: 'center', vertical: 'middle' };
+            bandTotalCell.border = { ...borderAll(gridColor), top: { style: 'medium', color: { argb: argb(BLUE) } } };
+            subtotals.forEach((n, i) => { colTotals[i] += n; });
+            grand += bandTotal;
+            r++;
+
+            depts.forEach(({ dept, counts }, idx) => {
+              const odd = idx % 2 === 1;
+              const rowSum = allTypes.reduce((sum, type) => sum + (counts[type] || 0), 0);
+              const name = ws.getCell(r, 1);
+              name.value = dept;
+              name.font = font();
+              name.fill = solid(odd ? 'F3F7FB' : 'FFFFFF');
+              name.alignment = { horizontal: 'right', vertical: 'middle', wrapText: true, indent: 1, readingOrder: 'rtl' };
+              name.border = borderAll(gridColor);
+              allTypes.forEach((type, i) => {
+                const cell = ws.getCell(r, i + 2);
+                const n = counts[type] || 0;
+                cell.value = n || null;            // blank instead of 0, same as the popup
+                cell.numFmt = '#,##0';
+                cell.font = font();
+                cell.fill = solid(tint(typeColor(i), odd ? 0.13 : 0.06));
+                cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                cell.border = borderAll(gridColor);
+              });
+              const total = ws.getCell(r, lastCol);
+              total.value = { formula: `SUM(B${r}:${lastTypeLetter()}${r})`, result: rowSum };
+              total.numFmt = '#,##0';
+              total.font = font({ bold: true });
+              total.fill = solid(tint(GOLD, odd ? 0.26 : 0.18));
+              total.alignment = { horizontal: 'center', vertical: 'middle' };
+              total.border = borderAll(gridColor);
+              r++;
+            });
+          });
+
+          // Grand total row (sums the sector bands)
+          const gt = r;
+          const gLabel = ws.getCell(gt, 1);
+          gLabel.value = totalLabel;
+          gLabel.alignment = { horizontal: 'right', vertical: 'middle', indent: 1, readingOrder: 'rtl' };
+          const grandCells = [gLabel];
+          allTypes.forEach((type, i) => {
+            const cell = ws.getCell(gt, i + 2);
+            cell.value = { formula: bandRows.map(b => `${letter(i + 2)}${b}`).join('+'), result: colTotals[i] };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            grandCells.push(cell);
+          });
+          const gTotal = ws.getCell(gt, lastCol);
+          gTotal.value = { formula: `SUM(B${gt}:${lastTypeLetter()}${gt})`, result: grand };
+          gTotal.alignment = { horizontal: 'center', vertical: 'middle' };
+          grandCells.push(gTotal);
+          grandCells.forEach(cell => {
+            cell.numFmt = '#,##0';
+            cell.font = font({ size: 12, bold: true, color: { argb: 'FFFFFFFF' } });
+            cell.fill = solid(NAVY);
+            cell.border = { ...borderAll(NAVY), top: { style: 'medium', color: { argb: argb('C99C39') } }, bottom: { style: 'medium', color: { argb: argb('C99C39') } } };
+          });
+          ws.getRow(gt).height = 26;
+
+          // Share-of-total row
+          const sr = gt + 1;
+          const shareCells = [];
+          const sLabel = ws.getCell(sr, 1);
+          sLabel.value = ar ? 'النسبة من الاجمالى' : 'Share of total';
+          sLabel.alignment = { horizontal: 'right', vertical: 'middle', indent: 1, readingOrder: 'rtl' };
+          shareCells.push(sLabel);
+          const totalLetter = letter(lastCol);
+          let shareSum = 0;
+          allTypes.forEach((type, i) => {
+            const cell = ws.getCell(sr, i + 2);
+            const share = grand ? colTotals[i] / grand : 0;
+            shareSum += share;
+            cell.value = { formula: `IF($${totalLetter}$${gt}=0,0,${letter(i + 2)}${gt}/$${totalLetter}$${gt})`, result: share };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            shareCells.push(cell);
+          });
+          const sTotal = ws.getCell(sr, lastCol);
+          sTotal.value = { formula: `SUM(B${sr}:${lastTypeLetter()}${sr})`, result: shareSum };
+          sTotal.alignment = { horizontal: 'center', vertical: 'middle' };
+          shareCells.push(sTotal);
+          shareCells.forEach((cell, i) => {
+            if (i > 0) cell.numFmt = '0.0%';
+            cell.font = font({ italic: true, bold: true, color: { argb: argb(NAVY) } });
+            cell.fill = solid(tint(GOLD, 0.16));
+            cell.border = borderAll(gridColor);
+          });
+
+          await saveWorkbook(wb, `appointment-report-${localStamp()}.xlsx`);
+          toast(ar ? 'تم تنزيل تقرير نوع التعيين.' : 'Appointment report downloaded.', 'success');
+        } catch (err) {
+          console.error(err);
+          toast((ar ? 'فشل التصدير: ' : 'Export failed: ') + (err.message || err), 'error');
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      }
+
+      /** Filtered list → formatted .xlsx: columns in source-sheet order, wrapped text, branded header. */
+      async function exportFilteredList() {
         const list = state.filtered.length ? state.filtered : getFiltered();
         if (!list.length) {
           toast(t('exportEmpty'), 'error');
           return;
         }
-        if (typeof XLSX === 'undefined') {
-          toast(lang() === 'ar' ? 'مكتبة التصدير غير متوفرة.' : 'Export library not available.', 'error');
+        if (typeof ExcelJS === 'undefined') {
+          exportLibraryMissing();
           return;
         }
         const btn = $('exportFilteredBtn');
@@ -2443,55 +2810,108 @@
           btn.textContent = t('exporting');
         }
         try {
-          // Build columns from schema (label in current language + field key)
-          const columns = [];
-          schema.forEach(section => {
-            section[3].forEach(field => {
-              columns.push({ key: field[0], label: fieldLabel(field) });
-            });
-          });
-          // Ensure core display fields are present even if schema order differs
-          const coreKeys = ['code', 'name', 'status', 'currentCompany', 'currentSector', 'currentGeneralDepartment', 'currentSubDepartment', 'jobTitle', 'actualJob', 'appointmentType', 'currentGrade', 'appointmentDate', 'birthDate', 'age', 'retirementDate', 'gender', 'governorate', 'phone'];
-          coreKeys.forEach(key => {
-            if (!columns.some(c => c.key === key)) {
-              columns.unshift({ key, label: key });
-            }
-          });
-          const rows = list.map(emp => {
+          await nextPaint();
+          const NAVY = '003F73', GOLD = 'C99C39';
+          // Columns: exactly the source-sheet order; any field the sheet order doesn't know goes last.
+          const fields = schema.flatMap(section => section[3]);
+          const byKey = new Map(fields.map(field => [field[0], field]));
+          const orderedKeys = [
+            ...SOURCE_COLUMN_ORDER.filter(key => byKey.has(key)),
+            ...fields.map(field => field[0]).filter(key => !SOURCE_COLUMN_ORDER.includes(key))
+          ];
+          const columns = orderedKeys.map(key => ({ key, label: fieldLabel(byKey.get(key)) }));
+          const table = list.map(emp => {
             const e = computed(emp);
-            const row = {};
-            columns.forEach(col => {
-              let val = e[col.key];
-              if (val == null || val === '') {
-                row[col.label] = '';
-                return;
-              }
-              if (col.key === 'status') {
-                row[col.label] = displayStatus(val).label;
-              } else if (typeof val === 'object') {
-                row[col.label] = String(val);
-              } else {
-                row[col.label] = val;
-              }
+            return columns.map(col => {
+              const val = e[col.key];
+              if (val == null || val === '') return '';
+              if (col.key === 'status') return displayStatus(val).label;
+              if (typeof val === 'number') return val;
+              return clean(val);
             });
-            return row;
           });
-          const ws = XLSX.utils.json_to_sheet(rows);
-          // Reasonable column widths
-          const colWidths = columns.map(c => ({ wch: Math.min(40, Math.max(12, String(c.label).length + 2)) }));
-          ws['!cols'] = colWidths;
-          const wb = XLSX.utils.book_new();
+
+          // Column widths from content (text wraps, so cap the width and let rows grow)
+          const widths = columns.map((col, c) => {
+            let longest = 0;
+            table.forEach(row => {
+              String(row[c]).split('\n').forEach(line => { if (line.length > longest) longest = line.length; });
+            });
+            const need = Math.max(longest * 1.15 + 3, Math.min(col.label.length, 16) + 3);
+            return { longest, width: Math.round(Math.min(42, Math.max(12, need))) };
+          });
+
+          const wb = new ExcelJS.Workbook();
+          wb.creator = 'EgyptAir Work Tools';
+          wb.created = new Date();
           const sheetName = state.view === 'retired'
             ? (lang() === 'ar' ? 'متقاعدون' : 'Retired')
             : (lang() === 'ar' ? 'موظفون' : 'Employees');
-          wb.Workbook = { Views : [{RTL:true}]};
-          XLSX.utils.book_append_sheet(wb, ws, sheetName);
+          const ws = wb.addWorksheet(sheetName, {
+            views: [{ rightToLeft: true, state: 'frozen', xSplit: 2, ySplit: 1 }],
+            properties: { tabColor: { argb: argb(NAVY) } },
+            pageSetup: { orientation: 'landscape', paperSize: 9, scale: 70, printTitlesRow: '1:1', printTitlesColumn: 'A:B' }
+          });
+          ws.columns = columns.map((col, c) => ({ key: col.key, width: widths[c].width }));
 
+          // Header row: deep EgyptAir blue, white bold text, gold underline
+          const headerFont = { name: XLSX_FONT, size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+          const headerFill = solid(NAVY);
+          const headerBorder = {
+            top: { style: 'thin', color: { argb: argb(NAVY) } },
+            left: { style: 'thin', color: { argb: argb('FFFFFF') } },
+            right: { style: 'thin', color: { argb: argb('FFFFFF') } },
+            bottom: { style: 'thick', color: { argb: argb(GOLD) } }
+          };
+          const headerAlign = { horizontal: 'center', vertical: 'middle', wrapText: true };
+          const headerRow = ws.addRow(columns.map(col => col.label));
+          for (let c = 1; c <= columns.length; c++) {
+            const cell = headerRow.getCell(c);
+            cell.font = headerFont;
+            cell.fill = headerFill;
+            cell.border = headerBorder;
+            cell.alignment = headerAlign;
+          }
 
-            
-          const stamp = new Date().toISOString().slice(0, 10);
-          const fileName = `${t('exportName')}-${state.view}-${stamp}.xlsx`;
-          XLSX.writeFile(wb, fileName);
+          // Body: every cell wraps; short columns centred, long text aligned to the start
+          const bodyFont = { name: XLSX_FONT, size: 10 };
+          const boldFont = { name: XLSX_FONT, size: 10, bold: true, color: { argb: argb(NAVY) } };
+          const bodyBorder = borderAll('D5DEE8');
+          const fillA = solid('FFFFFF');
+          const fillB = solid('F3F7FB');
+          const alignFor = widths.map(w => (w.longest <= 14
+            ? { horizontal: 'center', vertical: 'middle', wrapText: true }
+            : { horizontal: 'right', vertical: 'middle', wrapText: true, readingOrder: 'rtl' }));
+          const statusStyles = {
+            active: { color: '12805C', fill: solid('E3F4EC') },
+            inactive: { color: 'B3261E', fill: solid('FBE9E7') },
+            leave: { color: 'B97800', fill: solid('FFF3D6') },
+            seconded: { color: '005DAA', fill: solid('E3EEF9') }
+          };
+          const statusCol = columns.findIndex(col => col.key === 'status');
+          table.forEach((values, ri) => {
+            const row = ws.addRow(values);
+            const zebra = ri % 2 ? fillB : fillA;
+            for (let c = 1; c <= columns.length; c++) {
+              const cell = row.getCell(c);
+              cell.font = c <= 2 ? boldFont : bodyFont;
+              cell.fill = zebra;
+              cell.border = bodyBorder;
+              cell.alignment = alignFor[c - 1];
+            }
+            if (statusCol >= 0) {
+              const look = statusStyles[normalizeStatusKey(list[ri].status)];
+              if (look) {
+                const cell = row.getCell(statusCol + 1);
+                cell.font = { name: XLSX_FONT, size: 10, bold: true, color: { argb: argb(look.color) } };
+                cell.fill = look.fill;
+              }
+            }
+          });
+          ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: columns.length } };
+
+          const fileName = `${t('exportName')}-${state.view}-${localStamp()}.xlsx`;
+          await saveWorkbook(wb, fileName);
           toast(t('exportReady', { count: list.length.toLocaleString() }), 'success');
         } catch (err) {
           console.error(err);
@@ -2549,6 +2969,13 @@
           quiet: false
         }));
         $('reportBtn').addEventListener('click', event => openAppointmentReport(event.currentTarget));
+        $('reportDownloadBtn')?.addEventListener('click', exportAppointmentReport);
+        $('hireToday')?.addEventListener('click', () => {
+          const input = $('hireTo');
+          if (!input) return;
+          input.value = localStamp();
+          applyFilter();
+        });
         $('newBtn').addEventListener('click', event => openForm({}, event.currentTarget));
         $('exportFilteredBtn')?.addEventListener('click', exportFilteredList);
         $('viewActiveBtn')?.addEventListener('click', () => switchView('active'));
