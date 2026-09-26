@@ -22,6 +22,56 @@
       align-items: center;
     }
 
+    .reservation-actions {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .copy-link-btn {
+      display: inline-flex;
+      flex: none;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--primary);
+      cursor: pointer;
+      transition: border-color .15s ease, box-shadow .15s ease, color .15s ease, background .15s ease;
+    }
+
+    .copy-link-btn svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    .copy-link-btn:hover,
+    .copy-link-btn:focus-visible {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
+      outline: none;
+    }
+
+    .copy-link-btn.copied {
+      border-color: var(--success);
+      color: var(--success);
+      background: color-mix(in srgb, var(--success) 12%, var(--surface));
+    }
+
+    .copy-link-btn .copy-link-icon-check {
+      display: none;
+    }
+
+    .copy-link-btn.copied .copy-link-icon:not(.copy-link-icon-check) {
+      display: none;
+    }
+
+    .copy-link-btn.copied .copy-link-icon-check {
+      display: inline-flex;
+    }
+
     .reservation-panel h1,
     .admin-panel h2,
     .results-panel h2 {
@@ -227,6 +277,10 @@
       .admin-form .primary-btn {
         width: 100%;
       }
+
+      .reservation-actions {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -264,7 +318,13 @@
         <h1 data-en="Place a clinic reservation" data-ar="تسجيل حجز العيادة">Place a clinic reservation</h1>
         <p data-en="Use the reservation form to submit your clinic request." data-ar="استخدم نموذج الحجز لإرسال طلب العيادة الخاص بك.">Use the reservation form to submit your clinic request.</p>
       </div>
-      <a class="primary-btn" href="https://forms.gle/74zUcvv5eW5WWzxp8" target="_blank" rel="noopener" data-en="Place a reservation" data-ar="تسجيل حجز">Place a reservation</a>
+      <div class="reservation-actions">
+        <button class="copy-link-btn" id="copyFormLinkBtn" type="button" title="Copy reservation form link" aria-label="Copy reservation form link" data-en-title="Copy reservation form link" data-ar-title="نسخ رابط نموذج الحجز">
+          <span class="copy-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span>
+          <span class="copy-link-icon copy-link-icon-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg></span>
+        </button>
+        <a class="primary-btn" href="https://forms.gle/74zUcvv5eW5WWzxp8" target="_blank" rel="noopener" data-en="Place a reservation" data-ar="تسجيل حجز">Place a reservation</a>
+      </div>
     </section>
 
     <section class="panel-card admin-panel">
@@ -326,7 +386,7 @@
 
   <script src="site-data.js"></script>
 <script src="portal.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
   <script>
     const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
     const ADMIN_PASSWORD_HASH = 'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64';
@@ -381,6 +441,7 @@
     const tableBody = document.getElementById('clinicTableBody');
     const tableStatus = document.getElementById('tableStatus');
     const exportExcelBtn = document.getElementById('exportExcelBtn');
+    const copyFormLinkBtn = document.getElementById('copyFormLinkBtn');
 
     function lang() {
       return window.EgyptAirPortal?.language === 'ar' ? 'ar' : 'en';
@@ -728,63 +789,199 @@ async function sha256Hex(value) {
       return rowsToRender.length;
     }
 
-    // Exports exactly what's currently rendered in the results table — the
-    // full reservation list, or the filtered single-row inquiry result —
-    // whichever is showing. Admin-only action columns (Confirm/Deny) are
-    // dropped since they're buttons, not data.
-    function exportTableToExcel() {
-      const table = document.querySelector('.clinics-table');
-      if (!table || !window.XLSX) {
+    // Exports exactly what's currently shown in the results table — the full
+    // reservation list, or the filtered single-row inquiry result — rebuilt
+    // from the same data/order/filter logic as renderClinicsTable() rather
+    // than scraped from the DOM. Admin-only action columns (Confirm/Deny)
+    // are never included since they're buttons, not data.
+    async function exportTableToExcel() {
+      if (typeof ExcelJS === 'undefined') {
+        window.showToast?.(t('Export library not available.', 'مكتبة التصدير غير متوفرة.'), 'error');
+        return;
+      }
+
+      let rowsToRender = [...clinicRows].reverse();
+      if (filterPatientId) {
+        const codeIndex = getColumnIndexByKey('code');
+        rowsToRender = rowsToRender.filter(row => normalizeDigits(row.values[codeIndex]) === filterPatientId);
+      }
+      rowsToRender.sort((a, b) => {
+        const aDecided = a.isReserved === 'y' || a.isReserved === 'n';
+        const bDecided = b.isReserved === 'y' || b.isReserved === 'n';
+        if (aDecided !== bDecided) return aDecided ? 1 : -1;
+        return 0;
+      });
+
+      if (!rowsToRender.length) {
         window.showToast?.(t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.'), 'warning');
         return;
       }
 
-      const clone = table.cloneNode(true);
-      if (isAdmin) {
-        clone.querySelectorAll('tr').forEach(tr => {
-          for (let i = 0; i < 2; i++) {
-            if (tr.lastElementChild) tr.removeChild(tr.lastElementChild);
-          }
-        });
+      const orderedColumns = [];
+      for (const columnKey of COLUMN_ORDER) {
+        if (columnKey === 'isreserved') continue; // handled separately, as the Status column
+        const index = getColumnIndexByKey(columnKey);
+        if (index >= 0) orderedColumns.push({ index, column: clinicColumns[index], key: columnKey });
       }
 
-      // A "nearest available time" date cell holds a live <input>, which has
-      // no visible text of its own — replace it with plain text (the chosen
-      // date if the admin picked one, otherwise the original placeholder) so
-      // the exported cell isn't blank.
-      clone.querySelectorAll('.nearest-time-cell').forEach(cell => {
-        const input = cell.querySelector('.nearest-time-input');
-        const chosen = input?.value ? formatArabicDateWithWeekday(input.value) : '';
-        const td = cell.closest('td');
-        if (td) td.textContent = chosen || NEAREST_TIME_VALUE;
-      });
+      const ar = lang() === 'ar';
+      const dateIndex = getColumnIndexByKey('date');
+      const originalLabel = exportExcelBtn.textContent;
+      exportExcelBtn.disabled = true;
+      exportExcelBtn.textContent = t('Exporting...', 'جارٍ التصدير...');
 
-      // raw: true keeps every cell as plain text instead of letting SheetJS
-      // auto-detect date-looking strings and convert them to Excel's numeric
-      // date format — that numeric format is what showed up as "###" once
-      // a column was too narrow to display it.
-      const workbook = XLSX.utils.table_to_book(clone, { sheet: t('Reservations', 'الحجوزات'), raw: true });
+      try {
+        await new Promise(resolve => setTimeout(resolve, 20)); // let the disabled state paint first
 
-      // Auto-fit column widths from the actual cell content (character
-      // count), with a comfortable minimum/maximum so nothing is clipped.
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const headerCells = Array.from(clone.querySelectorAll('thead th'));
-      const bodyRows = Array.from(clone.querySelectorAll('tbody tr'));
-      sheet['!cols'] = headerCells.map((th, colIndex) => {
-        let maxLen = String(th.textContent || '').trim().length;
-        bodyRows.forEach(tr => {
-          const cell = tr.children[colIndex];
-          if (cell) maxLen = Math.max(maxLen, String(cell.textContent || '').trim().length);
+        const headers = [...orderedColumns.map(item => columnHeaderLabel(item)), t('Status', 'الحالة')];
+        const rows = rowsToRender.map(row => {
+          const needsDatePick = isNearestTimeValue(row.values[dateIndex]);
+          const values = orderedColumns.map(item => {
+            let value = row.values[item.index];
+            if (item.key === 'timestamp') value = formatTimestamp(value);
+            if (item.key === 'date' && needsDatePick) {
+              const chosen = nearestTimeDates[row.sheetRow] || '';
+              value = chosen ? formatArabicDateWithWeekday(chosen) : NEAREST_TIME_VALUE;
+            }
+            return value == null ? '' : String(value);
+          });
+          values.push(decisionLabel(row.isReserved));
+          return { values, status: row.isReserved };
         });
-        return { wch: Math.min(Math.max(maxLen + 2, 12), 45) };
-      });
 
-      const today = new Date();
-      const fileName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`;
-      XLSX.writeFile(workbook, fileName);
+        // ── Excel styling helpers ──
+        const NAVY = '003F73', BLUE = '005DAA', GOLD = 'C99C39';
+        const argb = hex => 'FF' + hex.toUpperCase();
+        const solid = hex => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: argb(hex) } });
+        const borderAll = (hex, style = 'thin') => {
+          const side = { style, color: { argb: argb(hex) } };
+          return { top: side, left: side, bottom: side, right: side };
+        };
+        const font = (opts = {}) => ({ name: 'Arial', size: 10, ...opts });
+        const cellAlign = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
+
+        const wb = new ExcelJS.Workbook();
+        wb.creator = 'EgyptAir Work Tools';
+        wb.created = new Date();
+        const ws = wb.addWorksheet(t('Reservations', 'الحجوزات'), {
+          // The whole sheet reads right-to-left — column A sits on the right,
+          // matching the clinic data, which is overwhelmingly Arabic content
+          // (clinic names, weekday-tagged dates, status labels) regardless of
+          // which language the portal's UI happens to be in.
+          views: [{ rightToLeft: true, showGridLines: false, state: 'frozen', ySplit: 1 }],
+          properties: { tabColor: { argb: argb(BLUE) } },
+          pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' }
+        });
+
+        // Column widths sized from content, generous enough with wrapping that nothing is clipped.
+        ws.columns = headers.map((label, c) => {
+          let longest = String(label).length;
+          rows.forEach(r => { longest = Math.max(longest, String(r.values[c] ?? '').length); });
+          return { width: Math.min(42, Math.max(12, Math.round(longest * 1.1) + 3)) };
+        });
+
+        // Header row: deep EgyptAir blue, white bold text, gold underline.
+        const headerRow = ws.addRow(headers);
+        headerRow.height = 30;
+        headers.forEach((label, i) => {
+          const cell = headerRow.getCell(i + 1);
+          cell.font = font({ size: 11, bold: true, color: { argb: 'FFFFFFFF' } });
+          cell.fill = solid(NAVY);
+          cell.alignment = cellAlign;
+          cell.border = {
+            top: { style: 'thin', color: { argb: argb(NAVY) } },
+            left: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+            right: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+            bottom: { style: 'thick', color: { argb: argb(GOLD) } }
+          };
+        });
+
+        // Body rows: soft zebra striping, every cell wrapped, Status cell colour-coded.
+        const statusLook = {
+          y: { color: '12805C', fill: solid('E3F4EC') },
+          n: { color: 'B3261E', fill: solid('FBE9E7') }
+        };
+        const pendingLook = { color: '9A7420', fill: solid('FFF3D6') };
+        const statusCol = headers.length;
+
+        rows.forEach((r, ri) => {
+          const row = ws.addRow(r.values);
+          const zebra = solid(ri % 2 ? 'F3F7FB' : 'FFFFFF');
+          for (let c = 1; c <= headers.length; c++) {
+            const cell = row.getCell(c);
+            cell.font = font();
+            cell.fill = zebra;
+            cell.border = borderAll('D5DEE8');
+            cell.alignment = cellAlign;
+          }
+          const look = statusLook[r.status] || pendingLook;
+          const statusCell = row.getCell(statusCol);
+          statusCell.font = font({ bold: true, color: { argb: argb(look.color) } });
+          statusCell.fill = look.fill;
+        });
+
+        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+
+        const buffer = await wb.xlsx.writeBuffer();
+        const url = URL.createObjectURL(new Blob([buffer], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }));
+        const today = new Date();
+        const fileName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`;
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      } catch (error) {
+        console.error(error);
+        window.showToast?.((ar ? 'فشل التصدير: ' : 'Export failed: ') + (error.message || error), 'error');
+      } finally {
+        exportExcelBtn.disabled = false;
+        exportExcelBtn.textContent = originalLabel;
+      }
     }
 
     exportExcelBtn.addEventListener('click', exportTableToExcel);
+
+    // Copies the Google Form reservation link to the clipboard. Falls back to
+    // the legacy execCommand trick when navigator.clipboard is unavailable
+    // (e.g. plain http:// or file:// — clipboard API requires a secure context).
+    async function copyReservationFormLink() {
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(RESERVATION_FORM_URL);
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = RESERVATION_FORM_URL;
+          textarea.style.position = 'fixed';
+          textarea.style.opacity = '0';
+          document.body.appendChild(textarea);
+          textarea.focus();
+          textarea.select();
+          const copied = document.execCommand('copy');
+          textarea.remove();
+          if (!copied) throw new Error('execCommand copy failed');
+        }
+        copyFormLinkBtn.classList.add('copied');
+        setTimeout(() => copyFormLinkBtn.classList.remove('copied'), 1500);
+        window.showToast?.(t('Reservation form link copied.', 'تم نسخ رابط نموذج الحجز.'), 'success');
+      } catch (error) {
+        console.warn('Copy failed:', error);
+        window.showToast?.(t('Could not copy the link.', 'تعذر نسخ الرابط.'), 'error');
+      }
+    }
+
+    function updateCopyLinkTitle() {
+      const label = t('Copy reservation form link', 'نسخ رابط نموذج الحجز');
+      copyFormLinkBtn.title = label;
+      copyFormLinkBtn.setAttribute('aria-label', label);
+    }
+
+    copyFormLinkBtn.addEventListener('click', copyReservationFormLink);
+    updateCopyLinkTitle();
 
     function handleSheetResponse(response, requestId) {
       // If a newer load has started since this request went out, drop this
@@ -1122,8 +1319,9 @@ async function sha256Hex(value) {
       setStatus(adminStatus, t('Searching for ID...', 'جارٍ البحث عن الكود...'));
       resultsPanel.classList.remove('hidden');
       if (clinicRows.length > 0) {
-        renderClinicsTable();
+        const renderedCount = renderClinicsTable();
         setStatus(adminStatus, t('Filter applied.', 'تم تطبيق التصفية.'));
+        setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
       } else {
         loadClinicSheet();
       }
@@ -1158,6 +1356,7 @@ async function sha256Hex(value) {
       if (!resultsPanel.classList.contains('hidden')) {
         renderClinicsTable();
       }
+      updateCopyLinkTitle();
     });
   </script>
 </body>
