@@ -1715,8 +1715,26 @@
 
       /** <option> list for a "combo" field's <datalist>: every distinct value already
        *  used in that column, so the user can pick one or type a brand new value freely. */
+      /** True for values that are really dates or bare numbers rather than text
+       *  (stray spreadsheet values that shouldn't show up as text suggestions). */
+      function looksLikeDateOrNumber(value) {
+        const v = clean(value);
+        if (!v) return false;
+        // Pure number: 123, 123.45, 1,234, -5, 12%
+        if (/^-?[\d,]+(\.\d+)?%?$/.test(v)) return true;
+        // ISO-ish or slash dates, optionally with a time part: 2020-05-12, 2020/5/12 00:00:00
+        if (/^\d{4}[-/]\d{1,2}[-/]\d{1,2}([ T]\d{1,2}:\d{2}(:\d{2})?)?$/.test(v)) return true;
+        // Day-first/month-first dates: 12-05-2020, 12/05/2020
+        if (/^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}([ T]\d{1,2}:\d{2}(:\d{2})?)?$/.test(v)) return true;
+        // Bare time value: 00:00:00
+        if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)) return true;
+        return false;
+      }
+
       function comboOptions(key) {
-        return unique(key).map(value => `<option value="${escapeHtml(value)}">`).join('');
+        return unique(key)
+          .filter(value => !looksLikeDateOrNumber(value))
+          .map(value => `<option value="${escapeHtml(value)}">`).join('');
       }
 
       // Filter controls. Hierarchy parents limit child options:
