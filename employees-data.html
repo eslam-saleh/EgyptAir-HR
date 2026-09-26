@@ -3003,6 +3003,18 @@
         $('viewActiveBtn')?.addEventListener('click', () => switchView('active'));
         $('viewRetiredBtn')?.addEventListener('click', () => switchView('retired'));
         $('employeeForm').addEventListener('submit', saveEmployee);
+        $('employeeForm').addEventListener('keydown', event => {
+          if (event.key !== 'Enter') return;
+          const target = event.target;
+          // Let Enter activate an actual button (e.g. the focused Save button),
+          // and allow multi-line text areas to insert a newline as usual.
+          if (target.tagName === 'BUTTON' || target.tagName === 'TEXTAREA') return;
+          if (target.tagName === 'INPUT' && target.type === 'submit') return;
+          // For every other field (text, date, tel, select, and the combo/datalist
+          // inputs) Enter should only confirm a highlighted dropdown option, not
+          // submit the whole form.
+          event.preventDefault();
+        });
         $('retireConfirmBtn')?.addEventListener('click', () => {
           if (pendingRetireEmployee) retireEmployee(pendingRetireEmployee);
         });
