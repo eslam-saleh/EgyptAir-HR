@@ -1122,7 +1122,7 @@
         <div class="stat"><span id="totalLabel" data-en="Total employees" data-ar="إجمالي الموظفين">Total employees</span><strong id="totalCount">—</strong><small id="totalHint"></small></div>
         <div class="stat"><span id="shownLabel" data-en="Matching records" data-ar="السجلات المطابقة">Matching records</span><strong id="shownCount">—</strong><small id="shownHint"></small></div>
         <div class="stat"><span id="deptLabel" data-en="General departments" data-ar="الإدارات العامة">General departments</span><strong id="deptCount">—</strong><small id="deptHint"></small></div>
-        <div class="stat clickable" id="retirementStat" role="button" tabindex="0" aria-pressed="false" title="Show employees retiring within 12 months">
+        <div class="stat clickable" id="retirementStat" role="button" tabindex="0" aria-pressed="false" title="Show employees retiring within 12 months, or already past their retirement date">
           <span id="retirementLabel" data-en="Upcoming retirements" data-ar="التقاعد خلال 12 شهراً">Upcoming retirements</span>
           <strong id="retirementCount">—</strong>
           <small id="retirementHint"></small>
@@ -1615,11 +1615,13 @@
       function isUpcomingRetirement(employee) {
         const date = parseDate(employee.retirementDate);
         if (!date) return false;
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(start);
+        const end = new Date();
+        end.setHours(0, 0, 0, 0);
         end.setFullYear(end.getFullYear() + 1);
-        return date >= start && date <= end;
+        // Includes anyone whose retirement date is within the next 12 months
+        // OR already in the past (i.e. still on the active roster despite
+        // having passed their retirement date) — both need attention.
+        return date <= end;
       }
 
       function toast(message, type = 'info') {
@@ -1906,7 +1908,21 @@
 
       function toggleUpcomingOnly() {
         if (state.view === 'retired') return;
-        setUpcomingOnly(!state.upcomingOnly);
+        const turningOn = !state.upcomingOnly;
+        if (turningOn) {
+          // Remember whatever sort was active so we can restore it once the
+          // filter is cleared, then default to oldest-first (closest to, or
+          // already past, retirement) since that's the most actionable order.
+          state.prevSort = state.sort;
+          state.prevDirection = state.direction;
+          state.sort = 'age';
+          state.direction = -1;
+        } else if (state.prevSort) {
+          state.sort = state.prevSort;
+          state.direction = state.prevDirection;
+        }
+        state.page = 1;
+        setUpcomingOnly(turningOn);
         applyFilter();
       }
 
