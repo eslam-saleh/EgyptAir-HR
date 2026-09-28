@@ -20,7 +20,7 @@ const translations = {
     balanceLabel: 'Annual holiday balance',
     balanceHint: 'Type your annual leave days.',
     emergencyLabel: 'Emergency leave (عارضة)',
-    emergencyHint: 'Used after annual leave is finished.',
+    emergencyHint: 'Used after annual leave is finished. Right-click a day to force emergency leave anytime.',
     takenLabel: 'Annual used',
     remainingLabel: 'Annual remaining',
     emergencyRemainingLabel: 'Emergency remaining',
@@ -85,7 +85,7 @@ const translations = {
     balanceLabel: 'رصيد الإجازات السنوي',
     balanceHint: 'اكتب عدد أيام الإجازة السنوية.',
     emergencyLabel: 'رصيد العارضة',
-    emergencyHint: 'تُستخدم بعد انتهاء الإجازة السنوية.',
+    emergencyHint: 'تُستخدم بعد انتهاء الإجازة السنوية. انقر بزر الفأرة الأيمن على يوم لفرض العارضة في أي وقت.',
     takenLabel: 'الإجازة المستخدمة',
     remainingLabel: 'رصيد الإجازة المتبقي',
     emergencyRemainingLabel: 'رصيد العارضة المتبقي',
@@ -473,7 +473,12 @@ function createDayButton(year, month, day) {
     button.setAttribute('data-today', t('today'));
   }
 
-  button.addEventListener('click', () => toggleDay(dateKey, holidayKey, isWeekend));
+  button.addEventListener('click', () => toggleDay(dateKey, holidayKey, isWeekend, false));
+  // Right-click forces emergency leave (desktop only; ignore mobiles)
+  button.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    toggleDay(dateKey, holidayKey, isWeekend, true);
+  });
   return button;
 }
 
@@ -485,7 +490,7 @@ function countByType(type) {
   return n;
 }
 
-function toggleDay(dateKey, holidayKey, isWeekend) {
+function toggleDay(dateKey, holidayKey, isWeekend, forceEmergency = false) {
   // Removing an existing selection must always be allowed, even if this date
   // has since become an official holiday or a configured weekend day —
   // otherwise a day picked before a weekend-rule change gets stuck forever.
@@ -510,12 +515,28 @@ function toggleDay(dateKey, holidayKey, isWeekend) {
 
   const annualUsed = countByType('annual');
   const emergUsed = countByType('emergency');
-  if (annualUsed < annualBalance) {
-    selectedDays.set(dateKey, 'annual');
-  } else if (emergUsed < emergencyBalance) {
-    selectedDays.set(dateKey, 'emergency');
+
+  if (forceEmergency) {
+    // Right-click: force emergency leave mid-way (if balance remains)
+    if (emergUsed < emergencyBalance) {
+      selectedDays.set(dateKey, 'emergency');
+    } else {
+      // No emergency left — fall back to normal priority
+      if (annualUsed < annualBalance) {
+        selectedDays.set(dateKey, 'annual');
+      } else {
+        selectedDays.set(dateKey, 'absence');
+      }
+    }
   } else {
-    selectedDays.set(dateKey, 'absence');
+    // Left-click: annual first, then emergency, then absence
+    if (annualUsed < annualBalance) {
+      selectedDays.set(dateKey, 'annual');
+    } else if (emergUsed < emergencyBalance) {
+      selectedDays.set(dateKey, 'emergency');
+    } else {
+      selectedDays.set(dateKey, 'absence');
+    }
   }
 
   saveState();
