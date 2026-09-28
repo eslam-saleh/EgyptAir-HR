@@ -64,7 +64,8 @@ const FIELDS = [
   ['originalCompanyName', 'مسمى الشركة الاساسية'],
   ['originalGeneralDepartment', 'الاداره العامة الأساسية'],
   ['originalSubDepartment', 'مسمى الادارة الفرعية الاساسية'],
-  ['workSchedule', 'توقيت العمل']
+  ['workSchedule', 'توقيت العمل'],
+  ['nationalId', 'الرقم القومى']
 ];
 const HEADER_KEYS = FIELDS.map(x => x[1]);
 
@@ -128,11 +129,10 @@ function getSheet(name) {
 }
 
 function ensureSheetShape(sh, sheetName) {
-  if (sh.getLastColumn() < FIELDS.length) {
-    throw new Error(
-      'Sheet ' + (sheetName || sh.getName()) + ' has ' + sh.getLastColumn() +
-      ' columns; ' + FIELDS.length + ' are required.'
-    );
+  const needed = FIELDS.length;
+  // Expand sheet capacity when a new field (e.g. nationalId) is added to FIELDS.
+  if (sh.getMaxColumns() < needed) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), needed - sh.getMaxColumns());
   }
 }
 
