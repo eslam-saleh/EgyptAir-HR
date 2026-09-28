@@ -1252,6 +1252,14 @@
       /* API_TOKEN is only a compatibility fallback. For HR data, restrict the Apps Script deployment and use its email allowlist. */
       const API_URL = 'https://script.google.com/macros/s/AKfycbzoF2Cpp1bG18ZbZcHTTafFFhkTD6mZi7BIw_a0iEtqwBS1k2oDxDetGd3p8Jk30CVb/exec';
       const API_TOKEN = '';
+      /* All of these unlock the directory. Only EDITOR_PASSWORD_HASH enables Add / Edit / Move to retired. */
+      const UNLOCK_PASSWORD_HASHES = new Set([
+        '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb', // 42554 — full edit
+        '3f64a7f4dd53bb20cfbc148d34d8bf866c5f8728da9dce2066be0e3e408c612e', // 42069 — view only
+        'd073e341e454ce18f401d4dc19e7c72661eb45dd8bf1bc802cb8416ef71aa971', // 68224 — view only
+        '492f431bae35265f2e5f4ed49bd8c58dda912431be561504846988d00d05d117'  // 32000 — view only
+      ]);
+      const EDITOR_PASSWORD_HASH = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb'; // 42554
       const $ = id => document.getElementById(id);
       const clean = value => String(value ?? '').trim();
       const normal = value => clean(value).toLocaleLowerCase('ar-EG');
@@ -1266,7 +1274,8 @@
         lastFocus: null,
         loading: false,
         view: 'active', // 'active' | 'retired' — separate lists, never merged
-        upcomingOnly: false // date-period filter: retiring within 12 months
+        upcomingOnly: false, // date-period filter: retiring within 12 months
+        canEdit: false // true only when unlocked with the editor password (42554)
       };
       let employeeDataLoadPromise = null;
       const i18n = {
@@ -1646,7 +1655,7 @@
         state.loading = loading;
         $('loadingState').textContent = loading ? t('loading') : '';
         $('refreshBtn').disabled = loading;
-        $('newBtn').disabled = loading || state.view === 'retired';
+        $('newBtn').disabled = loading || state.view === 'retired' || !state.canEdit;
         $('reportBtn').disabled = loading;
         if ($('exportFilteredBtn')) $('exportFilteredBtn').disabled = loading;
         const activeTab = $('viewActiveBtn');
@@ -1661,7 +1670,7 @@
         $('viewRetiredBtn')?.classList.toggle('active', isRetired);
         $('viewActiveBtn')?.setAttribute('aria-selected', String(!isRetired));
         $('viewRetiredBtn')?.setAttribute('aria-selected', String(isRetired));
-        if ($('newBtn')) $('newBtn').hidden = isRetired;
+        if ($('newBtn')) $('newBtn').hidden = isRetired || !state.canEdit;
         if ($('reportBtn')) $('reportBtn').hidden = isRetired;
         const subtitle = $('pageSubtitle');
         if (subtitle) {
@@ -2038,8 +2047,8 @@
           return entries ? `<section class="profile-section"><h3>${escapeHtml(sectionLabel(section))}</h3><dl class="details-grid">${entries}</dl></section>` : '';
         }).join('');
         $('profileTitle').textContent = t('profile');
-        const canEdit = state.view === 'active';
-        const canRetire = state.view === 'active';
+        const canEdit = state.view === 'active' && state.canEdit;
+        const canRetire = state.view === 'active' && state.canEdit;
         const actions = [];
         if (canEdit) actions.push(`<button class="btn" type="button" id="editProfileBtn">${escapeHtml(t('edit'))}</button>`);
         if (canRetire) actions.push(`<button class="btn danger-solid" type="button" id="retireProfileBtn">${escapeHtml(t('moveToRetired'))}</button>`);
@@ -2059,7 +2068,7 @@
       let pendingRetireEmployee = null;
 
       function askRetireConfirm(employee) {
-        if (!employee || state.view !== 'active') return;
+        if (!employee || state.view !== 'active' || !state.canEdit) return;
         pendingRetireEmployee = employee;
         const name = clean(employee.name) || t('unknown');
         const code = clean(employee.code) || '—';
@@ -2075,7 +2084,7 @@
       }
 
       async function retireEmployee(employee) {
-        if (!employee || state.view !== 'active') return;
+        if (!employee || state.view !== 'active' || !state.canEdit) return;
         const btn = $('retireConfirmBtn');
         const profileBtn = $('retireProfileBtn');
         if (btn) {
@@ -2323,6 +2332,10 @@
       }
 
       function openForm(employee = {}, opener) {
+        if (!state.canEdit) {
+          toast(lang() === 'ar' ? 'ليس لديك صلاحية التعديل.' : 'You do not have permission to edit.', 'error');
+          return;
+        }
         state.editingKey = recordKey(employee) || null;
         const e = computed(employee);
         $('formTitle').textContent = state.editingKey ? t('editEmployee') : t('newEmployee');
@@ -2434,19 +2447,23 @@
         const input = $('accessPassword');
         const error = $('accessError');
         const button = event.submitter || $('accessForm').querySelector('button[type="submit"]');
-        const expectedHash = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb';
         error.textContent = '';
         error.classList.remove('error');
         button.disabled = true;
         try {
-          if ((await sha256Hex(input.value)) !== expectedHash) {
+          const hash = await sha256Hex(input.value);
+          if (!UNLOCK_PASSWORD_HASHES.has(hash)) {
             error.textContent = lang() === 'ar' ? 'كلمة المرور غير صحيحة.' : 'Incorrect password.';
             error.classList.add('error');
             input.select();
             return;
           }
-          sessionStorage.setItem('employee-data-unlocked', expectedHash);
+          state.canEdit = hash === EDITOR_PASSWORD_HASH;
+          sessionStorage.setItem('employee-data-unlocked', hash);
+          sessionStorage.setItem('employee-data-can-edit', state.canEdit ? '1' : '0');
           $('accessGate').hidden = true;
+          applyViewChrome();
+          setLoading(state.loading);
           const loaded = await employeeDataLoadPromise;
           if (!loaded) await load({ quiet: true });
         } finally {
@@ -2456,12 +2473,15 @@
 
       async function initAccessGate() {
         $('accessForm').addEventListener('submit', unlockEmployeeData);
-        const expectedHash = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb';
         // Begin loading behind the access overlay so the directory is ready
         // by the time the user finishes entering the password.
         employeeDataLoadPromise = load({ quiet: true });
-        if (sessionStorage.getItem('employee-data-unlocked') === expectedHash) {
+        const storedHash = sessionStorage.getItem('employee-data-unlocked');
+        if (storedHash && UNLOCK_PASSWORD_HASHES.has(storedHash)) {
+          state.canEdit = sessionStorage.getItem('employee-data-can-edit') === '1' || storedHash === EDITOR_PASSWORD_HASH;
+          sessionStorage.setItem('employee-data-can-edit', state.canEdit ? '1' : '0');
           $('accessGate').hidden = true;
+          applyViewChrome();
           await employeeDataLoadPromise;
         }
       }
