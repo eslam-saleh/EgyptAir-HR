@@ -1293,6 +1293,7 @@
           allGovernorates: 'All governorates',
           allAgeGroups: 'All age groups',
           allJobs: 'All job titles',
+          emptyFilter: '— (empty)',
           noData: 'No matching employee records.',
           noDistribution: 'No matching records.',
           showing: 'Showing {from}–{to} of {total}',
@@ -1367,6 +1368,7 @@
           allGovernorates: 'كل المحافظات',
           allAgeGroups: 'كل الفئات العمرية',
           allJobs: 'كل المسميات الوظيفية',
+          emptyFilter: '— (فارغ)',
           noData: 'لا توجد سجلات موظفين مطابقة.',
           noDistribution: 'لا توجد سجلات مطابقة.',
           showing: 'عرض {from}–{to} من {total}',
@@ -1752,6 +1754,9 @@
       // Filter controls. Hierarchy parents limit child options:
       // sector → department → section. All other filters cascade against the
       // currently selected set so options stay realistic (no empty results).
+      // Sentinel value for "cell is empty / unfilled" filter option.
+      const EMPTY_FILTER = '__empty__';
+
       const FILTER_CONTROLS = [
         { id: 'sector', key: 'currentSector', allKey: 'allSectors' },
         { id: 'department', key: 'currentGeneralDepartment', allKey: 'allDepartments', parents: ['sector'] },
@@ -1782,14 +1787,20 @@
           if (query && !normal(employee.code).includes(query) && !normal(employee.name).includes(query)) {
             return false;
           }
-          if (statusVal && normalizeStatusKey(employee.status) !== statusVal) return false;
+          if (statusVal) {
+            const st = normalizeStatusKey(employee.status);
+            if (statusVal === EMPTY_FILTER) { if (st) return false; }
+            else if (st !== statusVal) return false;
+          }
           if (!except.has('upcoming') && state.upcomingOnly && !isUpcomingRetirement(employee)) return false;
           if (!except.has('hireRange') && !matchesHireRange(employee)) return false;
           return FILTER_CONTROLS.every(ctrl => {
             if (except.has(ctrl.id)) return true;
             const selected = $(ctrl.id)?.value || '';
             if (!selected) return true;
-            return filterValueFor(employee, ctrl) === selected;
+            const actual = filterValueFor(employee, ctrl);
+            if (selected === EMPTY_FILTER) return !actual;
+            return actual === selected;
           });
         });
       }
@@ -1819,15 +1830,24 @@
                 if (!parentCtrl) return true;
                 const selected = $(parentId)?.value || '';
                 if (!selected) return true;
-                return filterValueFor(employee, parentCtrl) === selected;
+                const actual = filterValueFor(employee, parentCtrl);
+                if (selected === EMPTY_FILTER) return !actual;
+                return actual === selected;
               });
             });
           } else {
             pool = employeesMatchingExcept([ctrl.id]);
           }
           const values = uniqueFrom(pool, e => filterValueFor(e, ctrl));
-          select.innerHTML = `<option value="">${escapeHtml(t(ctrl.allKey))}</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
-          select.value = values.includes(current) ? current : '';
+          const hasEmpty = pool.some(e => !filterValueFor(e, ctrl));
+          const emptyOpt = hasEmpty
+            ? `<option value="${EMPTY_FILTER}">${escapeHtml(t('emptyFilter'))}</option>`
+            : '';
+          select.innerHTML = `<option value="">${escapeHtml(t(ctrl.allKey))}</option>${emptyOpt}${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
+          const keep = current === EMPTY_FILTER
+            ? (hasEmpty ? EMPTY_FILTER : '')
+            : (values.includes(current) ? current : '');
+          select.value = keep;
         });
 
         // Status: always show canonical keys present in the current pool
@@ -1842,11 +1862,17 @@
             ...order.filter(k => keys.includes(k)),
             ...keys.filter(k => !order.includes(k))
           ];
-          statusSelect.innerHTML = `<option value="">${t('allStatuses')}</option>${ordered.map(key => {
+          const hasEmptyStatus = pool.some(e => !normalizeStatusKey(e.status));
+          const emptyStatusOpt = hasEmptyStatus
+            ? `<option value="${EMPTY_FILTER}">${escapeHtml(t('emptyFilter'))}</option>`
+            : '';
+          statusSelect.innerHTML = `<option value="">${t('allStatuses')}</option>${emptyStatusOpt}${ordered.map(key => {
             const label = displayStatus(key).label;
             return `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`;
           }).join('')}`;
-          statusSelect.value = ordered.includes(current) ? current : '';
+          statusSelect.value = current === EMPTY_FILTER
+            ? (hasEmptyStatus ? EMPTY_FILTER : '')
+            : (ordered.includes(current) ? current : '');
         }
       }
 
@@ -1882,13 +1908,19 @@
         const list = state.employees.map(computed).filter(employee => {
           const matchesSearch = !query || normal(employee.code).includes(query) || normal(employee.name).includes(query);
           if (!matchesSearch) return false;
-          if (statusVal && normalizeStatusKey(employee.status) !== statusVal) return false;
+          if (statusVal) {
+            const st = normalizeStatusKey(employee.status);
+            if (statusVal === EMPTY_FILTER) { if (st) return false; }
+            else if (st !== statusVal) return false;
+          }
           if (state.upcomingOnly && !isUpcomingRetirement(employee)) return false;
           if (!matchesHireRange(employee)) return false;
           return FILTER_CONTROLS.every(ctrl => {
             const selected = $(ctrl.id)?.value || '';
             if (!selected) return true;
-            return filterValueFor(employee, ctrl) === selected;
+            const actual = filterValueFor(employee, ctrl);
+            if (selected === EMPTY_FILTER) return !actual;
+            return actual === selected;
           });
         });
         const key = state.sort;

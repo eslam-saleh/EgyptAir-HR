@@ -716,10 +716,24 @@
     // below just trims/shapes that response; it no longer re-derives
     // anything client-side.
 
+    function isSeasonalWorkerCode(code) {
+      // 6-digit codes starting with 2 = seasonal labour (عمالة موسمية)
+      const s = String(code ?? '').trim();
+      return /^2\d{5}$/.test(s);
+    }
+
+    function withSeasonalJobLabel(job, code) {
+      const base = String(job || '').trim();
+      if (!isSeasonalWorkerCode(code)) return base;
+      if (/عمالة\s*موسمية/.test(base)) return base;
+      return base ? `${base} (عمالة موسمية)` : '(عمالة موسمية)';
+    }
+
     function normalizeDirectoryEmployee(raw) {
       if (!raw) return null;
       const code = String(raw.code ?? '').trim();
       if (!code) return null;
+      const job = withSeasonalJobLabel(String(raw.job || '').trim(), code);
       return {
         code: /^\d+$/.test(code) ? Number(code) : code,
         name: String(raw.name || '').trim(),
@@ -728,7 +742,7 @@
         sector: String(raw.sector || '').trim(),
         department: String(raw.department || '').trim(),
         subDepartment: String(raw.subDepartment || '').trim(),
-        job: String(raw.job || '').trim(),
+        job,
         group: String(raw.group || '').trim(),
         gender: String(raw.gender || '').trim(),
         currentCompany: String(raw.currentCompany || '').trim(),
