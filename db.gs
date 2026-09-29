@@ -259,7 +259,12 @@ function getFilledRecords(sheet) {
   return records;
 }
 
-// ── APPEND (one or more rows in a single bulk write) ──────────────────
+// ── APPEND (one or more rows) ─────────────────────────────────────────
+// If body.overwriteByCode is true, a row whose كود already exists in the
+// sheet REPLACES the most recent existing row with that code (keeping its
+// order number in column A) instead of being added as a new row. Codes not
+// found are appended as new rows. Duplicate codes inside the same batch
+// collapse into one (the later one wins).
 function handleAppend(sheet, body) {
   var rows = body.rows || [];
   if (!rows.length) return respond(false, 'لا توجد بيانات لإضافتها.');
@@ -276,9 +281,9 @@ function handleAppend(sheet, body) {
     startOrder = (Number(prevOrder) || 0) + 1;
   }
 
-  var newRows = rows.map(function (rowData, i) {
+  var buildRow = function (rowData, order) {
     var out = new Array(lastCol).fill('');
-    out[0] = startOrder + i; // column A = order, never overwritten below
+    out[0] = order; // column A = order, never overwritten below
     Object.keys(rowData).forEach(function (key) {
       var col = findHeaderCol(headers, key);
       if (col < 0) return;
@@ -286,21 +291,67 @@ function handleAppend(sheet, body) {
       out[col] = isDateHeader(headers[col]) ? normalizeDateCellText(value) : value;
     });
     return out;
-  });
+  };
 
-  var startRow = lastRow + 1;
-  // These are brand-new, previously-empty cells, so it's safe to force
-  // Plain text on their date columns before writing — see isDateHeader().
-  for (var c = 0; c < headers.length; c++) {
-    if (isDateHeader(headers[c])) {
-      sheet.getRange(startRow, c + 1, newRows.length, 1).setNumberFormat('@');
+  // Existing codes → sheet row number (1-based), newest match wins.
+  var codeCol = findHeaderCol(headers, 'كود');
+  var existing = {};
+  if (body.overwriteByCode && codeCol !== -1 && lastRow > 1) {
+    var codes = sheet.getRange(2, codeCol + 1, lastRow - 1, 1).getValues();
+    for (var i = 0; i < codes.length; i++) {
+      var k = String(codes[i][0]).trim();
+      if (k) existing[k] = i + 2;
     }
   }
-  sheet.getRange(startRow, 1, newRows.length, lastCol).setValues(newRows); // single bulk write
 
-  var word = newRows.length === 1 ? 'سجل واحد' : newRows.length + ' سجلات';
-  return respond(true, 'تمت إضافة ' + word + ' بنجاح إلى شيت ' + sheet.getName() + '.',
-    { firstRow: startRow, count: newRows.length });
+  var overwrites = {};   // sheet row number → row array
+  var newRows = [];
+  var newByCode = {};    // code → index in newRows (batch de-dupe)
+  var nextOrder = startOrder;
+
+  rows.forEach(function (rowData) {
+    var key = body.overwriteByCode && codeCol !== -1
+      ? String(rowData['كود'] == null ? '' : rowData['كود']).trim()
+      : '';
+    if (key && existing[key]) {
+      var r = existing[key];
+      var order = sheet.getRange(r, 1).getValue(); // keep the original order number
+      overwrites[r] = buildRow(rowData, order);
+    } else if (key && newByCode.hasOwnProperty(key)) {
+      var idx = newByCode[key];
+      newRows[idx] = buildRow(rowData, newRows[idx][0]);
+    } else {
+      if (key) newByCode[key] = newRows.length;
+      newRows.push(buildRow(rowData, nextOrder++));
+    }
+  });
+
+  var setDateFormats = function (row, count) {
+    for (var c = 0; c < headers.length; c++) {
+      if (isDateHeader(headers[c])) sheet.getRange(row, c + 1, count, 1).setNumberFormat('@');
+    }
+  };
+
+  // Overwrites: one small write per replaced row (typically 1–2 rows).
+  var overwrittenRows = Object.keys(overwrites);
+  overwrittenRows.forEach(function (r) {
+    r = Number(r);
+    setDateFormats(r, 1); // plain text — see isDateHeader()
+    sheet.getRange(r, 1, 1, lastCol).setValues([overwrites[r]]);
+  });
+
+  // New rows: single bulk write into previously-empty cells.
+  var startRow = lastRow + 1;
+  if (newRows.length) {
+    setDateFormats(startRow, newRows.length);
+    sheet.getRange(startRow, 1, newRows.length, lastCol).setValues(newRows);
+  }
+
+  var parts = [];
+  if (newRows.length) parts.push('تمت إضافة ' + (newRows.length === 1 ? 'سجل واحد' : newRows.length + ' سجلات'));
+  if (overwrittenRows.length) parts.push('تم استبدال ' + (overwrittenRows.length === 1 ? 'سجل واحد' : overwrittenRows.length + ' سجلات') + ' موجود بنفس الكود');
+  return respond(true, parts.join(' و') + ' في شيت ' + sheet.getName() + '.',
+    { firstRow: startRow, count: newRows.length, added: newRows.length, overwritten: overwrittenRows.length });
 }
 
 // ── UPDATE (نهاية الإيقاف: fills the newest still-open row for a code) ──

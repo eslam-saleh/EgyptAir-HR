@@ -976,7 +976,7 @@
             });
           }
           if (!rows.length) throw new Error(t('Could not find two code fields in this document.', 'تعذر العثور على حقلي كود في هذا المستند.'));
-          await postToSheet({ action: 'append', sheet: rule.sheet, rows });
+          await postToSheet({ action: 'append', sheet: rule.sheet, rows, overwriteByCode: true });
           showSheetSyncToast(t(`Added ${rows.length} record(s) to "${rule.sheet}".`, `تمت إضافة ${rows.length} سجل إلى شيت "${rule.sheet}".`));
           return;
         }
@@ -1038,7 +1038,7 @@
           row['بداية الإيقاف'] = toSheetDateFormat(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ الايقاف عن العمل', 'تاريخ الايقاف'])) || today;
         }
 
-        await postToSheet({ action: 'append', sheet: rule.sheet, rows: [row] });
+        await postToSheet({ action: 'append', sheet: rule.sheet, rows: [row], overwriteByCode: true });
         showSheetSyncToast(t(`Added to "${rule.sheet}" sheet.`, `تمت الإضافة إلى شيت "${rule.sheet}".`));
       } catch (err) {
         showSheetSyncToast(err.message || t('Failed to update the sheet.', 'فشل تحديث الشيت.'), true);
