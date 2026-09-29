@@ -220,6 +220,28 @@
   }
   .check-row input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; }
 
+
+  /* Duration sum */
+  .dur-row { display: flex; flex-direction: column; gap: 8px; }
+  .dur-plus { text-align: center; font-size: 20px; font-weight: 800; color: var(--accent); margin: 6px 0; line-height: 1; }
+  .dur-line { display: flex; align-items: center; gap: 10px; }
+  .dur-idx { width: 26px; height: 26px; border-radius: 50%; background: var(--surface2); color: var(--text-muted); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex: none; }
+  .dur-fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex: 1; direction: ltr; }
+  .dur-fields input {
+    background: var(--surface2); border: 1px solid var(--border-bright); border-radius: var(--radius-sm);
+    color: var(--text); font-size: 15px; padding: 12px; outline: none; width: 100%; min-width: 0; text-align: center;
+  }
+  .dur-fields input:focus { border-color: var(--accent); }
+  .dur-remove { flex: none; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border-bright); background: transparent; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+  .dur-remove:hover { color: #d33; border-color: #d33; }
+  .dur-remove.ph { visibility: hidden; }
+  .dur-actions { display: flex; align-items: center; gap: 14px; margin: 1.1rem 0 1.25rem; flex-wrap: wrap; }
+  .dur-add { padding: 10px 18px; border-radius: 8px; border: 1.5px dashed var(--accent); background: transparent; color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; }
+  .dur-add:hover:not(:disabled) { background: var(--surface2); }
+  .dur-add:disabled { opacity: .45; cursor: not-allowed; }
+  .dur-counter { font-size: 13px; color: var(--text-dim); }
+  .dur-note { font-size: 12px; color: var(--text-dim); margin-top: 12px; }
+
   /* Calc button */
   .calc-btn {
     display: inline-flex; align-items: center; gap: 8px;
@@ -339,9 +361,9 @@
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('diff')" data-en="Date Difference" data-ar="فرق التاريخ">Date Difference</button>
     <button class="tab-btn" onclick="switchTab('add')" data-en="Add / Subtract" data-ar="إضافة / طرح">Add / Subtract</button>
-    <button class="tab-btn" onclick="switchTab('age')" data-en="Age Calculator" data-ar="حساب العمر">Age Calculator</button>
+    <button class="tab-btn" onclick="switchTab('count')" data-en="Sum Durations" data-ar="جامع الفترات">Sum Durations</button>
     <button class="tab-btn" onclick="switchTab('work')" data-en="Work Days" data-ar="أيام العمل">Work Days</button>
-    <button class="tab-btn" onclick="switchTab('count')" data-en="Day Counter" data-ar="عداد الأيام">Day Counter</button>
+    <button class="tab-btn" onclick="switchTab('age')" data-en="Age Calculator" data-ar="حساب العمر">Age Calculator</button>
     <button class="tab-btn" onclick="switchTab('hijri')" data-en="Hijri / Gregorian" data-ar="الهجري والميلادي">Hijri / Gregorian</button>
   </div>
 
@@ -439,24 +461,15 @@
   </div>
   </div>
 
-  <!-- COUNT -->
+  <!-- COUNT (Duration Sum) -->
   <div id="panel-count" class="panel">
     <div class="card">
-      <div class="form-row">
-        <div class="field"><label data-en="From date" data-ar="من تاريخ">From date</label><input type="date" id="count-from" /></div>
-        <div class="field"><label data-en="To date" data-ar="إلى تاريخ">To date</label><input type="date" id="count-to" /></div>
-        <div class="field">
-          <label data-en="Weekday" data-ar="اليوم">Weekday</label>
-          <select id="count-weekday">
-            <option value="0" data-en="Sunday" data-ar="الأحد">Sunday</option>
-            <option value="1" data-en="Monday" data-ar="الاثنين">Monday</option>
-            <option value="2" data-en="Tuesday" data-ar="الثلاثاء">Tuesday</option>
-            <option value="3" data-en="Wednesday" data-ar="الأربعاء">Wednesday</option>
-            <option value="4" data-en="Thursday" data-ar="الخميس">Thursday</option>
-            <option value="5" data-en="Friday" data-ar="الجمعة">Friday</option>
-            <option value="6" data-en="Saturday" data-ar="السبت">Saturday</option>
-          </select>
-        </div>
+      <div id="dur-rows"></div>
+      <div class="dur-actions">
+        <button type="button" class="dur-add" id="dur-add-btn" onclick="addDurRow()">
+          <span data-en="+ Add duration" data-ar="+ إضافة مدة">+ Add duration</span>
+        </button>
+        <span class="dur-counter" id="dur-counter"></span>
       </div>
       <button class="calc-btn" onclick="calcCount()">
         <span data-en="Calculate" data-ar="احسب">Calculate</span>
@@ -533,7 +546,8 @@ const calcCopy = {
       days: 'Please enter a valid number.',
       dob: 'Please enter a date of birth.',
       futureDob: 'Date of birth cannot be in the future.',
-      hijriDate: 'Please enter a valid Hijri date.'
+      hijriDate: 'Please enter a valid Hijri date.',
+      duration: 'Enter at least one duration using whole, non-negative numbers.'
     }
   },
   ar: {
@@ -559,7 +573,8 @@ const calcCopy = {
       days: 'اكتب رقما صحيحا.',
       dob: 'اكتب تاريخ الميلاد من فضلك.',
       futureDob: 'لا يمكن أن يكون تاريخ الميلاد في المستقبل.',
-      hijriDate: 'اكتب تاريخا هجريا صحيحا من فضلك.'
+      hijriDate: 'اكتب تاريخا هجريا صحيحا من فضلك.',
+      duration: 'أدخل مدة واحدة على الأقل بأرقام صحيحة غير سالبة.'
     }
   }
 };
@@ -602,7 +617,7 @@ function isOfficialHoliday(d) {
 }
 
 function switchTab(id) {
-  const ids = ['diff','add','age','work','count','hijri'];
+  const ids = ['diff','add','count','work','age','hijri'];
   document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ids[i] === id));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + id).classList.add('active');
@@ -847,30 +862,106 @@ function calcWork() {
   showResult('work-result');
 }
 
+const DUR_MAX = 20;
+const DUR_MIN = 2;
+
+function durPlaceholders() {
+  const p = lang() === 'ar' ? ['سنوات', 'شهور', 'أيام'] : ['Years', 'Months', 'Days'];
+  document.querySelectorAll('#dur-rows .dur-row').forEach(row => {
+    row.querySelectorAll('input').forEach((inp, i) => { inp.placeholder = p[i]; inp.setAttribute('aria-label', p[i]); });
+  });
+  const cnt = document.getElementById('dur-counter');
+  if (cnt) {
+    const n = document.querySelectorAll('#dur-rows .dur-row').length;
+    cnt.textContent = n + ' / ' + DUR_MAX;
+  }
+}
+
+function durRefresh() {
+  const rows = document.querySelectorAll('#dur-rows .dur-row');
+  rows.forEach((row, i) => {
+    row.querySelector('.dur-idx').textContent = i + 1;
+    const plus = row.querySelector('.dur-plus');
+    if (plus) plus.style.display = i === 0 ? 'none' : '';
+    row.querySelector('.dur-remove').classList.toggle('ph', rows.length <= DUR_MIN);
+  });
+  document.getElementById('dur-add-btn').disabled = rows.length >= DUR_MAX;
+  durPlaceholders();
+}
+
+function addDurRow() {
+  const wrap = document.getElementById('dur-rows');
+  if (wrap.children.length >= DUR_MAX) return;
+  const row = document.createElement('div');
+  row.className = 'dur-row';
+  row.innerHTML = `
+    <div class="dur-plus">+</div>
+    <div class="dur-line">
+      <span class="dur-idx"></span>
+      <div class="dur-fields">
+        <input type="number" min="0" step="1" inputmode="numeric" />
+        <input type="number" min="0" step="1" inputmode="numeric" />
+        <input type="number" min="0" step="1" inputmode="numeric" />
+      </div>
+      <button type="button" class="dur-remove" title="Remove" aria-label="Remove">×</button>
+    </div>`;
+  row.querySelector('.dur-remove').addEventListener('click', () => {
+    if (wrap.children.length <= DUR_MIN) return;
+    row.remove();
+    durRefresh();
+  });
+  row.querySelectorAll('input').forEach(inp => inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') calcCount();
+  }));
+  wrap.appendChild(row);
+  durRefresh();
+}
+
+function initDurations() {
+  for (let i = 0; i < DUR_MIN; i++) addDurRow();
+}
+
 function calcCount() {
   hideErr('count-err'); hideResult('count-result');
-  const from    = parseLocal(document.getElementById('count-from').value);
-  const to      = parseLocal(document.getElementById('count-to').value);
-  const weekday = parseInt(document.getElementById('count-weekday').value);
-  if (!from || !to) return showErr('count-err', 'both');
+  const rows = [...document.querySelectorAll('#dur-rows .dur-row')];
+  let Y = 0, M = 0, D = 0, used = 0;
 
-  const start = from <= to ? from : to;
-  const end   = from <= to ? to   : from;
-
-  let count = 0;
-  for (let t = new Date(start); t <= end; t.setDate(t.getDate() + 1)) {
-    if (t.getDay() === weekday) count++;
+  for (const row of rows) {
+    const vals = [...row.querySelectorAll('input')].map(i => i.value.trim());
+    if (vals.every(v => v === '')) continue;
+    const nums = vals.map(v => v === '' ? 0 : Number(v));
+    if (nums.some(n => !Number.isInteger(n) || n < 0)) return showErr('count-err', 'duration');
+    Y += nums[0]; M += nums[1]; D += nums[2];
+    used++;
   }
+  if (used < 1) return showErr('count-err', 'duration');
+
+  // Normalise: 30 days = 1 month, 12 months = 1 year
+  M += Math.floor(D / 30); D = D % 30;
+  Y += Math.floor(M / 12); M = M % 12;
 
   const c = copy();
+  const u = c.labels.exactUnits;
+  const eq = rows.map(row => {
+    const v = [...row.querySelectorAll('input')].map(i => i.value.trim());
+    if (v.every(x => x === '')) return null;
+    return `${v[0] || 0} ${u.y}, ${v[1] || 0} ${u.m}, ${v[2] || 0} ${u.d}`;
+  }).filter(Boolean);
+  const note = lang() === 'ar'
+    ? 'يُحسب كل 30 يومًا = شهر واحد، وكل 12 شهرًا = سنة واحدة.'
+    : 'Calculated with 30 days = 1 month and 12 months = 1 year.';
+
   document.getElementById('count-output').innerHTML = `
     <div class="metrics">
-      <div class="metric"><div class="metric-val accent">${count}</div><div class="metric-lbl">${c.days[weekday]}</div></div>
+      <div class="metric"><div class="metric-val accent">${Y}</div><div class="metric-lbl">${c.labels.years}</div></div>
+      <div class="metric"><div class="metric-val accent">${M}</div><div class="metric-lbl">${c.labels.months}</div></div>
+      <div class="metric"><div class="metric-val accent">${D}</div><div class="metric-lbl">${c.labels.days}</div></div>
     </div>
     <div class="breakdown">
-      <div class="bd-row"><span class="bd-lbl">${c.labels.from}</span><span class="bd-val">${c.days[start.getDay()]}, ${fmt(start)}</span></div>
-      <div class="bd-row"><span class="bd-lbl">${c.labels.to}</span><span class="bd-val">${c.days[end.getDay()]}, ${fmt(end)}</span></div>
+      ${eq.map((t, i) => `<div class="bd-row"><span class="bd-lbl">${i === 0 ? '' : '+'} #${i + 1}</span><span class="bd-val" dir="ltr">${t}</span></div>`).join('')}
+      <div class="bd-row"><span class="bd-lbl">=</span><span class="bd-val" dir="ltr">${Y} ${u.y}, ${M} ${u.m}, ${D} ${u.d}</span></div>
     </div>
+    <div class="dur-note">${note}</div>
   `;
   showResult('count-result');
 }
@@ -911,6 +1002,7 @@ function calcHijriToGreg() {
 
 window.addEventListener('portal-language-change', () => {
   populateHijriMonths();
+  durPlaceholders();
   // Re-run any calculation whose result is currently visible, across all
   // panels (a panel may hold more than one independent form, as with the
   // Hijri tab's two converters).
@@ -1048,6 +1140,7 @@ function buildDateMask(orig) {
 
 document.querySelectorAll('input[type="date"]').forEach(buildDateMask);
 populateHijriMonths();
+initDurations();
 
 /**
  * Regression tests for the date-math helpers (addMonths/addYears/daysBetween).
