@@ -141,6 +141,66 @@
       white-space: nowrap;
     }
 
+    .results-tools {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .export-group {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .export-day-field label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+
+    .export-day-select {
+      min-height: 42px;
+      min-width: 230px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.9rem;
+    }
+
+    .export-day-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
+    }
+
+    .refresh-btn.loading {
+      opacity: 0.7;
+    }
+
+    .refresh-btn.loading .refresh-icon {
+      display: inline-block;
+      animation: clinics-spin 0.9s linear infinite;
+    }
+
+    @keyframes clinics-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .no-date-note {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
     .table-wrap {
       margin-top: 18px;
       overflow-x: auto;
@@ -358,7 +418,16 @@
           <h2 data-en="Reservations" data-ar="الحجوزات">Reservations</h2>
           <p data-en="Latest submissions appear first. Decided rows are greyed out." data-ar="تظهر أحدث الطلبات أولاً. الصفوف التي تم اتخاذ قرار بشأنها تظهر باللون الرمادي.">Latest submissions appear first. Decided rows are greyed out.</p>
         </div>
-        <button class="ghost-btn export-btn" id="exportExcelBtn" type="button" data-en="Download Excel" data-ar="تحميل إكسل">Download Excel</button>
+        <div class="results-tools">
+          <button class="ghost-btn export-btn refresh-btn" id="refreshBtn" type="button"><span class="refresh-icon" aria-hidden="true">↻</span> <span id="refreshBtnLabel">Refresh</span></button>
+          <div class="export-group">
+            <div class="export-day-field">
+              <label for="exportDaySelect" id="exportDayLabel">Day (Egypt time)</label>
+              <select class="export-day-select" id="exportDaySelect"></select>
+            </div>
+            <button class="ghost-btn export-btn" id="exportExcelBtn" type="button" data-en="Download Excel" data-ar="تحميل إكسل">Download Excel</button>
+          </div>
+        </div>
       </div>
 
       <div class="table-wrap">
@@ -441,6 +510,10 @@
     const tableBody = document.getElementById('clinicTableBody');
     const tableStatus = document.getElementById('tableStatus');
     const exportExcelBtn = document.getElementById('exportExcelBtn');
+    const exportDaySelect = document.getElementById('exportDaySelect');
+    const exportDayLabel = document.getElementById('exportDayLabel');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const refreshBtnLabel = document.getElementById('refreshBtnLabel');
     const copyFormLinkBtn = document.getElementById('copyFormLinkBtn');
 
     function lang() {
@@ -653,15 +726,66 @@ async function sha256Hex(value) {
       return `${year}-${mm}-${dd} - ${weekday}`;
     }
 
-    // Date restrictions for "اقرب وقت" picker: today .. today+30, no Fri/Sat.
+    // ---- Egypt-time helpers ----
+    const EGYPT_TZ = 'Africa/Cairo';
+    const EXPORT_DAYS_BACK = 40; // matches the 40-day purge in the Apps Script
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    // Today's calendar date in Egypt as YYYY-MM-DD, regardless of the
+    // admin's own device time zone.
+    function egyptTodayKey() {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: EGYPT_TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date());
+      const get = type => parts.find(p => p.type === type).value;
+      return `${get('year')}-${get('month')}-${get('day')}`;
+    }
+
+    // Pure calendar arithmetic on YYYY-MM-DD keys (no time zones involved).
+    function shiftDayKey(key, deltaDays) {
+      const [y, m, d] = key.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d + deltaDays)).toISOString().slice(0, 10);
+    }
+
+    function weekdayName(key) {
+      const [y, m, d] = key.split('-').map(Number);
+      return new Intl.DateTimeFormat(lang() === 'ar' ? 'ar-EG' : 'en-GB', { weekday: 'long', timeZone: 'UTC' })
+        .format(new Date(Date.UTC(y, m - 1, d)));
+    }
+
+    // The sheet timestamps are delivered by the Apps Script already in
+    // Egypt time as "M/d/yyyy HH:mm:ss"; this returns that day as YYYY-MM-DD.
+    function getTimestampDayKey(value) {
+      const str = normalizeDigits(value);
+      let m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m) return `${m[3]}-${pad2(m[1])}-${pad2(m[2])}`;
+      m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+    }
+
+    // Date restrictions for "اقرب وقت" picker: today (Egypt) .. today+30, no Fri/Sat.
     function getDateRestrictions() {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const maxDate = new Date(today);
-      maxDate.setDate(maxDate.getDate() + 30);
-      const toIso = (d) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      return { min: toIso(today), max: toIso(maxDate) };
+      const today = egyptTodayKey();
+      return { min: today, max: shiftDayKey(today, 30) };
+    }
+
+    // Dental / general clinics don't use a date at all.
+    function normalizeArabicText(value) {
+      return String(value ?? '')
+        .normalize('NFKC')
+        .replace(/[\u064B-\u065F\u0640]/g, '')
+        .replace(/[أإآٱ]/g, 'ا')
+        .replace(/ى/g, 'ي')
+        .replace(/ة/g, 'ه')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    }
+    const NO_DATE_CLINICS = ['اسنان', 'عيادة عامة'].map(normalizeArabicText);
+    function isNoDateClinic(row) {
+      const index = getColumnIndexByKey('clinic');
+      return index >= 0 && NO_DATE_CLINICS.includes(normalizeArabicText(row.values[index]));
     }
 
     function isWeekend(isoDateStr) {
@@ -739,13 +863,18 @@ async function sha256Hex(value) {
       tableBody.innerHTML = rowsToRender.map(row => {
         const decided = row.isReserved === 'y' || row.isReserved === 'n';
         const dateIndex = getColumnIndexByKey('date');
-        const needsDatePick = isNearestTimeValue(row.values[dateIndex]);
+        const noDate = isNoDateClinic(row);
+        const needsDatePick = !noDate && isNearestTimeValue(row.values[dateIndex]);
         const valuesHtml = orderedColumns.map(item => {
           let value = row.values[item.index];
 
           // Apply formatting based on column type
           if (item.key === 'timestamp') {
             value = formatTimestamp(value);
+          }
+
+          if (item.key === 'date' && noDate) {
+            return `<td><span class="no-date-note">${t('No date needed', 'لا يحتاج تاريخ')}</span></td>`;
           }
 
           if (item.key === 'date' && needsDatePick) {
@@ -789,43 +918,169 @@ async function sha256Hex(value) {
       return rowsToRender.length;
     }
 
-    // Exports exactly what's currently shown in the results table — the full
-    // reservation list, or the filtered single-row inquiry result — rebuilt
-    // from the same data/order/filter logic as renderClinicsTable() rather
-    // than scraped from the DOM. Admin-only action columns (Confirm/Deny)
-    // are never included since they're buttons, not data.
+    // ---------- Day picker + Excel export ----------
+    function buildDayKeys() {
+      const today = egyptTodayKey();
+      return Array.from({ length: EXPORT_DAYS_BACK }, (_, i) => shiftDayKey(today, -i));
+    }
+
+    function countRowsByDay() {
+      const tsIndex = getColumnIndexByKey('timestamp');
+      const counts = {};
+      if (tsIndex < 0) return counts;
+      clinicRows.forEach(row => {
+        const key = getTimestampDayKey(row.values[tsIndex]);
+        if (key) counts[key] = (counts[key] || 0) + 1;
+      });
+      return counts;
+    }
+
+    function populateDaySelect() {
+      const previous = exportDaySelect.value;
+      const counts = countRowsByDay();
+      const keys = buildDayKeys();
+      exportDaySelect.innerHTML = keys.map(key => {
+        const n = counts[key] || 0;
+        return `<option value="${key}">${key} - ${escapeHtml(weekdayName(key))} (${n})</option>`;
+      }).join('');
+      exportDaySelect.value = keys.includes(previous) ? previous : keys[0];
+      exportDayLabel.textContent = t('Day (Egypt time)', 'اليوم (بتوقيت مصر)');
+      refreshBtnLabel.textContent = t('Refresh', 'تحديث');
+    }
+
+    function sortRowsForExport(rows) {
+      // Newest first; pending reservations above decided ones.
+      const list = [...rows].reverse();
+      list.sort((a, b) => {
+        const aDecided = a.isReserved === 'y' || a.isReserved === 'n';
+        const bDecided = b.isReserved === 'y' || b.isReserved === 'n';
+        if (aDecided !== bDecided) return aDecided ? 1 : -1;
+        return 0;
+      });
+      return list;
+    }
+
+    // Excel styling helpers
+    const NAVY = '003F73', BLUE = '005DAA', GOLD = 'C99C39';
+    const argb = hex => 'FF' + hex.toUpperCase();
+    const solid = hex => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: argb(hex) } });
+    const borderAll = (hex, style = 'thin') => {
+      const side = { style, color: { argb: argb(hex) } };
+      return { top: side, left: side, bottom: side, right: side };
+    };
+    const xlFont = (opts = {}) => ({ name: 'Arial', size: 10, ...opts });
+    const cellAlign = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
+
+    function addReservationSheet(wb, sheetName, headers, rows, tabColor) {
+      const ws = wb.addWorksheet(sheetName, {
+        // Reads right-to-left: column A on the right (mostly-Arabic content).
+        views: [{ rightToLeft: true, showGridLines: false, state: 'frozen', ySplit: 1 }],
+        properties: { tabColor: { argb: argb(tabColor) } },
+        pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' }
+      });
+
+      ws.columns = headers.map((label, c) => {
+        let longest = String(label).length;
+        rows.forEach(r => { longest = Math.max(longest, String(r.values[c] ?? '').length); });
+        return { width: Math.min(42, Math.max(12, Math.round(longest * 1.1) + 3)) };
+      });
+
+      const headerRow = ws.addRow(headers);
+      headerRow.height = 30;
+      headers.forEach((label, i) => {
+        const cell = headerRow.getCell(i + 1);
+        cell.font = xlFont({ size: 11, bold: true, color: { argb: 'FFFFFFFF' } });
+        cell.fill = solid(NAVY);
+        cell.alignment = cellAlign;
+        cell.border = {
+          top: { style: 'thin', color: { argb: argb(NAVY) } },
+          left: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+          right: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+          bottom: { style: 'thick', color: { argb: argb(GOLD) } }
+        };
+      });
+
+      const statusLook = {
+        y: { color: '12805C', fill: solid('E3F4EC') },
+        n: { color: 'B3261E', fill: solid('FBE9E7') }
+      };
+      const pendingLook = { color: '9A7420', fill: solid('FFF3D6') };
+      const statusCol = headers.length;
+
+      rows.forEach((r, ri) => {
+        const row = ws.addRow(r.values);
+        const zebra = solid(ri % 2 ? 'F3F7FB' : 'FFFFFF');
+        for (let c = 1; c <= headers.length; c++) {
+          const cell = row.getCell(c);
+          cell.font = xlFont();
+          cell.fill = zebra;
+          cell.border = borderAll('D5DEE8');
+          cell.alignment = cellAlign;
+        }
+        const look = statusLook[r.status] || pendingLook;
+        const statusCell = row.getCell(statusCol);
+        statusCell.font = xlFont({ bold: true, color: { argb: argb(look.color) } });
+        statusCell.fill = look.fill;
+      });
+
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+      return ws;
+    }
+
+    // Exports every application SUBMITTED on the selected Egypt day (by the
+    // sheet's timestamp). Email is never included. Two sheets per file:
+    //   1) all clinics that use a date (with the Date column)
+    //   2) Dental (اسنان) / General (عيادة عامة) clinics (no Date column)
     async function exportTableToExcel() {
       if (typeof ExcelJS === 'undefined') {
         window.showToast?.(t('Export library not available.', 'مكتبة التصدير غير متوفرة.'), 'error');
         return;
       }
 
-      let rowsToRender = [...clinicRows].reverse();
-      if (filterPatientId) {
-        const codeIndex = getColumnIndexByKey('code');
-        rowsToRender = rowsToRender.filter(row => normalizeDigits(row.values[codeIndex]) === filterPatientId);
-      }
-      rowsToRender.sort((a, b) => {
-        const aDecided = a.isReserved === 'y' || a.isReserved === 'n';
-        const bDecided = b.isReserved === 'y' || b.isReserved === 'n';
-        if (aDecided !== bDecided) return aDecided ? 1 : -1;
-        return 0;
-      });
-
-      if (!rowsToRender.length) {
+      const dayKey = exportDaySelect.value;
+      const tsIndex = getColumnIndexByKey('timestamp');
+      if (!dayKey || tsIndex < 0) {
         window.showToast?.(t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.'), 'warning');
         return;
       }
 
-      const orderedColumns = [];
-      for (const columnKey of COLUMN_ORDER) {
-        if (columnKey === 'isreserved') continue; // handled separately, as the Status column
-        const index = getColumnIndexByKey(columnKey);
-        if (index >= 0) orderedColumns.push({ index, column: clinicColumns[index], key: columnKey });
+      const dayRows = sortRowsForExport(
+        clinicRows.filter(row => getTimestampDayKey(row.values[tsIndex]) === dayKey)
+      );
+
+      if (!dayRows.length) {
+        window.showToast?.(t(`No applications were submitted on ${dayKey}.`, `لا توجد طلبات مقدمة بتاريخ ${dayKey}.`), 'warning');
+        return;
       }
 
-      const ar = lang() === 'ar';
+      const excluded = new Set(['isreserved', 'email']); // emails never go into Excel
+      const baseColumns = [];
+      for (const columnKey of COLUMN_ORDER) {
+        if (excluded.has(columnKey)) continue;
+        const index = getColumnIndexByKey(columnKey);
+        if (index >= 0) baseColumns.push({ index, column: clinicColumns[index], key: columnKey });
+      }
       const dateIndex = getColumnIndexByKey('date');
+
+      const buildRows = (rows, columns) => rows.map(row => {
+        const values = columns.map(item => {
+          let value = row.values[item.index];
+          if (item.key === 'timestamp') value = formatTimestamp(value);
+          if (item.key === 'date' && isNearestTimeValue(value)) {
+            const chosen = nearestTimeDates[row.sheetRow] || '';
+            value = chosen ? formatArabicDateWithWeekday(chosen) : NEAREST_TIME_VALUE;
+          }
+          return value == null ? '' : String(value);
+        });
+        values.push(decisionLabel(row.isReserved));
+        return { values, status: row.isReserved };
+      });
+
+      const datedRows = dayRows.filter(row => !isNoDateClinic(row));
+      const noDateRows = dayRows.filter(isNoDateClinic);
+      const noDateColumns = baseColumns.filter(item => item.key !== 'date');
+
+      const ar = lang() === 'ar';
       const originalLabel = exportExcelBtn.textContent;
       exportExcelBtn.disabled = true;
       exportExcelBtn.textContent = t('Exporting...', 'جارٍ التصدير...');
@@ -833,104 +1088,32 @@ async function sha256Hex(value) {
       try {
         await new Promise(resolve => setTimeout(resolve, 20)); // let the disabled state paint first
 
-        const headers = [...orderedColumns.map(item => columnHeaderLabel(item)), t('Status', 'الحالة')];
-        const rows = rowsToRender.map(row => {
-          const needsDatePick = isNearestTimeValue(row.values[dateIndex]);
-          const values = orderedColumns.map(item => {
-            let value = row.values[item.index];
-            if (item.key === 'timestamp') value = formatTimestamp(value);
-            if (item.key === 'date' && needsDatePick) {
-              const chosen = nearestTimeDates[row.sheetRow] || '';
-              value = chosen ? formatArabicDateWithWeekday(chosen) : NEAREST_TIME_VALUE;
-            }
-            return value == null ? '' : String(value);
-          });
-          values.push(decisionLabel(row.isReserved));
-          return { values, status: row.isReserved };
-        });
-
-        // ── Excel styling helpers ──
-        const NAVY = '003F73', BLUE = '005DAA', GOLD = 'C99C39';
-        const argb = hex => 'FF' + hex.toUpperCase();
-        const solid = hex => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: argb(hex) } });
-        const borderAll = (hex, style = 'thin') => {
-          const side = { style, color: { argb: argb(hex) } };
-          return { top: side, left: side, bottom: side, right: side };
-        };
-        const font = (opts = {}) => ({ name: 'Arial', size: 10, ...opts });
-        const cellAlign = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
-
         const wb = new ExcelJS.Workbook();
         wb.creator = 'EgyptAir Work Tools';
         wb.created = new Date();
-        const ws = wb.addWorksheet(t('Reservations', 'الحجوزات'), {
-          // The whole sheet reads right-to-left — column A sits on the right,
-          // matching the clinic data, which is overwhelmingly Arabic content
-          // (clinic names, weekday-tagged dates, status labels) regardless of
-          // which language the portal's UI happens to be in.
-          views: [{ rightToLeft: true, showGridLines: false, state: 'frozen', ySplit: 1 }],
-          properties: { tabColor: { argb: argb(BLUE) } },
-          pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' }
-        });
 
-        // Column widths sized from content, generous enough with wrapping that nothing is clipped.
-        ws.columns = headers.map((label, c) => {
-          let longest = String(label).length;
-          rows.forEach(r => { longest = Math.max(longest, String(r.values[c] ?? '').length); });
-          return { width: Math.min(42, Math.max(12, Math.round(longest * 1.1) + 3)) };
-        });
-
-        // Header row: deep EgyptAir blue, white bold text, gold underline.
-        const headerRow = ws.addRow(headers);
-        headerRow.height = 30;
-        headers.forEach((label, i) => {
-          const cell = headerRow.getCell(i + 1);
-          cell.font = font({ size: 11, bold: true, color: { argb: 'FFFFFFFF' } });
-          cell.fill = solid(NAVY);
-          cell.alignment = cellAlign;
-          cell.border = {
-            top: { style: 'thin', color: { argb: argb(NAVY) } },
-            left: { style: 'thin', color: { argb: 'FFFFFFFF' } },
-            right: { style: 'thin', color: { argb: 'FFFFFFFF' } },
-            bottom: { style: 'thick', color: { argb: argb(GOLD) } }
-          };
-        });
-
-        // Body rows: soft zebra striping, every cell wrapped, Status cell colour-coded.
-        const statusLook = {
-          y: { color: '12805C', fill: solid('E3F4EC') },
-          n: { color: 'B3261E', fill: solid('FBE9E7') }
-        };
-        const pendingLook = { color: '9A7420', fill: solid('FFF3D6') };
-        const statusCol = headers.length;
-
-        rows.forEach((r, ri) => {
-          const row = ws.addRow(r.values);
-          const zebra = solid(ri % 2 ? 'F3F7FB' : 'FFFFFF');
-          for (let c = 1; c <= headers.length; c++) {
-            const cell = row.getCell(c);
-            cell.font = font();
-            cell.fill = zebra;
-            cell.border = borderAll('D5DEE8');
-            cell.alignment = cellAlign;
-          }
-          const look = statusLook[r.status] || pendingLook;
-          const statusCell = row.getCell(statusCol);
-          statusCell.font = font({ bold: true, color: { argb: argb(look.color) } });
-          statusCell.fill = look.fill;
-        });
-
-        ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+        addReservationSheet(
+          wb,
+          t('Clinics', 'العيادات'),
+          [...baseColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
+          buildRows(datedRows, baseColumns),
+          BLUE
+        );
+        addReservationSheet(
+          wb,
+          t('Dental & General', 'أسنان وعيادة عامة'),
+          [...noDateColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
+          buildRows(noDateRows, noDateColumns),
+          GOLD
+        );
 
         const buffer = await wb.xlsx.writeBuffer();
         const url = URL.createObjectURL(new Blob([buffer], {
           type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         }));
-        const today = new Date();
-        const fileName = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.xlsx`;
         const link = document.createElement('a');
         link.href = url;
-        link.download = fileName;
+        link.download = `clinics-${dayKey}.xlsx`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -945,6 +1128,8 @@ async function sha256Hex(value) {
     }
 
     exportExcelBtn.addEventListener('click', exportTableToExcel);
+    refreshBtn.addEventListener('click', () => loadClinicSheet());
+    populateDaySelect();
 
     // Copies the Google Form reservation link to the clipboard. Falls back to
     // the legacy execCommand trick when navigator.clipboard is unavailable
@@ -983,84 +1168,122 @@ async function sha256Hex(value) {
     copyFormLinkBtn.addEventListener('click', copyReservationFormLink);
     updateCopyLinkTitle();
 
-    function handleSheetResponse(response, requestId) {
-      // If a newer load has started since this request went out, drop this
-      // response even if it arrives late — otherwise a slow/older request
-      // could overwrite fresher data with stale data.
-      if (requestId !== latestSheetRequestId) return;
-
-      try {
-        if (!response || response.ok === false) {
-          throw new Error(response?.error || 'Missing data.');
-        }
-
-        // headers/rows come straight from Apps Script's SpreadsheetApp.getValues(),
-        // which returns the exact stored cell content (no gviz type inference,
-        // so Arabic-Indic digit codes survive instead of being nulled out).
-        clinicColumns = (response.headers || []).map(label => ({ label }));
-        const reservedIndex = clinicColumns.findIndex(isReservedColumn);
-        clinicRows = (response.rows || []).map((row, index) => {
-          const values = clinicColumns.map((column, colIndex) => {
-            let val = row[colIndex] ?? '';
-            // Convert code column values to English digits immediately
-            if (isCodeColumn(column)) {
-              val = normalizeDigits(val);
-            }
-            return val;
-          });
-          return {
-            sheetRow: index + 2,
-            values,
-            isReserved: String(values[reservedIndex] || '').trim().toLowerCase()
-          };
-        });
-
-        const renderedCount = renderClinicsTable();
-        setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
-      } catch (error) {
-        setStatus(tableStatus, t('Could not read the clinic sheet.', 'تعذر قراءة جدول العيادات.'), true);
-      } finally {
-        isLoadingSheet = false;
+    // Turns a successful backend response into table rows and renders them.
+    function applySheetResponse(response) {
+      if (!response || response.ok === false) {
+        throw new Error(response?.error || 'Missing data.');
       }
+
+      // headers/rows come straight from Apps Script's SpreadsheetApp.getValues(),
+      // which returns the exact stored cell content (no gviz type inference,
+      // so Arabic-Indic digit codes survive instead of being nulled out).
+      clinicColumns = (response.headers || []).map(label => ({ label }));
+      const reservedIndex = clinicColumns.findIndex(isReservedColumn);
+      clinicRows = (response.rows || []).map((row, index) => {
+        const values = clinicColumns.map((column, colIndex) => {
+          let val = row[colIndex] ?? '';
+          if (isCodeColumn(column)) val = normalizeDigits(val);
+          return val;
+        });
+        return {
+          sheetRow: index + 2,
+          values,
+          isReserved: String(values[reservedIndex] || '').trim().toLowerCase()
+        };
+      });
+
+      // Row numbers can shift when old rows are purged, so admin-picked but
+      // not-yet-saved dates from a previous load must not be reused.
+      nearestTimeDates = {};
+
+      const renderedCount = renderClinicsTable();
+      populateDaySelect();
+      setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
     }
 
-    function loadClinicSheet() {
-      if (isLoadingSheet) return;
-      isLoadingSheet = true;
-      setStatus(tableStatus, t('Loading reservations...', 'جارٍ تحميل الحجوزات...'));
-      tableBody.innerHTML = '';
+    const SHEET_TIMEOUT_MS = 20000;   // give up on a single attempt after 20s
+    const SHEET_MAX_ATTEMPTS = 4;     // then retry automatically
 
+    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+    // One JSONP attempt. Always settles: it resolves with the payload, or
+    // rejects on network error / timeout / a non-JS reply (e.g. an Apps
+    // Script error page, which never calls the callback). This is what
+    // used to leave the page stuck on "Loading..." forever.
+    function requestSheetOnce(requestId, attempt) {
+      return new Promise((resolve, reject) => {
+        const callbackName = `handleClinicSheetResponse_${requestId}_${attempt}_${Date.now()}`;
+        const script = document.createElement('script');
+        let settled = false;
+        let timer = null;
+
+        const settle = (fn, arg) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          script.remove();
+          // Keep a harmless no-op so a very late response doesn't throw.
+          window[callbackName] = () => {};
+          setTimeout(() => { delete window[callbackName]; }, 120000);
+          fn(arg);
+        };
+
+        window[callbackName] = result => settle(resolve, result);
+        script.onerror = () => settle(reject, new Error('Network error'));
+        timer = setTimeout(() => settle(reject, new Error('Timed out')), SHEET_TIMEOUT_MS);
+
+        const url = new URL(SHEET_UPDATE_WEB_APP_URL);
+        url.searchParams.set('action', 'getData');
+        url.searchParams.set('callback', callbackName);
+        url.searchParams.set('t', Date.now());
+        script.src = url.toString();
+        document.body.appendChild(script);
+      });
+    }
+
+    function setLoadingUi(loading) {
+      isLoadingSheet = loading;
+      refreshBtn.classList.toggle('loading', loading);
+    }
+
+    // Loads (or reloads) the sheet. Safe to call at any time: a newer call
+    // supersedes an older one still in flight (its late result is ignored).
+    async function loadClinicSheet() {
       if (!SHEET_UPDATE_WEB_APP_URL) {
-        isLoadingSheet = false;
         setStatus(tableStatus, t('Sheet endpoint is not configured yet.', 'لم يتم إعداد رابط الجدول بعد.'), true);
         return;
       }
 
       const requestId = ++latestSheetRequestId;
-      const callbackName = `handleClinicSheetResponse_${requestId}`;
-      window[callbackName] = result => {
-        delete window[callbackName];
-        handleSheetResponse(result, requestId);
-      };
+      setLoadingUi(true);
+      setStatus(tableStatus, t('Loading reservations...', 'جارٍ تحميل الحجوزات...'));
 
-      const oldScript = document.getElementById('clinicSheetJsonp');
-      if (oldScript) oldScript.remove();
+      for (let attempt = 1; attempt <= SHEET_MAX_ATTEMPTS; attempt++) {
+        try {
+          const response = await requestSheetOnce(requestId, attempt);
+          if (requestId !== latestSheetRequestId) return; // superseded
+          applySheetResponse(response);
+          setLoadingUi(false);
+          return;
+        } catch (error) {
+          if (requestId !== latestSheetRequestId) return; // superseded
+          console.warn(`Clinic sheet load attempt ${attempt} failed:`, error);
+          if (attempt < SHEET_MAX_ATTEMPTS) {
+            setStatus(tableStatus, t(
+              `Loading failed, retrying (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`,
+              `فشل التحميل، جارٍ إعادة المحاولة (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`
+            ));
+            await sleep(1000 * attempt);
+            if (requestId !== latestSheetRequestId) return;
+          }
+        }
+      }
 
-      const url = new URL(SHEET_UPDATE_WEB_APP_URL);
-      url.searchParams.set('action', 'getData');
-      url.searchParams.set('callback', callbackName);
-      url.searchParams.set('t', Date.now());
-
-      const script = document.createElement('script');
-      script.id = 'clinicSheetJsonp';
-      script.src = url.toString();
-      script.onerror = () => {
-        delete window[callbackName];
-        if (requestId !== latestSheetRequestId) return;
-        isLoadingSheet = false;
-        setStatus(tableStatus, t('Could not load the clinic sheet.', 'تعذر تحميل جدول العيادات.'), true);
-      };
-      document.body.appendChild(script);
+      setLoadingUi(false);
+      setStatus(tableStatus, t(
+        'Could not load the clinic sheet. Press Refresh to try again.',
+        'تعذر تحميل جدول العيادات. اضغط تحديث للمحاولة مرة أخرى.'
+      ), true);
     }
 
     function reservationMessage(row, decision) {
@@ -1071,19 +1294,21 @@ async function sha256Hex(value) {
       if (isNearestTimeValue(date) && nearestTimeDates[row.sheetRow]) {
         date = formatArabicDateWithWeekday(nearestTimeDates[row.sheetRow]);
       }
+      // Dental / general clinics have no date, so leave it out of the text.
+      const datePart = isNoDateClinic(row) || !date ? '' : ` بتاريخ ${date}`;
 
       if (decision === 'y') {
         return {
           title: 'تأكيد حجز العيادة',
           name,
-          message: `تم تأكيد حجزك في عيادة ${clinic} بتاريخ ${date} خلال نوبة ${shift}. برجاء الالتزام بالموعد المحدد.`
+          message: `تم تأكيد حجزك في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء الالتزام بالموعد المحدد.`
         };
       }
 
       return {
         title: 'رفض حجز العيادة',
         name,
-        message: `نعتذر، لم يتم قبول حجزك في عيادة ${clinic} بتاريخ ${date} خلال نوبة ${shift}. برجاء تسجيل طلب جديد أو مراجعة الإدارة المختصة.`
+        message: `نعتذر، لم يتم قبول حجزك في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء تسجيل طلب جديد أو مراجعة الإدارة المختصة.`
       };
     }
 
@@ -1147,8 +1372,10 @@ async function sha256Hex(value) {
     }
 
     async function sendDecisionEmail(row, decision) {
-      const toEmail = getRowValue(row, ['email address', 'email', 'البريد']);
-      if (!toEmail) throw new Error(t('This row has no email address.', 'هذا الصف لا يحتوي على بريد إلكتروني.'));
+      // The email field on the form is optional now. No (or an invalid)
+      // address simply means no message is sent; the decision is still saved.
+      const toEmail = String(getRowValue(row, ['email address', 'email', 'البريد']) || '').trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) return false;
       if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
 
       const content = reservationMessage(row, decision);
@@ -1174,7 +1401,7 @@ async function sha256Hex(value) {
         try {
           await sendEmailWithAccount(EMAILJS_ACCOUNTS[index], templateParams);
           setEmailAccountIndex(index);
-          return;
+          return true;
         } catch (error) {
           lastError = error;
           // try the next account
@@ -1191,6 +1418,7 @@ async function sha256Hex(value) {
         'Automatic sending failed — your email client opened with the message ready, please hit send.',
         'فشل الإرسال التلقائي — تم فتح برنامج البريد بالرسالة جاهزة، برجاء الضغط على إرسال.'
       ), 'warning');
+      return true;
     }
 
     async function updateSheetDecision(row, decision, chosenDateIso) {
@@ -1246,7 +1474,7 @@ async function sha256Hex(value) {
       if (!row || row.isReserved === 'y' || row.isReserved === 'n') return;
 
       const dateIndex = getColumnIndexByKey('date');
-      const isNearest = isNearestTimeValue(row.values[dateIndex]);
+      const isNearest = !isNoDateClinic(row) && isNearestTimeValue(row.values[dateIndex]);
       const chosenIso = nearestTimeDates[rowNumber] || '';
       if (decision === 'y' && isNearest && !chosenIso) {
         setStatus(tableStatus, t('Pick a date for this patient first.', 'اختر تاريخاً لهذا المريض أولاً.'), true);
@@ -1261,7 +1489,7 @@ async function sha256Hex(value) {
       );
 
       try {
-        await sendDecisionEmail(row, decision);
+        const emailSent = await sendDecisionEmail(row, decision);
         // Persist the admin-picked date for "اقرب وقت" rows so inquiries
         // after a reload still show the real date instead of the placeholder.
         await updateSheetDecision(row, decision, isNearest && chosenIso ? chosenIso : null);
@@ -1272,8 +1500,12 @@ async function sha256Hex(value) {
         }
         renderClinicsTable();
         setStatus(tableStatus, decision === 'y'
-          ? t('Reservation confirmed and email sent.', 'تم تأكيد الحجز وإرسال البريد الإلكتروني.')
-          : t('Reservation denied and email sent.', 'تم رفض الحجز وإرسال البريد الإلكتروني.')
+          ? (emailSent
+              ? t('Reservation confirmed and email sent.', 'تم تأكيد الحجز وإرسال البريد الإلكتروني.')
+              : t('Reservation confirmed (no email on file, nothing sent).', 'تم تأكيد الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).'))
+          : (emailSent
+              ? t('Reservation denied and email sent.', 'تم رفض الحجز وإرسال البريد الإلكتروني.')
+              : t('Reservation denied (no email on file, nothing sent).', 'تم رفض الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).'))
         );
         window.showToast?.(tableStatus.textContent, 'info');
       } catch (error) {
@@ -1355,6 +1587,7 @@ async function sha256Hex(value) {
     window.addEventListener('portal-language-change', () => {
       if (!resultsPanel.classList.contains('hidden')) {
         renderClinicsTable();
+        populateDaySelect();
       }
       updateCopyLinkTitle();
     });

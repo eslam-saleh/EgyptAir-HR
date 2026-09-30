@@ -22,7 +22,8 @@ function updateNext30Days() {
   // 1. Add the first consistent option
   dateChoices.push("اقرب وقت");
 
-  var timeZone = Session.getScriptTimeZone();
+  // Always work in Egypt time so "today" and the weekday are the Egyptian ones.
+  var timeZone = "Africa/Cairo";
   
   // Array for Arabic day names
   var arabicDays = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
@@ -32,7 +33,9 @@ function updateNext30Days() {
     var targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + i); // Increment day by day
     
-    var dayOfWeek = targetDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 5 = Friday, 6 = Saturday
+    // ISO weekday in Egypt: 1 = Monday ... 5 = Friday, 6 = Saturday, 7 = Sunday
+    var isoDay = Number(Utilities.formatDate(targetDate, timeZone, "u"));
+    var dayOfWeek = isoDay % 7; // 0 = Sunday ... matches arabicDays
     
     // Skip Fridays (5) and Saturdays (6)
     if (dayOfWeek === 5 || dayOfWeek === 6) {
@@ -50,4 +53,95 @@ function updateNext30Days() {
   
   // Update the dropdown choice options
   dateItem.setChoiceValues(dateChoices);
+}
+
+
+// ==========================================================
+// RUN THIS ONCE (manually) to skip the date question for the
+// clinics "اسنان" and "عيادة عامة".
+//
+// Google Forms can't grey out a dropdown, so this uses section
+// branching: the date question gets its own section, and picking
+// "اسنان" or "عيادة عامة" in the clinic question jumps past it.
+// Every other clinic goes through the date section as before.
+// The clinic question must be a Multiple choice or Dropdown, and it
+// must come BEFORE the date question (the script moves the date
+// question after it if it isn't). Safe to run again: it reuses the
+// sections it already created.
+// ==========================================================
+function setupClinicDateBranching() {
+  var form = FormApp.getActiveForm();
+  var NO_DATE_CLINICS = ["اسنان", "أسنان", "عيادة عامة"];
+  var DATE_SECTION_TITLE = "اختيار التاريخ";
+  var AFTER_DATE_SECTION_TITLE = "باقي البيانات";
+
+  function norm(text) {
+    return String(text).replace(/[أإآ]/g, "ا").replace(/\s+/g, " ").trim();
+  }
+  var noDateSet = NO_DATE_CLINICS.map(norm);
+
+  var clinicItem = null, dateItem = null;
+  form.getItems().forEach(function (item) {
+    var type = item.getType();
+    var title = item.getTitle();
+    if (!clinicItem && title.indexOf("العيادة") !== -1 &&
+        (type === FormApp.ItemType.MULTIPLE_CHOICE || type === FormApp.ItemType.LIST)) {
+      clinicItem = item;
+    }
+    if (!dateItem && title === "التاريخ" && type === FormApp.ItemType.LIST) {
+      dateItem = item;
+    }
+  });
+  if (!clinicItem || !dateItem) {
+    throw new Error("Could not find the clinic question and/or the 'التاريخ' question.");
+  }
+
+  // The date question has to come after the clinic question.
+  if (dateItem.getIndex() < clinicItem.getIndex()) {
+    form.moveItem(dateItem, clinicItem.getIndex());
+  }
+
+  // Find or create the section that starts right before the date question.
+  var datePage = null, afterPage = null;
+  form.getItems(FormApp.ItemType.PAGE_BREAK).forEach(function (pb) {
+    if (pb.getTitle() === DATE_SECTION_TITLE) datePage = pb.asPageBreakItem();
+    if (pb.getTitle() === AFTER_DATE_SECTION_TITLE) afterPage = pb.asPageBreakItem();
+  });
+
+  if (!datePage) {
+    datePage = form.addPageBreakItem().setTitle(DATE_SECTION_TITLE);
+  }
+  form.moveItem(datePage, dateItem.getIndex()); // sits directly before the date question
+
+  // A section after the date question, only if something follows it.
+  var itemsAfter = form.getItems().slice(dateItem.getIndex() + 1)
+    .filter(function (it) { return !afterPage || it.getId() !== afterPage.getId(); });
+  var hasItemsAfterDate = itemsAfter.length > 0;
+
+  if (hasItemsAfterDate) {
+    if (!afterPage) {
+      afterPage = form.addPageBreakItem().setTitle(AFTER_DATE_SECTION_TITLE);
+    }
+    form.moveItem(afterPage, dateItem.getIndex() + 1);
+  } else if (afterPage) {
+    form.deleteItem(afterPage);
+    afterPage = null;
+  }
+
+  // Route the clinic answers.
+  var choices = (clinicItem.getType() === FormApp.ItemType.LIST
+    ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem()).getChoices();
+  var newChoices = choices.map(function (choice) {
+    var value = choice.getValue();
+    var skipDate = noDateSet.indexOf(norm(value)) !== -1;
+    var target = skipDate
+      ? (afterPage || FormApp.PageNavigationType.SUBMIT)
+      : datePage;
+    return (clinicItem.getType() === FormApp.ItemType.LIST
+      ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem()).createChoice(value, target);
+  });
+  (clinicItem.getType() === FormApp.ItemType.LIST
+    ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem()).setChoices(newChoices);
+
+  Logger.log("Done: اسنان / عيادة عامة now skip the date question.");
 }

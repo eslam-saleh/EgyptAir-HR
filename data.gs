@@ -245,7 +245,7 @@ function errorMessage(err) {
   return err && err.message ? err.message : String(err);
 }
 
-const DIRECTORY_CACHE_KEY = 'emp_dir_v2';
+const DIRECTORY_CACHE_KEY = 'emp_dir_v3';
 // Keep direct spreadsheet edits visible quickly; cache is only a short-lived optimization.
 const DIRECTORY_CACHE_TTL = 15;
 const DIRECTORY_JOB_GROUPS = [
@@ -336,6 +336,24 @@ function directoryDate(value) {
   return formatDateYmd(parseSheetDate(value));
 }
 
+// original (الأصلي) + " (انتداب: X)" when a different secondment value exists.
+// External secondment ("ندب خارجي") appends the company instead:
+// "original (ندب خارجي - الشركة)". Returns just the original when there is
+// no secondment or it is identical to the original.
+function withSecondmentLabel_(original, seconded, company) {
+  const orig = String(original == null ? '' : original).trim();
+  const sec = String(seconded == null ? '' : seconded).trim();
+  const co = String(company || '').trim();
+  const base = appendCompanyIfExternal(orig, co);
+  if (!sec) return base;
+  if (foldDirectoryText(sec) === foldDirectoryText(orig)) return base;
+  let inner;
+  if (isExternalSecondmentLabel(sec)) inner = co ? sec + ' - ' + co : sec;
+  else inner = 'انتداب: ' + sec;
+  if (base.indexOf(inner) !== -1) return base;
+  return base ? base + ' (' + inner + ')' : '(' + inner + ')';
+}
+
 function mapDirectoryEmployee(row) {
   const codeRaw = normalizeCode(cellAt(row, 'code'));
   if (!codeRaw) return null;
@@ -344,25 +362,33 @@ function mapDirectoryEmployee(row) {
     cellAt(row, 'originalCompanyName'),
     cellAt(row, 'originalCompany')
   );
-  let job = firstNonEmpty_(
-    cellAt(row, 'secondedJob'),
-    cellAt(row, 'secondedJob2'),
-    cellAt(row, 'jobTitle'),
-    cellAt(row, 'actualJob'),
-    cellAt(row, 'statisticsJob')
+  // Show the ORIGINAL value first, then the secondment (انتداب) in
+  // parentheses — same idea as (عمالة موسمية) on the client. Secondment no
+  // longer replaces the original value.
+  const job = withSecondmentLabel_(
+    firstNonEmpty_(
+      cellAt(row, 'jobTitle'),
+      cellAt(row, 'actualJob'),
+      cellAt(row, 'statisticsJob')
+    ),
+    firstNonEmpty_(cellAt(row, 'secondedJob'), cellAt(row, 'secondedJob2')),
+    currentCompany
   );
-  let sector = firstNonEmpty_(cellAt(row, 'secondedSector'), cellAt(row, 'currentSector'));
-  let department = firstNonEmpty_(
+  const sector = withSecondmentLabel_(
+    cellAt(row, 'currentSector'),
+    cellAt(row, 'secondedSector'),
+    currentCompany
+  );
+  const department = withSecondmentLabel_(
+    cellAt(row, 'currentGeneralDepartment'),
     cellAt(row, 'secondedGeneralDepartment'),
-    cellAt(row, 'currentGeneralDepartment')
+    currentCompany
   );
-  let subDepartment = firstNonEmpty_(
+  const subDepartment = withSecondmentLabel_(
+    cellAt(row, 'currentSubDepartment'),
     cellAt(row, 'secondedDepartment'),
-    cellAt(row, 'currentSubDepartment')
+    currentCompany
   );
-  job = appendCompanyIfExternal(job, currentCompany);
-  department = appendCompanyIfExternal(department, currentCompany);
-  subDepartment = appendCompanyIfExternal(subDepartment, currentCompany);
 
   let group = '';
   const secondedGroup = cellAt(row, 'secondedJobGroup');

@@ -1,4 +1,7 @@
 const CLINIC_SHEET_ID = '1LCk4J_McBFhDuRf4s-5HIirck3uwfZzCFeI3084dGig';
+// All timestamps are delivered in Egypt time so the page can group
+// submissions by Egyptian day (used by the per-day Excel download).
+const EGYPT_TIME_ZONE = 'Africa/Cairo';
 
 function doGet(e) {
   const params = e.parameter || {};
@@ -26,7 +29,6 @@ function getSheetData() {
   try {
     const ss = SpreadsheetApp.openById(CLINIC_SHEET_ID);
     const sheet = ss.getSheets()[0];
-    const timeZone = ss.getSpreadsheetTimeZone();
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
 
@@ -43,7 +45,7 @@ function getSheetData() {
       rows = values.map(row => row.map(cell => {
         if (Object.prototype.toString.call(cell) === '[object Date]') {
           // Keep the same "M/d/yyyy HH:mm:ss" shape the client already parses.
-          return Utilities.formatDate(cell, timeZone, 'M/d/yyyy HH:mm:ss');
+          return Utilities.formatDate(cell, EGYPT_TIME_ZONE, 'M/d/yyyy HH:mm:ss');
         }
         return cell === null || cell === undefined ? '' : String(cell);
       }));
