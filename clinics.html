@@ -746,6 +746,16 @@ async function sha256Hex(value) {
       return String(value);
     }
 
+    // yyyy/mm/dd followed by the Arabic weekday, e.g. "2026/10/12 - الإثنين".
+    // Text that is not a date (such as "اقرب وقت") is returned untouched.
+    function formatDateWithDay(value) {
+      const ymd = formatDateYMD(value);
+      const m = ymd.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+      if (!m) return ymd;
+      const weekday = ARABIC_WEEKDAYS[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()];
+      return `${ymd} - ${weekday}`;
+    }
+
     function formatTimestamp(value) {
       if (!value) return '';
       // Google Sheets typically returns "M/D/YYYY HH:MM:SS" in its JSON output
@@ -835,7 +845,7 @@ async function sha256Hex(value) {
       return String(value ?? '').trim() === NEAREST_TIME_VALUE;
     }
 
-    const ARABIC_WEEKDAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+    const ARABIC_WEEKDAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     // Formats an admin-picked date (YYYY-MM-DD, from <input type="date">) to
     // match the existing clinic date convention, e.g. "2026-08-24 - الإثنين".
     function formatArabicDateWithWeekday(isoDateStr) {
@@ -1038,7 +1048,7 @@ async function sha256Hex(value) {
             // After a decision, show the final chosen date as plain text
             // (same format as regular clinic dates) instead of the picker.
             if (decided && chosen) {
-              return `<td>${escapeHtml(formatDateYMD(formatArabicDateWithWeekday(chosen)))}</td>`;
+              return `<td>${escapeHtml(formatDateWithDay(formatArabicDateWithWeekday(chosen)))}</td>`;
             }
             const { min, max } = getDateRestrictions();
             return `<td>
@@ -1049,7 +1059,7 @@ async function sha256Hex(value) {
             </td>`;
           }
 
-          if (item.key === 'date' && !needsDatePick) value = formatDateYMD(value);
+          if (item.key === 'date' && !needsDatePick) value = formatDateWithDay(value);
 
           return `<td>${escapeHtml(value)}</td>`;
         }).join('');
@@ -1290,9 +1300,9 @@ async function sha256Hex(value) {
           if (item.key === 'date') {
             if (isNearestTimeValue(value)) {
               const chosen = nearestTimeDates[row.sheetRow] || '';
-              value = chosen ? formatDateYMD(formatArabicDateWithWeekday(chosen)) : NEAREST_TIME_VALUE;
+              value = chosen ? formatDateWithDay(formatArabicDateWithWeekday(chosen)) : NEAREST_TIME_VALUE;
             } else {
-              value = formatDateYMD(value);
+              value = formatDateWithDay(value);
             }
           }
           return value == null ? '' : String(value);
