@@ -323,6 +323,89 @@
       box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
     }
 
+    .input-clear-wrap {
+      position: relative;
+    }
+
+    .input-clear-wrap input {
+      padding-inline-end: 40px;
+    }
+
+    .input-clear-btn {
+      position: absolute;
+      inset-inline-end: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.3rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .input-clear-btn:hover,
+    .input-clear-btn:focus-visible {
+      background: var(--surface);
+      color: var(--danger);
+      outline: none;
+    }
+
+    .clinic-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .clinic-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: -1px;
+      padding: 10px 16px;
+      border: 1px solid transparent;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .clinic-tab:hover,
+    .clinic-tab:focus-visible {
+      color: var(--primary);
+      outline: none;
+    }
+
+    .clinic-tab.active {
+      border-color: var(--line);
+      background: var(--surface);
+      color: var(--primary);
+    }
+
+    .clinic-tab-count {
+      min-width: 24px;
+      padding: 1px 8px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+
+    .clinic-tabs + .table-wrap {
+      margin-top: 0;
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+    }
+
     .hidden {
       display: none !important;
     }
@@ -403,7 +486,10 @@
       <form class="admin-form hidden" id="inquiryForm" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line);">
         <div class="admin-field">
           <label for="patientId" data-en="Patient ID (Inquiry)" data-ar="كود الموظف (استعلام)">Patient ID (Inquiry)</label>
-          <input id="patientId" type="text" inputmode="numeric" data-en-placeholder="Enter ID" data-ar-placeholder="أدخل الكود">
+          <div class="input-clear-wrap">
+            <input id="patientId" type="text" inputmode="numeric" data-en-placeholder="Enter ID" data-ar-placeholder="أدخل الكود">
+            <button class="input-clear-btn hidden" id="clearInquiryBtn" type="button">&times;</button>
+          </div>
         </div>
         <button class="primary-btn" type="submit" data-en="Inquiry" data-ar="استعلام">Inquiry</button>
       </form>
@@ -428,6 +514,15 @@
             <button class="ghost-btn export-btn" id="exportExcelBtn" type="button" data-en="Download Excel" data-ar="تحميل إكسل">Download Excel</button>
           </div>
         </div>
+      </div>
+
+      <div class="clinic-tabs" id="clinicTabs" role="tablist">
+        <button class="clinic-tab active" type="button" role="tab" aria-selected="true" data-tab="dated">
+          <span id="tabDatedLabel">Clinics</span><span class="clinic-tab-count" id="tabDatedCount">0</span>
+        </button>
+        <button class="clinic-tab" type="button" role="tab" aria-selected="false" data-tab="nodate">
+          <span id="tabNoDateLabel">Dental &amp; General</span><span class="clinic-tab-count" id="tabNoDateCount">0</span>
+        </button>
       </div>
 
       <div class="table-wrap">
@@ -486,7 +581,7 @@
       'date',
       'clinic',
       'shift',
-      'email',
+      'department',
       'isreserved'
     ];
 
@@ -496,6 +591,7 @@
     let latestSheetRequestId = 0;
     let isAdmin = false;
     let filterPatientId = null;
+    let activeTab = 'dated'; // 'dated' = clinics with a date, 'nodate' = Dental & General
     // When a patient's submitted date is "اقرب وقت" (nearest available time),
     // the admin picks an actual date here before confirming; keyed by sheetRow.
     let nearestTimeDates = {};
@@ -515,6 +611,8 @@
     const refreshBtn = document.getElementById('refreshBtn');
     const refreshBtnLabel = document.getElementById('refreshBtnLabel');
     const copyFormLinkBtn = document.getElementById('copyFormLinkBtn');
+    const clearInquiryBtn = document.getElementById('clearInquiryBtn');
+    const clinicTabs = document.getElementById('clinicTabs');
 
     function lang() {
       return window.EgyptAirPortal?.language === 'ar' ? 'ar' : 'en';
@@ -656,6 +754,8 @@ async function sha256Hex(value) {
         'clinic': ['clinic', 'العيادة'],
         'shift': ['shift', 'ميعاد', 'النوبة'],
         'email': ['email', 'البريد'],
+        // normalizeHeader() folds أ/إ/آ into ا, so 'ادار' matches الادارة / الإدارة / إدارة
+        'department': ['ادار', 'department', 'management'],
         'isreserved': ['isreserved']
       };
       return matchers[columnKey] || [];
@@ -674,7 +774,7 @@ async function sha256Hex(value) {
     }
 
     function normalizeHeader(label) {
-      return String(label || '').trim().toLowerCase();
+      return String(label || '').trim().toLowerCase().replace(/[أإآ]/g, 'ا');
     }
 
     function findColumnIndex(matchers) {
@@ -808,7 +908,8 @@ async function sha256Hex(value) {
       date: ['Date', 'التاريخ'],
       clinic: ['Clinic', 'العيادة المختارة'],
       shift: ['Shift', 'ميعاد النوبة'],
-      email: ['Email Address', 'البريد الإلكتروني']
+      email: ['Email Address', 'البريد الإلكتروني'],
+      department: ['Department', 'الادارة']
     };
 
     function columnHeaderLabel(item) {
@@ -817,36 +918,66 @@ async function sha256Hex(value) {
       return item.column.label || item.column.id || '';
     }
 
-    function renderClinicsTable() {
-      // Newest first overall. Within that, keep pending reservations above
-      // decided ones so confirming/denying a row moves it into the greyed
-      // section below the still-open requests.
-      let rowsToRender = [...clinicRows].reverse();
+    // Columns shown for a tab. The Dental & General tab has no Date column.
+    function columnsForTab(tab) {
+      const columns = [];
+      for (const columnKey of COLUMN_ORDER) {
+        if (columnKey === 'isreserved') continue; // handled separately (Status)
+        if (tab === 'nodate' && columnKey === 'date') continue;
+        const index = getColumnIndexByKey(columnKey);
+        if (index >= 0) columns.push({ index, column: clinicColumns[index], key: columnKey });
+      }
+      return columns;
+    }
+
+    // Rows after the patient-ID filter, newest first, pending above decided.
+    function getFilteredRows() {
+      let rows = [...clinicRows].reverse();
 
       if (filterPatientId) {
         const codeIndex = getColumnIndexByKey('code');
-        rowsToRender = rowsToRender.filter(row => {
-          const rowCode = normalizeDigits(row.values[codeIndex]);
-          return rowCode === filterPatientId;
-        });
+        rows = rows.filter(row => normalizeDigits(row.values[codeIndex]) === filterPatientId);
       }
 
-      rowsToRender.sort((a, b) => {
+      rows.sort((a, b) => {
         const aDecided = a.isReserved === 'y' || a.isReserved === 'n';
         const bDecided = b.isReserved === 'y' || b.isReserved === 'n';
         if (aDecided !== bDecided) return aDecided ? 1 : -1; // pending first
         return 0; // preserve reverse-chronological order within each group
       });
+      return rows;
+    }
 
-      // Build ordered column list based on COLUMN_ORDER
-      const orderedColumns = [];
-      for (const columnKey of COLUMN_ORDER) {
-        if (columnKey === 'isreserved') continue; // Skip isreserved, it's handled separately
-        const index = getColumnIndexByKey(columnKey);
-        if (index >= 0) {
-          orderedColumns.push({ index, column: clinicColumns[index], key: columnKey });
-        }
-      }
+    function updateTabsUi(datedCount, noDateCount) {
+      document.getElementById('tabDatedLabel').textContent = t('Clinics', 'العيادات');
+      document.getElementById('tabNoDateLabel').textContent = t('Dental & General', 'أسنان وعيادة عامة');
+      document.getElementById('tabDatedCount').textContent = datedCount;
+      document.getElementById('tabNoDateCount').textContent = noDateCount;
+      clinicTabs.querySelectorAll('.clinic-tab').forEach(tab => {
+        const isActive = tab.dataset.tab === activeTab;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', String(isActive));
+      });
+    }
+
+    // After an inquiry, jump to the tab that actually has the patient's rows.
+    function switchToTabWithResults() {
+      const rows = getFilteredRows();
+      const datedCount = rows.filter(row => !isNoDateClinic(row)).length;
+      const noDateCount = rows.length - datedCount;
+      if (activeTab === 'dated' && datedCount === 0 && noDateCount > 0) activeTab = 'nodate';
+      else if (activeTab === 'nodate' && noDateCount === 0 && datedCount > 0) activeTab = 'dated';
+    }
+
+    // Renders the active tab. Returns the total number of rows (both tabs).
+    function renderClinicsTable() {
+      const allRows = getFilteredRows();
+      const datedRows = allRows.filter(row => !isNoDateClinic(row));
+      const noDateRows = allRows.filter(isNoDateClinic);
+      updateTabsUi(datedRows.length, noDateRows.length);
+
+      const rowsToRender = activeTab === 'nodate' ? noDateRows : datedRows;
+      const orderedColumns = columnsForTab(activeTab);
 
       let headerHtml = `<tr>${orderedColumns.map(item => `<th>${escapeHtml(columnHeaderLabel(item))}</th>`).join('')}<th>${t('Status', 'الحالة')}</th>`;
       if (isAdmin) {
@@ -857,24 +988,18 @@ async function sha256Hex(value) {
 
       if (!rowsToRender.length) {
         tableBody.innerHTML = `<tr><td colspan="${orderedColumns.length + (isAdmin ? 3 : 1)}">${t('No reservations found.', 'لا توجد حجوزات.')}</td></tr>`;
-        return 0;
+        return allRows.length;
       }
 
       tableBody.innerHTML = rowsToRender.map(row => {
         const decided = row.isReserved === 'y' || row.isReserved === 'n';
         const dateIndex = getColumnIndexByKey('date');
-        const noDate = isNoDateClinic(row);
-        const needsDatePick = !noDate && isNearestTimeValue(row.values[dateIndex]);
+        const needsDatePick = activeTab === 'dated' && isNearestTimeValue(row.values[dateIndex]);
         const valuesHtml = orderedColumns.map(item => {
           let value = row.values[item.index];
 
-          // Apply formatting based on column type
           if (item.key === 'timestamp') {
             value = formatTimestamp(value);
-          }
-
-          if (item.key === 'date' && noDate) {
-            return `<td><span class="no-date-note">${t('No date needed', 'لا يحتاج تاريخ')}</span></td>`;
           }
 
           if (item.key === 'date' && needsDatePick) {
@@ -915,8 +1040,16 @@ async function sha256Hex(value) {
         return rowHtml;
       }).join('');
 
-      return rowsToRender.length;
+      return allRows.length;
     }
+
+    // Tabs only change what the table shows; Excel export is unaffected.
+    clinicTabs.addEventListener('click', event => {
+      const tab = event.target.closest('.clinic-tab');
+      if (!tab || tab.dataset.tab === activeTab) return;
+      activeTab = tab.dataset.tab;
+      renderClinicsTable();
+    });
 
     // ---------- Day picker + Excel export ----------
     function buildDayKeys() {
@@ -968,28 +1101,97 @@ async function sha256Hex(value) {
       const side = { style, color: { argb: argb(hex) } };
       return { top: side, left: side, bottom: side, right: side };
     };
-    const xlFont = (opts = {}) => ({ name: 'Arial', size: 10, ...opts });
+    const XL_BODY = 14;   // body font size (pt)
+    const XL_HEAD = 15;   // header font size (pt)
+    const XL_TITLE = 18;  // big top row font size (pt)
+    const xlFont = (opts = {}) => ({ name: 'Arial', size: XL_BODY, ...opts });
     const cellAlign = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
 
-    function addReservationSheet(wb, sheetName, headers, rows, tabColor) {
+    // A4 landscape with 0.4" side margins leaves ~1030px of printable width at
+    // 100%. A column of width w units is ~(7w + 5)px wide, so the widths below
+    // are scaled to add up to exactly one page: the sheet prints full width,
+    // at (nearly) 100% scale, with no column cut off.
+    const XL_PAGE_PX = 1030;
+    const XL_CHAR = 1.4;    // width units needed per character at 14pt
+
+    const longestLine = value => Math.max(0, ...String(value ?? '').split('\n').map(line => line.length));
+
+    function computeColumnWidths(headers, rows) {
+      const natural = headers.map((label, c) => {
+        let longest = longestLine(label) * 1.35; // header is bold and larger
+        rows.forEach(r => { longest = Math.max(longest, longestLine(r.values[c]) * XL_CHAR); });
+        return Math.min(46, Math.max(9, longest + 3));
+      });
+      // Allow up to 15% over one page: Excel scales the print down by the same
+      // amount (14pt still prints as ~12pt) in exchange for fewer wrapped cells.
+      const target = ((XL_PAGE_PX - 5 * headers.length) / 7) * 1.15;
+      const total = natural.reduce((sum, w) => sum + w, 0);
+      if (total <= target) {
+        // Room to spare: stretch every column evenly so the table fills the page.
+        const factor = target / total;
+        return natural.map(w => Math.round(w * factor * 100) / 100);
+      }
+      // Too wide: shrink only the widest columns (they wrap onto 2 lines) and
+      // leave short columns such as the timestamp, code and shift untouched.
+      let lo = 0, hi = Math.max(...natural);
+      for (let i = 0; i < 40; i++) {
+        const mid = (lo + hi) / 2;
+        const sum = natural.reduce((acc, w) => acc + Math.min(w, mid), 0);
+        if (sum > target) hi = mid; else lo = mid;
+      }
+      return natural.map(w => Math.round(Math.min(w, lo) * 100) / 100);
+    }
+
+    // Wrapped cells don't auto-size in every viewer, so set row heights ourselves.
+    function xlRowHeight(values, widths, fontSize, charFactor, minHeight = 30) {
+      let maxLines = 1;
+      values.forEach((value, c) => {
+        const usable = Math.max(4, widths[c] - 2);
+        const lines = String(value ?? '').split('\n')
+          .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length * charFactor / usable)), 0);
+        maxLines = Math.max(maxLines, lines);
+      });
+      return Math.max(minHeight, Math.round(maxLines * fontSize * 1.45 + 10));
+    }
+
+    function addReservationSheet(wb, sheetName, headers, rows, tabColor, titleText) {
       const ws = wb.addWorksheet(sheetName, {
         // Reads right-to-left: column A on the right (mostly-Arabic content).
-        views: [{ rightToLeft: true, showGridLines: false, state: 'frozen', ySplit: 1 }],
+        // Row 1 = big title, row 2 = column headers (both stay frozen).
+        views: [{ rightToLeft: true, showGridLines: false, state: 'frozen', ySplit: 2 }],
         properties: { tabColor: { argb: argb(tabColor) } },
-        pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' }
+        pageSetup: {
+          orientation: 'landscape', paperSize: 9,
+          fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+          horizontalCentered: true,
+          margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
+          printTitlesRow: '2:2'
+        }
       });
 
-      ws.columns = headers.map((label, c) => {
-        let longest = String(label).length;
-        rows.forEach(r => { longest = Math.max(longest, String(r.values[c] ?? '').length); });
-        return { width: Math.min(42, Math.max(12, Math.round(longest * 1.1) + 3)) };
-      });
+      const widths = computeColumnWidths(headers, rows);
+      ws.columns = widths.map(width => ({ width }));
+      const colCount = headers.length;
 
+      // ---- Big title row: the day + number of clinics in both sheets ----
+      const titleRow = ws.addRow([titleText]);
+      titleRow.height = 70;
+      for (let c = 1; c <= colCount; c++) {
+        const cell = titleRow.getCell(c);
+        cell.fill = solid(BLUE);
+        cell.border = { bottom: { style: 'thick', color: { argb: argb(GOLD) } } };
+      }
+      ws.mergeCells(1, 1, 1, colCount);
+      const titleCell = titleRow.getCell(1);
+      titleCell.font = xlFont({ size: XL_TITLE, bold: true, color: { argb: 'FFFFFFFF' } });
+      titleCell.alignment = cellAlign;
+
+      // ---- Header row ----
       const headerRow = ws.addRow(headers);
-      headerRow.height = 30;
+      headerRow.height = xlRowHeight(headers, widths, XL_HEAD, 1.35, 36);
       headers.forEach((label, i) => {
         const cell = headerRow.getCell(i + 1);
-        cell.font = xlFont({ size: 11, bold: true, color: { argb: 'FFFFFFFF' } });
+        cell.font = xlFont({ size: XL_HEAD, bold: true, color: { argb: 'FFFFFFFF' } });
         cell.fill = solid(NAVY);
         cell.alignment = cellAlign;
         cell.border = {
@@ -1005,12 +1207,13 @@ async function sha256Hex(value) {
         n: { color: 'B3261E', fill: solid('FBE9E7') }
       };
       const pendingLook = { color: '9A7420', fill: solid('FFF3D6') };
-      const statusCol = headers.length;
+      const statusCol = colCount;
 
       rows.forEach((r, ri) => {
         const row = ws.addRow(r.values);
+        row.height = xlRowHeight(r.values, widths, XL_BODY, XL_CHAR);
         const zebra = solid(ri % 2 ? 'F3F7FB' : 'FFFFFF');
-        for (let c = 1; c <= headers.length; c++) {
+        for (let c = 1; c <= colCount; c++) {
           const cell = row.getCell(c);
           cell.font = xlFont();
           cell.fill = zebra;
@@ -1023,12 +1226,14 @@ async function sha256Hex(value) {
         statusCell.fill = look.fill;
       });
 
-      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+      ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: colCount } };
       return ws;
     }
 
     // Exports every application SUBMITTED on the selected Egypt day (by the
-    // sheet's timestamp). Email is never included. Two sheets per file:
+    // sheet's timestamp). Email is never included (the Department column is
+    // shown instead). Two sheets per file, each with a big title row (day +
+    // clinic counts):
     //   1) all clinics that use a date (with the Date column)
     //   2) Dental (اسنان) / General (عيادة عامة) clinics (no Date column)
     async function exportTableToExcel() {
@@ -1092,19 +1297,28 @@ async function sha256Hex(value) {
         wb.creator = 'EgyptAir Work Tools';
         wb.created = new Date();
 
+        const sheet1Name = t('Clinics', 'العيادات');
+        const sheet2Name = t('Dental & General', 'أسنان وعيادة عامة');
+        const total = datedRows.length + noDateRows.length;
+        const titleText = ar
+          ? `${weekdayName(dayKey)} ${dayKey}\nعدد العيادات: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`
+          : `${weekdayName(dayKey)}, ${dayKey}\nTotal clinics: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`;
+
         addReservationSheet(
           wb,
-          t('Clinics', 'العيادات'),
+          sheet1Name,
           [...baseColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
           buildRows(datedRows, baseColumns),
-          BLUE
+          BLUE,
+          titleText
         );
         addReservationSheet(
           wb,
-          t('Dental & General', 'أسنان وعيادة عامة'),
+          sheet2Name,
           [...noDateColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
           buildRows(noDateRows, noDateColumns),
-          GOLD
+          GOLD,
+          titleText
         );
 
         const buffer = await wb.xlsx.writeBuffer();
@@ -1530,6 +1744,8 @@ async function sha256Hex(value) {
       adminPassword.value = '';
       isAdmin = true;
       filterPatientId = null;
+      patientId.value = '';
+      updateClearBtn();
       inquiryForm.classList.remove('hidden');
       setStatus(adminStatus, t('Access granted.', 'تم السماح بالدخول.'));
       resultsPanel.classList.remove('hidden');
@@ -1548,9 +1764,11 @@ async function sha256Hex(value) {
         return;
       }
       filterPatientId = id;
+      updateClearBtn();
       setStatus(adminStatus, t('Searching for ID...', 'جارٍ البحث عن الكود...'));
       resultsPanel.classList.remove('hidden');
       if (clinicRows.length > 0) {
+        switchToTabWithResults();
         const renderedCount = renderClinicsTable();
         setStatus(adminStatus, t('Filter applied.', 'تم تطبيق التصفية.'));
         setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
@@ -1558,6 +1776,31 @@ async function sha256Hex(value) {
         loadClinicSheet();
       }
     });
+
+    // The X inside the inquiry box: empties it and removes the filtering.
+    function updateClearBtn() {
+      clearInquiryBtn.classList.toggle('hidden', !patientId.value && !filterPatientId);
+      const label = t('Clear filter', 'مسح التصفية');
+      clearInquiryBtn.title = label;
+      clearInquiryBtn.setAttribute('aria-label', label);
+    }
+
+    function clearInquiry() {
+      const wasFiltered = filterPatientId !== null;
+      patientId.value = '';
+      filterPatientId = null;
+      updateClearBtn();
+      if (wasFiltered && clinicRows.length > 0) {
+        const renderedCount = renderClinicsTable();
+        setStatus(adminStatus, t('Filter cleared.', 'تم إلغاء التصفية.'));
+        setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
+      }
+      patientId.focus();
+    }
+
+    clearInquiryBtn.addEventListener('click', clearInquiry);
+    patientId.addEventListener('input', updateClearBtn);
+    updateClearBtn();
 
     tableBody.addEventListener('click', event => {
       const button = event.target.closest('.decision-btn');
@@ -1590,6 +1833,7 @@ async function sha256Hex(value) {
         populateDaySelect();
       }
       updateCopyLinkTitle();
+      updateClearBtn();
     });
   </script>
 </body>
