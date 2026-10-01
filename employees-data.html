@@ -1142,7 +1142,7 @@
         <div class="filter-field"><label for="grade" data-en="Grade" data-ar="الدرجة">Grade</label><select class="select" id="grade"></select></div>
         <div class="filter-field"><label for="workType" data-en="Work type" data-ar="نوع العمل">Work type</label><select class="select" id="workType"></select></div>
         <div class="filter-field"><label for="serviceType" data-en="Service type" data-ar="نوع الخدمة">Service type</label><select class="select" id="serviceType"></select></div>
-        <div class="filter-field"><label for="governorate" data-en="Governorate" data-ar="المحافظة">Governorate</label><select class="select" id="governorate"></select></div>
+        <div class="filter-field"><label for="secondedJob" data-en="Seconded job (if any)" data-ar="الوظيفة المنتدب عليها (ان وجد)">Seconded job (if any)</label><select class="select" id="secondedJob"></select></div>
         <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="الفئة العمرية">Age group</label><select class="select" id="ageGroup"></select></div>
         <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="مسمى الوظيفة">Job title</label><select class="select" id="jobTitle"></select></div>
         <div class="hire-range"><div class="filter-field hire-date"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date"></div>
@@ -1290,7 +1290,7 @@
           allGrades: 'All grades',
           allWorkTypes: 'All work types',
           allServiceTypes: 'All service types',
-          allGovernorates: 'All governorates',
+          allSecondedJobs: 'All seconded jobs',
           allAgeGroups: 'All age groups',
           allJobs: 'All job titles',
           emptyFilter: '— (empty)',
@@ -1365,7 +1365,7 @@
           allGrades: 'كل الدرجات',
           allWorkTypes: 'كل أنواع العمل',
           allServiceTypes: 'كل أنواع الخدمة',
-          allGovernorates: 'كل المحافظات',
+          allSecondedJobs: 'كل الوظائف المنتدب عليها',
           allAgeGroups: 'كل الفئات العمرية',
           allJobs: 'كل المسميات الوظيفية',
           emptyFilter: '— (فارغ)',
@@ -1766,7 +1766,7 @@
         { id: 'grade', key: 'currentGrade', allKey: 'allGrades' },
         { id: 'workType', key: 'workType', allKey: 'allWorkTypes' },
         { id: 'serviceType', key: 'serviceType', allKey: 'allServiceTypes' },
-        { id: 'governorate', key: 'governorate', allKey: 'allGovernorates' },
+        { id: 'secondedJob', key: 'secondedJob', allKey: 'allSecondedJobs' },
         { id: 'ageGroup', key: 'ageGroup', allKey: 'allAgeGroups', computed: true },
         { id: 'jobTitle', key: 'jobTitle', allKey: 'allJobs' }
       ];
