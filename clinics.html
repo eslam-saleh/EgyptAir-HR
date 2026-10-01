@@ -723,13 +723,36 @@ async function sha256Hex(value) {
         .replace(/[۰-۹]/g, d => easternMap[d]);
     }
 
+    // Unifies every date shape that can appear in the sheet into yyyy/mm/dd.
+    // Handles "2026-08-16 - الأحد", yyyy/mm/dd, d/m/yyyy, "M/d/yyyy HH:mm:ss"
+    // (Date cells delivered by the Apps Script) and Arabic-Indic digits.
+    // Non-date text such as "اقرب وقت" is returned untouched.
+    function formatDateYMD(value) {
+      if (value === null || value === undefined) return '';
+      const str = normalizeDigits(value).trim();
+      if (!str) return '';
+      let m = str.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+      if (m) return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
+      m = str.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})(.*)$/);
+      if (m) {
+        let a = Number(m[1]), b = Number(m[2]);
+        const hasTime = /\d{1,2}:\d{2}/.test(m[4]);
+        // Date cells with a time part come from the script as month-first;
+        // typed dates are day-first unless that is impossible.
+        let month, day;
+        if (hasTime || (b > 12 && a <= 12)) { month = a; day = b; } else { day = a; month = b; }
+        return `${m[3]}/${pad2(month)}/${pad2(day)}`;
+      }
+      return String(value);
+    }
+
     function formatTimestamp(value) {
       if (!value) return '';
       // Google Sheets typically returns "M/D/YYYY HH:MM:SS" in its JSON output
       const dateMatch = String(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})?/);
       if (!dateMatch) return value;
       
-      // Swap month and day to get DD/MM/YYYY
+      // Output is yyyy/mm/dd
       // dateMatch[1] is Month, dateMatch[2] is Day
       const month = String(dateMatch[1]).padStart(2, '0');
       const day = String(dateMatch[2]).padStart(2, '0');
@@ -742,7 +765,7 @@ async function sha256Hex(value) {
       const hour12 = hour24 % 12 || 12;
       const period = isPM ? 'PM' : 'AM';
       
-      return `${day}/${month}/${year} ${hour12}:${minute} ${period}`;
+      return `${year}/${month}/${day} ${hour12}:${minute} ${period}`;
     }
 
     function getColumnMatcher(columnKey) {
@@ -934,6 +957,14 @@ async function sha256Hex(value) {
     function getFilteredRows() {
       let rows = [...clinicRows].reverse();
 
+      // Day picker (submission day, Egypt time). "all" shows everything.
+      // An active patient inquiry searches across all days.
+      const dayKey = exportDaySelect.value;
+      const tsIdx = getColumnIndexByKey('timestamp');
+      if (!filterPatientId && dayKey && dayKey !== ALL_DAYS && tsIdx >= 0) {
+        rows = rows.filter(row => getTimestampDayKey(row.values[tsIdx]) === dayKey);
+      }
+
       if (filterPatientId) {
         const codeIndex = getColumnIndexByKey('code');
         rows = rows.filter(row => normalizeDigits(row.values[codeIndex]) === filterPatientId);
@@ -1007,7 +1038,7 @@ async function sha256Hex(value) {
             // After a decision, show the final chosen date as plain text
             // (same format as regular clinic dates) instead of the picker.
             if (decided && chosen) {
-              return `<td>${escapeHtml(formatArabicDateWithWeekday(chosen))}</td>`;
+              return `<td>${escapeHtml(formatDateYMD(formatArabicDateWithWeekday(chosen)))}</td>`;
             }
             const { min, max } = getDateRestrictions();
             return `<td>
@@ -1017,6 +1048,8 @@ async function sha256Hex(value) {
               </div>
             </td>`;
           }
+
+          if (item.key === 'date' && !needsDatePick) value = formatDateYMD(value);
 
           return `<td>${escapeHtml(value)}</td>`;
         }).join('');
@@ -1052,34 +1085,32 @@ async function sha256Hex(value) {
     });
 
     // ---------- Day picker + Excel export ----------
+    const ALL_DAYS = 'all';
+
     function buildDayKeys() {
       const today = egyptTodayKey();
       return Array.from({ length: EXPORT_DAYS_BACK }, (_, i) => shiftDayKey(today, -i));
     }
 
-    function countRowsByDay() {
-      const tsIndex = getColumnIndexByKey('timestamp');
-      const counts = {};
-      if (tsIndex < 0) return counts;
-      clinicRows.forEach(row => {
-        const key = getTimestampDayKey(row.values[tsIndex]);
-        if (key) counts[key] = (counts[key] || 0) + 1;
-      });
-      return counts;
-    }
-
     function populateDaySelect() {
       const previous = exportDaySelect.value;
-      const counts = countRowsByDay();
       const keys = buildDayKeys();
-      exportDaySelect.innerHTML = keys.map(key => {
-        const n = counts[key] || 0;
-        return `<option value="${key}">${key} - ${escapeHtml(weekdayName(key))} (${n})</option>`;
-      }).join('');
-      exportDaySelect.value = keys.includes(previous) ? previous : keys[0];
+      const allLabel = t('All clinics', 'كل العيادات');
+      exportDaySelect.innerHTML =
+        `<option value="${ALL_DAYS}">${escapeHtml(allLabel)}</option>` +
+        keys.map(key => `<option value="${key}">${key.replace(/-/g, '/')} - ${escapeHtml(weekdayName(key))}</option>`).join('');
+      const valid = previous === ALL_DAYS || keys.includes(previous);
+      exportDaySelect.value = valid ? previous : keys[1]; // default: yesterday
       exportDayLabel.textContent = t('Day (Egypt time)', 'اليوم (بتوقيت مصر)');
       refreshBtnLabel.textContent = t('Refresh', 'تحديث');
     }
+
+    exportDaySelect.addEventListener('change', () => {
+      if (!clinicRows.length) return;
+      switchToTabWithResults();
+      const renderedCount = renderClinicsTable();
+      setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
+    });
 
     function sortRowsForExport(rows) {
       // Newest first; pending reservations above decided ones.
@@ -1105,14 +1136,15 @@ async function sha256Hex(value) {
     const XL_HEAD = 15;   // header font size (pt)
     const XL_TITLE = 18;  // big top row font size (pt)
     const xlFont = (opts = {}) => ({ name: 'Arial', size: XL_BODY, ...opts });
-    const cellAlign = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
+    const cellAlign = { horizontal: 'center', vertical: 'middle', wrapText: false, readingOrder: 'rtl' };
+    const titleAlign = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
 
     // A4 landscape with 0.4" side margins leaves ~1030px of printable width at
     // 100%. A column of width w units is ~(7w + 5)px wide, so the widths below
     // are scaled to add up to exactly one page: the sheet prints full width,
     // at (nearly) 100% scale, with no column cut off.
     const XL_PAGE_PX = 1030;
-    const XL_CHAR = 1.4;    // width units needed per character at 14pt
+    const XL_CHAR = 1.3;    // width units needed per character at 14pt
 
     const longestLine = value => Math.max(0, ...String(value ?? '').split('\n').map(line => line.length));
 
@@ -1120,7 +1152,7 @@ async function sha256Hex(value) {
       const natural = headers.map((label, c) => {
         let longest = longestLine(label) * 1.35; // header is bold and larger
         rows.forEach(r => { longest = Math.max(longest, longestLine(r.values[c]) * XL_CHAR); });
-        return Math.min(46, Math.max(9, longest + 3));
+        return Math.max(7, longest + 3); // no cap: every column fits its longest text
       });
       // Allow up to 15% over one page: Excel scales the print down by the same
       // amount (14pt still prints as ~12pt) in exchange for fewer wrapped cells.
@@ -1131,28 +1163,12 @@ async function sha256Hex(value) {
         const factor = target / total;
         return natural.map(w => Math.round(w * factor * 100) / 100);
       }
-      // Too wide: shrink only the widest columns (they wrap onto 2 lines) and
-      // leave short columns such as the timestamp, code and shift untouched.
-      let lo = 0, hi = Math.max(...natural);
-      for (let i = 0; i < 40; i++) {
-        const mid = (lo + hi) / 2;
-        const sum = natural.reduce((acc, w) => acc + Math.min(w, mid), 0);
-        if (sum > target) hi = mid; else lo = mid;
-      }
-      return natural.map(w => Math.round(Math.min(w, lo) * 100) / 100);
+      // Wider than one page: keep full widths (no wrapping); the print setup scales it to fit.
+      return natural.map(w => Math.round(w * 100) / 100);
     }
 
-    // Wrapped cells don't auto-size in every viewer, so set row heights ourselves.
-    function xlRowHeight(values, widths, fontSize, charFactor, minHeight = 30) {
-      let maxLines = 1;
-      values.forEach((value, c) => {
-        const usable = Math.max(4, widths[c] - 2);
-        const lines = String(value ?? '').split('\n')
-          .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length * charFactor / usable)), 0);
-        maxLines = Math.max(maxLines, lines);
-      });
-      return Math.max(minHeight, Math.round(maxLines * fontSize * 1.45 + 10));
-    }
+    // Text never wraps, so every row has one compact fixed height.
+    const XL_ROW_H = 24, XL_HEAD_H = 30;
 
     function addReservationSheet(wb, sheetName, headers, rows, tabColor, titleText) {
       const ws = wb.addWorksheet(sheetName, {
@@ -1175,7 +1191,7 @@ async function sha256Hex(value) {
 
       // ---- Big title row: the day + number of clinics in both sheets ----
       const titleRow = ws.addRow([titleText]);
-      titleRow.height = 70;
+      titleRow.height = 56;
       for (let c = 1; c <= colCount; c++) {
         const cell = titleRow.getCell(c);
         cell.fill = solid(BLUE);
@@ -1184,11 +1200,11 @@ async function sha256Hex(value) {
       ws.mergeCells(1, 1, 1, colCount);
       const titleCell = titleRow.getCell(1);
       titleCell.font = xlFont({ size: XL_TITLE, bold: true, color: { argb: 'FFFFFFFF' } });
-      titleCell.alignment = cellAlign;
+      titleCell.alignment = titleAlign;
 
       // ---- Header row ----
       const headerRow = ws.addRow(headers);
-      headerRow.height = xlRowHeight(headers, widths, XL_HEAD, 1.35, 36);
+      headerRow.height = XL_HEAD_H;
       headers.forEach((label, i) => {
         const cell = headerRow.getCell(i + 1);
         cell.font = xlFont({ size: XL_HEAD, bold: true, color: { argb: 'FFFFFFFF' } });
@@ -1211,7 +1227,7 @@ async function sha256Hex(value) {
 
       rows.forEach((r, ri) => {
         const row = ws.addRow(r.values);
-        row.height = xlRowHeight(r.values, widths, XL_BODY, XL_CHAR);
+        row.height = XL_ROW_H;
         const zebra = solid(ri % 2 ? 'F3F7FB' : 'FFFFFF');
         for (let c = 1; c <= colCount; c++) {
           const cell = row.getCell(c);
@@ -1244,21 +1260,22 @@ async function sha256Hex(value) {
 
       const dayKey = exportDaySelect.value;
       const tsIndex = getColumnIndexByKey('timestamp');
-      if (!dayKey || tsIndex < 0) {
+      if (!dayKey || tsIndex < 0) { // timestamp column is still needed to filter by day
         window.showToast?.(t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.'), 'warning');
         return;
       }
 
+      const isAll = dayKey === ALL_DAYS;
       const dayRows = sortRowsForExport(
-        clinicRows.filter(row => getTimestampDayKey(row.values[tsIndex]) === dayKey)
+        isAll ? clinicRows : clinicRows.filter(row => getTimestampDayKey(row.values[tsIndex]) === dayKey)
       );
 
       if (!dayRows.length) {
-        window.showToast?.(t(`No applications were submitted on ${dayKey}.`, `لا توجد طلبات مقدمة بتاريخ ${dayKey}.`), 'warning');
+        window.showToast?.(isAll ? t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.') : t(`No applications were submitted on ${dayKey}.`, `لا توجد طلبات مقدمة بتاريخ ${dayKey}.`), 'warning');
         return;
       }
 
-      const excluded = new Set(['isreserved', 'email']); // emails never go into Excel
+      const excluded = new Set(['isreserved', 'email', 'timestamp']); // no emails / time column in Excel
       const baseColumns = [];
       for (const columnKey of COLUMN_ORDER) {
         if (excluded.has(columnKey)) continue;
@@ -1267,16 +1284,20 @@ async function sha256Hex(value) {
       }
       const dateIndex = getColumnIndexByKey('date');
 
-      const buildRows = (rows, columns) => rows.map(row => {
+      const buildRows = (rows, columns) => rows.map((row, rowIndex) => {
         const values = columns.map(item => {
           let value = row.values[item.index];
-          if (item.key === 'timestamp') value = formatTimestamp(value);
-          if (item.key === 'date' && isNearestTimeValue(value)) {
-            const chosen = nearestTimeDates[row.sheetRow] || '';
-            value = chosen ? formatArabicDateWithWeekday(chosen) : NEAREST_TIME_VALUE;
+          if (item.key === 'date') {
+            if (isNearestTimeValue(value)) {
+              const chosen = nearestTimeDates[row.sheetRow] || '';
+              value = chosen ? formatDateYMD(formatArabicDateWithWeekday(chosen)) : NEAREST_TIME_VALUE;
+            } else {
+              value = formatDateYMD(value);
+            }
           }
           return value == null ? '' : String(value);
         });
+        values.unshift(String(rowIndex + 1)); // الرقم: plain 1..n ordering
         values.push(decisionLabel(row.isReserved));
         return { values, status: row.isReserved };
       });
@@ -1300,14 +1321,15 @@ async function sha256Hex(value) {
         const sheet1Name = t('Clinics', 'العيادات');
         const sheet2Name = t('Dental & General', 'أسنان وعيادة عامة');
         const total = datedRows.length + noDateRows.length;
+        const dayLabel = isAll ? t('All clinics', 'كل العيادات') : `${weekdayName(dayKey)} ${dayKey.replace(/-/g, '/')}`;
         const titleText = ar
-          ? `${weekdayName(dayKey)} ${dayKey}\nعدد العيادات: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`
-          : `${weekdayName(dayKey)}, ${dayKey}\nTotal clinics: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`;
+          ? `${dayLabel}\nعدد العيادات: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`
+          : `${dayLabel}\nTotal clinics: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`;
 
         addReservationSheet(
           wb,
           sheet1Name,
-          [...baseColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
+          [t('No.', 'الرقم'), ...baseColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
           buildRows(datedRows, baseColumns),
           BLUE,
           titleText
@@ -1315,7 +1337,7 @@ async function sha256Hex(value) {
         addReservationSheet(
           wb,
           sheet2Name,
-          [...noDateColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
+          [t('No.', 'الرقم'), ...noDateColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
           buildRows(noDateRows, noDateColumns),
           GOLD,
           titleText
@@ -1327,7 +1349,7 @@ async function sha256Hex(value) {
         }));
         const link = document.createElement('a');
         link.href = url;
-        link.download = `clinics-${dayKey}.xlsx`;
+        link.download = `clinics-${isAll ? 'all' : dayKey}.xlsx`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -1410,8 +1432,8 @@ async function sha256Hex(value) {
       // not-yet-saved dates from a previous load must not be reused.
       nearestTimeDates = {};
 
+      populateDaySelect(); // must run before rendering: the table filters by it
       const renderedCount = renderClinicsTable();
-      populateDaySelect();
       setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
     }
 
@@ -1693,6 +1715,15 @@ async function sha256Hex(value) {
       if (decision === 'y' && isNearest && !chosenIso) {
         setStatus(tableStatus, t('Pick a date for this patient first.', 'اختر تاريخاً لهذا المريض أولاً.'), true);
         return;
+      }
+
+      if (decision === 'n') {
+        const who = getRowValue(row, ['الاسم', 'name']) || '';
+        const ok = window.confirm(t(
+          `Are you sure you want to reject this reservation${who ? ' for ' + who : ''}? A rejection email will be sent.`,
+          `هل أنت متأكد من رفض هذا الحجز${who ? ' الخاص بـ ' + who : ''}؟ سيتم إرسال رسالة رفض بالبريد الإلكتروني.`
+        ));
+        if (!ok) return;
       }
 
       const rowButtons = tableBody.querySelectorAll(`[data-sheet-row="${rowNumber}"] .decision-btn`);
