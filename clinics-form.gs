@@ -62,7 +62,9 @@ function updateNext30Days() {
 //
 // Google Forms can't grey out a dropdown, so this uses section
 // branching: the date question gets its own section, and picking
-// "اسنان" or "عيادة عامة" in the clinic question jumps past it.
+// "اسنان" or "عيادة عامة" in the clinic question submits the form
+// right away. The form has exactly two sections: section 1 (clinic, email,
+// image, ... asked of everyone) and section 2 (the date question only).
 // Every other clinic goes through the date section as before.
 // The clinic question must be a Multiple choice or Dropdown, and it
 // must come BEFORE the date question (the script moves the date
@@ -134,20 +136,31 @@ function setupClinicDateBranching() {
   }
   placeBefore(datePage, dateItem); // sits directly before the date question
 
-  // A section after the date question, only if something follows it.
-  var itemsAfter = form.getItems().slice(dateItem.getIndex() + 1)
-    .filter(function (it) { return !afterPage || it.getId() !== afterPage.getId(); });
-  var hasItemsAfterDate = itemsAfter.length > 0;
+  // Email + image must be asked of EVERYONE (including اسنان / عيادة عامة,
+  // who skip the date section), so move them into section 1, right before
+  // the date section starts. Section 2 is then the date question only.
+  form.getItems().filter(function (it) {
+    var type = it.getType();
+    var title = String(it.getTitle()).toLowerCase();
+    var isImage = type === FormApp.ItemType.FILE_UPLOAD ||
+      title.indexOf("صورة") !== -1 || title.indexOf("image") !== -1 || title.indexOf("photo") !== -1;
+    var isEmail = (type === FormApp.ItemType.TEXT) &&
+      (title.indexOf("بريد") !== -1 || title.indexOf("email") !== -1 || title.indexOf("ايميل") !== -1 || title.indexOf("إيميل") !== -1);
+    return (isImage || isEmail) && it.getIndex() > datePage.getIndex();
+  }).forEach(function (it) {
+    placeBefore(it, datePage);
+    Logger.log("Moved to section 1: " + it.getTitle());
+  });
 
-  if (hasItemsAfterDate) {
-    if (!afterPage) {
-      afterPage = form.addPageBreakItem().setTitle(AFTER_DATE_SECTION_TITLE);
-    }
-    placeAfter(afterPage, dateItem);
-  } else if (afterPage) {
+  // Only TWO sections: section 1 (clinic, email, image, ...) and section 2
+  // (the date question).
+  // If an older run created the third "باقي البيانات" section, remove it;
+  // its questions simply stay in section 2.
+  if (afterPage) {
     form.deleteItem(afterPage);
     afterPage = null;
   }
+
   // Route the clinic answers.
   var choices = (clinicItem.getType() === FormApp.ItemType.LIST
     ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem()).getChoices();
@@ -156,7 +169,7 @@ function setupClinicDateBranching() {
     var skipDate = skipsDate(value);
     Logger.log((skipDate ? "SKIPS date  : " : "asks for date: ") + value);
     var target = skipDate
-      ? (afterPage || FormApp.PageNavigationType.SUBMIT)
+      ? FormApp.PageNavigationType.SUBMIT   // skip the date section
       : datePage;
     return (clinicItem.getType() === FormApp.ItemType.LIST
       ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem()).createChoice(value, target);

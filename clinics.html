@@ -1543,18 +1543,29 @@ async function sha256Hex(value) {
       // Dental / general clinics have no date, so leave it out of the text.
       const datePart = isNoDateClinic(row) || !date ? '' : ` بتاريخ ${date}`;
 
+      // Who the reservation belongs to: "السيد / الاسم كود (الكود) بإدارة ...".
+      // Code / department parts are left out if the sheet has no value.
+      const codeIdx = getColumnIndexByKey('code');
+      const deptIdx = getColumnIndexByKey('department');
+      const code = codeIdx >= 0 ? String(row.values[codeIdx] ?? '').trim() : '';
+      const dept = deptIdx >= 0 ? String(row.values[deptIdx] ?? '').trim() : '';
+      const codePart = code ? ` كود (${code})` : '';
+      // Avoid "بإدارة إدارة ..." when the value already starts with "ادارة/إدارة".
+      const deptPart = dept ? (/^[اإ]دار/.test(dept) ? ` ب${dept}` : ` بإدارة ${dept}`) : '';
+      const who = `السيد / ${name}${codePart}${deptPart}`;
+
       if (decision === 'y') {
         return {
           title: 'تأكيد حجز العيادة',
           name,
-          message: `تم تأكيد حجزك في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء الالتزام بالموعد المحدد.`
+          message: `تم تأكيد حجز ${who} في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء الالتزام بالموعد المحدد.`
         };
       }
 
       return {
         title: 'رفض حجز العيادة',
         name,
-        message: `نعتذر، لم يتم قبول حجزك في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء تسجيل طلب جديد أو مراجعة الإدارة المختصة.`
+        message: `نعتذر، لم يتم قبول حجز ${who} في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء تسجيل طلب جديد أو مراجعة الإدارة المختصة.`
       };
     }
 
