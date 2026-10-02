@@ -79,6 +79,11 @@ function setupClinicDateBranching() {
     return String(text).replace(/[أإآ]/g, "ا").replace(/\s+/g, " ").trim();
   }
   var noDateSet = NO_DATE_CLINICS.map(norm);
+  // Match by keyword too, so choices like "عيادة الأسنان" or "العيادة العامة" are caught.
+  function skipsDate(value) {
+    var v = norm(value);
+    return noDateSet.indexOf(v) !== -1 || v.indexOf("اسنان") !== -1 || v.indexOf("عامة") !== -1;
+  }
 
   var clinicItem = null, dateItem = null;
   form.getItems().forEach(function (item) {
@@ -98,7 +103,23 @@ function setupClinicDateBranching() {
 
   // The date question has to come after the clinic question.
   if (dateItem.getIndex() < clinicItem.getIndex()) {
-    form.moveItem(dateItem, clinicItem.getIndex());
+    form.moveItem(dateItem.getIndex(), clinicItem.getIndex());
+  }
+
+  // Move item at its current position so it sits directly BEFORE the anchor.
+  function placeBefore(item, anchor) {
+    var from = item.getIndex();
+    var to = anchor.getIndex();
+    if (from < to) to = to - 1;   // account for the removal shifting the anchor up
+    if (from !== to) form.moveItem(from, to);
+  }
+
+  // Move item so it sits directly AFTER the anchor.
+  function placeAfter(item, anchor) {
+    var from = item.getIndex();
+    var to = anchor.getIndex();
+    if (from > to) to = to + 1;
+    if (from !== to) form.moveItem(from, to);
   }
 
   // Find or create the section that starts right before the date question.
@@ -111,7 +132,7 @@ function setupClinicDateBranching() {
   if (!datePage) {
     datePage = form.addPageBreakItem().setTitle(DATE_SECTION_TITLE);
   }
-  form.moveItem(datePage, dateItem.getIndex()); // sits directly before the date question
+  placeBefore(datePage, dateItem); // sits directly before the date question
 
   // A section after the date question, only if something follows it.
   var itemsAfter = form.getItems().slice(dateItem.getIndex() + 1)
@@ -122,18 +143,18 @@ function setupClinicDateBranching() {
     if (!afterPage) {
       afterPage = form.addPageBreakItem().setTitle(AFTER_DATE_SECTION_TITLE);
     }
-    form.moveItem(afterPage, dateItem.getIndex() + 1);
+    placeAfter(afterPage, dateItem);
   } else if (afterPage) {
     form.deleteItem(afterPage);
     afterPage = null;
   }
-
   // Route the clinic answers.
   var choices = (clinicItem.getType() === FormApp.ItemType.LIST
     ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem()).getChoices();
   var newChoices = choices.map(function (choice) {
     var value = choice.getValue();
-    var skipDate = noDateSet.indexOf(norm(value)) !== -1;
+    var skipDate = skipsDate(value);
+    Logger.log((skipDate ? "SKIPS date  : " : "asks for date: ") + value);
     var target = skipDate
       ? (afterPage || FormApp.PageNavigationType.SUBMIT)
       : datePage;

@@ -1617,6 +1617,17 @@ async function sha256Hex(value) {
       window.location.href = `mailto:${toEmail}?subject=${subject}&body=${body}`;
     }
 
+    // EmailJS has a monthly send limit (200), so emails are only sent when
+    // they really matter:
+    //   - every rejection ('n'), and
+    //   - confirmations for patients who picked "اقرب وقت" (they don't know
+    //     their date until the admin picks it, so the email is how they find out).
+    // Confirmations for patients who already chose a specific date (and for
+    // the no-date clinics) are saved to the sheet without an email.
+    function shouldSendDecisionEmail(decision, isNearest) {
+      return decision === 'n' || (decision === 'y' && isNearest);
+    }
+
     async function sendDecisionEmail(row, decision) {
       // The email field on the form is optional now. No (or an invalid)
       // address simply means no message is sent; the decision is still saved.
@@ -1744,7 +1755,8 @@ async function sha256Hex(value) {
       );
 
       try {
-        const emailSent = await sendDecisionEmail(row, decision);
+        const emailAllowed = shouldSendDecisionEmail(decision, isNearest);
+        const emailSent = emailAllowed ? await sendDecisionEmail(row, decision) : false;
         // Persist the admin-picked date for "اقرب وقت" rows so inquiries
         // after a reload still show the real date instead of the placeholder.
         await updateSheetDecision(row, decision, isNearest && chosenIso ? chosenIso : null);
@@ -1757,7 +1769,9 @@ async function sha256Hex(value) {
         setStatus(tableStatus, decision === 'y'
           ? (emailSent
               ? t('Reservation confirmed and email sent.', 'تم تأكيد الحجز وإرسال البريد الإلكتروني.')
-              : t('Reservation confirmed (no email on file, nothing sent).', 'تم تأكيد الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).'))
+              : emailAllowed
+                ? t('Reservation confirmed (no email on file, nothing sent).', 'تم تأكيد الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).')
+                : t('Reservation confirmed (no email sent — only rejections and "اقرب وقت" requests get emails).', 'تم تأكيد الحجز (لم يتم إرسال بريد إلكتروني — يتم الإرسال فقط للرفض وطلبات "اقرب وقت").'))
           : (emailSent
               ? t('Reservation denied and email sent.', 'تم رفض الحجز وإرسال البريد الإلكتروني.')
               : t('Reservation denied (no email on file, nothing sent).', 'تم رفض الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).'))
