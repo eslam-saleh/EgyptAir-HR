@@ -1625,6 +1625,18 @@ async function sha256Hex(value) {
     function openMailtoFallback(toEmail, content) {
       const subject = encodeURIComponent(content.title);
       const body = encodeURIComponent(`${content.name}،\n\n${content.message}`);
+
+      // Firefox only: it often has no mail app set as the mailto: handler,
+      // so open an Outlook web compose window instead. Other browsers keep
+      // using the normal mailto: link below.
+      const isFirefox = /firefox/i.test(navigator.userAgent);
+      if (isFirefox) {
+        const outlookUrl = `https://outlook.live.com/mail/0/deeplink/compose?to=${encodeURIComponent(toEmail)}&subject=${subject}&body=${body}`;
+        const win = window.open(outlookUrl, '_blank');
+        if (win) return;
+        // Popup blocked — fall through to the regular mailto: link.
+      }
+
       window.location.href = `mailto:${toEmail}?subject=${subject}&body=${body}`;
     }
 
@@ -1689,7 +1701,10 @@ async function sha256Hex(value) {
       return true;
     }
 
-    async function updateSheetDecision(row, decision, chosenDateIso) {
+    // One attempt. Network-level failures (script error / timeout) are
+    // flagged with isNetworkError so the wrapper below can safely retry them;
+    // errors the server answered with (result.error) are NOT retried.
+    async function updateSheetDecisionOnce(row, decision, chosenDateIso) {
       if (!SHEET_UPDATE_WEB_APP_URL) {
         throw new Error(t(
           'Sheet update endpoint is not configured yet.',
@@ -1711,9 +1726,17 @@ async function sha256Hex(value) {
         url.searchParams.set('callback', callbackName);
         url.searchParams.set('t', Date.now());
 
+        let timer = null;
         const cleanup = () => {
+          clearTimeout(timer);
           delete window[callbackName];
           script.remove();
+        };
+        const networkFail = () => {
+          cleanup();
+          const err = new Error(t('Sheet update failed.', 'فشل تحديث الجدول.'));
+          err.isNetworkError = true;
+          reject(err);
         };
 
         window[callbackName] = result => {
@@ -1725,14 +1748,37 @@ async function sha256Hex(value) {
           }
         };
 
-        script.onerror = () => {
-          cleanup();
-          reject(new Error(t('Sheet update failed.', 'فشل تحديث الجدول.')));
-        };
+        script.onerror = networkFail;
+        timer = setTimeout(networkFail, SHEET_TIMEOUT_MS);
 
         script.src = url.toString();
         document.body.appendChild(script);
       });
+    }
+
+    // Retries the sheet update on network-level failures. The update is
+    // idempotent (it just sets the same isReserved/date values), so a retry
+    // is safe even if an earlier attempt actually went through but its
+    // reply never reached the page (e.g. the tab lost focus when the email
+    // compose window opened, or Apps Script was slow to wake up).
+    async function updateSheetDecision(row, decision, chosenDateIso) {
+      let lastError = null;
+      for (let attempt = 1; attempt <= SHEET_MAX_ATTEMPTS; attempt++) {
+        try {
+          return await updateSheetDecisionOnce(row, decision, chosenDateIso);
+        } catch (error) {
+          lastError = error;
+          if (!error.isNetworkError) throw error;
+          if (attempt < SHEET_MAX_ATTEMPTS) {
+            setStatus(tableStatus, t(
+              `Saving failed, retrying (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`,
+              `فشل الحفظ، جارٍ إعادة المحاولة (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`
+            ));
+            await sleep(1000 * attempt);
+          }
+        }
+      }
+      throw lastError;
     }
 
     async function decideReservation(button) {
