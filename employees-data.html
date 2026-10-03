@@ -995,6 +995,62 @@
         font-variant-numeric: tabular-nums;
       }
 
+      /* Multi-select filters */
+      .panel.toolbar { overflow: visible; }
+      .ms { position: relative; }
+      .ms.open { z-index: 30; }
+      .ms-btn {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        width: 100%; min-height: 42px; padding: 0 11px; text-align: start; cursor: pointer;
+        border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text);
+      }
+      .ms-btn:focus-visible, .ms.open .ms-btn { outline: 2px solid var(--primary); outline-offset: 1px; }
+      .ms-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .ms.has-sel .ms-btn { border-color: var(--primary); }
+      .ms.has-sel .ms-text { font-weight: 800; }
+      .ms-count {
+        flex: none; min-width: 20px; padding: 1px 6px; border-radius: 999px; text-align: center;
+        background: var(--primary); color: #fff; font-size: .7rem; font-weight: 800;
+      }
+      .ms-caret { flex: none; color: var(--muted); font-size: .8rem; }
+      .ms-panel {
+        position: absolute; inset-inline-start: 0; top: calc(100% + 4px); z-index: 40;
+        width: 100%; min-width: 230px; display: grid; gap: 6px; padding: 8px;
+        border: 1px solid var(--line); border-radius: 10px; background: var(--surface);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, .22);
+      }
+      .ms-panel[hidden] { display: none; }
+      .ms-search {
+        width: 100%; min-height: 34px; padding: 0 10px; border: 1px solid var(--line);
+        border-radius: 8px; background: var(--surface-2); color: var(--text);
+      }
+      .ms-actions { display: flex; gap: 6px; }
+      .ms-actions button {
+        flex: 1; min-height: 30px; border: 1px solid var(--line); border-radius: 7px;
+        background: var(--surface-2); color: var(--text); font-size: .78rem; font-weight: 700; cursor: pointer;
+      }
+      .ms-actions button:hover { border-color: var(--primary); }
+      .ms-list { max-height: 250px; overflow: auto; display: grid; gap: 2px; }
+      .ms-opt {
+        display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 7px;
+        cursor: pointer; font-size: .86rem;
+      }
+      .ms-opt:hover { background: var(--surface-2); }
+      .ms-opt.sel { background: color-mix(in srgb, var(--primary) 12%, transparent); font-weight: 700; }
+      .ms-check {
+        flex: none; width: 17px; height: 17px; display: grid; place-items: center;
+        border: 1.5px solid var(--line); border-radius: 4px; font-size: .7rem; color: transparent;
+      }
+      .ms-opt.sel .ms-check { background: var(--primary); border-color: var(--primary); color: #fff; }
+      .ms-label { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+      .ms-x {
+        flex: none; width: 20px; height: 20px; display: grid; place-items: center; padding: 0;
+        border: 0; border-radius: 50%; background: transparent; color: var(--muted);
+        font-size: 1rem; line-height: 1; cursor: pointer;
+      }
+      .ms-x:hover { background: #c0392b; color: #fff; }
+      .ms-none { padding: 10px; color: var(--muted); font-size: .82rem; text-align: center; }
+
       /* History popup (آخر التعديلات) */
       .history-table {
         width: 100%;
@@ -1178,18 +1234,18 @@
         <button class="btn clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
       </section>
       <section class="panel toolbar" aria-label="Employee filters">
-        <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><select class="select" id="sector"></select></div>
-        <div class="filter-field"><label for="department" data-en="General department" data-ar="الإدارة العامة">General department</label><select class="select" id="department"></select></div>
-        <div class="filter-field"><label for="section" data-en="Section" data-ar="القسم الفرعي">Section</label><select class="select" id="section"></select></div>
-        <div class="filter-field"><label for="status" data-en="Status" data-ar="الحالة">Status</label><select class="select" id="status"></select></div>
-        <div class="filter-field"><label for="appointmentType" data-en="Appointment type" data-ar="نوع التعيين">Appointment type</label><select class="select" id="appointmentType"></select></div>
-        <div class="filter-field"><label for="gender" data-en="Gender" data-ar="النوع">Gender</label><select class="select" id="gender"></select></div>
-        <div class="filter-field"><label for="grade" data-en="Grade" data-ar="الدرجة">Grade</label><select class="select" id="grade"></select></div>
-        <div class="filter-field"><label for="workType" data-en="Work type" data-ar="نوع العمل">Work type</label><select class="select" id="workType"></select></div>
-        <div class="filter-field"><label for="serviceType" data-en="Service type" data-ar="نوع الخدمة">Service type</label><select class="select" id="serviceType"></select></div>
-        <div class="filter-field"><label for="secondedJob2" data-en="Seconded job" data-ar="الوظيفة المنتدب عليها">Seconded job</label><select class="select" id="secondedJob2"></select></div>
-        <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="الفئة العمرية">Age group</label><select class="select" id="ageGroup"></select></div>
-        <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="مسمى الوظيفة">Job title</label><select class="select" id="jobTitle"></select></div>
+        <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><div class="ms" id="sector"></div></div>
+        <div class="filter-field"><label for="department" data-en="General department" data-ar="الإدارة العامة">General department</label><div class="ms" id="department"></div></div>
+        <div class="filter-field"><label for="section" data-en="Section" data-ar="القسم الفرعي">Section</label><div class="ms" id="section"></div></div>
+        <div class="filter-field"><label for="status" data-en="Status" data-ar="الحالة">Status</label><div class="ms" id="status"></div></div>
+        <div class="filter-field"><label for="appointmentType" data-en="Appointment type" data-ar="نوع التعيين">Appointment type</label><div class="ms" id="appointmentType"></div></div>
+        <div class="filter-field"><label for="gender" data-en="Gender" data-ar="النوع">Gender</label><div class="ms" id="gender"></div></div>
+        <div class="filter-field"><label for="grade" data-en="Grade" data-ar="الدرجة">Grade</label><div class="ms" id="grade"></div></div>
+        <div class="filter-field"><label for="workType" data-en="Work type" data-ar="نوع العمل">Work type</label><div class="ms" id="workType"></div></div>
+        <div class="filter-field"><label for="serviceType" data-en="Service type" data-ar="نوع الخدمة">Service type</label><div class="ms" id="serviceType"></div></div>
+        <div class="filter-field"><label for="secondedJob2" data-en="Seconded job" data-ar="الوظيفة المنتدب عليها">Seconded job</label><div class="ms" id="secondedJob2"></div></div>
+        <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="الفئة العمرية">Age group</label><div class="ms" id="ageGroup"></div></div>
+        <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="مسمى الوظيفة">Job title</label><div class="ms" id="jobTitle"></div></div>
         <div class="hire-range"><div class="filter-field hire-date"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date"></div>
           <div class="filter-field hire-date"><label for="hireTo" data-en="Hired until" data-ar="التعيين حتى">Hired until</label><div class="date-row"><input class="input" id="hireTo" type="date"><button class="btn today-btn" id="hireToday" type="button" data-en-title="Set to today's date" data-ar-title="ضبط التاريخ على اليوم"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v15"/><path d="M6 13.5l6 6 6-6"/></svg></button></div></div></div>
       </section>
@@ -1332,6 +1388,7 @@
         view: 'active', // 'active' | 'retired' — separate lists, never merged
         upcomingOnly: false, // date-period filter: retiring within 12 months
         canEdit: false, // true only when unlocked with the editor password (42554)
+        sel: {}, // multi-select filters: control id -> Set of selected values
         history: { loaded: false, failed: false, count: 0, records: [] } // last-30-days log from the History sheet
       };
       let employeeDataLoadPromise = null;
@@ -1395,6 +1452,12 @@
           matching: 'Matching records',
           departments: 'General departments',
           history: 'Latest modifications',
+          msSelectAll: 'Select all',
+          msClear: 'Clear',
+          msSelected: '{n} selected',
+          msSearch: 'Search options…',
+          msNoMatch: 'No matching options',
+          msRemove: 'Unselect',
           historyHint: 'Last 30 days · click to view',
           historyEmpty: 'No modifications in the last 30 days.',
           historyFailed: 'Unable to load the modification history.',
@@ -1478,6 +1541,12 @@
           matching: 'السجلات المطابقة',
           departments: 'الإدارات العامة',
           history: 'آخر التعديلات',
+          msSelectAll: 'تحديد الكل',
+          msClear: 'مسح',
+          msSelected: '{n} محدد',
+          msSearch: 'ابحث في الخيارات…',
+          msNoMatch: 'لا توجد خيارات مطابقة',
+          msRemove: 'إلغاء التحديد',
           historyHint: 'آخر 30 يوماً · اضغط للعرض',
           historyEmpty: 'لا توجد تعديلات خلال آخر 30 يوماً.',
           historyFailed: 'تعذر تحميل سجل التعديلات.',
@@ -1844,6 +1913,123 @@
         { id: 'jobTitle', key: 'jobTitle', allKey: 'allJobs' }
       ];
 
+      // ───────── Multi-select filter component ─────────
+      const MS_IDS = ['status', 'sector', 'department', 'section', 'appointmentType', 'gender', 'grade', 'workType', 'serviceType', 'secondedJob2', 'ageGroup', 'jobTitle'];
+      const msMeta = {}; // id -> { options: [{value,label}], placeholder }
+
+      /** True when the filter has no selection, or the value is one of the selected ones. */
+      function matchesSel(id, actual) {
+        const set = state.sel[id];
+        if (!set || !set.size) return true;
+        return actual ? set.has(actual) : set.has(EMPTY_FILTER);
+      }
+
+      function selCount(id) { return state.sel[id] ? state.sel[id].size : 0; }
+
+      function clearAllSelections() {
+        MS_IDS.forEach(id => { state.sel[id] = new Set(); });
+        MS_IDS.forEach(msRender);
+      }
+
+      function msSetOptions(id, options, placeholder) {
+        const set = (state.sel[id] = state.sel[id] || new Set());
+        const valid = new Set(options.map(o => o.value));
+        [...set].forEach(v => { if (!valid.has(v)) set.delete(v); }); // drop selections that no longer exist
+        msMeta[id] = { options, placeholder };
+        msRender(id);
+      }
+
+      function msRender(id) {
+        const host = $(id);
+        const meta = msMeta[id];
+        if (!host || !meta || !host.querySelector('.ms-btn')) return;
+        const set = state.sel[id] || (state.sel[id] = new Set());
+        const btn = host.querySelector('.ms-btn');
+        const labels = meta.options.filter(o => set.has(o.value)).map(o => o.label);
+        host.classList.toggle('has-sel', set.size > 0);
+        btn.querySelector('.ms-text').textContent = set.size === 0 ? meta.placeholder
+          : set.size === 1 ? labels[0] : t('msSelected').replace('{n}', set.size);
+        btn.title = labels.join('، ');
+        host.querySelector('.ms-search').placeholder = t('msSearch');
+        host.querySelector('[data-act="all"]').textContent = t('msSelectAll');
+        host.querySelector('[data-act="none"]').textContent = t('msClear');
+        const list = host.querySelector('.ms-list');
+        const q = normal(host.querySelector('.ms-search').value);
+        const shown = meta.options.filter(o => !q || normal(o.label).includes(q));
+        const scroll = list.scrollTop;
+        list.innerHTML = shown.length ? shown.map(o => {
+          const on = set.has(o.value);
+          return `<div class="ms-opt${on ? ' sel' : ''}" role="option" aria-selected="${on}" data-v="${escapeHtml(o.value)}"><span class="ms-check">✓</span><span class="ms-label">${escapeHtml(o.label)}</span>${on ? `<button type="button" class="ms-x" data-x="${escapeHtml(o.value)}" aria-label="${escapeHtml(t('msRemove'))}" title="${escapeHtml(t('msRemove'))}">×</button>` : ''}</div>`;
+        }).join('') : `<div class="ms-none">${escapeHtml(t('msNoMatch'))}</div>`;
+        list.scrollTop = scroll;
+      }
+
+      function msClose(id) {
+        const host = $(id);
+        if (!host) return;
+        host.classList.remove('open');
+        host.querySelector('.ms-panel').hidden = true;
+        host.querySelector('.ms-btn').setAttribute('aria-expanded', 'false');
+      }
+
+      function msCloseAll(exceptId) { MS_IDS.forEach(id => { if (id !== exceptId) msClose(id); }); }
+
+      function initMultiSelects() {
+        MS_IDS.forEach(id => {
+          const host = $(id);
+          if (!host) return;
+          state.sel[id] = state.sel[id] || new Set();
+          host.innerHTML = `<button type="button" class="ms-btn" aria-haspopup="listbox" aria-expanded="false"><span class="ms-text"></span><span class="ms-caret">▾</span></button><div class="ms-panel" hidden><input class="ms-search" type="search" autocomplete="off"><div class="ms-actions"><button type="button" data-act="all"></button><button type="button" data-act="none"></button></div><div class="ms-list" role="listbox" aria-multiselectable="true"></div></div>`;
+          const btn = host.querySelector('.ms-btn');
+          const panel = host.querySelector('.ms-panel');
+          const search = host.querySelector('.ms-search');
+          const change = () => applyFilter();
+          btn.addEventListener('click', () => {
+            const opening = panel.hidden;
+            msCloseAll(id);
+            panel.hidden = !opening;
+            host.classList.toggle('open', opening);
+            btn.setAttribute('aria-expanded', String(opening));
+            if (opening) { search.value = ''; msRender(id); search.focus({ preventScroll: true }); }
+          });
+          search.addEventListener('input', () => msRender(id));
+          panel.addEventListener('click', event => {
+            const set = state.sel[id];
+            const x = event.target.closest('.ms-x');
+            if (x) { // small × next to a selected option → unselect it
+              event.stopPropagation();
+              set.delete(x.dataset.x);
+              change();
+              return;
+            }
+            const act = event.target.closest('[data-act]');
+            if (act) {
+              if (act.dataset.act === 'none') set.clear();
+              else {
+                const q = normal(search.value);
+                (msMeta[id]?.options || []).forEach(o => { if (!q || normal(o.label).includes(q)) set.add(o.value); });
+              }
+              change();
+              return;
+            }
+            const opt = event.target.closest('.ms-opt');
+            if (opt) {
+              const v = opt.dataset.v;
+              if (set.has(v)) set.delete(v); else set.add(v);
+              change();
+            }
+          });
+          host.addEventListener('keydown', event => {
+            if (event.key === 'Escape') { msClose(id); btn.focus(); }
+          });
+        });
+        MS_IDS.forEach(msRender); // options may already have been set by an earlier refreshFilters()
+        // composedPath: the clicked row may already be re-rendered away when this runs
+        document.addEventListener('click', event => {
+          MS_IDS.forEach(id => { const host = $(id); if (host && !event.composedPath().includes(host)) msClose(id); });
+        });
+      }
+
       function filterValueFor(employee, ctrl) {
         if (ctrl.normalize) return normalizeAppointmentType(employee[ctrl.key]);
         if (ctrl.id === 'status' || ctrl.key === 'status') return normalizeStatusKey(employee.status);
@@ -1854,27 +2040,15 @@
       function employeesMatchingExcept(exceptIds = []) {
         const except = new Set(exceptIds);
         const query = normal($('search')?.value);
-        const statusVal = except.has('status') ? '' : ($('status')?.value || '');
         const source = state.employees.map(computed);
         return source.filter(employee => {
           if (query && !normal(employee.code).includes(query) && !normal(employee.name).includes(query)) {
             return false;
           }
-          if (statusVal) {
-            const st = normalizeStatusKey(employee.status);
-            if (statusVal === EMPTY_FILTER) { if (st) return false; }
-            else if (st !== statusVal) return false;
-          }
+          if (!except.has('status') && !matchesSel('status', normalizeStatusKey(employee.status))) return false;
           if (!except.has('upcoming') && state.upcomingOnly && !isUpcomingRetirement(employee)) return false;
           if (!except.has('hireRange') && !matchesHireRange(employee)) return false;
-          return FILTER_CONTROLS.every(ctrl => {
-            if (except.has(ctrl.id)) return true;
-            const selected = $(ctrl.id)?.value || '';
-            if (!selected) return true;
-            const actual = filterValueFor(employee, ctrl);
-            if (selected === EMPTY_FILTER) return !actual;
-            return actual === selected;
-          });
+          return FILTER_CONTROLS.every(ctrl => except.has(ctrl.id) || matchesSel(ctrl.id, filterValueFor(employee, ctrl)));
         });
       }
 
@@ -1886,9 +2060,7 @@
         // Rebuild each dropdown from rows that match all *other* selected filters
         // so choosing Sector narrows Departments/Sections (and everything else).
         FILTER_CONTROLS.forEach(ctrl => {
-          const select = $(ctrl.id);
-          if (!select) return;
-          const current = select.value;
+          if (!$(ctrl.id)) return;
           // Hierarchical children (department, section): options come from
           // rows matching parent filters only (sector → dept → section).
           // Other filters cascade against the full current selection so
@@ -1901,11 +2073,7 @@
               return (ctrl.parents || []).every(parentId => {
                 const parentCtrl = FILTER_CONTROLS.find(c => c.id === parentId);
                 if (!parentCtrl) return true;
-                const selected = $(parentId)?.value || '';
-                if (!selected) return true;
-                const actual = filterValueFor(employee, parentCtrl);
-                if (selected === EMPTY_FILTER) return !actual;
-                return actual === selected;
+                return matchesSel(parentId, filterValueFor(employee, parentCtrl));
               });
             });
           } else {
@@ -1913,20 +2081,15 @@
           }
           const values = uniqueFrom(pool, e => filterValueFor(e, ctrl));
           const hasEmpty = pool.some(e => !filterValueFor(e, ctrl));
-          const emptyOpt = hasEmpty
-            ? `<option value="${EMPTY_FILTER}">${escapeHtml(t('emptyFilter'))}</option>`
-            : '';
-          select.innerHTML = `<option value="">${escapeHtml(t(ctrl.allKey))}</option>${emptyOpt}${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
-          const keep = current === EMPTY_FILTER
-            ? (hasEmpty ? EMPTY_FILTER : '')
-            : (values.includes(current) ? current : '');
-          select.value = keep;
+          const options = [
+            ...(hasEmpty ? [{ value: EMPTY_FILTER, label: t('emptyFilter') }] : []),
+            ...values.map(value => ({ value, label: value }))
+          ];
+          msSetOptions(ctrl.id, options, t(ctrl.allKey));
         });
 
         // Status: always show canonical keys present in the current pool
-        const statusSelect = $('status');
-        if (statusSelect) {
-          const current = statusSelect.value;
+        if ($('status')) {
           const pool = employeesMatchingExcept(['status']);
           const keys = uniqueFrom(pool, e => normalizeStatusKey(e.status));
           // Stable preferred order
@@ -1936,25 +2099,18 @@
             ...keys.filter(k => !order.includes(k))
           ];
           const hasEmptyStatus = pool.some(e => !normalizeStatusKey(e.status));
-          const emptyStatusOpt = hasEmptyStatus
-            ? `<option value="${EMPTY_FILTER}">${escapeHtml(t('emptyFilter'))}</option>`
-            : '';
-          statusSelect.innerHTML = `<option value="">${t('allStatuses')}</option>${emptyStatusOpt}${ordered.map(key => {
-            const label = displayStatus(key).label;
-            return `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`;
-          }).join('')}`;
-          statusSelect.value = current === EMPTY_FILTER
-            ? (hasEmptyStatus ? EMPTY_FILTER : '')
-            : (ordered.includes(current) ? current : '');
+          msSetOptions('status', [
+            ...(hasEmptyStatus ? [{ value: EMPTY_FILTER, label: t('emptyFilter') }] : []),
+            ...ordered.map(key => ({ value: key, label: displayStatus(key).label }))
+          ], t('allStatuses'));
         }
       }
 
       function filtersActive() {
         if (clean($('search')?.value)) return true;
-        if ($('status')?.value) return true;
         if (state.upcomingOnly) return true;
         if (clean($('hireFrom')?.value) || clean($('hireTo')?.value)) return true;
-        return FILTER_CONTROLS.some(ctrl => $(ctrl.id)?.value);
+        return MS_IDS.some(id => selCount(id) > 0);
       }
 
       /** Inclusive date-range check on appointmentDate (hire date). */
@@ -1977,24 +2133,13 @@
 
       function getFiltered() {
         const query = normal($('search')?.value);
-        const statusVal = $('status')?.value || '';
         const list = state.employees.map(computed).filter(employee => {
           const matchesSearch = !query || normal(employee.code).includes(query) || normal(employee.name).includes(query);
           if (!matchesSearch) return false;
-          if (statusVal) {
-            const st = normalizeStatusKey(employee.status);
-            if (statusVal === EMPTY_FILTER) { if (st) return false; }
-            else if (st !== statusVal) return false;
-          }
+          if (!matchesSel('status', normalizeStatusKey(employee.status))) return false;
           if (state.upcomingOnly && !isUpcomingRetirement(employee)) return false;
           if (!matchesHireRange(employee)) return false;
-          return FILTER_CONTROLS.every(ctrl => {
-            const selected = $(ctrl.id)?.value || '';
-            if (!selected) return true;
-            const actual = filterValueFor(employee, ctrl);
-            if (selected === EMPTY_FILTER) return !actual;
-            return actual === selected;
-          });
+          return FILTER_CONTROLS.every(ctrl => matchesSel(ctrl.id, filterValueFor(employee, ctrl)));
         });
         const key = state.sort;
         // Status sorts by the normalized, displayed label (not the raw sheet
@@ -2576,11 +2721,10 @@
         state.page = 1;
         // Clear filters so retired/active don't inherit each other's selections
         if ($('search')) $('search').value = '';
-        if ($('status')) $('status').value = '';
         if ($('hireFrom')) $('hireFrom').value = '';
         if ($('hireTo')) $('hireTo').value = '';
         setUpcomingOnly(false);
-        FILTER_CONTROLS.forEach(ctrl => { if ($(ctrl.id)) $(ctrl.id).value = ''; });
+        clearAllSelections();
         applyViewChrome();
         await load({ quiet: false });
       }
@@ -3167,7 +3311,7 @@
           applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
         });
         $('search').addEventListener('input', applyFilter);
-        ['status', ...FILTER_CONTROLS.map(c => c.id)].forEach(id => { const el = $(id); if (el) el.addEventListener('change', applyFilter); });
+        initMultiSelects();
         $('hireFrom')?.addEventListener('change', applyFilter);
         $('hireTo')?.addEventListener('change', applyFilter);
         const retStat = $('retirementStat');
@@ -3192,11 +3336,10 @@
         }
         $('clearBtn').addEventListener('click', () => {
           $('search').value = '';
-          if ($('status')) $('status').value = '';
           if ($('hireFrom')) $('hireFrom').value = '';
           if ($('hireTo')) $('hireTo').value = '';
           setUpcomingOnly(false);
-          FILTER_CONTROLS.forEach(ctrl => { if ($(ctrl.id)) $(ctrl.id).value = ''; });
+          clearAllSelections();
           applyFilter();
           toast(t('filtersCleared'), 'success');
         });
