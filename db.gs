@@ -41,6 +41,11 @@
  * URL. Setting it is strongly recommended.
  */
 
+// ID of بيانات.xlsx (the long string in its URL: /spreadsheets/d/<ID>/edit).
+// Used instead of getActiveSpreadsheet(), so the script no longer has to be
+// bound to the sheet.
+var SPREADSHEET_ID = '1YCAUm-0kSeXS5mdJDwuq3cSYNyC6d52DBTMHlRtQjHI';
+
 // Sheet tabs read by the tagging.html "Deadlines to track" dashboard.
 var DASHBOARD_SHEETS = ['اجازات', 'جزاءات', 'ايقاف'];
 // The dashboard is read far more often than these sheets are written. A short
@@ -65,7 +70,7 @@ function doPost(e) {
   try {
     var body = JSON.parse(e.postData.contents);
     if (!isAuthorized(body.token)) return respond(false, 'غير مصرح بهذا الطلب.');
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(body.sheet);
     if (!sheet) return respond(false, 'لم يتم العثور على الشيت: ' + body.sheet);
 
@@ -96,7 +101,7 @@ function doGet(e) {
     if (!isAuthorized(token)) return respond(false, 'غير مصرح بهذا الطلب.');
 
     if (action === 'dashboard') {
-      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
       return respond(true, 'تم تحميل البيانات.', getDashboardData(ss));
     }
 
@@ -261,9 +266,10 @@ function getFilledRecords(sheet) {
 
 // ── APPEND (one or more rows) ─────────────────────────────────────────
 // If body.overwriteByCode is true, a row whose كود already exists in the
-// sheet REPLACES the most recent existing row with that code (keeping its
-// order number in column A) instead of being added as a new row. Codes not
-// found are appended as new rows. Duplicate codes inside the same batch
+// sheet REPLACES the most recent existing row with that code: the old row
+// is removed (all its cells cleared, nothing carried over except what the
+// document sent), the new record is placed at the END of the sheet, and
+// column A is renumbered 1..n. Codes not found are appended as new rows. Duplicate codes inside the same batch
 // collapse into one (the later one wins).
 function handleAppend(sheet, body) {
   var rows = body.rows || [];
@@ -304,27 +310,28 @@ function handleAppend(sheet, body) {
     }
   }
 
-  var overwrites = {};   // sheet row number → row array
-  var newRows = [];
-  var newByCode = {};    // code → index in newRows (batch de-dupe)
+  // Rows to place at the END of the sheet, in the order received. This holds
+  // both brand-new records and the replacements for overwritten ones.
+  var tail = [];
+  var tailByCode = {};   // code → index in tail (batch de-dupe, later wins)
+  var removedRows = {};  // old sheet row number → true (these rows get dropped)
   var nextOrder = startOrder;
 
   rows.forEach(function (rowData) {
     var key = body.overwriteByCode && codeCol !== -1
       ? String(rowData['كود'] == null ? '' : rowData['كود']).trim()
       : '';
-    if (key && existing[key]) {
-      var r = existing[key];
-      var order = sheet.getRange(r, 1).getValue(); // keep the original order number
-      overwrites[r] = buildRow(rowData, order);
-    } else if (key && newByCode.hasOwnProperty(key)) {
-      var idx = newByCode[key];
-      newRows[idx] = buildRow(rowData, newRows[idx][0]);
+    if (key && existing[key]) removedRows[existing[key]] = true;
+    if (key && tailByCode.hasOwnProperty(key)) {
+      tail[tailByCode[key]] = buildRow(rowData, 0);
     } else {
-      if (key) newByCode[key] = newRows.length;
-      newRows.push(buildRow(rowData, nextOrder++));
+      if (key) tailByCode[key] = tail.length;
+      tail.push(buildRow(rowData, 0));
     }
   });
+
+  var overwrittenCount = Object.keys(removedRows).length;
+  var newCount = tail.length - overwrittenCount;
 
   var setDateFormats = function (row, count) {
     for (var c = 0; c < headers.length; c++) {
@@ -332,26 +339,51 @@ function handleAppend(sheet, body) {
     }
   };
 
-  // Overwrites: one small write per replaced row (typically 1–2 rows).
-  var overwrittenRows = Object.keys(overwrites);
-  overwrittenRows.forEach(function (r) {
-    r = Number(r);
-    setDateFormats(r, 1); // plain text — see isDateHeader()
-    sheet.getRange(r, 1, 1, lastCol).setValues([overwrites[r]]);
-  });
+  var startRow;
+  if (!overwrittenCount) {
+    // Nothing replaced: single bulk write into previously-empty cells.
+    tail.forEach(function (r) { r[0] = nextOrder++; });
+    startRow = lastRow + 1;
+    if (tail.length) {
+      setDateFormats(startRow, tail.length);
+      sheet.getRange(startRow, 1, tail.length, lastCol).setValues(tail);
+    }
+  } else {
+    // Overwrite: the old row is dropped entirely (so every cell in it —
+    // including its old order number — is cleared unless the document sent
+    // a value for it), the replacement goes to the end of the sheet, and
+    // column A is renumbered 1..n so the ordering stays continuous.
+    var all = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    var kept = [];
+    for (var j = 0; j < all.length; j++) {
+      if (!removedRows[j + 2]) kept.push(all[j]);
+    }
+    var finalRows = kept.concat(tail);
 
-  // New rows: single bulk write into previously-empty cells.
-  var startRow = lastRow + 1;
-  if (newRows.length) {
-    setDateFormats(startRow, newRows.length);
-    sheet.getRange(startRow, 1, newRows.length, lastCol).setValues(newRows);
+    // Date columns are rewritten as plain "yyyy/mm/dd" text (see
+    // isDateHeader()), so any real Date value read back is converted first.
+    var tz = Session.getScriptTimeZone();
+    finalRows.forEach(function (r, idx) {
+      r[0] = idx + 1;
+      for (var c = 1; c < headers.length; c++) {
+        if (r[c] instanceof Date && isDateHeader(headers[c])) {
+          r[c] = Utilities.formatDate(r[c], tz, 'yyyy/MM/dd');
+        }
+      }
+    });
+
+    // finalRows is never shorter than the old data (every removed row has a
+    // replacement in tail), so no stale trailing row is left behind.
+    setDateFormats(2, finalRows.length);
+    sheet.getRange(2, 1, finalRows.length, lastCol).setValues(finalRows);
+    startRow = kept.length + 2;
   }
 
   var parts = [];
-  if (newRows.length) parts.push('تمت إضافة ' + (newRows.length === 1 ? 'سجل واحد' : newRows.length + ' سجلات'));
-  if (overwrittenRows.length) parts.push('تم استبدال ' + (overwrittenRows.length === 1 ? 'سجل واحد' : overwrittenRows.length + ' سجلات') + ' موجود بنفس الكود');
+  if (newCount) parts.push('تمت إضافة ' + (newCount === 1 ? 'سجل واحد' : newCount + ' سجلات'));
+  if (overwrittenCount) parts.push('تم استبدال ' + (overwrittenCount === 1 ? 'سجل واحد' : overwrittenCount + ' سجلات') + ' موجود بنفس الكود ونقله إلى نهاية الشيت');
   return respond(true, parts.join(' و') + ' في شيت ' + sheet.getName() + '.',
-    { firstRow: startRow, count: newRows.length, added: newRows.length, overwritten: overwrittenRows.length });
+    { firstRow: startRow, count: tail.length, added: newCount, overwritten: overwrittenCount });
 }
 
 // ── UPDATE (نهاية الإيقاف: fills the newest still-open row for a code) ──
