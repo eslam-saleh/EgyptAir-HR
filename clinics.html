@@ -231,6 +231,14 @@
       white-space: nowrap;
     }
 
+    @keyframes newRowFade {
+      from { background-color: #fde68a; }
+      to   { background-color: transparent; }
+    }
+    .clinics-table tbody tr.new-row > td {
+      animation: newRowFade 3s ease-out var(--hl-delay, 0s) forwards;
+    }
+
     .clinics-table tbody tr.decided {
       opacity: 0.5;
       background: color-mix(in srgb, var(--muted) 8%, var(--surface));
@@ -1062,7 +1070,11 @@ async function sha256Hex(value) {
         const confirmDisabled = decided || confirmBlocked;
         const confirmTitle = confirmBlocked ? t('Pick a date for this patient first', 'اختر تاريخاً لهذا المريض أولاً') : '';
 
-        let rowHtml = `<tr class="${decided ? 'decided' : ''}" data-sheet-row="${row.sheetRow}">${valuesHtml}<td><span class="status-badge ${escapeHtml(row.isReserved)}">${decisionLabel(row.isReserved)}</span></td>`;
+        const hlUntil = newRowHighlights[rowKey(row)] || 0;
+        const hlLeft = hlUntil - Date.now();
+        const hlStyle = hlLeft > 0 ? ` style="--hl-delay:${(hlLeft - 3000) / 1000}s"` : '';
+        const hlClass = hlLeft > 0 ? ' new-row' : '';
+        let rowHtml = `<tr class="${decided ? 'decided' : ''}${hlClass}"${hlStyle} data-sheet-row="${row.sheetRow}">${valuesHtml}<td><span class="status-badge ${escapeHtml(row.isReserved)}">${decisionLabel(row.isReserved)}</span></td>`;
         if (isAdmin) {
           rowHtml += `
             <td class="decision-cell">
@@ -1091,6 +1103,27 @@ async function sha256Hex(value) {
     // ---------- Day picker + Excel export ----------
     const ALL_DAYS = 'all';
 
+    // ---------- New-row highlight (fades over 3s) ----------
+    let seenRowKeys = null;          // null until the first load completes
+    let newRowHighlights = {};       // rowKey -> timestamp when highlight ends
+
+    function rowKey(row) {
+      const tsIdx = getColumnIndexByKey('timestamp');
+      const ts = tsIdx >= 0 ? String(row.values[tsIdx] ?? '').trim() : '';
+      return ts || row.values.join('|');
+    }
+
+    function trackNewRows() {
+      const keys = clinicRows.map(rowKey);
+      if (seenRowKeys !== null) {
+        const now = Date.now();
+        keys.forEach(k => {
+          if (!seenRowKeys.has(k)) newRowHighlights[k] = now + 3000;
+        });
+      }
+      seenRowKeys = new Set([...(seenRowKeys || []), ...keys]);
+    }
+
     function buildDayKeys() {
       const today = egyptTodayKey();
       return Array.from({ length: EXPORT_DAYS_BACK }, (_, i) => shiftDayKey(today, -i));
@@ -1104,7 +1137,7 @@ async function sha256Hex(value) {
         `<option value="${ALL_DAYS}">${escapeHtml(allLabel)}</option>` +
         keys.map(key => `<option value="${key}">${key.replace(/-/g, '/')} - ${escapeHtml(weekdayName(key))}</option>`).join('');
       const valid = previous === ALL_DAYS || keys.includes(previous);
-      exportDaySelect.value = valid ? previous : keys[1]; // default: yesterday
+      exportDaySelect.value = valid ? previous : ALL_DAYS; // default: all clinics
       exportDayLabel.textContent = t('Day (Egypt time)', 'اليوم (بتوقيت مصر)');
       refreshBtnLabel.textContent = t('Refresh', 'تحديث');
     }
@@ -1452,6 +1485,7 @@ async function sha256Hex(value) {
         });
       }
 
+      trackNewRows();
       populateDaySelect(); // must run before rendering: the table filters by it
       const renderedCount = renderClinicsTable();
       setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
