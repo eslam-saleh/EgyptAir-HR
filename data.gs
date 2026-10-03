@@ -2,6 +2,14 @@
 const SPREADSHEET_ID = '1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y';
 const SHEET_NAME = 'Employees';
 const RETIRED_SHEET_NAME = 'Retired';
+const HISTORY_SHEET_NAME = 'History';
+// History sheet: exactly 3 columns — التاريخ | النوع | التفاصيل
+const HISTORY_HEADERS = ['التاريخ', 'النوع', 'التفاصيل'];
+const HISTORY_WINDOW_DAYS = 30; // the "آخر التعديلات" card counts only this window
+const HISTORY_DATE_FORMAT = 'h:mm am/pm  d/m/yyyy'; // e.g. 3:00 pm  1/10/2026
+const HISTORY_TYPE_ADD = 'إضافة';
+const HISTORY_TYPE_EDIT = 'تعديل';
+const HISTORY_TYPE_RETIRE = 'إحالة للمعاش';
 const FIELDS = [
   ['code', 'كود'],
   ['name', 'الاســـــــــــم '],
@@ -108,10 +116,13 @@ function setupEmployeesData() {
     .setWrap(true);
   // Ensure Retired sheet exists with the same shape/headers.
   ensureRetiredSheet();
+  // Ensure History sheet exists with its 3 Arabic headers.
+  ensureHistorySheet();
   return {
     ok: true,
     sheet: SHEET_NAME,
     retiredSheet: RETIRED_SHEET_NAME,
+    historySheet: HISTORY_SHEET_NAME,
     rows: Math.max(0, sh.getLastRow() - 1),
     columns: HEADER_KEYS.length
   };
@@ -123,6 +134,9 @@ function getSheet(name) {
   let sh = ss.getSheetByName(sheetName);
   if (!sh && sheetName === RETIRED_SHEET_NAME) {
     sh = ensureRetiredSheet();
+  }
+  if (!sh && sheetName === HISTORY_SHEET_NAME) {
+    sh = ensureHistorySheet();
   }
   if (!sh) throw new Error('Sheet ' + sheetName + ' was not found');
   return sh;
@@ -159,6 +173,193 @@ function ensureRetiredSheet() {
   return sh;
 }
 
+/**
+ * Create the History sheet (3 columns: التاريخ / النوع / التفاصيل) if missing.
+ * Same header styling approach as Employees / Retired. Cheap when already set up.
+ */
+function ensureHistorySheet() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sh = ss.getSheetByName(HISTORY_SHEET_NAME);
+  let fresh = false;
+  if (!sh) {
+    sh = ss.insertSheet(HISTORY_SHEET_NAME);
+    fresh = true;
+  }
+  if (sh.getMaxColumns() < HISTORY_HEADERS.length) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), HISTORY_HEADERS.length - sh.getMaxColumns());
+  }
+  const current = sh.getRange(1, 1, 1, HISTORY_HEADERS.length).getValues()[0];
+  const headersOk = HISTORY_HEADERS.every((h, i) => String(current[i] || '').trim() === h);
+  if (fresh || !headersOk) {
+    sh.getRange(1, 1, 1, HISTORY_HEADERS.length).setValues([HISTORY_HEADERS]);
+    sh.setFrozenRows(1);
+    sh.getRange(1, 1, 1, HISTORY_HEADERS.length)
+      .setFontWeight('bold')
+      .setBackground('#1f4e3d')
+      .setFontColor('#ffffff')
+      .setWrap(true);
+    sh.setColumnWidth(1, 170);
+    sh.setColumnWidth(2, 110);
+    sh.setColumnWidth(3, 620);
+  }
+  return sh;
+}
+
+// Arabic field names used inside History details (matches the form labels).
+const HISTORY_LABELS = {
+  code: 'الكود', name: 'الاسم', originalCompany: 'الشركة الأساسية',
+  currentCompany: 'الشركة الحالية', currentSector: 'القطاع الحالي',
+  currentGeneralDepartment: 'الإدارة العامة الحالية',
+  currentSubDepartment: 'الإدارة الفرعية الحالية', jobTitle: 'مسمى الوظيفة',
+  actualJob: 'الوظيفة الفعلية', statisticsJob: 'مسمى الوظيفة للإحصائيات',
+  uniform: 'الزي', gender: 'النوع', birthDate: 'تاريخ الميلاد',
+  appointmentDate: 'تاريخ التعيين', serviceType: 'نوع الخدمة', workType: 'نوع العمل',
+  currentGrade: 'الدرجة الحالية', gradeDate: 'تاريخ الدرجة',
+  appointmentJob: 'الوظيفة عند التعيين', jobDate: 'تاريخ الوظيفة',
+  studySpecialization: 'التخصص الدراسي', qualificationDate: 'تاريخ المؤهل',
+  currentQualificationTitle: 'مسمى المؤهل الحالي', currentQualificationType: 'نوع المؤهل الحالي',
+  appointmentQualificationTitle2: 'مسمى مؤهل التعيين 2', appointmentQualificationType2: 'نوع مؤهل التعيين 2',
+  appointmentQualificationTitle: 'مسمى المؤهل عند التعيين', appointmentQualificationType: 'نوع المؤهل عند التعيين',
+  disabilityType: 'نوع الإعاقة', newJobGroups: 'المجموعات النوعية الجديدة',
+  secondedJob: 'الوظيفة المنتدب عليها', secondedJob2: 'الوظيفة المنتدب عليها 2',
+  secondedCompany: 'الشركة المنتدب إليها', secondedSector: 'قطاع المنتدب إليه',
+  secondedGeneralDepartment: 'إدارة عامة منتدب إليها', secondedDepartment: 'الإدارة المنتدب إليها',
+  secondmentStart: 'تاريخ الانتداب', secondmentEnd: 'تاريخ نهاية الانتداب',
+  secondedJobGroup: 'المجموعة النوعية الجديدة المنتدب عليها',
+  unpaidLeaveType: 'نوع الإجازة بدون مرتب', leaveMandatory: 'وجوبية الإجازة',
+  leaveStart: 'تاريخ بداية الإجازة', leaveEnd: 'تاريخ نهاية الإجازة',
+  militaryStatus: 'نوع المعاملة العسكرية', exemptionReason: 'سبب الإعفاء',
+  contractStart: 'تاريخ بداية التعاقد', contractEnd: 'تاريخ نهاية التعاقد',
+  appointmentType: 'نوع التعيين', status: 'الحالة', address: 'العنوان',
+  phone: 'رقم التليفون', governorate: 'المحافظة', addressExtra: 'الموقع',
+  originalCompanyName: 'مسمى الشركة الأساسية',
+  originalGeneralDepartment: 'الإدارة العامة الأساسية',
+  originalSubDepartment: 'مسمى الإدارة الفرعية الأساسية',
+  workSchedule: 'توقيت العمل', nationalId: 'الرقم القومي'
+};
+const HISTORY_STATUS_LABELS = {
+  active: 'نشط', inactive: 'غير نشط', leave: 'إجازة', seconded: 'منتدب'
+};
+
+function historyLabel_(key) {
+  return HISTORY_LABELS[key] || String(FIELDS[fieldIndex(key)][1] || key).replace(/[\u0640]/g, '').trim();
+}
+
+/** Comparable/printable form of one cell, so cosmetic differences are not logged as edits. */
+function historyValue_(key, raw) {
+  let v = String(raw == null ? '' : raw).trim();
+  if (key === 'code') return normalizeCode(v);
+  if (DATE_FIELDS.has(key)) {
+    const parsed = parseSheetDate(v);
+    return parsed ? formatDateYmd(parsed) : v;
+  }
+  if (key === 'status') return normalizeStatus(v) || v;
+  return v;
+}
+
+function historyShow_(key, v) {
+  if (!v) return 'فارغ';
+  if (key === 'status' && HISTORY_STATUS_LABELS[v]) return HISTORY_STATUS_LABELS[v];
+  return v;
+}
+
+/** "الكود: 123، الاسم: ...، الإدارة العامة: ...، الوظيفة: ..." from a sheet display row. */
+function historyEmployeeLine_(row) {
+  const parts = [
+    'الكود: ' + (cellAt(row, 'code') || '—'),
+    'الاسم: ' + (cellAt(row, 'name') || '—')
+  ];
+  const dept = firstNonEmpty_(cellAt(row, 'currentGeneralDepartment'));
+  const job = firstNonEmpty_(cellAt(row, 'jobTitle'), cellAt(row, 'actualJob'));
+  if (dept) parts.push('الإدارة العامة: ' + dept);
+  if (job) parts.push('الوظيفة: ' + job);
+  return parts.join('، ');
+}
+
+/**
+ * Guard: History is written ONLY after the employee write is confirmed by
+ * re-reading the sheet. Throws (so nothing is logged) if the row is missing
+ * or its code is not what was just saved.
+ */
+function assertWriteLanded_(displayRow, expectedCode, what) {
+  const got = normalizeCode(cellAt(displayRow || [], 'code'));
+  if (!displayRow || !got || got !== normalizeCode(expectedCode)) {
+    throw new Error('The ' + what + ' could not be confirmed in the sheet, so it was not recorded in History.');
+  }
+}
+
+/** List of changed fields between two display rows (computed columns ignored). */
+function historyDiff_(before, after) {
+  const changes = [];
+  FIELDS.forEach((field, i) => {
+    const key = field[0];
+    if (COMPUTED.has(key)) return;
+    const a = historyValue_(key, before[i]);
+    const b = historyValue_(key, after[i]);
+    if (a === b) return;
+    changes.push('• ' + historyLabel_(key) + ': من «' + historyShow_(key, a) + '» إلى «' + historyShow_(key, b) + '»');
+  });
+  return changes;
+}
+
+/**
+ * Append one row to History: [date-time, type, details].
+ * Never throws — a logging problem must not undo or block the real save.
+ */
+function logHistory(type, details) {
+  try {
+    const sh = ensureHistorySheet();
+    sh.appendRow([new Date(), type, String(details || '').slice(0, 40000)]);
+    const row = sh.getLastRow();
+    sh.getRange(row, 1).setNumberFormat(HISTORY_DATE_FORMAT);
+    sh.getRange(row, 3).setWrap(true);
+  } catch (err) {
+    console.error('History log failed: ' + errorMessage(err));
+  }
+}
+
+/** Date cell → Date. Accepts real dates and text like "3:00 pm  1/10/2026". */
+function parseHistoryDate_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return isNaN(value.getTime()) ? null : value;
+  }
+  const m = String(value || '').trim().match(/(\d{1,2}):(\d{2})\s*(am|pm)?\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
+  if (!m) return null;
+  let hour = Number(m[1]);
+  const ap = (m[3] || '').toLowerCase();
+  if (ap === 'pm' && hour < 12) hour += 12;
+  if (ap === 'am' && hour === 12) hour = 0;
+  const d = new Date(Number(m[6]), Number(m[5]) - 1, Number(m[4]), hour, Number(m[2]));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/** Records from the last HISTORY_WINDOW_DAYS days, newest first. */
+function readHistory() {
+  const sh = ensureHistorySheet();
+  const tz = sh.getParent().getSpreadsheetTimeZone();
+  const lastRow = sh.getLastRow();
+  const records = [];
+  if (lastRow >= 2) {
+    const cutoff = Date.now() - HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+    const values = sh.getRange(2, 1, lastRow - 1, HISTORY_HEADERS.length).getValues();
+    values.forEach(row => {
+      const when = parseHistoryDate_(row[0]);
+      if (!when || when.getTime() < cutoff) return;
+      const type = String(row[1] || '').trim();
+      const details = String(row[2] || '').trim();
+      if (!type && !details) return;
+      records.push({
+        time: when.getTime(),
+        date: Utilities.formatDate(when, tz, 'h:mm a  d/M/yyyy').toLowerCase(),
+        type: type,
+        details: details
+      });
+    });
+    records.sort((a, b) => b.time - a.time);
+  }
+  return { days: HISTORY_WINDOW_DAYS, count: records.length, records: records };
+}
+
 function isAuthorized(token) {
   const properties = PropertiesService.getScriptProperties();
   const allowed = String(properties.getProperty(ALLOWED_EMAILS_PROPERTY) || '')
@@ -179,6 +380,11 @@ function doGet(e) {
     if (!isAuthorized(parameters.token)) return json({ ok: false, error: 'Unauthorized request.' });
     const action = parameters.action || 'list';
     if (action === 'download') return csvDownload();
+    // Last-30-days change log for the "آخر التعديلات" card + popup.
+    if (action === 'history') {
+      const h = readHistory();
+      return json({ ok: true, kind: 'history', days: h.days, count: h.count, records: h.records });
+    }
     // Lean mapped records for Document Center only (active Employees only).
     if (action === 'directory') {
       return json({ ok: true, kind: 'directory', employees: readDirectoryEmployees() });
@@ -662,8 +868,25 @@ function moveEmployeeToRetired(input) {
   // Keep date columns as plain text on the Retired side too.
   applyDateFormats(retiredSh, newRow);
   // Remove from active sheet (shifts rows below).
+  // Confirm the copy really exists on Retired BEFORE removing the source row.
+  assertWriteLanded_(
+    retiredSh.getRange(newRow, 1, 1, FIELDS.length).getDisplayValues()[0],
+    cellAt(displayRow, 'code'),
+    'move to Retired'
+  );
   activeSh.deleteRow(row);
   SpreadsheetApp.flush();
+  // Confirm the source row is really gone from Employees.
+  if (row <= activeSh.getLastRow()) {
+    const still = activeSh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0];
+    if (normalizeCode(cellAt(still, 'code')) === normalizeCode(cellAt(displayRow, 'code'))) {
+      throw new Error('The employee could not be removed from the active sheet, so it was not recorded in History.');
+    }
+  }
+  logHistory(
+    HISTORY_TYPE_RETIRE,
+    'تم نقل الموظف إلى المتقاعدين (' + historyEmployeeLine_(displayRow) + ')'
+  );
   const result = rowToObject(
     retiredSh.getRange(newRow, 1, 1, FIELDS.length).getDisplayValues()[0],
     newRow
@@ -737,7 +960,16 @@ function updateEmployee(input) {
   applyDateFormats(sh, row);
   writeDerivedFormulas(sh, row);
   SpreadsheetApp.flush();
-  const result = rowToObject(sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0], row);
+  const afterDisplay = sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0];
+  assertWriteLanded_(afterDisplay, input.code, 'update');
+  const changes = historyDiff_(existingDisplay, afterDisplay);
+  if (changes.length) {
+    logHistory(
+      HISTORY_TYPE_EDIT,
+      'تم تعديل بيانات الموظف (' + historyEmployeeLine_(afterDisplay) + '):\n' + changes.join('\n')
+    );
+  }
+  const result = rowToObject(afterDisplay, row);
   result._sheet = SHEET_NAME;
   return result;
 }
@@ -753,7 +985,13 @@ function createEmployee(input) {
   applyDateFormats(sh, row);
   writeDerivedFormulas(sh, row);
   SpreadsheetApp.flush();
-  const result = rowToObject(sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0], row);
+  const afterDisplay = sh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0];
+  assertWriteLanded_(afterDisplay, input.code, 'new employee');
+  logHistory(
+    HISTORY_TYPE_ADD,
+    'تمت إضافة موظف جديد (' + historyEmployeeLine_(afterDisplay) + ')'
+  );
+  const result = rowToObject(afterDisplay, row);
   result._sheet = SHEET_NAME;
   return result;
 }

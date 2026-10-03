@@ -995,6 +995,47 @@
         font-variant-numeric: tabular-nums;
       }
 
+      /* History popup (آخر التعديلات) */
+      .history-table {
+        width: 100%;
+        min-width: 620px;
+        border-collapse: collapse;
+        font-size: .84rem;
+      }
+
+      .history-table th,
+      .history-table td {
+        padding: 9px 12px;
+        border: 1px solid var(--line);
+        text-align: start;
+        vertical-align: top;
+      }
+
+      .history-table th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--surface-2);
+        color: var(--muted);
+        font-weight: 800;
+        white-space: nowrap;
+      }
+
+      .history-table td.h-date,
+      .history-table td.h-type,
+      .history-table th.h-date,
+      .history-table th.h-type {
+        text-align: center;
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .history-table td.h-details {
+        min-width: 320px;
+        line-height: 1.65;
+        overflow-wrap: anywhere;
+      }
+
       @media (max-width: 1180px) {
         .toolbar {
           grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1121,7 +1162,11 @@
       <section class="stats" aria-label="Employee statistics">
         <div class="stat"><span id="totalLabel" data-en="Total employees" data-ar="إجمالي الموظفين">Total employees</span><strong id="totalCount">—</strong><small id="totalHint"></small></div>
         <div class="stat"><span id="shownLabel" data-en="Matching records" data-ar="السجلات المطابقة">Matching records</span><strong id="shownCount">—</strong><small id="shownHint"></small></div>
-        <div class="stat"><span id="deptLabel" data-en="General departments" data-ar="الإدارات العامة">General departments</span><strong id="deptCount">—</strong><small id="deptHint"></small></div>
+        <div class="stat clickable" id="historyStat" role="button" tabindex="0" aria-haspopup="dialog" data-en-title="Show modifications from the last 30 days" data-ar-title="عرض التعديلات خلال آخر 30 يوماً" title="Show modifications from the last 30 days">
+          <span id="historyLabel" data-en="Latest modifications" data-ar="آخر التعديلات">Latest modifications</span>
+          <strong id="historyCount">—</strong>
+          <small id="historyHint"></small>
+        </div>
         <div class="stat clickable" id="retirementStat" role="button" tabindex="0" aria-pressed="false" title="Show employees retiring within 12 months, or already past their retirement date">
           <span id="retirementLabel" data-en="Upcoming retirements" data-ar="التقاعد خلال 12 شهراً">Upcoming retirements</span>
           <strong id="retirementCount">—</strong>
@@ -1210,6 +1255,17 @@
         </div>
       </section>
     </div>
+    <div class="modal" id="historyModal" hidden>
+      <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+        <div class="dialog-head">
+          <h2 id="historyTitle" data-en="Latest modifications (last 30 days)" data-ar="آخر التعديلات (آخر 30 يوماً)">Latest modifications (last 30 days)</h2>
+          <button class="icon-btn" type="button" data-close="historyModal" aria-label="Close">×</button>
+        </div>
+        <div class="dialog-body">
+          <div class="report-table-wrap" id="historyBody"></div>
+        </div>
+      </section>
+    </div>
     <div class="modal" id="profileModal" hidden>
       <section class="dialog narrow" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
         <div class="dialog-head">
@@ -1275,7 +1331,8 @@
         loading: false,
         view: 'active', // 'active' | 'retired' — separate lists, never merged
         upcomingOnly: false, // date-period filter: retiring within 12 months
-        canEdit: false // true only when unlocked with the editor password (42554)
+        canEdit: false, // true only when unlocked with the editor password (42554)
+        history: { loaded: false, failed: false, count: 0, records: [] } // last-30-days log from the History sheet
       };
       let employeeDataLoadPromise = null;
       const i18n = {
@@ -1337,6 +1394,14 @@
           totalRetired: 'Total retired / former',
           matching: 'Matching records',
           departments: 'General departments',
+          history: 'Latest modifications',
+          historyHint: 'Last 30 days · click to view',
+          historyEmpty: 'No modifications in the last 30 days.',
+          historyFailed: 'Unable to load the modification history.',
+          historyLoading: 'Loading modifications…',
+          historyDate: 'Date',
+          historyType: 'Type',
+          historyDetails: 'Details',
           upcomingRetirements: 'Upcoming retirements',
           retiredHint: 'Archived from active roster',
           moveToRetired: 'Move to retired',
@@ -1412,6 +1477,14 @@
           totalRetired: 'إجمالي المتقاعدين / السابقين',
           matching: 'السجلات المطابقة',
           departments: 'الإدارات العامة',
+          history: 'آخر التعديلات',
+          historyHint: 'آخر 30 يوماً · اضغط للعرض',
+          historyEmpty: 'لا توجد تعديلات خلال آخر 30 يوماً.',
+          historyFailed: 'تعذر تحميل سجل التعديلات.',
+          historyLoading: 'جارٍ تحميل التعديلات…',
+          historyDate: 'التاريخ',
+          historyType: 'النوع',
+          historyDetails: 'التفاصيل',
           upcomingRetirements: 'التقاعد خلال 12 شهراً',
           retiredHint: 'مؤرشف من القائمة النشطة',
           moveToRetired: 'نقل إلى المتقاعدين',
@@ -1979,21 +2052,78 @@
         $(id).innerHTML = entries.length ? entries.map(([label, count]) => `<div class="bar-row"><div class="bar-head"><span title="${escapeHtml(label)}">${escapeHtml(label)}</span><b>${count}</b></div><div class="track"><div class="fill" style="width:${(count / max * 100).toFixed(1)}%"></div></div></div>`).join('') : `<p class="empty">${t('noDistribution')}</p>`;
       }
 
+      /* ───────── History (آخر التعديلات) ───────── */
+
+      function renderHistoryStat() {
+        const h = state.history;
+        if (!$('historyCount')) return;
+        if ($('historyLabel')) $('historyLabel').textContent = t('history');
+        $('historyCount').textContent = h.loaded ? h.count.toLocaleString() : '—';
+        $('historyHint').textContent = h.failed && !h.loaded ? t('historyFailed') : t('historyHint');
+      }
+
+      async function loadHistory() {
+        try {
+          const response = await fetch(withToken(`${API_URL}?action=history`), { redirect: 'follow', cache: 'no-store' });
+          if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+          const payload = await readApi(response);
+          if (!payload.ok || !Array.isArray(payload.records)) throw new Error(payload.error || payload.message || t('badResponse'));
+          state.history = {
+            loaded: true,
+            failed: false,
+            count: Number(payload.count) || payload.records.length,
+            records: payload.records
+          };
+        } catch (error) {
+          state.history = { ...state.history, failed: true };
+        }
+        renderHistoryStat();
+        if ($('historyModal') && !$('historyModal').hidden) renderHistoryTable();
+      }
+
+      function historyTypeClass(type) {
+        const text = clean(type);
+        if (text.includes('إضافة')) return '';
+        if (text.includes('تعديل')) return 'leave';
+        return 'inactive';
+      }
+
+      function renderHistoryTable() {
+        const h = state.history;
+        const body = $('historyBody');
+        if (!body) return;
+        if (!h.loaded) {
+          body.innerHTML = `<p class="empty">${escapeHtml(h.failed ? t('historyFailed') : t('historyLoading'))}</p>`;
+          return;
+        }
+        if (!h.records.length) {
+          body.innerHTML = `<p class="empty">${escapeHtml(t('historyEmpty'))}</p>`;
+          return;
+        }
+        const head = `<tr><th class="h-date">${escapeHtml(t('historyDate'))}</th><th class="h-type">${escapeHtml(t('historyType'))}</th><th>${escapeHtml(t('historyDetails'))}</th></tr>`;
+        const rows = h.records.map(record => `<tr><td class="h-date" dir="ltr">${escapeHtml(record.date)}</td><td class="h-type"><span class="pill ${historyTypeClass(record.type)}">${escapeHtml(record.type)}</span></td><td class="h-details">${escapeHtml(record.details).replace(/\n/g, '<br>')}</td></tr>`).join('');
+        body.innerHTML = `<table class="history-table"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+      }
+
+      function openHistory(opener) {
+        renderHistoryTable();
+        openModal('historyModal', opener);
+        loadHistory(); // refresh in the background so the popup is never stale
+      }
+
       function renderStats(list) {
         const isRetired = state.view === 'retired';
         const total = state.employees.length;
         const upcoming = isRetired ? 0 : state.employees.filter(isUpcomingRetirement).length;
         $('totalCount').textContent = total.toLocaleString();
         $('shownCount').textContent = list.length.toLocaleString();
-        $('deptCount').textContent = unique('currentGeneralDepartment').length.toLocaleString();
         $('retirementCount').textContent = isRetired ? '—' : upcoming.toLocaleString();
         if ($('totalLabel')) $('totalLabel').textContent = isRetired ? t('totalRetired') : t('totalActive');
         if ($('shownLabel')) $('shownLabel').textContent = t('matching');
-        if ($('deptLabel')) $('deptLabel').textContent = t('departments');
         if ($('retirementLabel')) $('retirementLabel').textContent = isRetired ? t('retiredHint') : t('upcomingRetirements');
         $('totalHint').textContent = total ? t('rows', { count: total.toLocaleString() }) : '';
         $('shownHint').textContent = filtersActive() ? t('filterApplied') : t('rows', { count: list.length.toLocaleString() });
-        $('deptHint').textContent = total ? t('records') : '';
+        renderHistoryStat();
         $('retirementHint').textContent = isRetired
           ? ''
           : (state.upcomingOnly
@@ -2152,6 +2282,7 @@
           toast(t('retiredOk'), 'success');
           refreshFilters();
           render();
+          loadHistory();
         } catch (error) {
           const message = formatFailure('retireFailed', error);
           toast(message, 'error');
@@ -2419,6 +2550,7 @@
           }));
           refreshFilters();
           state.page = 1;
+          loadHistory();
           if (!quiet) toast(isRetired ? t('loadedRetired') : t('loaded'), 'success');
           return true;
         } catch (error) {
@@ -2613,6 +2745,7 @@
           };
           const payload = await postEmployee(employee, isEdit);
           upsertLocalEmployee(payload.employee || employee);
+          loadHistory();
           closeModal('formModal');
           toast(isEdit ? t('saved') : t('created'), 'success');
           // Local upsert is enough — a full list reload was the main slowdown.
@@ -3044,6 +3177,16 @@
             if (event.key === 'Enter' || event.key === ' ') {
               event.preventDefault();
               toggleUpcomingOnly();
+            }
+          });
+        }
+        const historyStat = $('historyStat');
+        if (historyStat) {
+          historyStat.addEventListener('click', () => openHistory(historyStat));
+          historyStat.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              openHistory(historyStat);
             }
           });
         }
