@@ -758,24 +758,18 @@ async function sha256Hex(value) {
 
     function formatTimestamp(value) {
       if (!value) return '';
+      // Display only the date (yyyy/mm/dd). The full timestamp, including the
+      // time, is still stored in the sheet and kept in row.values untouched.
       // Google Sheets typically returns "M/D/YYYY HH:MM:SS" in its JSON output
-      const dateMatch = String(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})?/);
+      const dateMatch = String(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
       if (!dateMatch) return value;
-      
-      // Output is yyyy/mm/dd
+
       // dateMatch[1] is Month, dateMatch[2] is Day
       const month = String(dateMatch[1]).padStart(2, '0');
       const day = String(dateMatch[2]).padStart(2, '0');
       const year = dateMatch[3];
-      const hour24 = parseInt(dateMatch[4], 10);
-      const minute = String(dateMatch[5]).padStart(2, '0');
-      
-      // Convert 24-hour to 12-hour format
-      const isPM = hour24 >= 12;
-      const hour12 = hour24 % 12 || 12;
-      const period = isPM ? 'PM' : 'AM';
-      
-      return `${year}/${month}/${day} ${hour12}:${minute} ${period}`;
+
+      return `${year}/${month}/${day}`;
     }
 
     function getColumnMatcher(columnKey) {
@@ -936,7 +930,7 @@ async function sha256Hex(value) {
     // language toggle consistently.
     const COLUMN_HEADER_LABELS = {
       timestamp: ['Timestamp', 'الوقت'],
-      code: ['Employee Code', 'كود الموظف'],
+      code: ['Employee Code', 'الكود'],
       name: ['Full Name', 'الاسم كامل'],
       date: ['Date', 'التاريخ'],
       clinic: ['Clinic', 'العيادة المختارة'],
