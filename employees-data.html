@@ -226,6 +226,9 @@
         margin-bottom: 18px;
       }
 
+      .stat[hidden] { display: none !important; }
+      .stats.no-history { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
       .stat,
       .panel {
         border: 1px solid var(--line);
@@ -1215,10 +1218,10 @@
         <button type="button" class="view-tab" id="viewRetiredBtn" data-view="retired" role="tab" aria-selected="false" data-en="Retired / Former" data-ar="المتقاعدون / السابقون">Retired / Former</button>
       </div>
       <div class="notice" id="notice" role="status" hidden></div>
-      <section class="stats" aria-label="Employee statistics">
+      <section class="stats no-history" aria-label="Employee statistics">
         <div class="stat"><span id="totalLabel" data-en="Total employees" data-ar="إجمالي الموظفين">Total employees</span><strong id="totalCount">—</strong><small id="totalHint"></small></div>
         <div class="stat"><span id="shownLabel" data-en="Matching records" data-ar="السجلات المطابقة">Matching records</span><strong id="shownCount">—</strong><small id="shownHint"></small></div>
-        <div class="stat clickable" id="historyStat" role="button" tabindex="0" aria-haspopup="dialog" data-en-title="Show modifications from the last 30 days" data-ar-title="عرض التعديلات خلال آخر 30 يوماً" title="Show modifications from the last 30 days">
+        <div class="stat clickable" id="historyStat" hidden role="button" tabindex="0" aria-haspopup="dialog" data-en-title="Show modifications from the last 30 days" data-ar-title="عرض التعديلات خلال آخر 30 يوماً" title="Show modifications from the last 30 days">
           <span id="historyLabel" data-en="Latest modifications" data-ar="آخر التعديلات">Latest modifications</span>
           <strong id="historyCount">—</strong>
           <small id="historyHint"></small>
@@ -1808,6 +1811,18 @@
         if (retiredTab) retiredTab.disabled = loading;
       }
 
+      /* "Latest modifications" card + popup: same rule as the Add / Edit buttons —
+         only the editor password (42554) sees them. */
+      function applyHistoryVisibility() {
+        const show = state.canEdit;
+        if ($('historyStat')) $('historyStat').hidden = !show;
+        document.querySelector('.stats')?.classList.toggle('no-history', !show);
+        if (!show) {
+          if ($('historyModal') && !$('historyModal').hidden) closeModal('historyModal');
+          state.history = { loaded: false, failed: false, count: 0, records: [] };
+        }
+      }
+
       function applyViewChrome() {
         const isRetired = state.view === 'retired';
         $('viewActiveBtn')?.classList.toggle('active', !isRetired);
@@ -1815,6 +1830,7 @@
         $('viewActiveBtn')?.setAttribute('aria-selected', String(!isRetired));
         $('viewRetiredBtn')?.setAttribute('aria-selected', String(isRetired));
         if ($('newBtn')) $('newBtn').hidden = isRetired || !state.canEdit;
+        applyHistoryVisibility();
         if ($('reportBtn')) $('reportBtn').hidden = isRetired;
         const subtitle = $('pageSubtitle');
         if (subtitle) {
@@ -2208,6 +2224,7 @@
       }
 
       async function loadHistory() {
+        if (!state.canEdit) return; // modifications log is for the editor password only
         try {
           const response = await fetch(withToken(`${API_URL}?action=history`), { redirect: 'follow', cache: 'no-store' });
           if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
@@ -2251,6 +2268,7 @@
       }
 
       function openHistory(opener) {
+        if (!state.canEdit) return;
         renderHistoryTable();
         openModal('historyModal', opener);
         loadHistory(); // refresh in the background so the popup is never stale
@@ -2774,6 +2792,7 @@
           setLoading(state.loading);
           const loaded = await employeeDataLoadPromise;
           if (!loaded) await load({ quiet: true });
+          if (state.canEdit) loadHistory();
         } finally {
           button.disabled = false;
         }
@@ -2791,6 +2810,7 @@
           $('accessGate').hidden = true;
           applyViewChrome();
           await employeeDataLoadPromise;
+          if (state.canEdit) loadHistory();
         }
       }
 

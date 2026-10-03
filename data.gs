@@ -341,7 +341,20 @@ function readHistory() {
   const records = [];
   if (lastRow >= 2) {
     const cutoff = Date.now() - HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
-    const values = sh.getRange(2, 1, lastRow - 1, HISTORY_HEADERS.length).getValues();
+    // History only grows, and rows are appended chronologically, so read from the
+    // bottom in blocks and stop once a whole block is older than the window,
+    // instead of re-reading the entire (ever-growing) sheet on every call.
+    const BLOCK = 300;
+    let values = [];
+    let end = lastRow; // inclusive
+    while (end >= 2) {
+      const start = Math.max(2, end - BLOCK + 1);
+      const block = sh.getRange(start, 1, end - start + 1, HISTORY_HEADERS.length).getValues();
+      values = block.concat(values);
+      const dates = block.map(r => parseHistoryDate_(r[0])).filter(Boolean);
+      if (dates.length && dates.every(d => d.getTime() < cutoff)) break;
+      end = start - 1;
+    }
     values.forEach(row => {
       const when = parseHistoryDate_(row[0]);
       if (!when || when.getTime() < cutoff) return;
@@ -412,6 +425,7 @@ function doGet(e) {
 
 function doPost(e) {
   let lock;
+  let wrote = false;
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (!isAuthorized(body.token)) return json({ ok: false, error: 'Unauthorized request.' });
@@ -430,6 +444,7 @@ function doPost(e) {
       throw new Error('The employee sheet is busy. Please try again.');
     }
     let employee;
+    wrote = true; // from here on the sheet may change, even if a later step throws
     if (action === 'retire' || action === 'moveToRetired') {
       employee = moveEmployeeToRetired(body.employee || {});
     } else if (action === 'update') {
@@ -438,11 +453,13 @@ function doPost(e) {
     } else {
       employee = createEmployee(body.employee || {});
     }
-    invalidateDirectoryCache();
     return json({ ok: true, saved: true, employee: employee });
   } catch (err) {
     return json({ ok: false, error: errorMessage(err) });
   } finally {
+    // In finally: a retire that copied the row but then failed verification
+    // still changed the sheet, so the cache must be cleared either way.
+    if (wrote) invalidateDirectoryCache();
     if (lock) lock.releaseLock();
   }
 }
@@ -650,11 +667,12 @@ function putCachedDirectory(employees) {
   try {
     const cache = CacheService.getScriptCache();
     const str = JSON.stringify(employees);
-    // CacheService limits each value to 100 KB; use a conservative character
-    // size because JSON may contain multi-byte Arabic UTF-8 text.
-    const chunk = 60000;
+    // CacheService limits each value to 100 KB (bytes). Arabic is 2-3 bytes per
+    // character in UTF-8, so 60000 chars could reach ~120-180 KB and make
+    // putAll throw (silently swallowed below). 30000 chars stays under 100 KB.
+    const chunk = 30000;
     const n = Math.ceil(str.length / chunk);
-    if (!n || n > 40) return;
+    if (!n || n > 80) return;
     const payload = {};
     payload[DIRECTORY_CACHE_KEY + '_n'] = String(n);
     for (let i = 0; i < n; i++) {
@@ -663,6 +681,7 @@ function putCachedDirectory(employees) {
     cache.putAll(payload, DIRECTORY_CACHE_TTL);
   } catch (err) {
     // Cache is optional; the live sheet read still succeeds.
+    console.warn('Directory cache write failed: ' + errorMessage(err));
   }
 }
 
@@ -1238,4 +1257,50 @@ function csvDownload() {
       )
       .join('\r\n');
   return ContentService.createTextOutput(csv).setMimeType(ContentService.MimeType.CSV);
+}
+
+
+/**
+ * Daily refresh of the columns that change just because time passes:
+ *   P السن الان · Q الفئة العمرية · S مدة الخدمة الكلية
+ * (N تاريخ المعاش and R السن عند التعيين never change on their own.)
+ * Lighter than backfillDerivedFormulas(): three columns, no date rewriting.
+ * Install once by running installDailyTriggers().
+ */
+function refreshAgeAndService() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return;
+  try {
+    const sh = getSheet(SHEET_NAME);
+    const lastRow = sh.getLastRow();
+    if (lastRow < 2) return;
+    const n = lastRow - 1;
+    const codes = sh.getRange(2, 1, n, 1).getDisplayValues();
+    const birth = sh.getRange(2, 13, n, 1).getValues();
+    const appt = sh.getRange(2, 15, n, 1).getValues();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const age = [], group = [], service = [];
+    for (let i = 0; i < n; i++) {
+      if (!String(codes[i][0] || '').trim()) { age.push(['']); group.push(['']); service.push(['']); continue; }
+      const a = ageInYears(parseSheetDate(birth[i][0]), today);
+      age.push([a === '' ? '' : a]);
+      group.push([ageGroupLabel(a)]);
+      service.push([serviceDurationLabel(parseSheetDate(appt[i][0]), today)]);
+    }
+    sh.getRange(2, 16, n, 1).setValues(age);
+    sh.getRange(2, 17, n, 1).setValues(group);
+    sh.getRange(2, 19, n, 1).setValues(service);
+    invalidateDirectoryCache();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Run once from the editor: creates the daily trigger (replaces an older copy). */
+function installDailyTriggers() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'refreshAgeAndService') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('refreshAgeAndService').timeBased().everyDays(1).atHour(1).inTimezone('Africa/Cairo').create();
 }

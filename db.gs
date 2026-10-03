@@ -67,12 +67,23 @@ function isAuthorized(token) {
 }
 
 function doPost(e) {
+  var lock = null;
+  var touched = false;
   try {
     var body = JSON.parse(e.postData.contents);
     if (!isAuthorized(body.token)) return respond(false, 'غير مصرح بهذا الطلب.');
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = ss.getSheetByName(body.sheet);
+    // Only the dashboard tabs may be written (matches what document-center.html sends).
+    var allowed = DASHBOARD_SHEETS.some(function (n) { return normalizeAr(n) === normalizeAr(body.sheet); });
+    if (!allowed) return respond(false, 'شيت غير مسموح به: ' + body.sheet);
+    var sheet = findSheetByName(ss, body.sheet);
     if (!sheet) return respond(false, 'لم يتم العثور على الشيت: ' + body.sheet);
+
+    // Handlers read the whole range and write it back, so two simultaneous
+    // requests could overwrite each other. Serialize writes.
+    lock = LockService.getScriptLock();
+    if (!lock.tryLock(25000)) return respond(false, 'الشيت مشغول حالياً، حاول مرة أخرى.');
+    touched = true;
 
     var result;
     switch (body.action) {
@@ -82,12 +93,14 @@ function doPost(e) {
       case 'deletePenalty':  result = handleDeletePenalty(sheet, body); break;
       default: return respond(false, 'إجراء غير معروف: ' + body.action);
     }
-    // Invalidating even for a no-op write is harmless and prevents a stale
-    // dashboard after any successful sheet mutation.
-    clearDashboardCache();
     return result;
   } catch (err) {
     return respond(false, 'خطأ في الخادم: ' + err.message);
+  } finally {
+    // Cleared in finally so even a write that failed half-way never leaves a
+    // stale dashboard behind. Invalidating for a no-op write is harmless.
+    if (touched) clearDashboardCache();
+    if (lock) lock.releaseLock();
   }
 }
 
@@ -101,8 +114,9 @@ function doGet(e) {
     if (!isAuthorized(token)) return respond(false, 'غير مصرح بهذا الطلب.');
 
     if (action === 'dashboard') {
-      var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-      return respond(true, 'تم تحميل البيانات.', getDashboardData(ss));
+      // The spreadsheet is opened lazily inside getDashboardData(), only on a
+      // cache miss, so a cache hit never pays for openById().
+      return respond(true, 'تم تحميل البيانات.', getDashboardData());
     }
 
     return ContentService.createTextOutput('بيانات.xlsx sync endpoint is running.');
@@ -121,7 +135,7 @@ function respond(ok, message, data) {
 // benefit, and a reload does not have to read all three sheets again. Cache
 // failures never block the dashboard; the function simply falls back to a
 // fresh spreadsheet read.
-function getDashboardData(ss) {
+function getDashboardData() {
   var cache;
   try {
     cache = CacheService.getScriptCache();
@@ -131,6 +145,7 @@ function getDashboardData(ss) {
     cache = null;
   }
 
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var out = {};
   DASHBOARD_SHEETS.forEach(function (name) {
     var sheet = findSheetByName(ss, name);

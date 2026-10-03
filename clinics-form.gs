@@ -84,7 +84,12 @@ function setupClinicDateBranching() {
   // Match by keyword too, so choices like "عيادة الأسنان" or "العيادة العامة" are caught.
   function skipsDate(value) {
     var v = norm(value);
-    return noDateSet.indexOf(v) !== -1 || v.indexOf("اسنان") !== -1 || v.indexOf("عامة") !== -1;
+    // Exact names, plus anything containing "اسنان" (عيادة الأسنان) or exactly the
+    // general clinic ("عيادة عامة" / "العيادة العامة"). A bare "عامة" substring would
+    // also catch e.g. "جراحة عامة", which must still ask for a date.
+    return noDateSet.indexOf(v) !== -1 ||
+      v.indexOf("اسنان") !== -1 ||
+      v === "العيادة العامة" || v === "عيادة العامة";
   }
 
   var clinicItem = null, dateItem = null;

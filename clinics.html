@@ -1419,10 +1419,21 @@ async function sha256Hex(value) {
       if (!response || response.ok === false) {
         throw new Error(response?.error || 'Missing data.');
       }
+      lastSheetSignature = JSON.stringify([response.headers, response.rows]);
 
       // headers/rows come straight from Apps Script's SpreadsheetApp.getValues(),
       // which returns the exact stored cell content (no gviz type inference,
       // so Arabic-Indic digit codes survive instead of being nulled out).
+      // Remember not-yet-saved "اقرب وقت" date picks by the row's timestamp, so a
+      // background refresh (or a purge that shifts row numbers) can't wipe or misplace them.
+      const prevPicks = {};
+      const prevTsIdx = getColumnIndexByKey('timestamp');
+      if (prevTsIdx >= 0) {
+        clinicRows.forEach(r => {
+          if (nearestTimeDates[r.sheetRow]) prevPicks[String(r.values[prevTsIdx] ?? '').trim()] = nearestTimeDates[r.sheetRow];
+        });
+      }
+
       clinicColumns = (response.headers || []).map(label => ({ label }));
       const reservedIndex = clinicColumns.findIndex(isReservedColumn);
       clinicRows = (response.rows || []).map((row, index) => {
@@ -1438,9 +1449,14 @@ async function sha256Hex(value) {
         };
       });
 
-      // Row numbers can shift when old rows are purged, so admin-picked but
-      // not-yet-saved dates from a previous load must not be reused.
       nearestTimeDates = {};
+      const newTsIdx = getColumnIndexByKey('timestamp');
+      if (newTsIdx >= 0) {
+        clinicRows.forEach(r => {
+          const pick = prevPicks[String(r.values[newTsIdx] ?? '').trim()];
+          if (pick && r.isReserved !== 'y' && r.isReserved !== 'n') nearestTimeDates[r.sheetRow] = pick;
+        });
+      }
 
       populateDaySelect(); // must run before rendering: the table filters by it
       const renderedCount = renderClinicsTable();
@@ -1531,6 +1547,53 @@ async function sha256Hex(value) {
         'تعذر تحميل جدول العيادات. اضغط تحديث للمحاولة مرة أخرى.'
       ), true);
     }
+
+    // ── Live refresh ──────────────────────────────────────────────────────
+    // New form submissions show up on their own: the table is re-checked every
+    // LIVE_REFRESH_MS while the tab is visible (and the moment the tab is
+    // focused again). It is silent (no spinner / status text), skipped while a
+    // load or a confirm/deny is in progress, and the table is only redrawn when
+    // the sheet content actually changed.
+    const LIVE_REFRESH_MS = 8000;        // while someone is using the page
+    const LIVE_REFRESH_IDLE_MS = 30000;  // after 2 minutes without any click/keypress or new data
+    const LIVE_IDLE_AFTER_MS = 120000;
+    let lastActivityAt = Date.now();
+    let lastSheetSignature = '';
+    let liveRefreshBusy = false;
+
+    async function liveRefreshSheet() {
+      if (liveRefreshBusy || isLoadingSheet || document.hidden) return;
+      if (typeof resultsPanel === 'undefined' || resultsPanel.classList.contains('hidden')) return;
+      if (tableBody.querySelector('.decision-btn:disabled')) return; // a decision is being saved
+      liveRefreshBusy = true;
+      const startedId = latestSheetRequestId;
+      try {
+        const response = await requestSheetOnce(startedId, 'live');
+        if (startedId !== latestSheetRequestId || isLoadingSheet) return; // a manual load took over
+        if (!response || response.ok === false) return;
+        const signature = JSON.stringify([response.headers, response.rows]);
+        if (signature === lastSheetSignature) return; // nothing new
+        if (tableBody.querySelector('.decision-btn:disabled')) return;
+        applySheetResponse(response);
+        lastActivityAt = Date.now(); // new data arrived: stay on the fast schedule
+      } catch (error) {
+        /* silent: the next tick (or the Refresh button) tries again */
+      } finally {
+        liveRefreshBusy = false;
+      }
+    }
+    ['pointerdown', 'keydown'].forEach(name =>
+      document.addEventListener(name, () => { lastActivityAt = Date.now(); }, { passive: true }));
+    (function scheduleLiveRefresh() {
+      const idle = Date.now() - lastActivityAt > LIVE_IDLE_AFTER_MS;
+      setTimeout(async () => {
+        await liveRefreshSheet();
+        scheduleLiveRefresh();
+      }, idle ? LIVE_REFRESH_IDLE_MS : LIVE_REFRESH_MS);
+    })();
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) { lastActivityAt = Date.now(); liveRefreshSheet(); }
+    });
 
     function reservationMessage(row, decision) {
       const name = getRowValue(row, ['الاسم', 'name']) || t('employee', 'الموظف');
@@ -1718,6 +1781,10 @@ async function sha256Hex(value) {
         const url = new URL(SHEET_UPDATE_WEB_APP_URL);
         url.searchParams.set('rowNumber', row.sheetRow);
         url.searchParams.set('isReserved', decision);
+        // Row numbers shift when old rows are purged, so also send the row's
+        // submission timestamp; the backend refuses the write if it no longer matches.
+        const tsIdx = getColumnIndexByKey('timestamp');
+        url.searchParams.set('ts', String(tsIdx >= 0 ? row.values[tsIdx] : row.values[0] ?? '').trim());
         // When the patient chose "اقرب وقت", also write the admin-picked
         // date into the sheet so later inquiries see the real date.
         if (chosenDateIso) {

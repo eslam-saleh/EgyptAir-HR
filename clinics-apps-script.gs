@@ -2,13 +2,82 @@ const CLINIC_SHEET_ID = '1LCk4J_McBFhDuRf4s-5HIirck3uwfZzCFeI3084dGig';
 // All timestamps are delivered in Egypt time so the page can group
 // submissions by Egyptian day (used by the per-day Excel download).
 const EGYPT_TIME_ZONE = 'Africa/Cairo';
+const PURGE_AFTER_DAYS = 40;
+
+// ── Short-lived cache for the dashboard read ─────────────────────────────
+// Form submissions write to the sheet without going through this script, so
+// installClinicTriggers() (run it ONCE) adds an "On form submit" trigger that
+// clears this cache the moment a submission lands. Writes made here
+// (decisions / purge) clear it at once too.
+const CLINIC_CACHE_KEY = 'clinic-data-v1';
+const CLINIC_CACHE_TTL_SECONDS = 20;
+const CLINIC_CACHE_CHUNK = 30000; // characters; Arabic is 2-3 bytes/char, limit is 100 KB per key
+const CLINIC_CACHE_MAX_CHUNKS = 40;
+
+function getSheetDataCached_() {
+  const cache = CacheService.getScriptCache();
+  try {
+    const n = Number(cache.get(CLINIC_CACHE_KEY + '_n') || 0);
+    if (n) {
+      const keys = [];
+      for (let i = 0; i < n; i++) keys.push(CLINIC_CACHE_KEY + '_' + i);
+      const got = cache.getAll(keys);
+      const parts = [];
+      let complete = true;
+      for (let i = 0; i < n; i++) {
+        const part = got[CLINIC_CACHE_KEY + '_' + i];
+        if (part == null) { complete = false; break; }
+        parts.push(part);
+      }
+      if (complete) return JSON.parse(parts.join(''));
+    }
+  } catch (err) { /* fall through to a live read */ }
+
+  const data = getSheetData();
+  if (data && data.ok) {
+    try {
+      const str = JSON.stringify(data);
+      const n = Math.ceil(str.length / CLINIC_CACHE_CHUNK);
+      if (n && n <= CLINIC_CACHE_MAX_CHUNKS) {
+        const payload = {};
+        payload[CLINIC_CACHE_KEY + '_n'] = String(n);
+        for (let i = 0; i < n; i++) {
+          payload[CLINIC_CACHE_KEY + '_' + i] = str.substr(i * CLINIC_CACHE_CHUNK, CLINIC_CACHE_CHUNK);
+        }
+        cache.putAll(payload, CLINIC_CACHE_TTL_SECONDS);
+      }
+    } catch (err) { /* cache is optional */ }
+  }
+  return data;
+}
+
+/** Run ONCE from the Apps Script editor: new form submissions then show instantly. */
+function installClinicTriggers() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'clearClinicCache') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('clearClinicCache')
+    .forSpreadsheet(CLINIC_SHEET_ID)
+    .onFormSubmit()
+    .create();
+}
+
+function clearClinicCache() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const n = Number(cache.get(CLINIC_CACHE_KEY + '_n') || 0);
+    const keys = [CLINIC_CACHE_KEY + '_n'];
+    for (let i = 0; i < n; i++) keys.push(CLINIC_CACHE_KEY + '_' + i);
+    cache.removeAll(keys);
+  } catch (err) { /* ignore */ }
+}
 
 function doGet(e) {
   const params = e.parameter || {};
   const callback = String(params.callback || '');
 
   const payload = params.action === 'getData'
-    ? getSheetData()
+    ? getSheetDataCached_()
     : updateDecision(params);
 
   if (/^[A-Za-z_$][\w$]*$/.test(callback)) {
@@ -20,15 +89,24 @@ function doGet(e) {
   return jsonResponse(payload);
 }
 
-// Reads the sheet directly via the Sheets service (SpreadsheetApp), which
-// returns the exact stored cell values with no per-column type inference.
-// This avoids the gviz/tq endpoint's behavior of nulling out cells whose
-// value (e.g. Arabic-Indic digits in a mostly-numeric column) doesn't match
-// the type it auto-detected for that column.
+function getResponsesSheet_() {
+  return SpreadsheetApp.openById(CLINIC_SHEET_ID).getSheets()[0];
+}
+
+// Keep the same "M/d/yyyy HH:mm:ss" shape the client already parses.
+function formatCell_(cell) {
+  if (Object.prototype.toString.call(cell) === '[object Date]') {
+    return Utilities.formatDate(cell, EGYPT_TIME_ZONE, 'M/d/yyyy HH:mm:ss');
+  }
+  return cell === null || cell === undefined ? '' : String(cell);
+}
+
+// Reads the sheet directly via SpreadsheetApp, which returns the exact stored
+// cell values with no per-column type inference (so Arabic-Indic digits in a
+// mostly-numeric column are not nulled out like the gviz endpoint did).
 function getSheetData() {
   try {
-    const ss = SpreadsheetApp.openById(CLINIC_SHEET_ID);
-    const sheet = ss.getSheets()[0];
+    const sheet = getResponsesSheet_();
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
 
@@ -42,13 +120,7 @@ function getSheetData() {
 
     if (numDataRows > 0) {
       const values = sheet.getRange(2, 1, numDataRows, lastCol).getValues();
-      rows = values.map(row => row.map(cell => {
-        if (Object.prototype.toString.call(cell) === '[object Date]') {
-          // Keep the same "M/d/yyyy HH:mm:ss" shape the client already parses.
-          return Utilities.formatDate(cell, EGYPT_TIME_ZONE, 'M/d/yyyy HH:mm:ss');
-        }
-        return cell === null || cell === undefined ? '' : String(cell);
-      }));
+      rows = values.map(row => row.map(formatCell_));
     }
 
     return { ok: true, headers, rows };
@@ -65,23 +137,59 @@ function doPost(e) {
   }
 }
 
+function findTimestampColumn_(headers) {
+  const idx = headers.findIndex(h => {
+    const label = String(h).trim().toLowerCase();
+    return label.indexOf('timestamp') !== -1 || label.indexOf('الطابع') !== -1 || label.indexOf('الوقت') !== -1;
+  });
+  return idx === -1 ? 0 : idx; // Google Forms always puts the timestamp first
+}
+
+function findDateColumn_(headers) {
+  return headers.findIndex(header => {
+    const label = String(header).trim().toLowerCase();
+    return label.indexOf('date') !== -1 || label.indexOf('التاريخ') !== -1;
+  });
+}
+
 function updateDecision(params) {
+  let lock;
   try {
     const rowNumber = Number(params.rowNumber);
     const decision = String(params.isReserved || '').toLowerCase();
     // Optional: admin-picked date for rows that originally had "اقرب وقت"
     const dateValue = params.date ? String(params.date).trim() : '';
+    const expectedTs = String(params.ts || '').trim();
 
-    if (!rowNumber || !['y', 'n'].includes(decision)) {
+    if (!Number.isInteger(rowNumber) || !['y', 'n'].includes(decision)) {
       return { ok: false, error: 'Invalid row or decision.' };
     }
+    if (!expectedTs) {
+      return { ok: false, error: 'Missing row identifier. Please refresh the page and try again.' };
+    }
 
-    const sheet = SpreadsheetApp.openById(CLINIC_SHEET_ID).getSheets()[0];
+    lock = LockService.getScriptLock();
+    if (!lock.tryLock(20000)) return { ok: false, error: 'The sheet is busy. Please try again.' };
+
+    const sheet = getResponsesSheet_();
+    // Row 1 is the header: never allow it (or anything past the data) to be written.
+    if (rowNumber < 2 || rowNumber > sheet.getLastRow()) {
+      return { ok: false, error: 'Row out of range. Please refresh the page.' };
+    }
+
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const reservedColumn = headers.findIndex(header => String(header).trim() === 'isReserved') + 1;
-
     if (!reservedColumn) {
       return { ok: false, error: 'isReserved column was not found.' };
+    }
+
+    // Rows shift when old records are purged. Make sure this row is still the
+    // same submission the admin was looking at before touching it.
+    const tsColumn = findTimestampColumn_(headers) + 1;
+    const actualTs = formatCell_(sheet.getRange(rowNumber, tsColumn).getValue()).trim();
+    if (actualTs !== expectedTs) {
+      clearClinicCache();
+      return { ok: false, error: 'The sheet changed since it was loaded. Please refresh the page.' };
     }
 
     sheet.getRange(rowNumber, reservedColumn).setValue(decision);
@@ -89,19 +197,19 @@ function updateDecision(params) {
     // When confirming/denying an "اقرب وقت" row, also replace the placeholder
     // with the real date so later inquiries and reloads show the chosen date.
     if (dateValue) {
-      const dateColumn = headers.findIndex(header => {
-        const label = String(header).trim().toLowerCase();
-        return label.includes('date') || label.includes('التاريخ');
-      }) + 1;
-
+      const dateColumn = findDateColumn_(headers) + 1;
       if (dateColumn > 0) {
         sheet.getRange(rowNumber, dateColumn).setValue(dateValue);
       }
     }
 
+    SpreadsheetApp.flush();
+    clearClinicCache();
     return { ok: true };
   } catch (error) {
     return { ok: false, error: error.message };
+  } finally {
+    if (lock) lock.releaseLock();
   }
 }
 
@@ -112,46 +220,58 @@ function jsonResponse(payload) {
 }
 
 // ==========================================================
-// AUTOMATIC PURGE FUNCTION (UPDATED FOR TEXT DATE FORMATS)
+// AUTOMATIC PURGE — run from a daily time-driven trigger.
+// Uses the appointment-date column (found by header, like updateDecision).
+// Rows with no real date (اقرب وقت, or clinics that skip the date question)
+// fall back to the submission timestamp, so they no longer pile up forever.
 // ==========================================================
 function deleteOldRecords() {
+  let lock;
   try {
-    const ss = SpreadsheetApp.openById(CLINIC_SHEET_ID);
-    const sheet = ss.getSheets()[0];
-    const DATE_COLUMN_INDEX = 1; // 1 = Column A, 2 = Column B, etc. Change if your date isn't in Column A.
-    
+    lock = LockService.getScriptLock();
+    if (!lock.tryLock(30000)) { Logger.log('Cleanup skipped: sheet busy.'); return; }
+
+    const sheet = getResponsesSheet_();
     const lastRow = sheet.getLastRow();
     const lastCol = sheet.getLastColumn();
-    
     if (lastRow < 2 || lastCol < 1) return; // Empty sheet or header only
-    
-    const range = sheet.getRange(2, 1, lastRow - 1, lastCol);
-    const values = range.getValues();
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalize time to midnight for accurate comparison
-    const cutoffTime = today.getTime() - (40 * 24 * 60 * 60 * 1000); // 40 days ago in milliseconds
-    
+
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    const dateIdx = findDateColumn_(headers);       // -1 if not found
+    const tsIdx = findTimestampColumn_(headers);
+    const values = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    const cutoffTime = Date.now() - PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+    let deleted = 0;
+
     // Loop backwards so row deletions don't skip rows or break indices
     for (let i = values.length - 1; i >= 0; i--) {
-      let cellValue = String(values[i][DATE_COLUMN_INDEX - 1]).trim();
-      
-      // Skip "اقرب وقت" and empty cells
-      if (cellValue === "اقرب وقت" || cellValue === "") continue;
-      
-      // Extract the YYYY-MM-DD part before the dash (e.g., "2026-08-16 - الأحد" becomes "2026-08-16")
-      let dateString = cellValue.split(" - ")[0];
-      let parsedDate = new Date(dateString);
-      
-      if (!isNaN(parsedDate.getTime())) {
-        if (parsedDate.getTime() < cutoffTime) {
-          let rowToDelete = i + 2; // +2 for 0-index offset and header row
-          sheet.deleteRow(rowToDelete);
+      let when = null;
+
+      if (dateIdx >= 0) {
+        const cellValue = String(values[i][dateIdx]).trim();
+        if (cellValue && cellValue !== 'اقرب وقت') {
+          // "2026-08-16 - الأحد" -> "2026-08-16"
+          const parsed = new Date(cellValue.split(' - ')[0]);
+          if (!isNaN(parsed.getTime())) when = parsed.getTime();
         }
       }
+      if (when === null) {
+        const tsCell = values[i][tsIdx];
+        const parsedTs = Object.prototype.toString.call(tsCell) === '[object Date]' ? tsCell : new Date(tsCell);
+        if (!isNaN(parsedTs.getTime())) when = parsedTs.getTime();
+      }
+
+      if (when !== null && when < cutoffTime) {
+        sheet.deleteRow(i + 2); // +2 for 0-index offset and header row
+        deleted++;
+      }
     }
-    Logger.log("Cleanup check completed successfully.");
+    if (deleted) clearClinicCache();
+    Logger.log('Cleanup completed. Deleted ' + deleted + ' row(s).');
   } catch (error) {
-    Logger.log("Error running cleanup: " + error.message);
+    Logger.log('Error running cleanup: ' + error.message);
+  } finally {
+    if (lock) lock.releaseLock();
   }
 }
