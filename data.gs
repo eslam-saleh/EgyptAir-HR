@@ -73,7 +73,8 @@ const FIELDS = [
   ['originalGeneralDepartment', 'الاداره العامة الأساسية'],
   ['originalSubDepartment', 'مسمى الادارة الفرعية الاساسية'],
   ['workSchedule', 'توقيت العمل'],
-  ['nationalId', 'الرقم القومى']
+  ['nationalId', 'الرقم القومى'],
+  ['insuranceNumber', 'الرقم التاميني']
 ];
 const HEADER_KEYS = FIELDS.map(x => x[1]);
 
@@ -235,7 +236,8 @@ const HISTORY_LABELS = {
   originalCompanyName: 'مسمى الشركة الأساسية',
   originalGeneralDepartment: 'الإدارة العامة الأساسية',
   originalSubDepartment: 'مسمى الإدارة الفرعية الأساسية',
-  workSchedule: 'توقيت العمل', nationalId: 'الرقم القومي'
+  workSchedule: 'توقيت العمل', nationalId: 'الرقم القومي',
+  insuranceNumber: 'الرقم التأميني'
 };
 const HISTORY_STATUS_LABELS = {
   active: 'نشط', inactive: 'غير نشط', leave: 'إجازة', seconded: 'منتدب'
