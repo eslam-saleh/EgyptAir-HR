@@ -1377,7 +1377,7 @@
     function getFieldOrdinal(label) {
       const n = softNormalize(label);
       if (!n) return null;
-      if (n.includes('ثاني') || n.includes('2') || n.includes('٢')) return 'second';
+      if (n.includes('ثاني') || n.includes('اخير') || n.includes('أخير') || n.includes('2') || n.includes('٢')) return 'second';
       if (n.includes('اول') || n.includes('1') || n.includes('١')) return 'first';
       return null;
     }
