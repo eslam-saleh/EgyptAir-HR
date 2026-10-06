@@ -712,8 +712,8 @@
       }
 
       .dialog.narrow {
-        /* Employee profile — wider so details grid is readable */
-        width: min(1080px, 100%);
+        /* Employee profile — sized so 6 detail cards (each ~20% narrower) fit per row */
+        width: min(1300px, 100%);
       }
 
       .dialog-head,
@@ -790,7 +790,7 @@
 
       .details-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(6, minmax(0, 1fr));
         gap: 11px;
       }
 
@@ -1105,7 +1105,7 @@
         }
 
         .details-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
         .layout {

@@ -147,6 +147,7 @@
           <h2 class="sheet-dashboard-title" data-en="Deadlines to track" data-ar="مواعيد تستحق المتابعة">Deadlines to track</h2>
         </div>
         <div class="sheet-dashboard-actions">
+          <button id="clear-searches" class="browse-docx" type="button" data-en="Clear" data-ar="مسح">Clear</button>
           <a class="browse-docx" href="https://docs.google.com/spreadsheets/d/1YCAUm-0kSeXS5mdJDwuq3cSYNyC6d52DBTMHlRtQjHI/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a>
           <button id="dashboard-refresh" class="browse-docx" type="button" data-en="Refresh" data-ar="تحديث">Refresh</button>
         </div>
@@ -1940,6 +1941,17 @@ async function tagDocx(file, options = {}) {
         const input = document.getElementById(`${sheet}-search`);
         if (input) input.addEventListener('input', renderFilteredCards);
       });
+
+      const clearSearchesBtn = document.getElementById('clear-searches');
+      if (clearSearchesBtn) {
+        clearSearchesBtn.addEventListener('click', () => {
+          ['leave', 'penalty', 'suspension'].forEach((sheet) => {
+            const input = document.getElementById(`${sheet}-search`);
+            if (input) input.value = '';
+          });
+          renderFilteredCards();
+        });
+      }
 
       // Google Apps Script web apps can be slow after inactivity. The timeout
       // below races the entire request *and* JSON decoding, so the cards always
