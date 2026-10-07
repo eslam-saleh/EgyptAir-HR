@@ -1591,6 +1591,7 @@ async function sha256Hex(value) {
 
     async function liveRefreshSheet() {
       if (liveRefreshBusy || isLoadingSheet || document.hidden) return;
+      if (document.activeElement?.classList.contains('nearest-time-input')) return; // user is typing a date
       if (typeof resultsPanel === 'undefined' || resultsPanel.classList.contains('hidden')) return;
       if (tableBody.querySelector('.decision-btn:disabled')) return; // a decision is being saved
       liveRefreshBusy = true;
@@ -1602,6 +1603,7 @@ async function sha256Hex(value) {
         const signature = JSON.stringify([response.headers, response.rows]);
         if (signature === lastSheetSignature) return; // nothing new
         if (tableBody.querySelector('.decision-btn:disabled')) return;
+        if (document.activeElement?.classList.contains('nearest-time-input')) return;
         applySheetResponse(response);
         lastActivityAt = Date.now(); // new data arrived: stay on the fast schedule
       } catch (error) {
@@ -2015,23 +2017,36 @@ async function sha256Hex(value) {
       decideReservation(button);
     });
 
+    function updateRowConfirmState(sheetRow) {
+      const btn = tableBody.querySelector(`.decision-btn.confirm[data-sheet-row="${sheetRow}"]`);
+      if (!btn) return;
+      const blocked = !nearestTimeDates[sheetRow];
+      btn.disabled = blocked;
+      btn.title = blocked ? t('Pick a date for this patient first', 'اختر تاريخاً لهذا المريض أولاً') : '';
+    }
+
     tableBody.addEventListener('change', event => {
       const input = event.target.closest('.nearest-time-input');
       if (!input) return;
       const sheetRow = Number(input.dataset.sheetRow);
-      if (input.value) {
-        if (isWeekend(input.value)) {
-          input.value = '';
-          delete nearestTimeDates[sheetRow];
-          window.showToast?.(t('Fridays and Saturdays are not allowed.', 'لا يمكن اختيار يوم الجمعة أو السبت.'), 'warning');
-          renderClinicsTable();
-          return;
-        }
-        nearestTimeDates[sheetRow] = input.value;
-      } else {
+      const { min, max } = getDateRestrictions();
+      const v = input.value;
+      // Ignore empty, partial (e.g. year 0002 while typing) or out-of-range
+      // values; min/max only limit the popup, not typed input.
+      if (!v || v < min || v > max) {
         delete nearestTimeDates[sheetRow];
+        updateRowConfirmState(sheetRow);
+        return;
       }
-      renderClinicsTable();
+      if (isWeekend(v)) {
+        input.value = '';
+        delete nearestTimeDates[sheetRow];
+        window.showToast?.(t('Fridays and Saturdays are not allowed.', 'لا يمكن اختيار يوم الجمعة أو السبت.'), 'warning');
+        updateRowConfirmState(sheetRow);
+        return;
+      }
+      nearestTimeDates[sheetRow] = v;
+      updateRowConfirmState(sheetRow); // no full re-render: keeps focus
     });
 
     window.addEventListener('portal-language-change', () => {
