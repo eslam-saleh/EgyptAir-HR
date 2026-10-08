@@ -221,9 +221,34 @@
       border-radius: 8px;
       background: var(--surface);
       box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
+      /* Closed state: invisible and not clickable, but still animatable */
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateY(-6px) scale(.98);
+      transform-origin: top center;
+      transition: opacity .16s ease, transform .16s ease, visibility 0s linear .16s;
     }
 
-    .day-ms-panel[hidden] { display: none; }
+    .day-multi-select.open .day-ms-panel {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transform: none;
+      transition-delay: 0s;
+    }
+
+    .day-ms-caret {
+      display: inline-block;
+      transition: transform .16s ease;
+    }
+
+    .day-multi-select.open .day-ms-caret { transform: rotate(180deg); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .day-ms-panel, .day-ms-caret { transition: none; }
+    }
+
     .day-ms-actions { display: flex; gap: 6px; margin-bottom: 6px; }
     .day-ms-actions button { flex: 1; min-height: 32px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--text); cursor: pointer; font: inherit; font-size: .8rem; }
     .day-ms-list { max-height: 250px; overflow: auto; display: grid; gap: 2px; }
@@ -1302,66 +1327,124 @@ async function sha256Hex(value) {
       setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
     }
 
+    // ── Day picker (multi-select dropdown) ──────────────────────────────────
+    // The panel is opened/closed with a CSS class (so it can fade/slide) and
+    // selecting days updates the existing markup in place, so the list stays
+    // open while several days are ticked and keeps its scroll position.
+    let dayPickerOpen = false;
+    let dayPickerGlobalsBound = false;
+    let dayPickerKeys = [];
+
+    function setDayPickerOpen(open) {
+      dayPickerOpen = open;
+      exportDaySelect.classList.toggle('open', open);
+      exportDaySelect.querySelector('.day-ms-btn')?.setAttribute('aria-expanded', String(open));
+    }
+
+    function dayPickerButtonLabel() {
+      const selected = getSelectedDayKeys();
+      if (selected.includes(ALL_DAYS)) return t('All clinics', 'كل العيادات');
+      if (selected.length === 1) return `${selected[0].replace(/-/g, '/')} - ${weekdayName(selected[0])}`;
+      return t(`${selected.length} days selected`, `تم اختيار ${selected.length} أيام`);
+    }
+
+    function refreshDayPickerSelection() {
+      const selected = getSelectedDayKeys();
+      exportDaySelect.querySelectorAll('.day-ms-opt').forEach(option => {
+        const on = selected.includes(option.dataset.value);
+        option.classList.toggle('selected', on);
+        option.setAttribute('aria-selected', String(on));
+      });
+      const text = exportDaySelect.querySelector('.day-ms-text');
+      if (text) text.textContent = dayPickerButtonLabel();
+    }
+
+    function handleDayPickerChoice(target) {
+      const action = target.closest('[data-day-act]')?.dataset.dayAct;
+      if (action === 'all') {
+        // Every listed day ticked individually (handy for emailing everything at once).
+        selectedDayKeys = new Set(dayPickerKeys);
+        refreshDayPickerSelection();
+        daySelectionChanged();
+        return;
+      }
+      if (action === 'none') {
+        // Back to "All clinics" (no date restriction).
+        selectedDayKeys = new Set([ALL_DAYS]);
+        refreshDayPickerSelection();
+        daySelectionChanged();
+        setDayPickerOpen(false);
+        return;
+      }
+      const option = target.closest('.day-ms-opt');
+      if (!option) return;
+      const value = option.dataset.value;
+      if (value === ALL_DAYS) {
+        selectedDayKeys = new Set([ALL_DAYS]);
+        refreshDayPickerSelection();
+        daySelectionChanged();
+        setDayPickerOpen(false); // "All clinics" is exclusive, nothing more to pick
+        return;
+      }
+      const next = new Set(selectedDayKeys);
+      next.delete(ALL_DAYS);
+      next.has(value) ? next.delete(value) : next.add(value);
+      selectedDayKeys = next.size ? next : new Set([ALL_DAYS]);
+      refreshDayPickerSelection();
+      daySelectionChanged();
+    }
+
+    function bindDayPickerGlobals() {
+      if (dayPickerGlobalsBound) return;
+      dayPickerGlobalsBound = true;
+      // Click anywhere outside closes the list.
+      document.addEventListener('click', event => {
+        if (dayPickerOpen && !event.composedPath().includes(exportDaySelect)) setDayPickerOpen(false);
+      });
+      // Escape closes it and hands focus back to the button.
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && dayPickerOpen) {
+          setDayPickerOpen(false);
+          exportDaySelect.querySelector('.day-ms-btn')?.focus();
+        }
+      });
+      // Tabbing away from the picker closes it too.
+      exportDaySelect.addEventListener('focusout', event => {
+        if (dayPickerOpen && event.relatedTarget && !exportDaySelect.contains(event.relatedTarget)) setDayPickerOpen(false);
+      });
+    }
+
     function renderDaySelect(keys) {
       const host = exportDaySelect;
+      dayPickerKeys = keys;
       const allLabel = t('All clinics', 'كل العيادات');
-      const selected = getSelectedDayKeys();
-      const selectedSpecific = selected.filter(key => key !== ALL_DAYS);
-      const buttonLabel = selected.includes(ALL_DAYS)
-        ? allLabel
-        : selected.length === 1
-          ? `${selected[0].replace(/-/g, '/')} - ${weekdayName(selected[0])}`
-          : t(`${selected.length} days selected`, `تم اختيار ${selected.length} أيام`);
-
-      host.innerHTML = `<button type="button" class="day-ms-btn" aria-haspopup="listbox" aria-expanded="false"><span class="day-ms-text">${escapeHtml(buttonLabel)}</span><span class="day-ms-caret">▾</span></button><div class="day-ms-panel" hidden><div class="day-ms-actions"><button type="button" data-day-act="all">${escapeHtml(t('Select all', 'اختيار الكل'))}</button><button type="button" data-day-act="none">${escapeHtml(t('Clear', 'مسح'))}</button></div><div class="day-ms-list" role="listbox" aria-multiselectable="true"></div></div>`;
-      const button = host.querySelector('.day-ms-btn');
-      const panel = host.querySelector('.day-ms-panel');
-      const list = host.querySelector('.day-ms-list');
       const allOptions = [[ALL_DAYS, allLabel], ...keys.map(key => [key, `${key.replace(/-/g, '/')} - ${weekdayName(key)}`])];
 
-      list.innerHTML = allOptions.map(([value, label]) => {
-        const on = selected.includes(value);
-        return `<div class="day-ms-opt${on ? ' selected' : ''}" role="option" aria-selected="${on}" data-value="${escapeHtml(value)}"><span class="day-ms-check">✓</span><span>${escapeHtml(label)}</span></div>`;
-      }).join('');
+      host.innerHTML = `<button type="button" class="day-ms-btn" aria-haspopup="listbox" aria-expanded="false"><span class="day-ms-text"></span><span class="day-ms-caret" aria-hidden="true">▾</span></button><div class="day-ms-panel"><div class="day-ms-actions"><button type="button" data-day-act="all">${escapeHtml(t('Select all days', 'اختيار كل الأيام'))}</button><button type="button" data-day-act="none">${escapeHtml(t('Reset', 'إعادة ضبط'))}</button></div><div class="day-ms-list" role="listbox" aria-multiselectable="true">${allOptions.map(([value, label]) => `<div class="day-ms-opt" role="option" tabindex="0" aria-selected="false" data-value="${escapeHtml(value)}"><span class="day-ms-check">✓</span><span>${escapeHtml(label)}</span></div>`).join('')}</div></div>`;
 
-      button.addEventListener('click', event => {
-        event.stopPropagation();
-        const open = panel.hidden;
-        document.querySelectorAll('.day-ms-panel').forEach(item => { item.hidden = true; item.parentElement?.classList.remove('open'); });
-        panel.hidden = !open;
-        host.classList.toggle('open', open);
-        button.setAttribute('aria-expanded', String(open));
-      });
-      panel.addEventListener('click', event => {
-        event.stopPropagation();
-        const action = event.target.closest('[data-day-act]')?.dataset.dayAct;
-        if (action === 'all') {
-          selectedDayKeys = new Set([ALL_DAYS]);
-        } else if (action === 'none') {
-          // Empty selection means no date restriction, matching the attached file's clear behavior.
-          selectedDayKeys = new Set();
-        } else {
-          const option = event.target.closest('.day-ms-opt');
-          if (!option) return;
-          const value = option.dataset.value;
-          if (value === ALL_DAYS) selectedDayKeys = new Set([ALL_DAYS]);
-          else {
-            const next = new Set(selectedDayKeys);
-            next.delete(ALL_DAYS);
-            next.has(value) ? next.delete(value) : next.add(value);
-            selectedDayKeys = next;
-          }
+      const button = host.querySelector('.day-ms-btn');
+      const panel = host.querySelector('.day-ms-panel');
+
+      button.addEventListener('click', () => setDayPickerOpen(!dayPickerOpen));
+      panel.addEventListener('click', event => handleDayPickerChoice(event.target));
+      // Keyboard: Enter/Space toggles the focused day, arrows move between days.
+      panel.addEventListener('keydown', event => {
+        const option = event.target.closest('.day-ms-opt');
+        if (!option) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleDayPickerChoice(option);
+        } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          const options = [...panel.querySelectorAll('.day-ms-opt')];
+          const next = options[options.indexOf(option) + (event.key === 'ArrowDown' ? 1 : -1)];
+          next?.focus();
         }
-        renderDaySelect(keys);
-        daySelectionChanged();
       });
-      document.addEventListener('click', function closeDayPicker(event) {
-        if (!event.composedPath().includes(host)) {
-          panel.hidden = true;
-          host.classList.remove('open');
-          button.setAttribute('aria-expanded', 'false');
-        }
-      }, { once: true });
+
+      refreshDayPickerSelection();
+      setDayPickerOpen(dayPickerOpen); // keep the open/closed state across re-renders
+      bindDayPickerGlobals();
     }
 
     function populateDaySelect() {
@@ -1626,16 +1709,13 @@ async function sha256Hex(value) {
     }
 
     exportExcelBtn.addEventListener('click', exportTableToExcel);
-    // Sends the complete loaded table to the two fixed administration addresses.
-    // This is intentionally separate from the existing per-reservation decision
-    // email logic above. EmailJS allows requests up to 50 KB, so batches are
-    // measured as the actual UTF-8 JSON request and kept below 48 KB.
-    const BULK_EMAIL_RECIPIENTS = [
-      'eslamsaleh1999@gmail.com',
-      'eslamsaleh1999@hotmail.com'
-    ];
-    // Fixed department routing for the bulk email button.
-    // Change any email address below later if a department gets its own mailbox.
+    // Sends the loaded reservations to the department owners.
+    // - Departments are routed to an owner (mailbox) below.
+    // - Everything one owner is responsible for (several departments, several
+    //   selected days) is MERGED into a single email; it is only split into
+    //   "parts" when it would not fit EmailJS's 50 KB request limit.
+    // This is separate from the per-reservation decision emails further down.
+    // Change any address below later if a department gets its own mailbox.
     const DEPARTMENT_EMAIL_ASSIGNMENTS = {
       'الادارة العامة للتموين': 'eslamsaleh1999@gmail.com',
       'الادارة العامة للانتاج': 'eslamsaleh1999@hotmail.com',
@@ -1656,12 +1736,32 @@ async function sha256Hex(value) {
       'الادارة العامة لامن الخدمات الجوية': 'eslamsaleh1999@hotmail.com',
       'بدون ادارة عامة': 'eslamsaleh1999@hotmail.com'
     };
+    // Department names are compared after Arabic normalisation (أ/إ/آ→ا, ة→ه, ى→ي,
+    // spacing...), so small spelling differences in the sheet still match.
+    const NO_DEPARTMENT_LABEL = 'بدون ادارة عامة';
+    const DEPARTMENT_EMAIL_LOOKUP = new Map(
+      Object.entries(DEPARTMENT_EMAIL_ASSIGNMENTS)
+        .map(([department, recipient]) => [normalizeArabicText(department), { department, recipient }])
+    );
     const BULK_EMAIL_MAX_BYTES = 48 * 1024;
     const BULK_EMAIL_MIN_INTERVAL_MS = 1100; // EmailJS rate limit is 1 request/sec
+    let isSendingBulkEmail = false;
+
+    // EmailJS HTML-escapes {{variables}}, so a "/" would reach the inbox as
+    // "&#x2F;" (and & ' " < > = similarly). Swap those characters for safe ones.
+    function emailSafeText(value) {
+      return String(value ?? '')
+        .replace(/\//g, '-')
+        .replace(/&/g, '+')
+        .replace(/'/g, '\u2019')
+        .replace(/"/g, '\u201D')
+        .replace(/[<>`=]/g, ' ');
+    }
 
     function bulkEmailColumns() {
       return COLUMN_ORDER
-        // Do not include Timestamp (الوقت) or Department (الادارة) in emailed tables.
+        // Do not include Timestamp (الوقت) or Department (الادارة) in emailed tables:
+        // the department is shown once as a section heading instead.
         .filter(key => key !== 'isreserved' && key !== 'timestamp' && key !== 'department')
         .map(key => {
           const index = getColumnIndexByKey(key);
@@ -1684,10 +1784,10 @@ async function sha256Hex(value) {
         }
       }
 
-      return String(value ?? '')
+      return emailSafeText(String(value ?? '')
         .replace(/[\r\n]+/g, ' ')
         .replace(/\s+/g, ' ')
-        .trim();
+        .trim());
     }
 
     function bulkEmailRowText(row, columns, number) {
@@ -1699,8 +1799,8 @@ async function sha256Hex(value) {
 
     function bulkEmailRequestBody(recipient, subject, message) {
       const templateParams = {
-        title: subject,
-        name: 'Clinic administration',
+        title: emailSafeText(subject),
+        name: t('Clinic administration', 'إدارة العيادات'),
         time: new Date().toLocaleString('ar-EG'),
         message,
         to_email: recipient,
@@ -1719,42 +1819,84 @@ async function sha256Hex(value) {
       };
     }
 
-    function splitRowsForBulkEmail(rows, columns, header) {
-      const batches = [];
-      let current = [];
+    // "2026-10-07"  /  "2026-10-06, 2026-10-07"  /  "5 days (2026-10-03 to 2026-10-07)"
+    function emailDayLabel(dayKeys) {
+      const days = dayKeys.filter(key => key !== ALL_DAYS).sort();
+      if (days.length <= 3) return days.join(t(', ', '، '));
+      return t(
+        `${days.length} days (${days[0]} to ${days[days.length - 1]})`,
+        `${days.length} أيام (من ${days[0]} إلى ${days[days.length - 1]})`
+      );
+    }
 
-      for (let index = 0; index < rows.length; index++) {
-        const candidate = [...current, bulkEmailRowText(rows[index], columns, index + 1)];
-        const candidateMessage = `${header}\n\n${candidate.join('\n')}\n`;
-        const candidateSize = new TextEncoder().encode(
-          bulkEmailRequestBody(BULK_EMAIL_RECIPIENTS[0], 'All clinic reservation records', candidateMessage).json
-        ).length;
+    function emailSubject(departments, dayLabel, partIndex, partCount) {
+      const who = departments.length === 1
+        ? departments[0]
+        : t(`${departments.length} departments`, `${departments.length} إدارات`);
+      const part = partCount > 1 ? t(` (part ${partIndex} of ${partCount})`, ` (الجزء ${partIndex} من ${partCount})`) : '';
+      return `${t('Clinic records', 'سجلات العيادات')} - ${who} - ${dayLabel}${part}`;
+    }
 
-        if (candidateSize > BULK_EMAIL_MAX_BYTES && current.length) {
-          batches.push(current);
-          const singleRow = bulkEmailRowText(rows[index], columns, index + 1);
-          const singleRowSize = new TextEncoder().encode(
-            bulkEmailRequestBody(BULK_EMAIL_RECIPIENTS[0], 'All clinic reservation records', `${header}\n\n${singleRow}\n`).json
-          ).length;
-          if (singleRowSize > BULK_EMAIL_MAX_BYTES) {
-            throw new Error(t(
-              `Record ${index + 1} is too large to send in one EmailJS request.`,
-              `السجل رقم ${index + 1} كبير جداً لإرساله في طلب EmailJS واحد.`
-            ));
-          }
-          current = [singleRow];
-        } else if (candidateSize > BULK_EMAIL_MAX_BYTES) {
-          throw new Error(t(
-            `Record ${index + 1} is too large to send in one EmailJS request.`,
-            `السجل رقم ${index + 1} كبير جداً لإرساله في طلب EmailJS واحد.`
-          ));
-        } else {
-          current = candidate;
-        }
+    // sections: [{ department, lines: [rowText...] }] -> full plain-text email body
+    function bulkEmailMessage(sections, header, dayLabel, partIndex, partCount) {
+      const out = [`\u202B${t('Clinic reservation records', 'سجلات حجوزات العيادات')}\u202C`];
+      out.push(`\u202B${t('Submitted on: ', 'تاريخ التسجيل: ')}${dayLabel}\u202C`);
+      if (partCount > 1) out.push(`\u202B${t(`Part ${partIndex} of ${partCount}`, `الجزء ${partIndex} من ${partCount}`)}\u202C`);
+      for (const section of sections) {
+        out.push('', `\u202B${emailSafeText(section.department)} - ${t(`${section.lines.length} record(s)`, `${section.lines.length} سجل`)}\u202C`, header, ...section.lines);
       }
+      return out.join('\n') + '\n';
+    }
 
-      if (current.length) batches.push(current);
-      return batches;
+    // Packs one owner's departments into as few emails as possible (usually one).
+    // A department continued in the next part gets its heading repeated there.
+    function buildOwnerEmails(owner, columns, header, dayLabel) {
+      const measure = sections => {
+        const subject = emailSubject(sections.map(s => s.department), dayLabel, 99, 99);
+        const message = bulkEmailMessage(sections, header, dayLabel, 99, 99);
+        return new TextEncoder().encode(bulkEmailRequestBody(owner.recipient, subject, message).json).length;
+      };
+      const tooLarge = number => new Error(t(
+        `Record ${number} is too large to send in one EmailJS request.`,
+        `السجل رقم ${number} كبير جداً لإرساله في طلب EmailJS واحد.`
+      ));
+
+      const parts = [];
+      let current = [];
+      const add = (sections, department, line) => {
+        const last = sections[sections.length - 1];
+        if (last && last.department === department) last.lines.push(line);
+        else sections.push({ department, lines: [line] });
+      };
+      const removeLast = sections => {
+        const last = sections[sections.length - 1];
+        last.lines.pop();
+        if (!last.lines.length) sections.pop();
+      };
+
+      for (const dep of owner.departments) {
+        dep.rows.forEach((row, index) => {
+          const line = bulkEmailRowText(row, columns, index + 1);
+          add(current, dep.department, line);
+          if (measure(current) <= BULK_EMAIL_MAX_BYTES) return;
+          removeLast(current);
+          if (!current.length) throw tooLarge(index + 1);
+          parts.push(current);
+          current = [];
+          add(current, dep.department, line);
+          if (measure(current) > BULK_EMAIL_MAX_BYTES) throw tooLarge(index + 1);
+        });
+      }
+      if (current.length) parts.push(current);
+
+      return parts.map((sections, i) => {
+        const departments = [...new Set(sections.map(s => s.department))];
+        return {
+          recipient: owner.recipient,
+          subject: emailSubject(departments, dayLabel, i + 1, parts.length),
+          message: bulkEmailMessage(sections, header, dayLabel, i + 1, parts.length)
+        };
+      });
     }
 
     function sleepForBulkEmail(milliseconds) {
@@ -1762,6 +1904,7 @@ async function sha256Hex(value) {
     }
 
     async function emailAllTableRecords() {
+      if (isSendingBulkEmail) return;
       if (!EMAILJS_ACCOUNTS.length) {
         window.showToast?.(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'), 'error');
         return;
@@ -1772,54 +1915,82 @@ async function sha256Hex(value) {
       }
 
       const dayKeys = getSelectedDayKeys();
-      if (dayKeys.length === 1 && dayKeys[0] === ALL_DAYS) {
+      if (dayKeys.includes(ALL_DAYS)) {
         window.showToast?.(t('Select one or more specific days before sending email.', 'اختر يوماً واحداً أو أكثر قبل إرسال البريد الإلكتروني.'), 'warning');
         return;
       }
 
       const timestampIndex = getColumnIndexByKey('timestamp');
       const departmentIndex = getColumnIndexByKey('department');
-      const dateLabel = selectedDayLabel(dayKeys);
+      if (departmentIndex < 0) {
+        window.showToast?.(t('The Department column was not found.', 'لم يتم العثور على عمود الإدارة.'), 'error');
+        return;
+      }
 
+      const dayLabel = emailDayLabel(dayKeys);
       let dateRows = clinicRows;
       if (timestampIndex >= 0) {
         dateRows = dateRows.filter(row => dayKeys.includes(getTimestampDayKey(row.values[timestampIndex])));
       }
 
-      if (departmentIndex < 0) {
-        window.showToast?.(t('The Department column was not found.', 'لم يتم العثور على عمود الإدارة.'), 'error');
+      // Group rows by department (spelling-tolerant); remember departments with no owner.
+      const rowsByDepartment = new Map();
+      const unmapped = new Map();
+      for (const row of dateRows) {
+        const raw = String(row.values[departmentIndex] ?? '').trim();
+        const key = normalizeArabicText(raw || NO_DEPARTMENT_LABEL);
+        if (!DEPARTMENT_EMAIL_LOOKUP.has(key)) {
+          const label = raw || NO_DEPARTMENT_LABEL;
+          unmapped.set(label, (unmapped.get(label) || 0) + 1);
+          continue;
+        }
+        if (!rowsByDepartment.has(key)) rowsByDepartment.set(key, []);
+        rowsByDepartment.get(key).push(row);
+      }
+
+      // One entry per owner (mailbox), holding all of that owner's departments.
+      const owners = new Map();
+      const summary = [];
+      for (const [key, { department, recipient }] of DEPARTMENT_EMAIL_LOOKUP) {
+        const rows = rowsByDepartment.get(key);
+        if (!rows || !rows.length) continue;
+        if (!owners.has(recipient)) owners.set(recipient, { recipient, departments: [] });
+        owners.get(recipient).departments.push({ department, rows: sortRowsForExport(rows) });
+        summary.push(`• ${department}: ${t(`${rows.length} record(s)`, `${rows.length} سجل`)}`);
+      }
+
+      const unmappedCount = [...unmapped.values()].reduce((sum, n) => sum + n, 0);
+      if (!owners.size) {
+        window.showToast?.(unmappedCount
+          ? t('These records belong to departments with no assigned email, so nothing was sent.', 'هذه السجلات تخص إدارات ليس لها بريد محدد، لذا لم يتم إرسال شيء.')
+          : t('No records match the selected days.', 'لا توجد سجلات مطابقة للأيام المحددة.'), 'warning');
         return;
       }
 
       const columns = bulkEmailColumns();
       const headers = [...columns.map(column => columnHeaderLabel({ key: column.key, index: column.index, column: clinicColumns[column.index] })), t('Status', 'الحالة')];
       const header = `\u202B${headers.join(' | ')}\u202C`;
-      const departmentBatches = [];
-      const summary = [];
 
-      for (const [department, recipient] of Object.entries(DEPARTMENT_EMAIL_ASSIGNMENTS)) {
-        const rows = sortRowsForExport(dateRows.filter(row =>
-          String(row.values[departmentIndex] ?? '').trim() === department
-        ));
-        if (!rows.length) continue;
-
-        const batches = splitRowsForBulkEmail(rows, columns, header);
-        departmentBatches.push({ department, recipient, rows, batches });
-        summary.push(`${department}: ${rows.length} → ${recipient} (${batches.length} email${batches.length === 1 ? '' : 's'})`);
-      }
-
-      if (!departmentBatches.length) {
-        window.showToast?.(t('No mapped department records match the selected date.', 'لا توجد سجلات إدارات مطابقة للتاريخ المحدد.'), 'warning');
+      let emails;
+      try {
+        emails = [...owners.values()].flatMap(owner => buildOwnerEmails(owner, columns, header, dayLabel));
+      } catch (error) {
+        window.showToast?.(error.message, 'error');
+        setStatus(tableStatus, error.message, true);
         return;
       }
 
-      const totalRows = departmentBatches.reduce((sum, item) => sum + item.rows.length, 0);
-      const totalRequests = departmentBatches.reduce((sum, item) => sum + item.batches.length, 0);
-      const summaryText = summary.join('\n');
+      const totalRows = [...owners.values()].reduce((sum, owner) => sum + owner.departments.reduce((s, d) => s + d.rows.length, 0), 0);
+      const skippedNote = unmappedCount
+        ? '\n\n' + t(
+            `⚠ ${unmappedCount} record(s) in departments with no assigned email will be skipped: ${[...unmapped.keys()].join(', ')}`,
+            `⚠ سيتم تخطي ${unmappedCount} سجل لإدارات ليس لها بريد محدد: ${[...unmapped.keys()].join('، ')}`
+          )
+        : '';
 
       const confirmed = await window.EAPopup.confirm(t(
-        `Send ${totalRows} record(s) for ${dateLabel}?\n\n${summaryText}\n\nThis will send ${totalRequests} email request(s).`,
-        `هل تريد إرسال ${totalRows} سجل بتاريخ ${dateLabel}؟\n\n${summaryText}\n\nسيتم إرسال ${totalRequests} طلب بريد إلكتروني.`
+        `Send ${totalRows} record(s) for ${dayLabel}?\n\n${summary.join('\n')}${skippedNote}\n\nThis will send ${emails.length} email(s).`,
+        `هل تريد إرسال ${totalRows} سجل بتاريخ ${dayLabel}؟\n\n${summary.join('\n')}${skippedNote}\n\nسيتم إرسال ${emails.length} رسالة بريد إلكتروني.`
       ), {
         title: t('Send department records', 'إرسال سجلات الإدارات'),
         okText: t('Yes, send', 'نعم، أرسل'),
@@ -1828,39 +1999,38 @@ async function sha256Hex(value) {
       if (!confirmed) return;
 
       const originalLabel = emailAllRecordsBtn.textContent;
+      isSendingBulkEmail = true;
       emailAllRecordsBtn.disabled = true;
+      setDayPickerOpen(false);
+      let sent = 0;
       try {
-        let requestNumber = 0;
-        for (const item of departmentBatches) {
-          for (let batchIndex = 0; batchIndex < item.batches.length; batchIndex++) {
-            requestNumber++;
-            const subject = `Clinic records - ${item.department} - ${dateLabel} (${batchIndex + 1}/${item.batches.length})`;
-            const message = `${header}\n\n${item.batches[batchIndex].join('\n')}\n`;
-            emailAllRecordsBtn.textContent = t(
-              `Sending ${requestNumber}/${totalRequests}...`,
-              `جارٍ الإرسال ${requestNumber}/${totalRequests}...`
-            );
-            setStatus(tableStatus, t(
-              `Sending ${item.department} (${batchIndex + 1}/${item.batches.length}) to ${item.recipient}...`,
-              `جارٍ إرسال ${item.department} (${batchIndex + 1}/${item.batches.length}) إلى ${item.recipient}...`
-            ));
-
-            const { templateParams } = bulkEmailRequestBody(item.recipient, subject, message);
-            await sendEmailWithAccount(EMAILJS_ACCOUNTS[0], templateParams);
-            if (requestNumber < totalRequests) await sleepForBulkEmail(BULK_EMAIL_MIN_INTERVAL_MS);
-          }
+        for (const email of emails) {
+          emailAllRecordsBtn.textContent = t(`Sending ${sent + 1}/${emails.length}...`, `جارٍ الإرسال ${sent + 1}/${emails.length}...`);
+          setStatus(tableStatus, t(`Sending email ${sent + 1} of ${emails.length}...`, `جارٍ إرسال الرسالة ${sent + 1} من ${emails.length}...`));
+          const { templateParams } = bulkEmailRequestBody(email.recipient, email.subject, email.message);
+          await sendWithAccountFailover(templateParams);
+          sent++;
+          if (sent < emails.length) await sleepForBulkEmail(BULK_EMAIL_MIN_INTERVAL_MS);
         }
 
         setStatus(tableStatus, t(
-          `${totalRows} record(s) sent for ${departmentBatches.length} department(s).`,
-          `تم إرسال ${totalRows} سجل إلى ${departmentBatches.length} إدارة.`
+          `${totalRows} record(s) sent in ${emails.length} email(s).`,
+          `تم إرسال ${totalRows} سجل في ${emails.length} رسالة.`
         ));
         window.showToast?.(t('All department records were emailed successfully.', 'تم إرسال سجلات الإدارات بالبريد بنجاح.'), 'success');
       } catch (error) {
         console.error('Bulk table email failed:', error);
-        setStatus(tableStatus, error.message || t('Bulk email failed.', 'فشل إرسال السجلات بالبريد.'), true);
-        window.showToast?.(error.message || t('Bulk email failed.', 'فشل إرسال السجلات بالبريد.'), 'error');
+        const partial = sent
+          ? ' ' + t(
+              `${sent} of ${emails.length} email(s) were already sent, so do not resend the same days or those recipients will get duplicates.`,
+              `تم إرسال ${sent} من ${emails.length} رسالة بالفعل، فلا تُعد إرسال نفس الأيام حتى لا يصل التكرار لنفس المستلمين.`
+            )
+          : '';
+        const message = (error.message || t('Bulk email failed.', 'فشل إرسال السجلات بالبريد.')) + partial;
+        setStatus(tableStatus, message, true);
+        window.showToast?.(message, 'error');
       } finally {
+        isSendingBulkEmail = false;
         emailAllRecordsBtn.disabled = false;
         emailAllRecordsBtn.textContent = originalLabel;
       }
@@ -2175,6 +2345,27 @@ async function sha256Hex(value) {
       }
     }
 
+    // Sends one email, trying the saved EmailJS account first and then rolling
+    // forward through the rest of the list (wrapping around). The account that
+    // succeeds becomes the new starting point, so an exhausted account is not
+    // retried on every send. Throws the last error if every account fails.
+    async function sendWithAccountFailover(templateParams) {
+      if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
+      const startIndex = getEmailAccountIndex();
+      let lastError = null;
+      for (let step = 0; step < EMAILJS_ACCOUNTS.length; step++) {
+        const index = (startIndex + step) % EMAILJS_ACCOUNTS.length;
+        try {
+          await sendEmailWithAccount(EMAILJS_ACCOUNTS[index], templateParams);
+          setEmailAccountIndex(index);
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError;
+    }
+
     // The mailto: trick — used as a fallback when EmailJS can't send.
     // Building a real <form action="mailto:..."> submit isn't practical here
     // since decisions are triggered by button clicks, not a form submission,
@@ -2219,32 +2410,21 @@ async function sha256Hex(value) {
 
       const content = reservationMessage(row, decision);
       const templateParams = {
-        title: content.title,
-        name: content.name,
+        title: emailSafeText(content.title),
+        name: emailSafeText(content.name),
         time: new Date().toLocaleString('ar-EG'),
-        message: content.message,
+        message: emailSafeText(content.message),
         to_email: toEmail,
         email: toEmail,
         reply_to: 'eslamsaleh1999@gmail.com'
       };
 
-      const startIndex = getEmailAccountIndex();
       let lastError = null;
-
-      // Try the saved account first, then roll forward through the rest of
-      // the list (wrapping around). Whichever account succeeds becomes the
-      // new saved starting point, so next time we don't waste a request
-      // re-trying an account we already know is exhausted.
-      for (let step = 0; step < EMAILJS_ACCOUNTS.length; step++) {
-        const index = (startIndex + step) % EMAILJS_ACCOUNTS.length;
-        try {
-          await sendEmailWithAccount(EMAILJS_ACCOUNTS[index], templateParams);
-          setEmailAccountIndex(index);
-          return true;
-        } catch (error) {
-          lastError = error;
-          // try the next account
-        }
+      try {
+        await sendWithAccountFailover(templateParams);
+        return true;
+      } catch (error) {
+        lastError = error;
       }
 
       // All configured EmailJS accounts failed (or none left, since the
