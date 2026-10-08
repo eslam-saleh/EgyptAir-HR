@@ -336,31 +336,39 @@
     }
 
     .input-clear-wrap input {
-      padding-inline-end: 40px;
+      padding-inline-end: 52px;
     }
 
     .input-clear-btn {
       position: absolute;
-      inset-inline-end: 6px;
+      inset-inline-end: 12px;
       top: 50%;
       transform: translateY(-50%);
-      width: 28px;
-      height: 28px;
+      width: 30px;
+      height: 30px;
       padding: 0;
       border: none;
       border-radius: 50%;
-      background: transparent;
-      color: var(--muted);
-      font-size: 1.3rem;
+      background: #d33;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 800;
       line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
+      z-index: 10;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .28);
+      transition: transform .15s, background .15s;
     }
 
     .input-clear-btn:hover,
     .input-clear-btn:focus-visible {
-      background: var(--surface);
-      color: var(--danger);
-      outline: none;
+      background: #b32020;
+      transform: translateY(-50%) scale(1.12);
+      outline: 2px solid #fff;
+      outline-offset: 1px;
     }
 
     .clinic-tabs {
@@ -512,7 +520,7 @@
           <label for="patientId" data-en="Patient ID (Inquiry)" data-ar="كود الموظف (استعلام)">Patient ID (Inquiry)</label>
           <div class="input-clear-wrap">
             <input id="patientId" type="text" inputmode="numeric" data-en-placeholder="Enter ID" data-ar-placeholder="أدخل الكود">
-            <button class="input-clear-btn hidden" id="clearInquiryBtn" type="button">&times;</button>
+            <button class="input-clear-btn hidden" id="clearInquiryBtn" type="button">&#x2715;</button>
           </div>
         </div>
         <button class="primary-btn" type="submit" data-en="Inquiry" data-ar="استعلام">Inquiry</button>

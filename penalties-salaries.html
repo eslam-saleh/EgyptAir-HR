@@ -108,6 +108,24 @@
     }
     html[dir="rtl"] .search-wrap .s-icon { right: auto; left: 14px; }
 
+
+    /* ── Red clear (X) button inside search boxes ── */
+    .search-wrap .search-clear-btn {
+      position: absolute; top: 50%; inset-inline-end: 8px; transform: translateY(-50%);
+      width: 30px; height: 30px; padding: 0; border: none; border-radius: 50%;
+      background: #d33; color: #fff; font-size: 16px; font-weight: 800; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10; box-shadow: 0 2px 6px rgba(0,0,0,.28);
+      transition: transform .15s, background .15s;
+    }
+    .search-wrap .search-clear-btn[hidden] { display: none; }
+    .search-wrap .search-clear-btn:hover,
+    .search-wrap .search-clear-btn:focus-visible {
+      background: #b32020; transform: translateY(-50%) scale(1.12);
+      outline: 2px solid #fff; outline-offset: 1px;
+    }
+    .search-wrap.has-text .s-icon { display: none; }
+
     /* ── Results list ── */
     .results-box {
       max-height: 280px;
@@ -479,6 +497,7 @@
               data-en-placeholder="Search violations in Arabic or English…"
               data-ar-placeholder="ابحث عن المخالفة بالعربية أو الإنجليزية…"
               placeholder="ابحث عن المخالفة بالعربية أو الإنجليزية…">
+            <button type="button" class="search-clear-btn" data-clear-for="regularSearch" hidden aria-label="Clear search" title="Clear / مسح">&#x2715;</button>
           </div>
           <div class="results-box hidden" id="regularResults"></div>
 
@@ -525,6 +544,7 @@
               data-en-placeholder="Search crew violations…"
               data-ar-placeholder="ابحث عن مخالفة أطقم الطيران…"
               placeholder="ابحث عن مخالفة أطقم الطيران…">
+            <button type="button" class="search-clear-btn" data-clear-for="crewSearch" hidden aria-label="Clear search" title="Clear / مسح">&#x2715;</button>
           </div>
           <div class="results-box hidden" id="crewResults"></div>
 
@@ -1513,6 +1533,33 @@
     });
 
   }());
+  </script>
+
+  <script>
+    // Red X inside the search boxes: clears the text and re-runs the search
+    (function () {
+      var items = [];
+      document.querySelectorAll('.search-clear-btn').forEach(function (btn) {
+        var input = document.getElementById(btn.dataset.clearFor);
+        if (!input) return;
+        function toggle() {
+          btn.hidden = !input.value;
+          btn.parentElement.classList.toggle('has-text', !!input.value);
+        }
+        items.push(toggle);
+        input.addEventListener('input', toggle);
+        btn.addEventListener('click', function (e) {
+          e.preventDefault(); e.stopPropagation();
+          input.value = '';
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          toggle();
+          input.focus();
+        });
+        toggle();
+      });
+      // Keep the X in sync when the page empties a box itself (e.g. after picking a result)
+      document.addEventListener('click', function () { setTimeout(function () { items.forEach(function (f) { f(); }); }, 0); });
+    })();
   </script>
 </body>
 </html>
