@@ -544,6 +544,7 @@
               <select class="export-day-select" id="exportDaySelect"></select>
             </div>
             <button class="ghost-btn export-btn" id="exportExcelBtn" type="button" data-en="Download Excel" data-ar="تحميل إكسل">Download Excel</button>
+            <button class="ghost-btn export-btn" id="emailAllRecordsBtn" type="button" data-en="Email all records" data-ar="إرسال كل السجلات بالبريد">Email all records</button>
           </div>
         </div>
       </div>
@@ -717,6 +718,7 @@
     const tableBody = document.getElementById('clinicTableBody');
     const tableStatus = document.getElementById('tableStatus');
     const exportExcelBtn = document.getElementById('exportExcelBtn');
+    const emailAllRecordsBtn = document.getElementById('emailAllRecordsBtn');
     const exportDaySelect = document.getElementById('exportDaySelect');
     const exportDayLabel = document.getElementById('exportDayLabel');
     const refreshBtn = document.getElementById('refreshBtn');
@@ -1504,6 +1506,242 @@ async function sha256Hex(value) {
     }
 
     exportExcelBtn.addEventListener('click', exportTableToExcel);
+    // Sends the complete loaded table to the two fixed administration addresses.
+    // This is intentionally separate from the existing per-reservation decision
+    // email logic above. EmailJS allows requests up to 50 KB, so batches are
+    // measured as the actual UTF-8 JSON request and kept below 48 KB.
+    const BULK_EMAIL_RECIPIENTS = [
+      'eslamsaleh1999@gmail.com',
+      'eslamsaleh1999@hotmail.com'
+    ];
+    // Fixed department routing for the bulk email button.
+    // Change any email address below later if a department gets its own mailbox.
+    const DEPARTMENT_EMAIL_ASSIGNMENTS = {
+      'الادارة العامة للتموين': 'eslamsaleh1999@gmail.com',
+      'الادارة العامة للانتاج': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة للموارد البشرية': 'eslamsaleh1999@hotmail.com',
+      'إدارة التسويق والتعاقدات': 'eslamsaleh1999@hotmail.com',
+      'إدارة نظم المعلومات': 'eslamsaleh1999@hotmail.com',
+      'إداره السلامة والصحة المهنية وشئون البيئة': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة لمكتب رئيس مجلس الادارة': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة للتخطيط': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة للخدمات الفندقية': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة للسلامة والجودة': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة للشئون القانونية': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة للشئون المالية': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة للصيانة': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة للمخازن': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة للمشتريات': 'eslamsaleh1999@hotmail.com',
+      'إدارة البحوث والتطوير': 'eslamsaleh1999@hotmail.com',
+      'الادارة العامة لامن الخدمات الجوية': 'eslamsaleh1999@hotmail.com',
+      'بدون ادارة عامة': 'eslamsaleh1999@hotmail.com'
+    };
+    const BULK_EMAIL_MAX_BYTES = 48 * 1024;
+    const BULK_EMAIL_MIN_INTERVAL_MS = 1100; // EmailJS rate limit is 1 request/sec
+
+    function bulkEmailColumns() {
+      return COLUMN_ORDER
+        // Do not include Timestamp (الوقت) or Department (الادارة) in emailed tables.
+        .filter(key => key !== 'isreserved' && key !== 'timestamp' && key !== 'department')
+        .map(key => {
+          const index = getColumnIndexByKey(key);
+          return index >= 0 ? { key, index } : null;
+        })
+        .filter(Boolean);
+    }
+
+    function bulkEmailCellValue(row, column) {
+      let value = row.values[column.index];
+
+      if (column.key === 'code') value = normalizeDigits(value);
+      if (column.key === 'timestamp') value = formatTimestamp(value);
+      if (column.key === 'date') {
+        if (isNearestTimeValue(value)) {
+          const chosen = nearestTimeDates[row.sheetRow] || '';
+          value = chosen ? formatDateWithDay(formatArabicDateWithWeekday(chosen)) : value;
+        } else {
+          value = formatDateWithDay(value);
+        }
+      }
+
+      return String(value ?? '')
+        .replace(/[\r\n]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function bulkEmailRowText(row, columns, number) {
+      const values = columns.map(column => bulkEmailCellValue(row, column));
+      values.push(decisionLabel(row.isReserved));
+      // RLE/PDF keep Arabic text visually right-to-left in the plain-text template.
+      return `\u202B${number}. ${values.join(' | ')}\u202C`;
+    }
+
+    function bulkEmailRequestBody(recipient, subject, message) {
+      const templateParams = {
+        title: subject,
+        name: 'Clinic administration',
+        time: new Date().toLocaleString('ar-EG'),
+        message,
+        to_email: recipient,
+        email: recipient,
+        reply_to: 'eslamsaleh1999@gmail.com'
+      };
+
+      return {
+        templateParams,
+        json: JSON.stringify({
+          service_id: EMAILJS_ACCOUNTS[0]?.serviceId,
+          template_id: EMAILJS_ACCOUNTS[0]?.templateId,
+          user_id: EMAILJS_ACCOUNTS[0]?.publicKey,
+          template_params: templateParams
+        })
+      };
+    }
+
+    function splitRowsForBulkEmail(rows, columns, header) {
+      const batches = [];
+      let current = [];
+
+      for (let index = 0; index < rows.length; index++) {
+        const candidate = [...current, bulkEmailRowText(rows[index], columns, index + 1)];
+        const candidateMessage = `${header}\n\n${candidate.join('\n')}\n`;
+        const candidateSize = new TextEncoder().encode(
+          bulkEmailRequestBody(BULK_EMAIL_RECIPIENTS[0], 'All clinic reservation records', candidateMessage).json
+        ).length;
+
+        if (candidateSize > BULK_EMAIL_MAX_BYTES && current.length) {
+          batches.push(current);
+          const singleRow = bulkEmailRowText(rows[index], columns, index + 1);
+          const singleRowSize = new TextEncoder().encode(
+            bulkEmailRequestBody(BULK_EMAIL_RECIPIENTS[0], 'All clinic reservation records', `${header}\n\n${singleRow}\n`).json
+          ).length;
+          if (singleRowSize > BULK_EMAIL_MAX_BYTES) {
+            throw new Error(t(
+              `Record ${index + 1} is too large to send in one EmailJS request.`,
+              `السجل رقم ${index + 1} كبير جداً لإرساله في طلب EmailJS واحد.`
+            ));
+          }
+          current = [singleRow];
+        } else if (candidateSize > BULK_EMAIL_MAX_BYTES) {
+          throw new Error(t(
+            `Record ${index + 1} is too large to send in one EmailJS request.`,
+            `السجل رقم ${index + 1} كبير جداً لإرساله في طلب EmailJS واحد.`
+          ));
+        } else {
+          current = candidate;
+        }
+      }
+
+      if (current.length) batches.push(current);
+      return batches;
+    }
+
+    function sleepForBulkEmail(milliseconds) {
+      return new Promise(resolve => setTimeout(resolve, milliseconds));
+    }
+
+    async function emailAllTableRecords() {
+      if (!EMAILJS_ACCOUNTS.length) {
+        window.showToast?.(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'), 'error');
+        return;
+      }
+      if (!clinicRows.length) {
+        window.showToast?.(t('There are no records to send.', 'لا توجد سجلات لإرسالها.'), 'warning');
+        return;
+      }
+
+      const dayKey = exportDaySelect.value;
+      const timestampIndex = getColumnIndexByKey('timestamp');
+      const departmentIndex = getColumnIndexByKey('department');
+      const dateLabel = dayKey && dayKey !== ALL_DAYS ? dayKey : t('All dates', 'كل التواريخ');
+
+      let dateRows = clinicRows;
+      if (dayKey && dayKey !== ALL_DAYS && timestampIndex >= 0) {
+        dateRows = dateRows.filter(row => getTimestampDayKey(row.values[timestampIndex]) === dayKey);
+      }
+
+      if (departmentIndex < 0) {
+        window.showToast?.(t('The Department column was not found.', 'لم يتم العثور على عمود الإدارة.'), 'error');
+        return;
+      }
+
+      const columns = bulkEmailColumns();
+      const headers = [...columns.map(column => columnHeaderLabel({ key: column.key, index: column.index, column: clinicColumns[column.index] })), t('Status', 'الحالة')];
+      const header = `\u202B${headers.join(' | ')}\u202C`;
+      const departmentBatches = [];
+      const summary = [];
+
+      for (const [department, recipient] of Object.entries(DEPARTMENT_EMAIL_ASSIGNMENTS)) {
+        const rows = sortRowsForExport(dateRows.filter(row =>
+          String(row.values[departmentIndex] ?? '').trim() === department
+        ));
+        if (!rows.length) continue;
+
+        const batches = splitRowsForBulkEmail(rows, columns, header);
+        departmentBatches.push({ department, recipient, rows, batches });
+        summary.push(`${department}: ${rows.length} → ${recipient} (${batches.length} email${batches.length === 1 ? '' : 's'})`);
+      }
+
+      if (!departmentBatches.length) {
+        window.showToast?.(t('No mapped department records match the selected date.', 'لا توجد سجلات إدارات مطابقة للتاريخ المحدد.'), 'warning');
+        return;
+      }
+
+      const totalRows = departmentBatches.reduce((sum, item) => sum + item.rows.length, 0);
+      const totalRequests = departmentBatches.reduce((sum, item) => sum + item.batches.length, 0);
+      const summaryText = summary.join('\n');
+
+      const confirmed = await window.EAPopup.confirm(t(
+        `Send ${totalRows} record(s) for ${dateLabel}?\n\n${summaryText}\n\nThis will send ${totalRequests} email request(s).`,
+        `هل تريد إرسال ${totalRows} سجل بتاريخ ${dateLabel}؟\n\n${summaryText}\n\nسيتم إرسال ${totalRequests} طلب بريد إلكتروني.`
+      ), {
+        title: t('Send department records', 'إرسال سجلات الإدارات'),
+        okText: t('Yes, send', 'نعم، أرسل'),
+        cancelText: t('Cancel', 'إلغاء')
+      });
+      if (!confirmed) return;
+
+      const originalLabel = emailAllRecordsBtn.textContent;
+      emailAllRecordsBtn.disabled = true;
+      try {
+        let requestNumber = 0;
+        for (const item of departmentBatches) {
+          for (let batchIndex = 0; batchIndex < item.batches.length; batchIndex++) {
+            requestNumber++;
+            const subject = `Clinic records - ${item.department} - ${dateLabel} (${batchIndex + 1}/${item.batches.length})`;
+            const message = `${header}\n\n${item.batches[batchIndex].join('\n')}\n`;
+            emailAllRecordsBtn.textContent = t(
+              `Sending ${requestNumber}/${totalRequests}...`,
+              `جارٍ الإرسال ${requestNumber}/${totalRequests}...`
+            );
+            setStatus(tableStatus, t(
+              `Sending ${item.department} (${batchIndex + 1}/${item.batches.length}) to ${item.recipient}...`,
+              `جارٍ إرسال ${item.department} (${batchIndex + 1}/${item.batches.length}) إلى ${item.recipient}...`
+            ));
+
+            const { templateParams } = bulkEmailRequestBody(item.recipient, subject, message);
+            await sendEmailWithAccount(EMAILJS_ACCOUNTS[0], templateParams);
+            if (requestNumber < totalRequests) await sleepForBulkEmail(BULK_EMAIL_MIN_INTERVAL_MS);
+          }
+        }
+
+        setStatus(tableStatus, t(
+          `${totalRows} record(s) sent for ${departmentBatches.length} department(s).`,
+          `تم إرسال ${totalRows} سجل إلى ${departmentBatches.length} إدارة.`
+        ));
+        window.showToast?.(t('All department records were emailed successfully.', 'تم إرسال سجلات الإدارات بالبريد بنجاح.'), 'success');
+      } catch (error) {
+        console.error('Bulk table email failed:', error);
+        setStatus(tableStatus, error.message || t('Bulk email failed.', 'فشل إرسال السجلات بالبريد.'), true);
+        window.showToast?.(error.message || t('Bulk email failed.', 'فشل إرسال السجلات بالبريد.'), 'error');
+      } finally {
+        emailAllRecordsBtn.disabled = false;
+        emailAllRecordsBtn.textContent = originalLabel;
+      }
+    }
+
+    emailAllRecordsBtn.addEventListener('click', emailAllTableRecords);
     refreshBtn.addEventListener('click', () => loadClinicSheet());
     populateDaySelect();
 
