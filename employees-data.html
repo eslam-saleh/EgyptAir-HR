@@ -289,13 +289,13 @@
         outline-offset: 2px;
       }
 
-      /* Search + clear sit alone, above the filter grid */
+      /* Search + clear sit alone, below the filter grid */
       .search-bar {
         display: flex;
         flex-wrap: wrap;
         gap: 12px;
         align-items: end;
-        margin-bottom: 12px;
+        margin-bottom: 18px;
         padding: 16px;
       }
 
@@ -314,7 +314,7 @@
         grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
         gap: 10px;
         align-items: end;
-        margin-bottom: 18px;
+        margin-bottom: 12px;
         padding: 16px;
       }
 
@@ -1068,6 +1068,9 @@
       .ms-none { padding: 10px; color: var(--muted); font-size: .82rem; text-align: center; }
 
       /* History popup (آخر التعديلات) */
+      .history-search { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+      .history-search .input { flex: 1 1 auto; }
+      .history-match { flex: none; color: var(--muted); font-size: .82rem; white-space: nowrap; }
       .history-table {
         width: 100%;
         min-width: 620px;
@@ -1264,10 +1267,6 @@
           <small id="retirementHint"></small>
         </div>
       </section>
-      <section class="panel search-bar" aria-label="Search">
-        <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
-        <button class="btn clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
-      </section>
       <section class="panel toolbar" aria-label="Employee filters">
         <div class="filter-field"><label for="sector" data-en="Sector" data-ar="القطاع">Sector</label><div class="ms" id="sector"></div></div>
         <div class="filter-field"><label for="department" data-en="General department" data-ar="الإدارة العامة">General department</label><div class="ms" id="department"></div></div>
@@ -1290,6 +1289,10 @@
         <div class="filter-field"><label for="report2026" data-en="Annual report 2026 (TBD)" data-ar="تقرير عام 2026 (لم يُملأ بعد)">Annual report 2026 (TBD)</label><div class="ms" id="report2026"></div></div>
         <div class="hire-range retire-range"><div class="filter-field hire-date"><label for="retireFrom" data-en="Retires from" data-ar="المعاش من">Retires from</label><div class="date-row"><input class="input" id="retireFrom" type="date" min="1950-01-01"><button class="btn today-btn" id="retireToday" type="button" data-en-title="Set to today's date" data-ar-title="ضبط التاريخ على اليوم"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v15"/><path d="M6 13.5l6 6 6-6"/></svg></button></div></div>
           <div class="filter-field hire-date"><label for="retireTo" data-en="Retires until" data-ar="المعاش حتى">Retires until</label><input class="input" id="retireTo" type="date" min="1950-01-01"></div></div>
+      </section>
+      <section class="panel search-bar" aria-label="Search">
+        <div class="filter-field search-field"><label for="search" data-en="Search" data-ar="بحث">Search</label><input class="input" id="search" type="search" autocomplete="off" data-en-placeholder="Name or employee code…" data-ar-placeholder="الاسم أو كود الموظف…" placeholder="Name or employee code…"></div>
+        <button class="btn clear-action" id="clearBtn" type="button" data-en="Clear filters" data-ar="مسح عوامل التصفية">Clear filters</button>
       </section>
       <section class="layout">
         <section class="panel" aria-labelledby="tableHeading">
@@ -1360,6 +1363,7 @@
           <button class="icon-btn" type="button" data-close="historyModal" aria-label="Close">×</button>
         </div>
         <div class="dialog-body">
+          <div class="history-search"><input class="input" id="historySearch" type="search" autocomplete="off" data-en-placeholder="Search modifications (date, type, details)…" data-ar-placeholder="بحث في التعديلات (التاريخ، النوع، التفاصيل)…" placeholder="Search modifications (date, type, details)…"><span class="history-match" id="historyMatch"></span></div>
           <div class="report-table-wrap" id="historyBody"></div>
         </div>
       </section>
@@ -1507,6 +1511,8 @@
           msRemove: 'Unselect',
           historyHint: 'Last 30 days · click to view',
           historyEmpty: 'No modifications in the last 30 days.',
+          historyNoMatch: 'No modifications match your search.',
+          historyMatches: '{count} of {total}',
           historyFailed: 'Unable to load the modification history.',
           historyLoading: 'Loading modifications…',
           historyDate: 'Date',
@@ -1601,6 +1607,8 @@
           msRemove: 'إلغاء التحديد',
           historyHint: 'آخر 30 يوماً · اضغط للعرض',
           historyEmpty: 'لا توجد تعديلات خلال آخر 30 يوماً.',
+          historyNoMatch: 'لا توجد تعديلات مطابقة للبحث.',
+          historyMatches: '{count} من {total}',
           historyFailed: 'تعذر تحميل سجل التعديلات.',
           historyLoading: 'جارٍ تحميل التعديلات…',
           historyDate: 'التاريخ',
@@ -2385,13 +2393,23 @@
           body.innerHTML = `<p class="empty">${escapeHtml(t('historyEmpty'))}</p>`;
           return;
         }
+        const q = normal($('historySearch')?.value);
+        const visible = q
+          ? h.records.filter(record => normal(`${record.date} ${record.type} ${record.details}`).includes(q))
+          : h.records;
+        if ($('historyMatch')) $('historyMatch').textContent = q ? t('historyMatches', { count: visible.length.toLocaleString(), total: h.records.length.toLocaleString() }) : '';
+        if (!visible.length) {
+          body.innerHTML = `<p class="empty">${escapeHtml(t('historyNoMatch'))}</p>`;
+          return;
+        }
         const head = `<tr><th class="h-date">${escapeHtml(t('historyDate'))}</th><th class="h-type">${escapeHtml(t('historyType'))}</th><th>${escapeHtml(t('historyDetails'))}</th></tr>`;
-        const rows = h.records.map(record => `<tr><td class="h-date" dir="ltr">${escapeHtml(record.date)}</td><td class="h-type"><span class="pill ${historyTypeClass(record.type)}">${escapeHtml(record.type)}</span></td><td class="h-details">${escapeHtml(record.details).replace(/\n/g, '<br>')}</td></tr>`).join('');
+        const rows = visible.map(record => `<tr><td class="h-date" dir="ltr">${escapeHtml(record.date)}</td><td class="h-type"><span class="pill ${historyTypeClass(record.type)}">${escapeHtml(record.type)}</span></td><td class="h-details">${escapeHtml(record.details).replace(/\n/g, '<br>')}</td></tr>`).join('');
         body.innerHTML = `<table class="history-table"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
       }
 
       function openHistory(opener) {
         if (!state.canEdit) return;
+        if ($('historySearch')) $('historySearch').value = '';
         renderHistoryTable();
         openModal('historyModal', opener);
         loadHistory(); // refresh in the background so the popup is never stale
@@ -2531,14 +2549,14 @@
           @page { size: A4 landscape; margin: 7mm; }
           * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           html, body { margin: 0; background: #fff; color: #111; font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; }
-          body { font-size: 9pt; line-height: 1.25; }
-          header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-bottom: 4px; margin-bottom: 4px; border-bottom: 2px solid #0b3a66; }
+          body { font-size: 10.8pt; line-height: 1.5; }
+          header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-bottom: 5px; margin-bottom: 5px; border-bottom: 2px solid #0b3a66; }
           header h1 { margin: 0; font-size: 1.7em; color: #0b3a66; }
           header p { margin: 0; color: #444; font-size: 1.05em; }
-          section { margin-top: 4px; }
-          h2 { margin: 0 0 2px; padding: 1px 6px; font-size: 1.05em; color: #0b3a66; background: #eaf1f8; border-radius: 3px; }
-          .g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
-          .c { padding: 2px 5px; border: 1px solid #cfd8e3; border-radius: 3px; min-width: 0; overflow-wrap: anywhere; }
+          section { margin-top: 5px; }
+          h2 { margin: 0 0 2.4px; padding: 1.2px 7px; font-size: 1.05em; color: #0b3a66; background: #eaf1f8; border-radius: 3px; }
+          .g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3.6px; }
+          .c { padding: 2.4px 6px; border: 1px solid #cfd8e3; border-radius: 3px; min-width: 0; overflow-wrap: anywhere; }
           .c b { display: block; font-size: .78em; color: #555; }
           .c span { display: block; font-size: 1em; color: #000; }
         </style></head><body><div id="page"><header><div><h1>${esc(e.name || t('unknown'))}</h1><p>${esc(overview)}</p></div><p>${esc(e.code ? (ar ? 'كود الموظف: ' : 'Employee code: ') + e.code : '')}</p></header>${sections || `<p>${esc(t('noData'))}</p>`}</div></body></html>`;
@@ -2554,7 +2572,7 @@
         const go = () => {
           const body = doc.body;
           const maxH = (210 - 14) / 25.4 * 96 - 4; // A4 landscape height minus margins, in CSS px
-          let size = 9;
+          let size = 10.8;
           body.style.fontSize = size + 'pt';
           // Shrink the font until everything fits on one page
           while (doc.getElementById('page').scrollHeight > maxH && size > 4.5) {
@@ -3512,6 +3530,7 @@
           applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
         });
         $('search').addEventListener('input', applyFilter);
+        $('historySearch')?.addEventListener('input', renderHistoryTable);
         initMultiSelects();
         $('hireFrom')?.addEventListener('change', applyFilter);
         $('hireTo')?.addEventListener('change', applyFilter);
