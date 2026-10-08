@@ -74,7 +74,10 @@ const FIELDS = [
   ['originalSubDepartment', 'مسمى الادارة الفرعية الاساسية'],
   ['workSchedule', 'توقيت العمل'],
   ['nationalId', 'الرقم القومى'],
-  ['insuranceNumber', 'الرقم التاميني']
+  ['insuranceNumber', 'الرقم التاميني'],
+  ['report2024', 'تقرير عام 2024'],
+  ['report2025', 'تقرير عام 2025'],
+  ['report2026', 'تقرير عام 2026']
 ];
 const HEADER_KEYS = FIELDS.map(x => x[1]);
 
@@ -237,7 +240,10 @@ const HISTORY_LABELS = {
   originalGeneralDepartment: 'الإدارة العامة الأساسية',
   originalSubDepartment: 'مسمى الإدارة الفرعية الأساسية',
   workSchedule: 'توقيت العمل', nationalId: 'الرقم القومي',
-  insuranceNumber: 'الرقم التأميني'
+  insuranceNumber: 'الرقم التأميني',
+  report2024: 'تقرير عام 2024',
+  report2025: 'تقرير عام 2025',
+  report2026: 'تقرير عام 2026'
 };
 const HISTORY_STATUS_LABELS = {
   active: 'نشط', inactive: 'غير نشط', leave: 'إجازة', seconded: 'منتدب'

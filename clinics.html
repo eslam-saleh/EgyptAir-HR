@@ -434,6 +434,22 @@
       }
     }
   </style>
+  <style>
+    /* ───── Custom popup (replaces window.alert / window.confirm) ───── */
+    .ea-pop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 18px; background: rgba(3, 18, 34, .62); }
+    .ea-pop[hidden] { display: none; }
+    .ea-pop-dialog { width: min(480px, 100%); max-height: 94vh; overflow: auto; border: 1px solid var(--line, #d5dde6); border-radius: 14px; background: var(--surface, #fff); color: var(--text, #14202c); box-shadow: 0 28px 80px rgba(0, 0, 0, .4); }
+    .ea-pop-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 20px; border-bottom: 1px solid var(--line, #d5dde6); }
+    .ea-pop-head h2 { margin: 0; font-size: 1.2rem; color: var(--text, #14202c); }
+    .ea-pop-x { width: 34px; height: 34px; border: 1px solid var(--line, #d5dde6); border-radius: 8px; background: var(--surface-2, #f3f6f9); color: var(--text, #14202c); font-size: 1.3rem; line-height: 1; cursor: pointer; }
+    .ea-pop-body { padding: 20px; }
+    .ea-pop-body p { margin: 0; line-height: 1.6; white-space: pre-line; color: var(--text, #14202c); }
+    .ea-pop-foot { display: flex; justify-content: flex-end; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--line, #d5dde6); }
+    .ea-pop-btn { min-height: 42px; padding: 0 18px; border: 1px solid transparent; border-radius: 8px; background: var(--primary, #0b3a66); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+    .ea-pop-btn.secondary { border-color: var(--line, #d5dde6); background: var(--surface-2, #f3f6f9); color: var(--text, #14202c); }
+    .ea-pop-btn.danger { background: color-mix(in srgb, var(--danger, #c0392b) 88%, #000); }
+    .ea-pop-btn:focus-visible, .ea-pop-x:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary, #0b3a66) 45%, transparent); outline-offset: 2px; }
+  </style>
 </head>
 <body>
   <header class="portal-header">
@@ -558,6 +574,85 @@
 
   <script src="site-data.js"></script>
 <script src="portal.js"></script>
+  <script>
+  /* ───── Custom popup (replaces window.alert / window.confirm) ───── */
+  (function () {
+    function isAr() {
+      return (window.EgyptAirPortal && window.EgyptAirPortal.language === 'ar') || document.documentElement.lang === 'ar';
+    }
+    let root = null;
+    function build() {
+      root = document.createElement('div');
+      root.className = 'ea-pop';
+      root.hidden = true;
+      root.innerHTML = '<section class="ea-pop-dialog" role="dialog" aria-modal="true" aria-labelledby="eaPopTitle">' +
+        '<div class="ea-pop-head"><h2 id="eaPopTitle"></h2><button type="button" class="ea-pop-x" aria-label="Close">×</button></div>' +
+        '<div class="ea-pop-body"><p id="eaPopText"></p></div>' +
+        '<div class="ea-pop-foot"></div></section>';
+      document.body.appendChild(root);
+    }
+    const queue = [];
+    let busy = false;
+    function next() {
+      if (busy || !queue.length) return;
+      busy = true;
+      const job = queue.shift();
+      if (!root) build();
+      const ar = isAr();
+      root.dir = ar ? 'rtl' : 'ltr';
+      const title = root.querySelector('#eaPopTitle');
+      const text = root.querySelector('#eaPopText');
+      const foot = root.querySelector('.ea-pop-foot');
+      const closeX = root.querySelector('.ea-pop-x');
+      title.textContent = job.title || (job.confirm ? (ar ? 'تأكيد' : 'Please confirm') : (ar ? 'تنبيه' : 'Notice'));
+      text.textContent = job.message;
+      foot.innerHTML = '';
+      const previous = document.activeElement;
+      function finish(result) {
+        root.hidden = true;
+        document.removeEventListener('keydown', onKey, true);
+        root.removeEventListener('mousedown', onBackdrop);
+        busy = false;
+        if (previous && previous.focus) { try { previous.focus(); } catch (e) {} }
+        job.resolve(result);
+        next();
+      }
+      function onKey(ev) {
+        if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); finish(false); }
+      }
+      function onBackdrop(ev) { if (ev.target === root) finish(false); }
+      let okBtn;
+      if (job.confirm) {
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'ea-pop-btn secondary';
+        cancel.textContent = job.cancelText || (ar ? 'إلغاء' : 'Cancel');
+        cancel.onclick = () => finish(false);
+        foot.appendChild(cancel);
+      }
+      okBtn = document.createElement('button');
+      okBtn.type = 'button';
+      okBtn.className = 'ea-pop-btn' + (job.danger ? ' danger' : '');
+      okBtn.textContent = job.okText || (job.confirm ? (ar ? 'تأكيد' : 'Confirm') : (ar ? 'حسناً' : 'OK'));
+      okBtn.onclick = () => finish(true);
+      foot.appendChild(okBtn);
+      closeX.onclick = () => finish(false);
+      document.addEventListener('keydown', onKey, true);
+      root.addEventListener('mousedown', onBackdrop);
+      root.hidden = false;
+      okBtn.focus();
+    }
+    function enqueue(job) {
+      return new Promise(resolve => { job.resolve = resolve; queue.push(job); next(); });
+    }
+    window.EAPopup = {
+      alert: (message, opts) => enqueue(Object.assign({ message: String(message == null ? '' : message), confirm: false }, opts)),
+      confirm: (message, opts) => enqueue(Object.assign({ message: String(message == null ? '' : message), confirm: true }, opts))
+    };
+    // Any remaining window.alert() call (including ones inside script.js) uses the popup as well.
+    window.alert = function (message) { window.EAPopup.alert(message); };
+  })();
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
   <script>
     const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
@@ -1894,10 +1989,15 @@ async function sha256Hex(value) {
 
       if (decision === 'n') {
         const who = getRowValue(row, ['الاسم', 'name']) || '';
-        const ok = window.confirm(t(
+        const ok = await window.EAPopup.confirm(t(
           `Are you sure you want to reject this reservation${who ? ' for ' + who : ''}? A rejection email will be sent.`,
           `هل أنت متأكد من رفض هذا الحجز${who ? ' الخاص بـ ' + who : ''}؟ سيتم إرسال رسالة رفض بالبريد الإلكتروني.`
-        ));
+        ), {
+          title: t('Reject reservation', 'رفض الحجز'),
+          okText: t('Yes, reject', 'نعم، ارفض'),
+          cancelText: t('Cancel', 'إلغاء'),
+          danger: true
+        });
         if (!ok) return;
       }
 

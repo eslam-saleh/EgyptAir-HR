@@ -763,29 +763,42 @@
       .profile-hero h3 {
         margin: 0;
         color: var(--text);
-        font-size: 1.22rem;
+        font-size: 1.4rem;
       }
 
       .profile-hero p {
         margin: 5px 0 0;
         color: var(--muted);
+        font-size: 1.02rem;
       }
 
       .profile-sections {
         display: grid;
-        gap: 18px;
-        margin-top: 20px;
+        gap: 8px;
+        margin-top: 12px;
       }
 
       .profile-section {
-        padding-top: 18px;
+        padding-top: 8px;
         border-top: 1px solid var(--line);
       }
 
       .profile-section h3 {
-        margin: 0 0 12px;
+        margin: 0 0 6px;
         color: var(--primary);
-        font-size: .98rem;
+        font-size: 1.12rem;
+      }
+
+      .dialog-head .head-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-inline-start: auto;
+      }
+
+      .dialog-head .print-btn {
+        min-height: 36px;
+        padding: 0 14px;
       }
 
       .details-grid {
@@ -804,7 +817,7 @@
 
       .detail dt {
         color: var(--muted);
-        font-size: .72rem;
+        font-size: .8rem;
         font-weight: 800;
       }
 
@@ -812,7 +825,7 @@
         margin: 4px 0 0;
         overflow-wrap: anywhere;
         color: var(--text);
-        font-size: .89rem;
+        font-size: .98rem;
       }
 
       .form {
@@ -1268,8 +1281,15 @@
         <div class="filter-field"><label for="secondedJob2" data-en="Seconded job" data-ar="الوظيفة المنتدب عليها">Seconded job</label><div class="ms" id="secondedJob2"></div></div>
         <div class="filter-field"><label for="ageGroup" data-en="Age group" data-ar="الفئة العمرية">Age group</label><div class="ms" id="ageGroup"></div></div>
         <div class="filter-field"><label for="jobTitle" data-en="Job title" data-ar="مسمى الوظيفة">Job title</label><div class="ms" id="jobTitle"></div></div>
-        <div class="hire-range"><div class="filter-field hire-date"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date"></div>
-          <div class="filter-field hire-date"><label for="hireTo" data-en="Hired until" data-ar="التعيين حتى">Hired until</label><div class="date-row"><input class="input" id="hireTo" type="date"><button class="btn today-btn" id="hireToday" type="button" data-en-title="Set to today's date" data-ar-title="ضبط التاريخ على اليوم"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v15"/><path d="M6 13.5l6 6 6-6"/></svg></button></div></div></div>
+        <div class="hire-range"><div class="filter-field hire-date"><label for="hireFrom" data-en="Hired from" data-ar="التعيين من">Hired from</label><input class="input" id="hireFrom" type="date" min="1950-01-01"></div>
+          <div class="filter-field hire-date"><label for="hireTo" data-en="Hired until" data-ar="التعيين حتى">Hired until</label><div class="date-row"><input class="input" id="hireTo" type="date" min="1950-01-01"><button class="btn today-btn" id="hireToday" type="button" data-en-title="Set to today's date" data-ar-title="ضبط التاريخ على اليوم"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v15"/><path d="M6 13.5l6 6 6-6"/></svg></button></div></div></div>
+      
+        <div class="filter-field"><label for="workSchedule" data-en="Work schedule" data-ar="توقيت العمل">Work schedule</label><div class="ms" id="workSchedule"></div></div>
+        <div class="filter-field"><label for="report2024" data-en="Annual report 2024" data-ar="تقرير عام 2024">Annual report 2024</label><div class="ms" id="report2024"></div></div>
+        <div class="filter-field"><label for="report2025" data-en="Annual report 2025" data-ar="تقرير عام 2025">Annual report 2025</label><div class="ms" id="report2025"></div></div>
+        <div class="filter-field"><label for="report2026" data-en="Annual report 2026 (TBD)" data-ar="تقرير عام 2026 (لم يُملأ بعد)">Annual report 2026 (TBD)</label><div class="ms" id="report2026"></div></div>
+        <div class="hire-range retire-range"><div class="filter-field hire-date"><label for="retireFrom" data-en="Retires from" data-ar="المعاش من">Retires from</label><div class="date-row"><input class="input" id="retireFrom" type="date" min="1950-01-01"><button class="btn today-btn" id="retireToday" type="button" data-en-title="Set to today's date" data-ar-title="ضبط التاريخ على اليوم"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v15"/><path d="M6 13.5l6 6 6-6"/></svg></button></div></div>
+          <div class="filter-field hire-date"><label for="retireTo" data-en="Retires until" data-ar="المعاش حتى">Retires until</label><input class="input" id="retireTo" type="date" min="1950-01-01"></div></div>
       </section>
       <section class="layout">
         <section class="panel" aria-labelledby="tableHeading">
@@ -1347,7 +1367,7 @@
     <div class="modal" id="profileModal" hidden>
       <section class="dialog narrow" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
         <div class="dialog-head">
-          <h2 id="profileTitle"></h2><button class="icon-btn" type="button" data-close="profileModal" aria-label="Close">×</button>
+          <h2 id="profileTitle"></h2><div class="head-actions"><button class="btn secondary print-btn" type="button" id="printProfileBtn"></button><button class="icon-btn" type="button" data-close="profileModal" aria-label="Close">×</button></div>
         </div>
         <div class="dialog-body" id="profileBody"></div>
       </section>
@@ -1429,6 +1449,10 @@
           allSecondedJobs: 'All seconded jobs 2',
           allAgeGroups: 'All age groups',
           allJobs: 'All job titles',
+          allWorkSchedules: 'All work schedules',
+          allReports2024: 'All 2024 reports',
+          allReports2025: 'All 2025 reports',
+          allReports2026: 'All 2026 reports',
           emptyFilter: '— (empty)',
           noData: 'No matching employee records.',
           noDistribution: 'No matching records.',
@@ -1443,6 +1467,7 @@
           exportEmpty: 'No matching records to export.',
           exporting: 'Preparing download…',
           profile: 'Employee profile',
+          print: 'Print',
           edit: 'Edit record',
           newEmployee: 'Add employee',
           editEmployee: 'Edit employee',
@@ -1518,6 +1543,10 @@
           allSecondedJobs: 'كل الوظائف المنتدبة',
           allAgeGroups: 'كل الفئات العمرية',
           allJobs: 'كل  الوظائف',
+          allWorkSchedules: 'كل توقيتات العمل',
+          allReports2024: 'كل تقارير 2024',
+          allReports2025: 'كل تقارير 2025',
+          allReports2026: 'كل تقارير 2026',
           emptyFilter: '— (فارغ)',
           noData: 'لا توجد سجلات موظفين مطابقة.',
           noDistribution: 'لا توجد سجلات مطابقة.',
@@ -1532,6 +1561,7 @@
           exportEmpty: 'لا توجد سجلات مطابقة للتصدير.',
           exporting: 'جارٍ تجهيز التنزيل…',
           profile: 'ملف الموظف',
+          print: 'طباعة',
           edit: 'تعديل السجل',
           newEmployee: 'إضافة موظف',
           editEmployee: 'تعديل بيانات الموظف',
@@ -1621,7 +1651,21 @@
           ['disabilityType', 'Disability type', 'نوع الإعاقة', 'combo'],
           ['addressExtra', 'Work location', 'الموقع', 'combo'],
           ['nationalId', 'National ID', 'الرقم القومى', 'text'],
-          ['insuranceNumber', 'Insurance number', 'الرقم التأميني', 'text']
+          ['insuranceNumber', 'Insurance number', 'الرقم التأميني', 'text'],
+          ['uniform', 'Uniform', 'الزي', 'text'],
+          ['appointmentQualificationTitle', 'Qualification at appointment', 'مسمى المؤهل عند التعيين', 'combo'],
+          ['appointmentQualificationType', 'Qualification type at appointment', 'نوع المؤهل عند التعيين', 'combo'],
+          ['appointmentQualificationTitle2', 'Second qualification at appointment', 'مسمى مؤهل التعيين 2', 'combo'],
+          ['appointmentQualificationType2', 'Second qualification type', 'نوع مؤهل التعيين 2', 'combo'],
+          ['qualificationDate', 'Qualification date', 'تاريخ المؤهل', 'date'],
+          ['contractStart', 'Contract start', 'تاريخ بداية التعاقد', 'date'],
+          ['contractEnd', 'Contract end', 'تاريخ نهاية التعاقد', 'date'],
+          ['serviceType', 'Service type', 'نوع الخدمة', 'combo'],
+          ['workType', 'Work type', 'نوع العمل', 'combo'],
+          ['status', 'Status', 'الحالة', 'select'],
+          ['report2024', 'Annual report 2024', 'تقرير عام 2024', 'combo'],
+          ['report2025', 'Annual report 2025', 'تقرير عام 2025', 'combo'],
+          ['report2026', 'Annual report 2026', 'تقرير عام 2026', 'combo']
         ]],
         ['employment', 'Employment details', 'بيانات وظيفية', [
           ['originalCompany', 'Original company', 'الشركة الأساسية', 'combo'],
@@ -1653,19 +1697,6 @@
           ['secondmentStart', 'Secondment start', 'تاريخ الانتداب', 'date'],
           ['secondmentEnd', 'Secondment end', 'تاريخ نهاية الانتداب', 'date'],
           ['secondedJobGroup', 'Seconded job group', 'المجموعة النوعية الجديدة المنتدب عليها', 'combo']
-        ]],
-        ['other', 'Additional details', 'بيانات متنوعة', [
-          ['uniform', 'Uniform', 'الزي', 'text'],
-          ['appointmentQualificationTitle', 'Qualification at appointment', 'مسمى المؤهل عند التعيين', 'combo'],
-          ['appointmentQualificationType', 'Qualification type at appointment', 'نوع المؤهل عند التعيين', 'combo'],
-          ['appointmentQualificationTitle2', 'Second qualification at appointment', 'مسمى مؤهل التعيين 2', 'combo'],
-          ['appointmentQualificationType2', 'Second qualification type', 'نوع مؤهل التعيين 2', 'combo'],
-          ['qualificationDate', 'Qualification date', 'تاريخ المؤهل', 'date'],
-          ['contractStart', 'Contract start', 'تاريخ بداية التعاقد', 'date'],
-          ['contractEnd', 'Contract end', 'تاريخ نهاية التعاقد', 'date'],
-          ['serviceType', 'Service type', 'نوع الخدمة', 'combo'],
-          ['workType', 'Work type', 'نوع العمل', 'combo'],
-          ['status', 'Status', 'الحالة', 'select']
         ]]
       ];
       const lang = () => document.documentElement.lang === 'ar' ? 'ar' : 'en';
@@ -1680,11 +1711,39 @@
         "'": '&#39;'
       } [char]));
       const recordKey = employee => clean(employee.rowNumber || employee.id || employee.code);
+      // Anything dated before this is a spreadsheet artefact (1899-12-30 / 1900-01-00 blank-cell
+      // dates, time-only cells, etc.) and is ignored everywhere — dates AND text columns.
+      const MIN_VALID_DATE = '1950-01-01';
+      const MIN_VALID_YEAR = 1950;
+      const BAD_DATE_PATTERNS = [
+        // 1899-12-30, 1900/1/1, 1899--, 1900-01-00T22:00:00.000Z, "1899-12-30 00:00:00"
+        /(?<!\d)(\d{4})(?:\s*[-/.]\s*(?:\d{1,2})?){1,2}(?:[T ]\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?(?!\d)/g,
+        // 30/12/1899, 1-1-1900
+        /(?<!\d)\d{1,2}\s*[-/.]\s*\d{1,2}\s*[-/.]\s*(\d{4})(?:[T ]\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?(?!\d)/g
+      ];
+      function stripInvalidDates(value) {
+        if (typeof value !== 'string') return value;
+        let text = value;
+        BAD_DATE_PATTERNS.forEach(re => {
+          text = text.replace(re, (whole, year) => {
+            const y = Number(year);
+            return y >= 1000 && y < MIN_VALID_YEAR ? '' : whole;
+          });
+        });
+        if (text === value) return value;
+        return text.replace(/\s{2,}/g, ' ').replace(/^[\s\-–—/.,،:]+|[\s\-–—/.,،:]+$/g, '').trim();
+      }
+      function sanitizeRecord(record) {
+        const out = {};
+        Object.keys(record || {}).forEach(key => { out[key] = stripInvalidDates(record[key]); });
+        return out;
+      }
       const parseDate = value => {
         // Strip any time component first (e.g. "2020/05/12 00:00:00")
         const cleaned = clean(value).replace(/[T\s].*$/, '');
         const match = cleaned.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
-        return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+        if (!match || Number(match[1]) < MIN_VALID_YEAR) return null;
+        return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
       };
       const dateValue = value => {
         const date = parseDate(value);
@@ -1946,11 +2005,15 @@
         { id: 'serviceType', key: 'serviceType', allKey: 'allServiceTypes' },
         { id: 'secondedJob2', key: 'secondedJob2', allKey: 'allSecondedJobs' },
         { id: 'ageGroup', key: 'ageGroup', allKey: 'allAgeGroups', computed: true },
-        { id: 'jobTitle', key: 'jobTitle', allKey: 'allJobs' }
+        { id: 'jobTitle', key: 'jobTitle', allKey: 'allJobs' },
+        { id: 'workSchedule', key: 'workSchedule', allKey: 'allWorkSchedules' },
+        { id: 'report2024', key: 'report2024', allKey: 'allReports2024' },
+        { id: 'report2025', key: 'report2025', allKey: 'allReports2025' },
+        { id: 'report2026', key: 'report2026', allKey: 'allReports2026' } // 2026 not filled yet (TBD) — fills automatically once data exists
       ];
 
       // ───────── Multi-select filter component ─────────
-      const MS_IDS = ['status', 'sector', 'department', 'section', 'appointmentType', 'gender', 'grade', 'workType', 'serviceType', 'secondedJob2', 'ageGroup', 'jobTitle'];
+      const MS_IDS = ['status', 'sector', 'department', 'section', 'appointmentType', 'gender', 'grade', 'workType', 'serviceType', 'secondedJob2', 'ageGroup', 'jobTitle', 'workSchedule', 'report2024', 'report2025', 'report2026'];
       const msMeta = {}; // id -> { options: [{value,label}], placeholder }
 
       /** True when the filter has no selection, or the value is one of the selected ones. */
@@ -2084,6 +2147,7 @@
           if (!except.has('status') && !matchesSel('status', normalizeStatusKey(employee.status))) return false;
           if (!except.has('upcoming') && state.upcomingOnly && !isUpcomingRetirement(employee)) return false;
           if (!except.has('hireRange') && !matchesHireRange(employee)) return false;
+          if (!except.has('retireRange') && !matchesRetireRange(employee)) return false;
           return FILTER_CONTROLS.every(ctrl => except.has(ctrl.id) || matchesSel(ctrl.id, filterValueFor(employee, ctrl)));
         });
       }
@@ -2146,6 +2210,7 @@
         if (clean($('search')?.value)) return true;
         if (state.upcomingOnly) return true;
         if (clean($('hireFrom')?.value) || clean($('hireTo')?.value)) return true;
+        if (clean($('retireFrom')?.value) || clean($('retireTo')?.value)) return true;
         return MS_IDS.some(id => selCount(id) > 0);
       }
 
@@ -2167,6 +2232,42 @@
         return true;
       }
 
+      /** Inclusive date-range check on the computed retirement date (تاريخ المعاش). */
+      function matchesRetireRange(employee) {
+        const fromStr = clean($('retireFrom')?.value);
+        const toStr = clean($('retireTo')?.value);
+        if (!fromStr && !toStr) return true;
+        const retires = parseDate(employee.retirementDate);
+        if (!retires) return false;
+        if (fromStr) {
+          const from = parseDate(fromStr);
+          if (from && retires < from) return false;
+        }
+        if (toStr) {
+          const to = parseDate(toStr);
+          if (to && retires > to) return false;
+        }
+        return true;
+      }
+
+      const pad2 = n => String(n).padStart(2, '0');
+      const isoOf = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+      /** Mirror the "retiring within 12 months" card into the retirement range (start empty = includes already-overdue). */
+      function syncRetireRangeFromCard(on) {
+        if (!$('retireFrom') || !$('retireTo')) return;
+        if (on) {
+          const end = new Date();
+          end.setHours(0, 0, 0, 0);
+          end.setFullYear(end.getFullYear() + 1);
+          $('retireFrom').value = '';
+          $('retireTo').value = isoOf(end);
+        } else {
+          $('retireFrom').value = '';
+          $('retireTo').value = '';
+        }
+      }
+
       function getFiltered() {
         const query = normal($('search')?.value);
         const list = state.employees.map(computed).filter(employee => {
@@ -2175,6 +2276,7 @@
           if (!matchesSel('status', normalizeStatusKey(employee.status))) return false;
           if (state.upcomingOnly && !isUpcomingRetirement(employee)) return false;
           if (!matchesHireRange(employee)) return false;
+          if (!matchesRetireRange(employee)) return false;
           return FILTER_CONTROLS.every(ctrl => matchesSel(ctrl.id, filterValueFor(employee, ctrl)));
         });
         const key = state.sort;
@@ -2219,6 +2321,7 @@
         }
         state.page = 1;
         setUpcomingOnly(turningOn);
+        syncRetireRangeFromCard(turningOn);
         applyFilter();
       }
 
@@ -2392,6 +2495,10 @@
           return entries ? `<section class="profile-section"><h3>${escapeHtml(sectionLabel(section))}</h3><dl class="details-grid">${entries}</dl></section>` : '';
         }).join('');
         $('profileTitle').textContent = t('profile');
+        if ($('printProfileBtn')) {
+          $('printProfileBtn').textContent = '🖨 ' + t('print');
+          $('printProfileBtn').onclick = () => printProfile(e);
+        }
         const canEdit = state.view === 'active' && state.canEdit;
         const canRetire = state.view === 'active' && state.canEdit;
         const actions = [];
@@ -2408,6 +2515,57 @@
           $('retireProfileBtn').onclick = () => askRetireConfirm(employee);
         }
         openModal('profileModal', opener);
+      }
+
+      /** Print every filled detail of one employee on a single light-themed landscape page. */
+      function printProfile(e) {
+        const ar = lang() === 'ar';
+        const esc = escapeHtml;
+        const overview = `${clean(e.actualJob || e.jobTitle) || t('unknown')} · ${clean(e.currentCompany) || t('unknown')}`;
+        const sections = schema.map(section => {
+          const cells = section[3].filter(field => clean(e[field[0]])).map(field =>
+            `<div class="c"><b>${esc(fieldLabel(field))}</b><span>${esc(field[3] === 'date' ? dateText(e[field[0]]) : e[field[0]])}</span></div>`).join('');
+          return cells ? `<section><h2>${esc(sectionLabel(section))}</h2><div class="g">${cells}</div></section>` : '';
+        }).join('');
+        const html = `<!doctype html><html lang="${ar ? 'ar' : 'en'}" dir="${ar ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><title>${esc(e.name || t('profile'))}</title><style>
+          @page { size: A4 landscape; margin: 7mm; }
+          * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          html, body { margin: 0; background: #fff; color: #111; font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; }
+          body { font-size: 9pt; line-height: 1.25; }
+          header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-bottom: 4px; margin-bottom: 4px; border-bottom: 2px solid #0b3a66; }
+          header h1 { margin: 0; font-size: 1.7em; color: #0b3a66; }
+          header p { margin: 0; color: #444; font-size: 1.05em; }
+          section { margin-top: 4px; }
+          h2 { margin: 0 0 2px; padding: 1px 6px; font-size: 1.05em; color: #0b3a66; background: #eaf1f8; border-radius: 3px; }
+          .g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+          .c { padding: 2px 5px; border: 1px solid #cfd8e3; border-radius: 3px; min-width: 0; overflow-wrap: anywhere; }
+          .c b { display: block; font-size: .78em; color: #555; }
+          .c span { display: block; font-size: 1em; color: #000; }
+        </style></head><body><div id="page"><header><div><h1>${esc(e.name || t('unknown'))}</h1><p>${esc(overview)}</p></div><p>${esc(e.code ? (ar ? 'كود الموظف: ' : 'Employee code: ') + e.code : '')}</p></header>${sections || `<p>${esc(t('noData'))}</p>`}</div></body></html>`;
+        const old = document.getElementById('printFrame');
+        if (old) old.remove();
+        const frame = document.createElement('iframe');
+        frame.id = 'printFrame';
+        frame.setAttribute('aria-hidden', 'true');
+        frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:1070px;height:741px;border:0;visibility:hidden';
+        document.body.appendChild(frame);
+        const doc = frame.contentDocument;
+        doc.open(); doc.write(html); doc.close();
+        const go = () => {
+          const body = doc.body;
+          const maxH = (210 - 14) / 25.4 * 96 - 4; // A4 landscape height minus margins, in CSS px
+          let size = 9;
+          body.style.fontSize = size + 'pt';
+          // Shrink the font until everything fits on one page
+          while (doc.getElementById('page').scrollHeight > maxH && size > 4.5) {
+            size -= 0.25;
+            body.style.fontSize = size + 'pt';
+          }
+          frame.contentWindow.focus();
+          frame.contentWindow.print();
+          setTimeout(() => frame.remove(), 60000);
+        };
+        (doc.fonts && doc.fonts.ready ? doc.fonts.ready : Promise.resolve()).then(() => setTimeout(go, 100));
       }
 
       let pendingRetireEmployee = null;
@@ -2686,7 +2844,7 @@
         const e = computed(employee);
         $('formTitle').textContent = state.editingKey ? t('editEmployee') : t('newEmployee');
         $('formError').textContent = '';
-        $('employeeForm').innerHTML = `<input type="hidden" name="id" value="${escapeHtml(employee.id || '')}"><input type="hidden" name="rowNumber" value="${escapeHtml(employee.rowNumber || '')}"><input type="hidden" name="version" value="${escapeHtml(employee.version || '')}">` + schema.map((section, index) => `<details class="form-section" open><summary>${escapeHtml(sectionLabel(section))}</summary><div class="fields">${section[3].map(field => { const [key, en, ar, type, required] = field, value = e[key] ?? '', label = lang() === 'ar' ? ar : en; if (type === 'computed') return `<div class="field computed"><label>${escapeHtml(label)}</label><input type="text" readonly value="${escapeHtml(value)}"></div>`; if (type === 'select') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><select id="field-${key}" name="${key}" ${required ? 'required' : ''}>${selectOptions(key, value)}</select></div>`; if (type === 'combo') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="text" list="dl-${key}" autocomplete="off" value="${escapeHtml(value)}" ${required ? 'required' : ''}><datalist id="dl-${key}">${comboOptions(key)}</datalist></div>`; return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="${type === 'date' ? 'date' : type === 'tel' ? 'tel' : 'text'}" value="${escapeHtml(type === 'date' ? dateValue(value) : value)}" ${required ? 'required' : ''}></div>`; }).join('')}</div></details>`).join('');
+        $('employeeForm').innerHTML = `<input type="hidden" name="id" value="${escapeHtml(employee.id || '')}"><input type="hidden" name="rowNumber" value="${escapeHtml(employee.rowNumber || '')}"><input type="hidden" name="version" value="${escapeHtml(employee.version || '')}">` + schema.map((section, index) => `<details class="form-section" open><summary>${escapeHtml(sectionLabel(section))}</summary><div class="fields">${section[3].map(field => { const [key, en, ar, type, required] = field, value = e[key] ?? '', label = lang() === 'ar' ? ar : en; if (type === 'computed') return `<div class="field computed"><label>${escapeHtml(label)}</label><input type="text" readonly value="${escapeHtml(value)}"></div>`; if (type === 'select') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><select id="field-${key}" name="${key}" ${required ? 'required' : ''}>${selectOptions(key, value)}</select></div>`; if (type === 'combo') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="text" list="dl-${key}" autocomplete="off" value="${escapeHtml(value)}" ${required ? 'required' : ''}><datalist id="dl-${key}">${comboOptions(key)}</datalist></div>`; return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="${type === 'date' ? 'date' : type === 'tel' ? 'tel' : 'text'}" ${type === 'date' ? `min="${MIN_VALID_DATE}"` : ''} value="${escapeHtml(type === 'date' ? dateValue(value) : value)}" ${required ? 'required' : ''}></div>`; }).join('')}</div></details>`).join('');
         openModal('formModal', opener);
       }
 
@@ -2727,10 +2885,10 @@
           if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
           const payload = await readApi(response);
           if (!payload.ok || !Array.isArray(payload.employees)) throw new Error(payload.error || payload.message || t('dataUnavailable'));
-          state.employees = payload.employees.map(employee => ({
-            ...employee,
-            id: clean(employee.id || employee.code || employee.rowNumber)
-          }));
+          state.employees = payload.employees.map(employee => {
+            const safe = sanitizeRecord(employee);
+            return { ...safe, id: clean(safe.id || safe.code || safe.rowNumber) };
+          });
           refreshFilters();
           state.page = 1;
           loadHistory();
@@ -2761,6 +2919,8 @@
         if ($('search')) $('search').value = '';
         if ($('hireFrom')) $('hireFrom').value = '';
         if ($('hireTo')) $('hireTo').value = '';
+        if ($('retireFrom')) $('retireFrom').value = '';
+        if ($('retireTo')) $('retireTo').value = '';
         setUpcomingOnly(false);
         clearAllSelections();
         applyViewChrome();
@@ -2955,7 +3115,8 @@
         'secondedDepartment', 'secondmentStart', 'secondmentEnd', 'secondedJobGroup', 'unpaidLeaveType', 'leaveMandatory', 'leaveStart',
         'leaveEnd', 'militaryStatus', 'exemptionReason', 'contractStart', 'contractEnd', 'appointmentType', 'status', 'address', 'phone',
         'governorate', 'addressExtra', 'originalCompanyName', 'originalGeneralDepartment', 'originalSubDepartment', 'workSchedule',
-        'nationalId', 'insuranceNumber'
+        'nationalId', 'insuranceNumber',
+        'report2024', 'report2025', 'report2026'
       ];
       const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
       const XLSX_FONT = 'Arial';
@@ -3354,6 +3515,16 @@
         initMultiSelects();
         $('hireFrom')?.addEventListener('change', applyFilter);
         $('hireTo')?.addEventListener('change', applyFilter);
+        // Editing the retirement range by hand replaces the "next 12 months" card filter
+        const onRetireRangeChange = () => { if (state.upcomingOnly) setUpcomingOnly(false); applyFilter(); };
+        $('retireFrom')?.addEventListener('change', onRetireRangeChange);
+        $('retireTo')?.addEventListener('change', onRetireRangeChange);
+        $('retireToday')?.addEventListener('click', () => {
+          const input = $('retireFrom');
+          if (!input) return;
+          input.value = localStamp();
+          onRetireRangeChange();
+        });
         const retStat = $('retirementStat');
         if (retStat) {
           retStat.addEventListener('click', toggleUpcomingOnly);
@@ -3378,6 +3549,8 @@
           $('search').value = '';
           if ($('hireFrom')) $('hireFrom').value = '';
           if ($('hireTo')) $('hireTo').value = '';
+          if ($('retireFrom')) $('retireFrom').value = '';
+          if ($('retireTo')) $('retireTo').value = '';
           setUpcomingOnly(false);
           clearAllSelections();
           applyFilter();
