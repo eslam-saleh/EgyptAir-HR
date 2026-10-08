@@ -1067,6 +1067,40 @@
       .ms-x:hover { background: #c0392b; color: #fff; }
       .ms-none { padding: 10px; color: var(--muted); font-size: .82rem; text-align: center; }
 
+      /* Export column picker (before Download filtered list) */
+      .export-cols {
+        position: relative;
+        min-width: min(240px, 42vw);
+      }
+      .export-cols .ms-btn {
+        min-height: 42px;
+        font-weight: 700;
+      }
+      .export-cols .ms-panel {
+        inset-inline-end: 0;
+        inset-inline-start: auto;
+        min-width: 280px;
+        max-width: min(360px, 92vw);
+        max-height: 360px;
+      }
+      .export-cols .ms-opt.locked {
+        cursor: default;
+        opacity: 0.92;
+      }
+      .export-cols .ms-opt.locked:hover { background: transparent; }
+      .export-cols .ms-opt.locked .ms-check {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: #fff;
+      }
+      .export-cols .ms-opt.locked .ms-lock {
+        flex: none;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 800;
+      }
+      .panel-head .actions { flex-wrap: wrap; }
+
       /* History popup (آخر التعديلات) */
       .history-search { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
       .history-search .input { flex: 1 1 auto; }
@@ -1300,6 +1334,7 @@
             <h2 id="tableHeading" data-en="Employee list" data-ar="قائمة الموظفين">Employee list <span id="resultNote" class="result-note"></span></h2>
             <div class="actions" style="gap:8px;align-items:center">
               <span id="loadingState" class="result-note" aria-live="polite"></span>
+              <div class="ms export-cols" id="exportCols" aria-label="Export columns"></div>
               <button class="btn" id="exportFilteredBtn" type="button" data-en="Download filtered list" data-ar="تنزيل القائمة المفلترة">Download filtered list</button>
             </div>
           </div>
@@ -1470,6 +1505,10 @@
           exportReady: 'Exported {count} employee records.',
           exportEmpty: 'No matching records to export.',
           exporting: 'Preparing download…',
+          exportCols: 'Export columns',
+          exportColsAll: 'All columns',
+          exportColsSelected: '{n} columns',
+          exportColsLocked: 'Required',
           profile: 'Employee profile',
           print: 'Print',
           edit: 'Edit record',
@@ -1566,6 +1605,10 @@
           exportReady: 'تم تصدير {count} سجل موظف.',
           exportEmpty: 'لا توجد سجلات مطابقة للتصدير.',
           exporting: 'جارٍ تجهيز التنزيل…',
+          exportCols: 'أعمدة التصدير',
+          exportColsAll: 'كل الأعمدة',
+          exportColsSelected: '{n} عمود',
+          exportColsLocked: 'مطلوب',
           profile: 'ملف الموظف',
           print: 'طباعة',
           edit: 'تعديل السجل',
@@ -3136,6 +3179,146 @@
         'nationalId', 'insuranceNumber',
         'report2024', 'report2025', 'report2026'
       ];
+      // Columns that must always appear in the filtered Excel export.
+      const EXPORT_LOCKED_KEYS = ['code', 'name'];
+      // Selected export column keys (null = all columns, including any added later).
+      let exportColSelection = null; // Set | null
+
+      function allExportableFields() {
+        const fields = schema.flatMap(section => section[3]);
+        const byKey = new Map(fields.map(field => [field[0], field]));
+        const orderedKeys = [
+          ...SOURCE_COLUMN_ORDER.filter(key => byKey.has(key)),
+          ...fields.map(field => field[0]).filter(key => !SOURCE_COLUMN_ORDER.includes(key))
+        ];
+        return orderedKeys.map(key => ({ key, field: byKey.get(key), label: fieldLabel(byKey.get(key)) }));
+      }
+
+      function ensureExportColSelection() {
+        const all = allExportableFields().map(f => f.key);
+        if (!exportColSelection) {
+          exportColSelection = new Set(all);
+        } else {
+          // Keep locked keys; drop unknown; add any brand-new schema keys as selected.
+          EXPORT_LOCKED_KEYS.forEach(k => exportColSelection.add(k));
+          [...exportColSelection].forEach(k => { if (!all.includes(k)) exportColSelection.delete(k); });
+          all.forEach(k => { if (!exportColSelection.has(k) && !exportColSelection.size) {/* noop */} });
+          // If user had "all" previously and new fields appeared, auto-include them only when every prior key was selected.
+        }
+        return exportColSelection;
+      }
+
+      function getSelectedExportKeys() {
+        const all = allExportableFields();
+        const set = ensureExportColSelection();
+        const selected = all.filter(f => set.has(f.key) || EXPORT_LOCKED_KEYS.includes(f.key));
+        // Always force locked to the front of selection in sheet order (already ordered).
+        return selected.map(f => f.key);
+      }
+
+      function renderExportColsPicker() {
+        const host = $('exportCols');
+        if (!host || !host.querySelector('.ms-btn')) return;
+        const all = allExportableFields();
+        const set = ensureExportColSelection();
+        // Ensure every known key is present in the set on first paint (default = all).
+        if (set.size < all.length && set.size === 0) all.forEach(f => set.add(f.key));
+        // If selection is a strict subset, fine; if first init left set empty somehow, select all.
+        if (![...set].length) all.forEach(f => set.add(f.key));
+        EXPORT_LOCKED_KEYS.forEach(k => set.add(k));
+
+        const selectedCount = all.filter(f => set.has(f.key)).length;
+        const allSelected = selectedCount === all.length;
+        const btn = host.querySelector('.ms-btn');
+        const text = btn.querySelector('.ms-text');
+        host.classList.toggle('has-sel', !allSelected);
+        if (allSelected) {
+          text.textContent = t('exportColsAll');
+        } else {
+          text.textContent = t('exportColsSelected').replace('{n}', String(selectedCount));
+        }
+        btn.title = all.filter(f => set.has(f.key)).map(f => f.label).join('، ');
+        host.querySelector('.ms-search').placeholder = t('msSearch');
+        host.querySelector('[data-act="all"]').textContent = t('msSelectAll');
+        host.querySelector('[data-act="none"]').textContent = t('msClear');
+        const list = host.querySelector('.ms-list');
+        const q = normal(host.querySelector('.ms-search').value);
+        const shown = all.filter(f => !q || normal(f.label).includes(q) || normal(f.key).includes(q));
+        const scroll = list.scrollTop;
+        list.innerHTML = shown.length ? shown.map(f => {
+          const locked = EXPORT_LOCKED_KEYS.includes(f.key);
+          const on = locked || set.has(f.key);
+          return `<div class="ms-opt${on ? ' sel' : ''}${locked ? ' locked' : ''}" role="option" aria-selected="${on}" data-v="${escapeHtml(f.key)}"${locked ? ' aria-disabled="true"' : ''}><span class="ms-check">✓</span><span class="ms-label">${escapeHtml(f.label)}</span>${locked ? `<span class="ms-lock">${escapeHtml(t('exportColsLocked'))}</span>` : ''}</div>`;
+        }).join('') : `<div class="ms-none">${escapeHtml(t('msNoMatch'))}</div>`;
+        list.scrollTop = scroll;
+      }
+
+      function initExportColsPicker() {
+        const host = $('exportCols');
+        if (!host) return;
+        // Default: every exportable column selected.
+        exportColSelection = new Set(allExportableFields().map(f => f.key));
+        EXPORT_LOCKED_KEYS.forEach(k => exportColSelection.add(k));
+        host.innerHTML = `<button type="button" class="ms-btn" aria-haspopup="listbox" aria-expanded="false"><span class="ms-text"></span><span class="ms-caret">▾</span></button><div class="ms-panel" hidden><input class="ms-search" type="search" autocomplete="off"><div class="ms-actions"><button type="button" data-act="all"></button><button type="button" data-act="none"></button></div><div class="ms-list" role="listbox"></div></div>`;
+        const btn = host.querySelector('.ms-btn');
+        const panel = host.querySelector('.ms-panel');
+        const search = host.querySelector('.ms-search');
+        const list = host.querySelector('.ms-list');
+
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const open = !host.classList.contains('open');
+          // Close filter multi-selects if any.
+          if (typeof msCloseAll === 'function') msCloseAll();
+          document.querySelectorAll('.export-cols.open').forEach(el => {
+            if (el !== host) {
+              el.classList.remove('open');
+              el.querySelector('.ms-panel').hidden = true;
+              el.querySelector('.ms-btn').setAttribute('aria-expanded', 'false');
+            }
+          });
+          host.classList.toggle('open', open);
+          panel.hidden = !open;
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+          if (open) {
+            renderExportColsPicker();
+            search.focus();
+          }
+        });
+        search.addEventListener('input', () => renderExportColsPicker());
+        search.addEventListener('click', e => e.stopPropagation());
+        host.querySelector('[data-act="all"]').addEventListener('click', e => {
+          e.stopPropagation();
+          allExportableFields().forEach(f => exportColSelection.add(f.key));
+          renderExportColsPicker();
+        });
+        host.querySelector('[data-act="none"]').addEventListener('click', e => {
+          e.stopPropagation();
+          // Clear all except locked code + name.
+          exportColSelection = new Set(EXPORT_LOCKED_KEYS);
+          renderExportColsPicker();
+        });
+        list.addEventListener('click', e => {
+          e.stopPropagation();
+          const opt = e.target.closest('.ms-opt');
+          if (!opt || opt.classList.contains('locked')) return;
+          const key = opt.dataset.v;
+          if (!key || EXPORT_LOCKED_KEYS.includes(key)) return;
+          if (exportColSelection.has(key)) exportColSelection.delete(key);
+          else exportColSelection.add(key);
+          EXPORT_LOCKED_KEYS.forEach(k => exportColSelection.add(k));
+          renderExportColsPicker();
+        });
+        document.addEventListener('click', () => {
+          if (!host.classList.contains('open')) return;
+          host.classList.remove('open');
+          panel.hidden = true;
+          btn.setAttribute('aria-expanded', 'false');
+        });
+        host.addEventListener('click', e => e.stopPropagation());
+        renderExportColsPicker();
+      }
+
       const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
       const XLSX_FONT = 'Arial';
       const localStamp = (date = new Date()) => {
@@ -3400,14 +3583,18 @@
         try {
           await nextPaint();
           const NAVY = '003F73', GOLD = 'C99C39';
-          // Columns: exactly the source-sheet order; any field the sheet order doesn't know goes last.
+          // Columns: source-sheet order, filtered by the export-column picker
+          // (code + name are always included).
           const fields = schema.flatMap(section => section[3]);
           const byKey = new Map(fields.map(field => [field[0], field]));
-          const orderedKeys = [
-            ...SOURCE_COLUMN_ORDER.filter(key => byKey.has(key)),
-            ...fields.map(field => field[0]).filter(key => !SOURCE_COLUMN_ORDER.includes(key))
-          ];
-          const columns = orderedKeys.map(key => ({ key, label: fieldLabel(byKey.get(key)) }));
+          const selectedKeys = getSelectedExportKeys();
+          const columns = selectedKeys
+            .filter(key => byKey.has(key))
+            .map(key => ({ key, label: fieldLabel(byKey.get(key)) }));
+          if (!columns.length) {
+            toast(t('exportEmpty'), 'error');
+            return;
+          }
           const table = list.map(emp => {
             const e = computed(emp);
             return columns.map(col => {
@@ -3524,6 +3711,7 @@
         document.querySelectorAll('[data-lang-option]').forEach(button => button.addEventListener('click', () => {
           applyLanguage(button.dataset.langOption);
           applyViewChrome();
+          if (typeof renderExportColsPicker === 'function') renderExportColsPicker();
           toast(lang() === 'ar' ? 'تم تغيير اللغة.' : 'Language changed.', 'success');
         }));
         document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
@@ -3532,6 +3720,7 @@
         $('search').addEventListener('input', applyFilter);
         $('historySearch')?.addEventListener('input', renderHistoryTable);
         initMultiSelects();
+        initExportColsPicker();
         $('hireFrom')?.addEventListener('change', applyFilter);
         $('hireTo')?.addEventListener('change', applyFilter);
         // Editing the retirement range by hand replaces the "next 12 months" card filter
