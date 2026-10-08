@@ -12,7 +12,15 @@
   <!-- OpenCV.js: edge detection & perspective correction -->
   <script async src="https://docs.opencv.org/4.8.0/opencv.js"></script>
   <!-- JSZip: Word (.docx) export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="jszip_min.js"></script>
+  <script>
+    // Local copy first (works offline); fall back to the CDN build if the file isn't next to this page.
+    if (typeof JSZip === 'undefined') {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      document.head.appendChild(s);
+    }
+  </script>
   <style>
     /* ── Engine status pill ── */
     .engine-status {
@@ -1012,6 +1020,28 @@ function autoDetectCorners() {
 
 const MIN_AUTO_DETECT_AREA_RATIO = 0.50;
 
+// ── Rectangle shaping ────────────────────────────────────────────────────
+// Whatever the detector finds, the four corners it hands back must describe
+// something that is at least RECT_TARGET (90%) "a real rectangle". The
+// rectangularity score of a quad is the LOWER of two independent measures:
+//   • angle fit – how close its four interior angles are to 90°
+//   • shape fit – overlap (IoU) between the quad and the best-fit rectangle
+//                 (same centre, mean width/height, mean orientation)
+// A perfect rectangle scores 1.0, a mildly tilted page ~0.93–0.99. Quads
+// below the target are repaired (see shapeContourToQuad / regularizeQuad)
+// by moving corners only as far as needed to reach it.
+// Lower RECT_TARGET (e.g. 0.80) if you want steeply-angled photos to keep
+// more of their true perspective instead of being nudged toward a rectangle.
+const RECT_TARGET = 0.90;
+
+// Quality gates a blob must pass to count as "the document". `strict` is the
+// original behaviour. `relaxed` is only used when the strict pass finds
+// nothing at all, so detection tries harder before giving up.
+const DETECT_GATES = {
+  strict:  { minArea: 0.12, minExtent: 0.60, minSolidity: 0.78 },
+  relaxed: { minArea: 0.08, minExtent: 0.45, minSolidity: 0.60 },
+};
+
 // ── Corner precision & shape-quality helpers ────────────────────────────
 // These operate on plain JS point arrays only (no cv.Mat allocation), so
 // they add no OpenCV memory-management burden to the callers below.
@@ -1076,6 +1106,26 @@ function fitLineTLS(points) {
   return { point: { x: mx, y: my }, dir: { x: Math.cos(theta), y: Math.sin(theta) } };
 }
 
+// TLS fit that sheds outliers: a bump from a finger, an envelope touching the
+// page, a shadow edge… A few rounds of "fit, drop points far from the line,
+// refit" pull the line back onto the real paper edge instead of the average
+// of edge + bump. Behaves exactly like fitLineTLS when the points are clean.
+function fitLineRobust(points) {
+  let pts = points, line = fitLineTLS(pts);
+  const minKeep = Math.max(EDGE_REFINE_MIN_POINTS, Math.floor(points.length * 0.5));
+  for (let iter = 0; iter < 3; iter++) {
+    const res = pts.map(p => Math.abs((p.x - line.point.x) * line.dir.y - (p.y - line.point.y) * line.dir.x));
+    const sorted = res.slice().sort((a, b) => a - b);
+    const med = sorted[sorted.length >> 1];
+    const thr = Math.max(3 * 1.4826 * med, 2); // robust sigma, never tighter than 2px
+    const kept = pts.filter((_, i) => res[i] <= thr);
+    if (kept.length === pts.length || kept.length < minKeep) break;
+    pts = kept;
+    line = fitLineTLS(pts);
+  }
+  return line;
+}
+
 function intersectLines(l1, l2) {
   const denom = l1.dir.x * l2.dir.y - l1.dir.y * l2.dir.x;
   if (Math.abs(denom) < 1e-6) return null; // parallel — shouldn't happen for adjacent page edges
@@ -1095,19 +1145,30 @@ const EDGE_REFINE_MAX_SHIFT_FRAC = 0.08; // refined corner can't jump more than 
 // true corner, and any single noisy point can't throw it off the way it can
 // with a bare polygon vertex. Falls back to the original corner, edge by
 // edge, whenever the contour is too sparse or the fit looks untrustworthy.
-function refineQuadCorners(cnt, corners, imgW, imgH) {
-  const contourPts = getContourPoints(cnt);
-  if (contourPts.length < 4 * (EDGE_REFINE_MIN_POINTS + 2)) return corners;
+// `corners` must be ordered (tl, tr, br, bl); that order may run with or
+// against the contour's own direction, which is detected and handled here.
+function refineQuadCorners(contourPts, corners, imgW, imgH) {
+  const n = contourPts.length;
+  if (n < 4 * (EDGE_REFINE_MIN_POINTS + 2)) return corners;
 
-  const idxs = corners.map(c => nearestContourIndex(contourPts, c));
+  let pts = contourPts;
+  let idxs = corners.map(c => nearestContourIndex(contourPts, c));
+  let forward = 0;
+  for (let i = 0; i < 4; i++) forward += (idxs[(i + 1) % 4] - idxs[i] + n) % n;
+  if (forward !== n) {
+    if (forward !== 3 * n) return corners;       // corners don't walk the contour in one clean loop
+    pts = contourPts.slice().reverse();          // same loop, opposite direction
+    idxs = idxs.map(k => n - 1 - k);
+  }
+
   const diag = Math.hypot(imgW, imgH);
   const maxShift = diag * EDGE_REFINE_MAX_SHIFT_FRAC;
 
   const lines = corners.map((_, i) => {
-    const arc = arcBetween(contourPts, idxs[i], idxs[(i + 1) % 4]);
+    const arc = arcBetween(pts, idxs[i], idxs[(i + 1) % 4]);
     const trim = Math.floor(arc.length * EDGE_REFINE_TRIM_FRAC);
     const inner = arc.slice(trim, arc.length - trim);
-    return inner.length >= EDGE_REFINE_MIN_POINTS ? fitLineTLS(inner) : null;
+    return inner.length >= EDGE_REFINE_MIN_POINTS ? fitLineRobust(inner) : null;
   });
 
   return corners.map((c, i) => {
@@ -1136,101 +1197,9 @@ function quadAngleScore(pts) {
     if (mag1 < 1e-6 || mag2 < 1e-6) return 0;
     const cosA = Math.max(-1, Math.min(1, (v1x * v2x + v1y * v2y) / (mag1 * mag2)));
     const angleDeg = Math.acos(cosA) * 180 / Math.PI;
-    // Tighter than linear: angles within ~12° of 90° still score very high;
-    // beyond ~35° the contribution collapses (rejects L-shapes / triangles).
-    const err = Math.abs(angleDeg - 90);
-    total += Math.max(0, 1 - Math.pow(err / 35, 1.35));
+    total += Math.max(0, 1 - Math.abs(angleDeg - 90) / 90);
   }
   return total / 4;
-}
-
-// Opposite edges of a real page stay roughly parallel even under moderate
-// perspective. Map average angular deviation to [0,1] (0° → 1, ≥40° → 0).
-function quadParallelScore(pts) {
-  if (!pts || pts.length !== 4) return 0;
-  const edgeDir = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
-  const parallelErr = (a, b) => {
-    let d = Math.abs(a - b) * 180 / Math.PI;
-    if (d > 180) d = 360 - d;
-    if (d > 90) d = 180 - d; // direction-agnostic parallelism
-    return d;
-  };
-  const d01 = edgeDir(pts[0], pts[1]);
-  const d12 = edgeDir(pts[1], pts[2]);
-  const d23 = edgeDir(pts[2], pts[3]);
-  const d30 = edgeDir(pts[3], pts[0]);
-  const eOpp = (parallelErr(d01, d23) + parallelErr(d12, d30)) / 2;
-  return Math.max(0, 1 - eOpp / 40);
-}
-
-// Combined rectangularity in [0,1]. Target: ≥ 0.80 for a "nearly perfect"
-// four-corner document rectangle (angles ~90°, opposite sides ~parallel).
-function quadRectScore(pts) {
-  return 0.58 * quadAngleScore(pts) + 0.42 * quadParallelScore(pts);
-}
-
-// When the detected quad is already a strong rectangle (≥80%), lightly pull
-// opposite edges toward parallelism without erasing real perspective. This
-// cleans noisy corner jitter from approxPolyDP / edge-refine so the handles
-// land on a crisp page outline instead of a wobbly kite.
-function polishNearRectangle(pts) {
-  if (!pts || pts.length !== 4) return pts;
-  const rect = quadRectScore(pts);
-  if (rect < 0.80) return pts;
-
-  const ordered = orderCorners(pts);
-  // Average opposite-edge direction vectors, then rebuild corners from the
-  // four edge midpoints projected along the averaged axes — keeps size and
-  // centre, removes small angular noise.
-  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-  const m01 = mid(ordered[0], ordered[1]);
-  const m12 = mid(ordered[1], ordered[2]);
-  const m23 = mid(ordered[2], ordered[3]);
-  const m30 = mid(ordered[3], ordered[0]);
-
-  const avgDir = (a, b, c, d) => {
-    let vx = (b.x - a.x) + (c.x - d.x);
-    let vy = (b.y - a.y) + (c.y - d.y);
-    // Flip second edge if it points roughly opposite so they reinforce
-    if (vx * (c.x - d.x) + vy * (c.y - d.y) < 0) {
-      vx = (b.x - a.x) - (c.x - d.x);
-      vy = (b.y - a.y) - (c.y - d.y);
-    }
-    const len = Math.hypot(vx, vy) || 1;
-    return { x: vx / len, y: vy / len };
-  };
-  // Horizontal-ish pair: top (0→1) & bottom (3→2); vertical-ish: right (1→2) & left (0→3)
-  const hDir = avgDir(ordered[0], ordered[1], ordered[2], ordered[3]);
-  const vDir = avgDir(ordered[1], ordered[2], ordered[3], ordered[0]);
-
-  // Intersect lines through opposite midpoints with averaged directions
-  const line = (p, dir) => ({ point: p, dir });
-  const top = line(m01, hDir);
-  const bottom = line(m23, hDir);
-  const right = line(m12, vDir);
-  const left = line(m30, vDir);
-
-  const tl = intersectLines(top, left);
-  const tr = intersectLines(top, right);
-  const br = intersectLines(bottom, right);
-  const bl = intersectLines(bottom, left);
-  if (!tl || !tr || !br || !bl) return pts;
-
-  const polished = [tl, tr, br, bl];
-  // Safety: never jump a corner more than 4% of the image diagonal, and
-  // never accept a polish that *lowers* rectangularity.
-  const diag = Math.hypot(
-    Math.max(...ordered.map(p => p.x)) - Math.min(...ordered.map(p => p.x)),
-    Math.max(...ordered.map(p => p.y)) - Math.min(...ordered.map(p => p.y))
-  ) || 1;
-  const maxShift = diag * 0.04;
-  for (let i = 0; i < 4; i++) {
-    if (Math.hypot(polished[i].x - ordered[i].x, polished[i].y - ordered[i].y) > maxShift) {
-      return pts;
-    }
-  }
-  if (quadRectScore(polished) + 0.01 < rect) return pts;
-  return polished;
 }
 
 function bboxOf(corners) {
@@ -1247,6 +1216,329 @@ function bboxIoU(a, b) {
   const areaB = (b.x1 - b.x0) * (b.y1 - b.y0);
   const union = areaA + areaB - inter;
   return union > 0 ? inter / union : 0;
+}
+
+// ── Rectangle-shaping geometry (plain JS, no cv.Mat) ────────────────────
+
+function clampQuad(q, w, h) {
+  return q.map(p => ({ x: Math.max(0, Math.min(w, p.x)), y: Math.max(0, Math.min(h, p.y)) }));
+}
+
+// Bow-tie test: opposite edges of a four-sided outline must not cross.
+function quadSelfCrosses(q) {
+  const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const hit = (p1, p2, p3, p4) => {
+    const d1 = cross(p3, p4, p1), d2 = cross(p3, p4, p2);
+    const d3 = cross(p1, p2, p3), d4 = cross(p1, p2, p4);
+    return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+  };
+  return hit(q[0], q[1], q[2], q[3]) || hit(q[1], q[2], q[3], q[0]);
+}
+
+function signedPolygonArea(points) {
+  let a = 0;
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i], q = points[(i + 1) % points.length];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return a / 2;
+}
+
+// Sutherland–Hodgman: the part of `subject` that lies inside the CONVEX
+// polygon `clip` (either winding direction).
+function clipConvex(subject, clip) {
+  const sgn = signedPolygonArea(clip) >= 0 ? 1 : -1;
+  let out = subject;
+  for (let i = 0; i < clip.length && out.length; i++) {
+    const a = clip[i], b = clip[(i + 1) % clip.length];
+    const inside = p => sgn * ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)) >= 0;
+    const input = out;
+    out = [];
+    for (let j = 0; j < input.length; j++) {
+      const cur = input[j], prev = input[(j + input.length - 1) % input.length];
+      const curIn = inside(cur), prevIn = inside(prev);
+      if (curIn !== prevIn) {
+        const d1x = cur.x - prev.x, d1y = cur.y - prev.y, d2x = b.x - a.x, d2y = b.y - a.y;
+        const denom = d1x * d2y - d1y * d2x;
+        const t = Math.abs(denom) < 1e-12 ? 0 : ((a.x - prev.x) * d2y - (a.y - prev.y) * d2x) / denom;
+        out.push({ x: prev.x + t * d1x, y: prev.y + t * d1y });
+      }
+      if (curIn) out.push(cur);
+    }
+  }
+  return out;
+}
+
+// The rectangle that best summarises an ordered quad (tl, tr, br, bl):
+// centred on the quad, with the mean of its opposite side lengths and the
+// mean orientation of its four sides. Corner i of the result lines up with
+// corner i of the quad, so the two can be blended directly.
+function meanRectangle(q) {
+  const [p0, p1, p2, p3] = q;
+  const top = { x: p1.x - p0.x, y: p1.y - p0.y }, bot = { x: p2.x - p3.x, y: p2.y - p3.y };
+  const left = { x: p3.x - p0.x, y: p3.y - p0.y }, right = { x: p2.x - p1.x, y: p2.y - p1.y };
+  const lens = [top, bot, left, right].map(v => Math.hypot(v.x, v.y));
+  if (lens.some(l => l < 1e-6)) return null;
+  const angles = [
+    Math.atan2(top.y, top.x), Math.atan2(bot.y, bot.x),
+    Math.atan2(left.y, left.x) - Math.PI / 2, Math.atan2(right.y, right.x) - Math.PI / 2,
+  ];
+  let sx = 0, sy = 0;
+  for (const t of angles) { sx += Math.cos(t); sy += Math.sin(t); }
+  const theta = Math.atan2(sy, sx);
+  const ux = Math.cos(theta), uy = Math.sin(theta), vx = -uy, vy = ux;
+  const hw = (lens[0] + lens[1]) / 4, hh = (lens[2] + lens[3]) / 4;
+  const cx = (p0.x + p1.x + p2.x + p3.x) / 4, cy = (p0.y + p1.y + p2.y + p3.y) / 4;
+  return [
+    { x: cx - hw * ux - hh * vx, y: cy - hw * uy - hh * vy },
+    { x: cx + hw * ux - hh * vx, y: cy + hw * uy - hh * vy },
+    { x: cx + hw * ux + hh * vx, y: cy + hw * uy + hh * vy },
+    { x: cx - hw * ux + hh * vx, y: cy - hw * uy + hh * vy },
+  ];
+}
+
+// 0..1 — how close an ordered quad is to a real rectangle (see RECT_TARGET).
+function quadRectangularity(q) {
+  if (!q || q.length !== 4 || quadSelfCrosses(q)) return 0;
+  const rect = meanRectangle(q);
+  if (!rect) return 0;
+  const aq = polygonArea(q), ar = polygonArea(rect);
+  if (aq < 1e-6 || ar < 1e-6) return 0;
+  const inter = polygonArea(clipConvex(q, rect));
+  const iou = inter / (aq + ar - inter);
+  return Math.min(quadAngleScore(q), iou);
+}
+
+// Pulls a quad toward its best-fit rectangle by the SMALLEST amount that
+// reaches `target` (so a page that is already rectangular enough is left
+// alone, and a real perspective view keeps as much of its shape as the
+// target allows). The result always lies inside the w×h frame. If even a
+// perfect rectangle can't be fitted inside the frame, falls back to the
+// complete photo — itself a perfect rectangle.
+function regularizeQuad(q, w, h, target = RECT_TARGET) {
+  const base = clampQuad(q, w, h);
+  if (quadRectangularity(base) >= target) return base;
+  const rect = meanRectangle(base);
+  if (!rect) return fullPhotoCorners(w, h);
+  const blend = t => clampQuad(base.map((p, i) => ({
+    x: p.x + (rect[i].x - p.x) * t,
+    y: p.y + (rect[i].y - p.y) * t,
+  })), w, h);
+  if (quadRectangularity(blend(1)) < target) return fullPhotoCorners(w, h);
+  let lo = 0, hi = 1;
+  for (let k = 0; k < 16; k++) {
+    const mid = (lo + hi) / 2;
+    if (quadRectangularity(blend(mid)) >= target) hi = mid; else lo = mid;
+  }
+  return blend(hi);
+}
+
+// Rebuild corner i from the other three as a parallelogram completion —
+// the usual fix when ONE corner is wrong (a finger over it, a folded flap,
+// a shadow edge) while the other three are right.
+function rebuildCorner(q, i) {
+  const a = q[(i + 1) % 4], b = q[(i + 2) % 4], c = q[(i + 3) % 4];
+  const out = q.slice();
+  out[i] = { x: a.x + c.x - b.x, y: a.y + c.y - b.y };
+  return out;
+}
+
+// Smallest-area four-sided polygon that encloses a convex hull, found by
+// repeatedly deleting the hull edge whose removal adds the least area (its
+// two neighbours are extended until they meet). Rounded corners, tiny
+// jitter and a handful of extra vertices all disappear first, leaving the
+// four long sides of the page — and, unlike approxPolyDP with a fixed
+// epsilon, it always lands on exactly four corners.
+function hullToQuad(hull) {
+  let poly = [];
+  for (const p of hull) {
+    const last = poly[poly.length - 1];
+    if (!last || last.x !== p.x || last.y !== p.y) poly.push(p);
+  }
+  while (poly.length > 1 && poly[0].x === poly[poly.length - 1].x && poly[0].y === poly[poly.length - 1].y) poly.pop();
+  if (poly.length < 4) return null;
+  while (poly.length > 4) {
+    const n = poly.length;
+    let bestI = -1, bestAdd = Infinity, bestPt = null;
+    for (let i = 0; i < n; i++) {
+      const a = poly[(i + n - 1) % n], b = poly[i], c = poly[(i + 1) % n], d = poly[(i + 2) % n];
+      const e1x = b.x - a.x, e1y = b.y - a.y;     // a→b, extended forward past b
+      const e2x = c.x - d.x, e2y = c.y - d.y;     // d→c, extended backward past c
+      const wx = c.x - b.x, wy = c.y - b.y;
+      const cr = e1x * e2y - e1y * e2x;
+      if (Math.abs(cr) < 1e-9) continue;          // neighbours are parallel — can't meet
+      const alpha = (wx * e2y - wy * e2x) / cr;
+      const beta = (wx * e1y - wy * e1x) / cr;
+      if (alpha < 0 || beta < 0) continue;        // they'd meet on the wrong side
+      const add = 0.5 * alpha * Math.abs(e1x * wy - e1y * wx);
+      if (add < bestAdd) { bestAdd = add; bestI = i; bestPt = { x: b.x + alpha * e1x, y: b.y + alpha * e1y }; }
+    }
+    if (bestI < 0) return null;
+    const next = [];
+    for (let k = 0; k < n; k++) {
+      if (k === bestI) next.push(bestPt);
+      else if (k !== (bestI + 1) % n) next.push(poly[k]);
+    }
+    poly = next;
+  }
+  return poly;
+}
+
+// IoU between a quad and the (convex) hull of the blob it describes — how
+// faithfully the quad follows the evidence in the image.
+function hullOverlap(q, hullPts, hullArea) {
+  const aq = polygonArea(q);
+  if (aq < 1e-6 || hullArea < 1e-6) return 0;
+  const inter = polygonArea(clipConvex(q, hullPts));
+  const union = aq + hullArea - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+// approxPolyDP with a few epsilons — outdoor photos with soft paper
+// edges often need a slightly looser fit to land on exactly 4 points.
+function approxQuadOfContour(cnt, peri) {
+  for (const eps of [0.015, 0.02, 0.025, 0.03, 0.04]) {
+    const approx = new cv.Mat();
+    try {
+      cv.approxPolyDP(cnt, approx, eps * peri, true);
+      if (approx.rows === 4) return getContourPoints(approx);
+    } finally {
+      approx.delete();
+    }
+  }
+  return null;
+}
+
+// Turns one contour into the best four-corner quad that is ≥ RECT_TARGET
+// rectangular. Several independent hypotheses compete:
+//   • approxPolyDP corners            (the original method)
+//   • smallest quad enclosing the hull (robust to rounded/noisy outlines)
+//   • the min-area rotated rectangle   (always a perfect rectangle)
+// each with and without line-fit corner refinement. A hypothesis that falls
+// short of the target is repaired (rebuild each corner from the other three,
+// or blend toward its best-fit rectangle) and the survivor that follows the
+// blob's outline most closely wins. Returns null only for degenerate input.
+function shapeContourToQuad(cnt, hullPts, hullArea, rect, W, H) {
+  const contourPts = getContourPoints(cnt);
+  const peri = cv.arcLength(cnt, true);
+  const hyps = [];
+
+  const approx = approxQuadOfContour(cnt, peri);
+  if (approx) {
+    const ordered = orderCorners(approx);
+    hyps.push(ordered, refineQuadCorners(contourPts, ordered, W, H));
+  }
+  const hq = hullToQuad(hullPts);
+  if (hq) {
+    const ordered = orderCorners(hq);
+    hyps.push(ordered, refineQuadCorners(contourPts, ordered, W, H));
+  }
+  // Compute vertices manually — cv.RotatedRect.points / cv.boxPoints are
+  // missing or broken in several OpenCV.js builds.
+  if (rect.size.width > 0 && rect.size.height > 0) hyps.push(orderCorners(rotatedRectCorners(rect)));
+
+  let best = null;
+  const offer = (pts, repaired) => {
+    const q = clampQuad(pts, W, H);
+    const r = quadRectangularity(q);
+    if (r < RECT_TARGET) return false;
+    const fit = hullOverlap(q, hullPts, hullArea);
+    if (fit < 0.5) return true; // rectangular, but not describing this blob
+    const s = fit + 0.15 * r - (repaired ? 0.01 : 0);
+    if (!best || s > best.s) best = { pts: q, rectangularity: r, fit, repaired, s };
+    return true;
+  };
+  for (const h of hyps) {
+    if (offer(h, false)) continue;
+    for (let i = 0; i < 4; i++) offer(rebuildCorner(h, i), true);
+    offer(regularizeQuad(h, W, H), true);
+  }
+  return best;
+}
+
+// Scores one contour as a document candidate, or null if it fails the gates.
+function evaluateContour(cnt, W, H, gates) {
+  const imageArea = W * H;
+  const area = cv.contourArea(cnt);
+  if (area < imageArea * gates.minArea || area > imageArea * 0.97) return null;
+
+  // Rectangularity check: how well does this contour fill its own minimum-
+  // area bounding rectangle? A clean sheet of paper scores near 1. A blob
+  // that has swallowed part of the background (a hand, a table edge, wood
+  // grain) is irregular/concave and scores much lower — this is what lets
+  // us reject "whole frame minus one dark corner" even though it's large.
+  const rect = cv.minAreaRect(cnt);
+  const rectArea = rect.size.width * rect.size.height;
+  const extent = rectArea > 0 ? area / rectArea : 0;
+
+  const hull = new cv.Mat();
+  let hullPts;
+  try {
+    cv.convexHull(cnt, hull);
+    hullPts = getContourPoints(hull);
+  } finally {
+    hull.delete();
+  }
+  const hullArea = polygonArea(hullPts);
+  const solidity = hullArea > 0 ? area / hullArea : 0;
+
+  // Outdoor shots (asphalt, chrome rails, soft paper edges) often score a
+  // little lower on extent/solidity than a clean desk photo — keep the
+  // bar high enough to reject garbage blobs, but not so strict that a
+  // real page is discarded and we fall back to full-frame corners.
+  if (extent < gates.minExtent || solidity < gates.minSolidity) return null;
+
+  // Reject the classic "found nothing, grabbed the whole frame" failure
+  // signature specifically: a box that's both axis-aligned (not rotated —
+  // a real held-up document is essentially never perfectly parallel to the
+  // camera frame) AND touches all four raw image edges. A genuinely large,
+  // real document detection is either rotated/perspective-skewed (like a
+  // photographed page) or, if it truly is a clean axis-aligned full-bleed
+  // rectangle, has near-perfect extent/solidity — so that case still passes.
+  // Deliberately conservative (all 4 edges, not 3): rejecting too eagerly
+  // risks trading a safe-but-loose crop (extra background — easy for a
+  // user to spot and drag in) for a tighter one that silently cuts off
+  // real document content, which is the worse failure mode for a
+  // document scanner.
+  const angleFromAxis = Math.min(rect.angle, 90 - rect.angle);
+  const bbox = cv.boundingRect(cnt);
+  const touchesAllEdges =
+    bbox.x < W * 0.015 && bbox.y < H * 0.015 &&
+    (bbox.x + bbox.width) > W * 0.985 && (bbox.y + bbox.height) > H * 0.985;
+  if (angleFromAxis < 3 && touchesAllEdges && Math.min(extent, solidity) < 0.97) return null;
+
+  const shaped = shapeContourToQuad(cnt, hullPts, hullArea, rect, W, H);
+  if (!shaped) return null;
+
+  const score = extent * 0.35 + solidity * 0.30 + shaped.rectangularity * 0.25 + shaped.fit * 0.10;
+  return {
+    corners: shaped.pts, area, score,
+    rectangularity: shaped.rectangularity, repaired: shaped.repaired,
+  };
+}
+
+// Best candidate among all contours of one binary mask. `withHoles` also
+// considers inner contours: for an edge map, the hole inside a closed outline
+// of the page is the page itself, and stays clean even when clutter touches
+// the outline from the outside.
+function bestCandidateInMask(mask, W, H, gates, withHoles) {
+  const contours = new cv.MatVector(), hierarchy = new cv.Mat();
+  let best = null;
+  try {
+    cv.findContours(mask, contours, hierarchy, withHoles ? cv.RETR_CCOMP : cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+    for (let i = 0; i < contours.size(); i++) {
+      const cnt = contours.get(i);
+      try {
+        const cand = evaluateContour(cnt, W, H, gates);
+        if (cand && (!best || cand.score > best.score)) best = cand;
+      } finally {
+        cnt.delete();
+      }
+    }
+  } finally {
+    contours.delete(); hierarchy.delete();
+  }
+  return best;
 }
 
 function detectDocument(canvas) {
@@ -1275,11 +1567,16 @@ function detectDocument(canvas) {
     //    "bright enough" or "textured enough" and swallow the background into
     //    one big blob. Paper is close to zero saturation almost everywhere;
     //    most real-world surfaces aren't, so this catches what the other two miss.
-    const candidates = [
-      findDocContour(workSrc, 'canny'),
-      findDocContour(workSrc, 'thresh'),
-      findDocContour(workSrc, 'saturation'),
-    ].filter(Boolean);
+    const modes = ['canny', 'thresh', 'saturation'];
+    const runAll = (gates) => modes
+      .map(mode => { const c = findDocContour(workSrc, mode, gates); if (c) c.mode = mode; return c; })
+      .filter(Boolean);
+
+    // Strict pass first (the original acceptance gates). Only if it finds
+    // nothing at all does a relaxed pass try again — detection keeps looking
+    // for a rectangle instead of immediately giving up on the whole photo.
+    let candidates = runAll(DETECT_GATES.strict);
+    if (!candidates.length) candidates = runAll(DETECT_GATES.relaxed);
 
     // Cross-strategy agreement: three independent methods rarely make the
     // same mistake, but they do usually agree on where the real document
@@ -1290,7 +1587,7 @@ function detectDocument(canvas) {
     const CONSENSUS_BONUS = 0.25;
     candidates.forEach(c => { c.bbox = bboxOf(c.corners); });
     candidates.forEach(c => {
-      c.corroborated = candidates.some(o => o !== c && bboxIoU(c.bbox, o.bbox) > CONSENSUS_IOU_THRESHOLD);
+      c.corroborated = candidates.some(o => o !== c && o.mode !== c.mode && bboxIoU(c.bbox, o.bbox) > CONSENSUS_IOU_THRESHOLD);
       if (c.corroborated) c.score += CONSENSUS_BONUS;
     });
 
@@ -1302,28 +1599,24 @@ function detectDocument(canvas) {
     const best = candidates[0];
 
     if (best) {
-      // Prefer a candidate whose shape is already a strong rectangle (≥80%).
-      // If the top scorer is weak on rectangularity but a corroborated runner-up
-      // clears the 0.80 bar, take that instead — shape quality over raw score.
-      let chosen = best;
-      const strong = candidates
-        .filter(c => (c.rectScore || 0) >= 0.80)
-        .sort((a, b) => (b.rectScore - a.rectScore) || (b.score - a.score) || (b.area - a.area));
-      if (strong.length && (best.rectScore || 0) < 0.80) {
-        chosen = strong[0];
-      }
-
-      let corners = orderCorners(chosen.corners.map(p => ({ x: p.x / scale, y: p.y / scale })));
-      // Clean residual corner jitter when the quad is already nearly perfect.
-      corners = polishNearRectangle(corners);
-
+      const corners = orderCorners(best.corners.map(p => ({ x: p.x / scale, y: p.y / scale })));
+      // Never accept a confident-looking small box: the area floor exists to
+      // catch a single method latching onto a small, wrong region (a logo,
+      // a table corner) and calling it "the document". But when multiple
+      // independent strategies land on the same region, that agreement is
+      // much stronger evidence of correctness than raw area — a real page
+      // photographed with generous surrounding background is completely
+      // normal and shouldn't be forced past its own edges into that
+      // background. So: full-strength floor for an uncorroborated (single-
+      // strategy) detection, a much lower one as a last-resort sanity check
+      // when corroborated.
       const imageArea = canvas.width * canvas.height;
-      // Area floor: full-strength for a lone strategy, relaxed when multiple
-      // independent detectors agreed on the same region (real pages often sit
-      // in generous background and should not be forced to fill the frame).
-      const areaFloorRatio = chosen.corroborated ? 0.15 : MIN_AUTO_DETECT_AREA_RATIO;
+      const areaFloorRatio = best.corroborated ? 0.15 : MIN_AUTO_DETECT_AREA_RATIO;
       result = expandCornersToMinimumArea(corners, canvas.width, canvas.height, imageArea * areaFloorRatio);
       if (!result) result = defaultCorners(canvas.width, canvas.height);
+      // Final guarantee: whatever path produced it, the corners handed back
+      // are ≥ RECT_TARGET rectangular (a no-op when they already are).
+      result = regularizeQuad(result, canvas.width, canvas.height);
     }
   } finally {
     src.delete();
@@ -1335,21 +1628,28 @@ function detectDocument(canvas) {
 // Finds the best plausible 4-corner document region in a (already downscaled) image.
 // mode: 'canny' (edges), 'thresh' (Otsu on brightness), or 'saturation' (Otsu on
 // inverted HSV saturation — isolates near-white/gray paper from a colorful backdrop).
-function findDocContour(workSrc, mode) {
-  let gray = new cv.Mat(), work = new cv.Mat();
-  let contours = new cv.MatVector(), hierarchy = new cv.Mat();
-  let result = null;
-  let scratch = []; // mats to clean up unconditionally
+// Each mode tries a couple of variants of its mask and keeps the best result:
+//   canny      – the original edge thresholds, plus a sensitive pair for bright,
+//                low-contrast scenes (white paper on a light table), where
+//                thresholds tied to overall brightness miss the page outline.
+//   thresh /   – the plain mask, plus one with an aggressive opening that sheds
+//   saturation   thin or small things stuck to the page (a pen, an envelope
+//                corner, white checks on a tablecloth).
+function findDocContour(workSrc, mode, gates) {
+  gates = gates || DETECT_GATES.strict;
+  const W = workSrc.cols, H = workSrc.rows;
+  const mats = []; // every Mat created here is released in `finally`
+  const keep = (m) => { mats.push(m); return m; };
+  const candidates = [];
 
   try {
+    const gray = keep(new cv.Mat());
     if (mode === 'saturation') {
-      const rgb = new cv.Mat(), hsv = new cv.Mat(), channels = new cv.MatVector();
-      scratch.push(rgb, hsv, channels);
+      const rgb = keep(new cv.Mat()), hsv = keep(new cv.Mat()), channels = keep(new cv.MatVector());
       cv.cvtColor(workSrc, rgb, cv.COLOR_RGBA2RGB);
       cv.cvtColor(rgb, hsv, cv.COLOR_RGB2HSV);
       cv.split(hsv, channels);
-      const sat = channels.get(1);
-      scratch.push(sat);
+      const sat = keep(channels.get(1));
       cv.bitwise_not(sat, gray); // invert: low-saturation paper becomes bright
     } else {
       cv.cvtColor(workSrc, gray, cv.COLOR_RGBA2GRAY);
@@ -1358,161 +1658,76 @@ function findDocContour(workSrc, mode) {
     if (mode === 'canny') {
       // Bilateral filter smooths noise/texture while keeping edges crisp, which gives
       // Canny a much cleaner signal than a plain Gaussian blur.
-      const smoothed = new cv.Mat();
+      const smoothed = keep(new cv.Mat());
       cv.bilateralFilter(gray, smoothed, 9, 60, 60);
-      // Auto-compute Canny thresholds from the image's median intensity instead of
-      // fixed constants, so it adapts to dark/bright photos alike.
+
+      // Original thresholds, derived from overall brightness: fine for a
+      // page on a dark desk, but on a bright photo they climb so high that
+      // only the strongest edges (text) survive and the page outline is lost.
       const meanVal = cv.mean(smoothed)[0];
-      const lower = Math.max(0, 0.66 * meanVal);
-      const upper = Math.min(255, 1.33 * meanVal);
-      cv.Canny(smoothed, work, lower, upper);
-      const kernel = cv.Mat.ones(5, 5, cv.CV_8U);
-      cv.dilate(work, work, kernel, new cv.Point(-1, -1), 2);
-      cv.morphologyEx(work, work, cv.MORPH_CLOSE, kernel);
-      kernel.delete();
-      smoothed.delete();
+      const thresholds = [[Math.max(0, 0.66 * meanVal), Math.min(255, 1.33 * meanVal)]];
+
+      // Sensitive pair, scaled to the image's own noise level (median
+      // gradient strength) so it catches faint outlines without turning
+      // sensor noise into edges.
+      const gx = keep(new cv.Mat()), gy = keep(new cv.Mat());
+      cv.Sobel(smoothed, gx, cv.CV_32F, 1, 0, 3);
+      cv.Sobel(smoothed, gy, cv.CV_32F, 0, 1, 3);
+      const ax = gx.data32F, ay = gy.data32F;
+      const step = 5, n = Math.floor(ax.length / step);
+      const samples = new Float32Array(n);
+      for (let i = 0; i < n; i++) samples[i] = Math.abs(ax[i * step]) + Math.abs(ay[i * step]);
+      samples.sort();
+      const sensUpper = Math.min(60, Math.max(30, samples[n >> 1] * 4));
+      if (sensUpper < thresholds[0][0]) thresholds.push([sensUpper / 2, sensUpper]);
+
+      for (const [lower, upper] of thresholds) {
+        const edges = keep(new cv.Mat());
+        cv.Canny(smoothed, edges, lower, upper);
+        const kernel = keep(cv.Mat.ones(5, 5, cv.CV_8U));
+        cv.dilate(edges, edges, kernel, new cv.Point(-1, -1), 2);
+        cv.morphologyEx(edges, edges, cv.MORPH_CLOSE, kernel);
+        const c = bestCandidateInMask(edges, W, H, gates, true);
+        if (c) candidates.push(c);
+      }
     } else {
       // Shared by 'thresh' and 'saturation': Otsu binarize, then close/open to
       // tidy up the mask without letting it bleed into surrounding clutter.
-      const blurred = new cv.Mat();
+      const blurred = keep(new cv.Mat()), work = keep(new cv.Mat());
       cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
       cv.threshold(blurred, work, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
-      const kernel = cv.Mat.ones(9, 9, cv.CV_8U);
+      const kernel = keep(cv.Mat.ones(9, 9, cv.CV_8U));
       cv.morphologyEx(work, work, cv.MORPH_CLOSE, kernel);
       cv.morphologyEx(work, work, cv.MORPH_OPEN, kernel);
-      kernel.delete();
-      blurred.delete();
+      let c = bestCandidateInMask(work, W, H, gates, false);
+      if (c) candidates.push(c);
+
+      // Aggressive opening: anything thinner/smaller than ~5% of the frame
+      // (a pen, an envelope corner, a checker square) falls off the page.
+      // Done at 1/4 resolution (a full-size opening with a kernel this big
+      // takes seconds), then AND-ed with the full-size mask so the page keeps
+      // its pixel-accurate edges. Corners come out rounded, which the
+      // edge-fit refinement undoes.
+      const f = 4;
+      const small = keep(new cv.Mat()), opened = keep(new cv.Mat()), up = keep(new cv.Mat());
+      cv.resize(work, small, new cv.Size(Math.max(1, Math.round(W / f)), Math.max(1, Math.round(H / f))), 0, 0, cv.INTER_AREA);
+      cv.threshold(small, small, 127, 255, cv.THRESH_BINARY);
+      const k = (Math.max(5, Math.round(Math.min(W, H) * 0.05 / f)) | 1);
+      const big = keep(cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(k, k)));
+      cv.morphologyEx(small, small, cv.MORPH_OPEN, big);
+      const pad = keep(cv.Mat.ones(3, 3, cv.CV_8U));
+      cv.dilate(small, small, pad); // one low-res pixel of margin so the AND never trims the page
+      cv.resize(small, up, new cv.Size(W, H), 0, 0, cv.INTER_NEAREST);
+      cv.bitwise_and(work, up, opened);
+      c = bestCandidateInMask(opened, W, H, gates, false);
+      if (c) candidates.push(c);
     }
-
-    cv.findContours(work, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-
-    let bestScore = -1, bestPts = null, bestArea = 0, bestRectScore = 0;
-    // Ignore only very small local details during contour search. A valid
-    // card/document may occupy less than half of a portrait photo; the final
-    // corner result is expanded to the required minimum area below.
-    const minArea = workSrc.cols * workSrc.rows * 0.12;
-    const maxArea = workSrc.cols * workSrc.rows * 0.97;
-    for (let i = 0; i < contours.size(); i++) {
-      const cnt = contours.get(i);
-      const area = cv.contourArea(cnt);
-      if (area < minArea || area > maxArea) { cnt.delete(); continue; }
-
-      // Rectangularity check: how well does this contour fill its own minimum-
-      // area bounding rectangle? A clean sheet of paper scores near 1. A blob
-      // that has swallowed part of the background (a hand, a table edge, wood
-      // grain) is irregular/concave and scores much lower — this is what lets
-      // us reject "whole frame minus one dark corner" even though it's large.
-      const rect = cv.minAreaRect(cnt);
-      const rectArea = rect.size.width * rect.size.height;
-      const extent = rectArea > 0 ? area / rectArea : 0;
-
-      const hull = new cv.Mat();
-      cv.convexHull(cnt, hull);
-      const hullArea = cv.contourArea(hull);
-      const solidity = hullArea > 0 ? area / hullArea : 0;
-      hull.delete();
-
-      // Outdoor shots (asphalt, chrome rails, soft paper edges) often score a
-      // little lower on extent/solidity than a clean desk photo — keep the
-      // bar high enough to reject garbage blobs, but not so strict that a
-      // real page is discarded and we fall back to full-frame corners.
-      if (extent < 0.60 || solidity < 0.78) { cnt.delete(); continue; }
-
-      // Reject the classic "found nothing, grabbed the whole frame" failure
-      // signature specifically: a box that's both axis-aligned (not rotated —
-      // a real held-up document is essentially never perfectly parallel to the
-      // camera frame) AND touches all four raw image edges. A genuinely large,
-      // real document detection is either rotated/perspective-skewed (like a
-      // photographed page) or, if it truly is a clean axis-aligned full-bleed
-      // rectangle, has near-perfect extent/solidity — so that case still passes.
-      // Deliberately conservative (all 4 edges, not 3): rejecting too eagerly
-      // risks trading a safe-but-loose crop (extra background — easy for a
-      // user to spot and drag in) for a tighter one that silently cuts off
-      // real document content, which is the worse failure mode for a
-      // document scanner.
-      const angleFromAxis = Math.min(rect.angle, 90 - rect.angle);
-      const bbox = cv.boundingRect(cnt);
-      const touchesAllEdges =
-        bbox.x < workSrc.cols * 0.015 && bbox.y < workSrc.rows * 0.015 &&
-        (bbox.x + bbox.width) > workSrc.cols * 0.985 && (bbox.y + bbox.height) > workSrc.rows * 0.985;
-      if (angleFromAxis < 3 && touchesAllEdges && Math.min(extent, solidity) < 0.97) {
-        cnt.delete(); continue;
-      }
-
-      const peri = cv.arcLength(cnt, true);
-
-      // Try a few approximation epsilons — outdoor photos with soft paper
-      // edges often need a slightly looser fit to land on exactly 4 points.
-      let pts = null, cleanQuad = false;
-      for (const eps of [0.015, 0.02, 0.025, 0.03, 0.04]) {
-        const approx = new cv.Mat();
-        cv.approxPolyDP(cnt, approx, eps * peri, true);
-        if (approx.rows === 4) {
-          pts = [];
-          for (let j = 0; j < 4; j++) {
-            // Prefer intPtr (works across OpenCV.js builds); fall back to
-            // the packed data32S view when available.
-            let x, y;
-            try {
-              const p = approx.intPtr(j, 0);
-              x = p[0]; y = p[1];
-            } catch (_) {
-              x = approx.data32S[j * 2];
-              y = approx.data32S[j * 2 + 1];
-            }
-            pts.push({ x, y });
-          }
-          cleanQuad = true;
-          approx.delete();
-          break;
-        }
-        approx.delete();
-      }
-
-      if (!pts) {
-        // Contour wasn't a clean quad (rounded corner, partial occlusion,
-        // etc). Fall back to the min-area rotated rect. Compute vertices
-        // manually — cv.RotatedRect.points / cv.boxPoints are missing or
-        // broken in several OpenCV.js builds, and throwing here used to
-        // abort the whole detector and silently fall back to full-frame
-        // corners (which is why enhance still showed the motorcycle).
-        pts = rotatedRectCorners(rect);
-      } else {
-        // Sub-pixel corner refinement (see helper above): fit a line to
-        // each full contour edge and intersect adjacent edges, instead of
-        // trusting approxPolyDP's coarse polygon vertices directly.
-        pts = refineQuadCorners(cnt, pts, workSrc.cols, workSrc.rows);
-      }
-
-      // Rectangularity dominates: we only want a near-perfect 4-corner page
-      // outline (target rectScore ≥ 0.80). Soft extent/solidity still break
-      // ties, but a clean rectangle always beats a bigger irregular blob.
-      const rectScore = quadRectScore(pts);
-      if (rectScore < 0.55) {
-        cnt.delete();
-        continue; // not rectangle-like enough to be a document page
-      }
-      const score =
-        extent * 0.18 +
-        solidity * 0.12 +
-        rectScore * 0.60 +
-        (cleanQuad ? 0.10 : 0);
-      if (pts && score > bestScore) {
-        bestScore = score;
-        bestPts = pts;
-        bestArea = area;
-        bestRectScore = rectScore;
-      }
-      cnt.delete();
-    }
-
-    if (bestPts) result = { corners: bestPts, area: bestArea, score: bestScore, rectScore: bestRectScore };
   } finally {
-    gray.delete(); work.delete();
-    contours.delete(); hierarchy.delete();
-    scratch.forEach(m => m.delete());
+    mats.forEach(m => m.delete());
   }
-  return result;
+
+  candidates.sort((a, b) => (b.score - a.score) || (b.area - a.area));
+  return candidates[0] || null;
 }
 
 // Vertices of a min-area rotated rect, computed without depending on
@@ -1541,6 +1756,12 @@ function polygonArea(points) {
   }
   return Math.abs(area) / 2;
 }
+
+// Enlarges a too-small detection to the required minimum area. The quad is
+// scaled about its centre and, if that pushes it past the photo's edge,
+// SLID back inside — never clamped corner-by-corner, which squashes the
+// shape (and used to push the area back under the minimum, discarding a
+// perfectly good detection for the full photo). Shape is preserved exactly.
 function expandCornersToMinimumArea(corners, w, h, minimumArea) {
   const currentArea = polygonArea(corners);
   if (currentArea >= minimumArea) return corners;
@@ -1551,11 +1772,16 @@ function expandCornersToMinimumArea(corners, w, h, minimumArea) {
     y: sum.y + point.y / corners.length,
   }), { x: 0, y: 0 });
   const scale = Math.sqrt(minimumArea / currentArea);
-  const expanded = corners.map(point => ({
-    x: Math.max(0, Math.min(w, center.x + (point.x - center.x) * scale)),
-    y: Math.max(0, Math.min(h, center.y + (point.y - center.y) * scale)),
+  const grown = corners.map(point => ({
+    x: center.x + (point.x - center.x) * scale,
+    y: center.y + (point.y - center.y) * scale,
   }));
-  return polygonArea(expanded) >= minimumArea ? expanded : defaultCorners(w, h);
+  const b = bboxOf(grown);
+  if (b.x1 - b.x0 > w || b.y1 - b.y0 > h) return defaultCorners(w, h); // can't fit without distortion
+  let dx = 0, dy = 0;
+  if (b.x0 < 0) dx = -b.x0; else if (b.x1 > w) dx = w - b.x1;
+  if (b.y0 < 0) dy = -b.y0; else if (b.y1 > h) dy = h - b.y1;
+  return grown.map(p => ({ x: p.x + dx, y: p.y + dy }));
 }
 function fullPhotoCorners(w, h) {
   return [
