@@ -181,6 +181,57 @@
       box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
     }
 
+    .day-multi-select {
+      position: relative;
+      min-width: 230px;
+    }
+
+    .day-ms-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+      text-align: start;
+    }
+
+    .day-multi-select.open .day-ms-btn,
+    .day-ms-btn:focus-visible {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
+    }
+
+    .day-ms-panel {
+      position: absolute;
+      z-index: 50;
+      inset-inline: 0;
+      top: calc(100% + 6px);
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
+    }
+
+    .day-ms-panel[hidden] { display: none; }
+    .day-ms-actions { display: flex; gap: 6px; margin-bottom: 6px; }
+    .day-ms-actions button { flex: 1; min-height: 32px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--text); cursor: pointer; font: inherit; font-size: .8rem; }
+    .day-ms-list { max-height: 250px; overflow: auto; display: grid; gap: 2px; }
+    .day-ms-opt { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; color: var(--text); }
+    .day-ms-opt:hover, .day-ms-opt.selected { background: color-mix(in srgb, var(--primary) 12%, var(--surface)); }
+    .day-ms-check { width: 18px; color: var(--primary); font-weight: 800; visibility: hidden; }
+    .day-ms-opt.selected .day-ms-check { visibility: visible; }
+
     .refresh-btn.loading {
       opacity: 0.7;
     }
@@ -541,7 +592,7 @@
           <div class="export-group">
             <div class="export-day-field">
               <label for="exportDaySelect" id="exportDayLabel">Day (Egypt time)</label>
-              <select class="export-day-select" id="exportDaySelect"></select>
+              <div class="day-multi-select" id="exportDaySelect"></div>
             </div>
             <button class="ghost-btn export-btn" id="exportExcelBtn" type="button" data-en="Download Excel" data-ar="تحميل إكسل">Download Excel</button>
             <button class="ghost-btn export-btn" id="emailAllRecordsBtn" type="button" data-en="Email all records" data-ar="إرسال كل السجلات بالبريد">Email all records</button>
@@ -1074,12 +1125,12 @@ async function sha256Hex(value) {
     function getFilteredRows() {
       let rows = [...clinicRows].reverse();
 
-      // Day picker (submission day, Egypt time). "all" shows everything.
+      // Day picker (submission day, Egypt time). Multiple selected days are combined.
       // An active patient inquiry searches across all days.
-      const dayKey = exportDaySelect.value;
+      const dayKeys = getSelectedDayKeys();
       const tsIdx = getColumnIndexByKey('timestamp');
-      if (!filterPatientId && dayKey && dayKey !== ALL_DAYS && tsIdx >= 0) {
-        rows = rows.filter(row => getTimestampDayKey(row.values[tsIdx]) === dayKey);
+      if (!filterPatientId && !dayKeys.includes(ALL_DAYS) && tsIdx >= 0) {
+        rows = rows.filter(row => dayKeys.includes(getTimestampDayKey(row.values[tsIdx])));
       }
 
       if (filterPatientId) {
@@ -1234,25 +1285,94 @@ async function sha256Hex(value) {
       return Array.from({ length: EXPORT_DAYS_BACK }, (_, i) => shiftDayKey(today, -i));
     }
 
-    function populateDaySelect() {
-      const previous = exportDaySelect.value;
-      const keys = buildDayKeys();
-      const allLabel = t('All clinics', 'كل العيادات');
-      exportDaySelect.innerHTML =
-        `<option value="${ALL_DAYS}">${escapeHtml(allLabel)}</option>` +
-        keys.map(key => `<option value="${key}">${key.replace(/-/g, '/')} - ${escapeHtml(weekdayName(key))}</option>`).join('');
-      const valid = previous === ALL_DAYS || keys.includes(previous);
-      exportDaySelect.value = valid ? previous : ALL_DAYS; // default: all clinics
-      exportDayLabel.textContent = t('Day (Egypt time)', 'اليوم (بتوقيت مصر)');
-      refreshBtnLabel.textContent = t('Refresh', 'تحديث');
+    let selectedDayKeys = new Set([ALL_DAYS]);
+
+    function getSelectedDayKeys() {
+      return selectedDayKeys.size ? [...selectedDayKeys] : [ALL_DAYS];
     }
 
-    exportDaySelect.addEventListener('change', () => {
-      if (!clinicRows.length) return;
+    function selectedDayLabel(dayKeys) {
+      if (dayKeys.includes(ALL_DAYS)) return t('All clinics', 'كل العيادات');
+      return dayKeys.map(key => `${weekdayName(key)} ${key.replace(/-/g, '/')}`).join(', ');
+    }
+
+    function daySelectionChanged() {
       switchToTabWithResults();
       const renderedCount = renderClinicsTable();
       setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
-    });
+    }
+
+    function renderDaySelect(keys) {
+      const host = exportDaySelect;
+      const allLabel = t('All clinics', 'كل العيادات');
+      const selected = getSelectedDayKeys();
+      const selectedSpecific = selected.filter(key => key !== ALL_DAYS);
+      const buttonLabel = selected.includes(ALL_DAYS)
+        ? allLabel
+        : selected.length === 1
+          ? `${selected[0].replace(/-/g, '/')} - ${weekdayName(selected[0])}`
+          : t(`${selected.length} days selected`, `تم اختيار ${selected.length} أيام`);
+
+      host.innerHTML = `<button type="button" class="day-ms-btn" aria-haspopup="listbox" aria-expanded="false"><span class="day-ms-text">${escapeHtml(buttonLabel)}</span><span class="day-ms-caret">▾</span></button><div class="day-ms-panel" hidden><div class="day-ms-actions"><button type="button" data-day-act="all">${escapeHtml(t('Select all', 'اختيار الكل'))}</button><button type="button" data-day-act="none">${escapeHtml(t('Clear', 'مسح'))}</button></div><div class="day-ms-list" role="listbox" aria-multiselectable="true"></div></div>`;
+      const button = host.querySelector('.day-ms-btn');
+      const panel = host.querySelector('.day-ms-panel');
+      const list = host.querySelector('.day-ms-list');
+      const allOptions = [[ALL_DAYS, allLabel], ...keys.map(key => [key, `${key.replace(/-/g, '/')} - ${weekdayName(key)}`])];
+
+      list.innerHTML = allOptions.map(([value, label]) => {
+        const on = selected.includes(value);
+        return `<div class="day-ms-opt${on ? ' selected' : ''}" role="option" aria-selected="${on}" data-value="${escapeHtml(value)}"><span class="day-ms-check">✓</span><span>${escapeHtml(label)}</span></div>`;
+      }).join('');
+
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        const open = panel.hidden;
+        document.querySelectorAll('.day-ms-panel').forEach(item => { item.hidden = true; item.parentElement?.classList.remove('open'); });
+        panel.hidden = !open;
+        host.classList.toggle('open', open);
+        button.setAttribute('aria-expanded', String(open));
+      });
+      panel.addEventListener('click', event => {
+        event.stopPropagation();
+        const action = event.target.closest('[data-day-act]')?.dataset.dayAct;
+        if (action === 'all') {
+          selectedDayKeys = new Set([ALL_DAYS]);
+        } else if (action === 'none') {
+          // Empty selection means no date restriction, matching the attached file's clear behavior.
+          selectedDayKeys = new Set();
+        } else {
+          const option = event.target.closest('.day-ms-opt');
+          if (!option) return;
+          const value = option.dataset.value;
+          if (value === ALL_DAYS) selectedDayKeys = new Set([ALL_DAYS]);
+          else {
+            const next = new Set(selectedDayKeys);
+            next.delete(ALL_DAYS);
+            next.has(value) ? next.delete(value) : next.add(value);
+            selectedDayKeys = next;
+          }
+        }
+        renderDaySelect(keys);
+        daySelectionChanged();
+      });
+      document.addEventListener('click', function closeDayPicker(event) {
+        if (!event.composedPath().includes(host)) {
+          panel.hidden = true;
+          host.classList.remove('open');
+          button.setAttribute('aria-expanded', 'false');
+        }
+      }, { once: true });
+    }
+
+    function populateDaySelect() {
+      const previous = getSelectedDayKeys();
+      const keys = buildDayKeys();
+      const valid = previous.filter(key => key === ALL_DAYS || keys.includes(key));
+      selectedDayKeys = new Set(valid.length ? valid : [ALL_DAYS]); // default: all clinics
+      renderDaySelect(keys);
+      exportDayLabel.textContent = t('Day(s) (Egypt time)', 'اليوم/الأيام (بتوقيت مصر)');
+      refreshBtnLabel.textContent = t('Refresh', 'تحديث');
+    }
 
     function sortRowsForExport(rows) {
       // Newest first; pending reservations above decided ones.
@@ -1400,16 +1520,16 @@ async function sha256Hex(value) {
         return;
       }
 
-      const dayKey = exportDaySelect.value;
+      const dayKeys = getSelectedDayKeys();
       const tsIndex = getColumnIndexByKey('timestamp');
-      if (!dayKey || tsIndex < 0) { // timestamp column is still needed to filter by day
+      if (!dayKeys.length || tsIndex < 0) { // timestamp is needed to filter selected days
         window.showToast?.(t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.'), 'warning');
         return;
       }
 
-      const isAll = dayKey === ALL_DAYS;
+      const isAll = dayKeys.includes(ALL_DAYS);
       const dayRows = sortRowsForExport(
-        isAll ? clinicRows : clinicRows.filter(row => getTimestampDayKey(row.values[tsIndex]) === dayKey)
+        isAll ? clinicRows : clinicRows.filter(row => dayKeys.includes(getTimestampDayKey(row.values[tsIndex])))
       );
 
       if (!dayRows.length) {
@@ -1463,7 +1583,7 @@ async function sha256Hex(value) {
         const sheet1Name = t('Clinics', 'العيادات');
         const sheet2Name = t('Dental & General', 'أسنان وعيادة عامة');
         const total = datedRows.length + noDateRows.length;
-        const dayLabel = isAll ? t('All clinics', 'كل العيادات') : `${weekdayName(dayKey)} ${dayKey.replace(/-/g, '/')}`;
+        const dayLabel = selectedDayLabel(dayKeys);
         const titleText = ar
           ? `${dayLabel}\nعدد العيادات: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`
           : `${dayLabel}\nTotal clinics: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`;
@@ -1491,7 +1611,7 @@ async function sha256Hex(value) {
         }));
         const link = document.createElement('a');
         link.href = url;
-        link.download = `clinics-${isAll ? 'all' : dayKey}.xlsx`;
+        link.download = `clinics-${isAll ? 'all' : dayKeys.join('_')}.xlsx`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -1651,14 +1771,19 @@ async function sha256Hex(value) {
         return;
       }
 
-      const dayKey = exportDaySelect.value;
+      const dayKeys = getSelectedDayKeys();
+      if (dayKeys.length === 1 && dayKeys[0] === ALL_DAYS) {
+        window.showToast?.(t('Select one or more specific days before sending email.', 'اختر يوماً واحداً أو أكثر قبل إرسال البريد الإلكتروني.'), 'warning');
+        return;
+      }
+
       const timestampIndex = getColumnIndexByKey('timestamp');
       const departmentIndex = getColumnIndexByKey('department');
-      const dateLabel = dayKey && dayKey !== ALL_DAYS ? dayKey : t('All dates', 'كل التواريخ');
+      const dateLabel = selectedDayLabel(dayKeys);
 
       let dateRows = clinicRows;
-      if (dayKey && dayKey !== ALL_DAYS && timestampIndex >= 0) {
-        dateRows = dateRows.filter(row => getTimestampDayKey(row.values[timestampIndex]) === dayKey);
+      if (timestampIndex >= 0) {
+        dateRows = dateRows.filter(row => dayKeys.includes(getTimestampDayKey(row.values[timestampIndex])));
       }
 
       if (departmentIndex < 0) {
