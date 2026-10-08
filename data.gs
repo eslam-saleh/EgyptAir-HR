@@ -621,20 +621,33 @@ function mapDirectoryEmployee(row) {
     currentCompany
   );
 
-  let group = '';
-  const secondedGroup = cellAt(row, 'secondedJobGroup');
+  // Group follows the same secondment rule as job/sector/department:
+  // keep the original group first, then show the seconded group in parentheses.
+  // Example: "مجموعة الوظائف التخصصية (انتداب: اشرافية)".
   const newGroups = cellAt(row, 'newJobGroups');
-  if (isValidDirectoryJobGroup(secondedGroup)) group = String(secondedGroup).trim();
-  else if (isValidDirectoryJobGroup(newGroups)) group = String(newGroups).trim();
-  if (group) {
-    const key = foldDirectoryText(group);
+  const secondedGroup = cellAt(row, 'secondedJobGroup');
+  let groupOriginal = String(newGroups || '').trim();
+  let groupSeconded = String(secondedGroup || '').trim();
+
+  // Canonicalize the standard directory groups when they are used.
+  if (groupOriginal) {
+    const originalKey = foldDirectoryText(groupOriginal);
     for (let i = 0; i < DIRECTORY_JOB_GROUPS.length; i++) {
-      if (foldDirectoryText(DIRECTORY_JOB_GROUPS[i]) === key) {
-        group = DIRECTORY_JOB_GROUPS[i];
+      if (foldDirectoryText(DIRECTORY_JOB_GROUPS[i]) === originalKey) {
+        groupOriginal = DIRECTORY_JOB_GROUPS[i];
         break;
       }
     }
   }
+
+  // "اشرافية" is a valid seconded Group value and must not be rejected by
+  // the old three-value whitelist. Preserve any non-empty seconded group.
+  groupSeconded = groupSeconded.trim();
+  const group = withSecondmentLabel_(
+    groupOriginal,
+    groupSeconded,
+    currentCompany
+  );
 
   return {
     code: /^\d+$/.test(codeRaw) ? Number(codeRaw) : codeRaw,
