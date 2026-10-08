@@ -1136,9 +1136,101 @@ function quadAngleScore(pts) {
     if (mag1 < 1e-6 || mag2 < 1e-6) return 0;
     const cosA = Math.max(-1, Math.min(1, (v1x * v2x + v1y * v2y) / (mag1 * mag2)));
     const angleDeg = Math.acos(cosA) * 180 / Math.PI;
-    total += Math.max(0, 1 - Math.abs(angleDeg - 90) / 90);
+    // Tighter than linear: angles within ~12° of 90° still score very high;
+    // beyond ~35° the contribution collapses (rejects L-shapes / triangles).
+    const err = Math.abs(angleDeg - 90);
+    total += Math.max(0, 1 - Math.pow(err / 35, 1.35));
   }
   return total / 4;
+}
+
+// Opposite edges of a real page stay roughly parallel even under moderate
+// perspective. Map average angular deviation to [0,1] (0° → 1, ≥40° → 0).
+function quadParallelScore(pts) {
+  if (!pts || pts.length !== 4) return 0;
+  const edgeDir = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
+  const parallelErr = (a, b) => {
+    let d = Math.abs(a - b) * 180 / Math.PI;
+    if (d > 180) d = 360 - d;
+    if (d > 90) d = 180 - d; // direction-agnostic parallelism
+    return d;
+  };
+  const d01 = edgeDir(pts[0], pts[1]);
+  const d12 = edgeDir(pts[1], pts[2]);
+  const d23 = edgeDir(pts[2], pts[3]);
+  const d30 = edgeDir(pts[3], pts[0]);
+  const eOpp = (parallelErr(d01, d23) + parallelErr(d12, d30)) / 2;
+  return Math.max(0, 1 - eOpp / 40);
+}
+
+// Combined rectangularity in [0,1]. Target: ≥ 0.80 for a "nearly perfect"
+// four-corner document rectangle (angles ~90°, opposite sides ~parallel).
+function quadRectScore(pts) {
+  return 0.58 * quadAngleScore(pts) + 0.42 * quadParallelScore(pts);
+}
+
+// When the detected quad is already a strong rectangle (≥80%), lightly pull
+// opposite edges toward parallelism without erasing real perspective. This
+// cleans noisy corner jitter from approxPolyDP / edge-refine so the handles
+// land on a crisp page outline instead of a wobbly kite.
+function polishNearRectangle(pts) {
+  if (!pts || pts.length !== 4) return pts;
+  const rect = quadRectScore(pts);
+  if (rect < 0.80) return pts;
+
+  const ordered = orderCorners(pts);
+  // Average opposite-edge direction vectors, then rebuild corners from the
+  // four edge midpoints projected along the averaged axes — keeps size and
+  // centre, removes small angular noise.
+  const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const m01 = mid(ordered[0], ordered[1]);
+  const m12 = mid(ordered[1], ordered[2]);
+  const m23 = mid(ordered[2], ordered[3]);
+  const m30 = mid(ordered[3], ordered[0]);
+
+  const avgDir = (a, b, c, d) => {
+    let vx = (b.x - a.x) + (c.x - d.x);
+    let vy = (b.y - a.y) + (c.y - d.y);
+    // Flip second edge if it points roughly opposite so they reinforce
+    if (vx * (c.x - d.x) + vy * (c.y - d.y) < 0) {
+      vx = (b.x - a.x) - (c.x - d.x);
+      vy = (b.y - a.y) - (c.y - d.y);
+    }
+    const len = Math.hypot(vx, vy) || 1;
+    return { x: vx / len, y: vy / len };
+  };
+  // Horizontal-ish pair: top (0→1) & bottom (3→2); vertical-ish: right (1→2) & left (0→3)
+  const hDir = avgDir(ordered[0], ordered[1], ordered[2], ordered[3]);
+  const vDir = avgDir(ordered[1], ordered[2], ordered[3], ordered[0]);
+
+  // Intersect lines through opposite midpoints with averaged directions
+  const line = (p, dir) => ({ point: p, dir });
+  const top = line(m01, hDir);
+  const bottom = line(m23, hDir);
+  const right = line(m12, vDir);
+  const left = line(m30, vDir);
+
+  const tl = intersectLines(top, left);
+  const tr = intersectLines(top, right);
+  const br = intersectLines(bottom, right);
+  const bl = intersectLines(bottom, left);
+  if (!tl || !tr || !br || !bl) return pts;
+
+  const polished = [tl, tr, br, bl];
+  // Safety: never jump a corner more than 4% of the image diagonal, and
+  // never accept a polish that *lowers* rectangularity.
+  const diag = Math.hypot(
+    Math.max(...ordered.map(p => p.x)) - Math.min(...ordered.map(p => p.x)),
+    Math.max(...ordered.map(p => p.y)) - Math.min(...ordered.map(p => p.y))
+  ) || 1;
+  const maxShift = diag * 0.04;
+  for (let i = 0; i < 4; i++) {
+    if (Math.hypot(polished[i].x - ordered[i].x, polished[i].y - ordered[i].y) > maxShift) {
+      return pts;
+    }
+  }
+  if (quadRectScore(polished) + 0.01 < rect) return pts;
+  return polished;
 }
 
 function bboxOf(corners) {
@@ -1210,22 +1302,26 @@ function detectDocument(canvas) {
     const best = candidates[0];
 
     if (best) {
-      const corners = orderCorners(best.corners.map(p => ({ x: p.x / scale, y: p.y / scale })));
-      // Never accept a confident-looking small box: if the detected contour
-      // covers less than half of the complete photo, fail detection and let
-      // autoDetectCorners() fall back to the full-photo selection.
+      // Prefer a candidate whose shape is already a strong rectangle (≥80%).
+      // If the top scorer is weak on rectangularity but a corroborated runner-up
+      // clears the 0.80 bar, take that instead — shape quality over raw score.
+      let chosen = best;
+      const strong = candidates
+        .filter(c => (c.rectScore || 0) >= 0.80)
+        .sort((a, b) => (b.rectScore - a.rectScore) || (b.score - a.score) || (b.area - a.area));
+      if (strong.length && (best.rectScore || 0) < 0.80) {
+        chosen = strong[0];
+      }
+
+      let corners = orderCorners(chosen.corners.map(p => ({ x: p.x / scale, y: p.y / scale })));
+      // Clean residual corner jitter when the quad is already nearly perfect.
+      corners = polishNearRectangle(corners);
+
       const imageArea = canvas.width * canvas.height;
-      // Never accept a confident-looking small box: the area floor exists to
-      // catch a single method latching onto a small, wrong region (a logo,
-      // a table corner) and calling it "the document". But when multiple
-      // independent strategies land on the same region, that agreement is
-      // much stronger evidence of correctness than raw area — a real page
-      // photographed with generous surrounding background is completely
-      // normal and shouldn't be forced past its own edges into that
-      // background. So: full-strength floor for an uncorroborated (single-
-      // strategy) detection, a much lower one as a last-resort sanity check
-      // when corroborated.
-      const areaFloorRatio = best.corroborated ? 0.15 : MIN_AUTO_DETECT_AREA_RATIO;
+      // Area floor: full-strength for a lone strategy, relaxed when multiple
+      // independent detectors agreed on the same region (real pages often sit
+      // in generous background and should not be forced to fill the frame).
+      const areaFloorRatio = chosen.corroborated ? 0.15 : MIN_AUTO_DETECT_AREA_RATIO;
       result = expandCornersToMinimumArea(corners, canvas.width, canvas.height, imageArea * areaFloorRatio);
       if (!result) result = defaultCorners(canvas.width, canvas.height);
     }
@@ -1290,7 +1386,7 @@ function findDocContour(workSrc, mode) {
 
     cv.findContours(work, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
 
-    let bestScore = -1, bestPts = null, bestArea = 0;
+    let bestScore = -1, bestPts = null, bestArea = 0, bestRectScore = 0;
     // Ignore only very small local details during contour search. A valid
     // card/document may occupy less than half of a portrait photo; the final
     // corner result is expanded to the required minimum area below.
@@ -1388,17 +1484,29 @@ function findDocContour(workSrc, mode) {
         pts = refineQuadCorners(cnt, pts, workSrc.cols, workSrc.rows);
       }
 
-      const angleScore = quadAngleScore(pts);
-      const score = extent * 0.35 + solidity * 0.30 + angleScore * 0.25 + (cleanQuad ? 0.1 : 0);
+      // Rectangularity dominates: we only want a near-perfect 4-corner page
+      // outline (target rectScore ≥ 0.80). Soft extent/solidity still break
+      // ties, but a clean rectangle always beats a bigger irregular blob.
+      const rectScore = quadRectScore(pts);
+      if (rectScore < 0.55) {
+        cnt.delete();
+        continue; // not rectangle-like enough to be a document page
+      }
+      const score =
+        extent * 0.18 +
+        solidity * 0.12 +
+        rectScore * 0.60 +
+        (cleanQuad ? 0.10 : 0);
       if (pts && score > bestScore) {
         bestScore = score;
         bestPts = pts;
         bestArea = area;
+        bestRectScore = rectScore;
       }
       cnt.delete();
     }
 
-    if (bestPts) result = { corners: bestPts, area: bestArea, score: bestScore };
+    if (bestPts) result = { corners: bestPts, area: bestArea, score: bestScore, rectScore: bestRectScore };
   } finally {
     gray.delete(); work.delete();
     contours.delete(); hierarchy.delete();
