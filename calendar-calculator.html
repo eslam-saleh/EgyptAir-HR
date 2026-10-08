@@ -257,6 +257,19 @@
   }
   .calc-btn:hover { opacity: 0.9; transform: translateY(-1px); }
 
+
+  /* Calculate / Clear row */
+  .btn-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .clear-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 24px; border-radius: 8px;
+    border: 1.5px solid var(--border-bright);
+    background: transparent; color: var(--text-muted);
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    font-family: inherit; transition: all 0.2s;
+  }
+  .clear-btn:hover, .clear-btn:focus-visible { color: #d33; border-color: #d33; outline: none; }
+
   /* Result card */
   .result-card {
     display: none;
@@ -374,9 +387,14 @@
         <div class="field"><label data-en="Start Date" data-ar="تاريخ البدء">Start Date</label><input type="date" id="diff-from" /></div>
         <div class="field"><label data-en="End Date" data-ar="تاريخ الانتهاء">End Date</label><input type="date" id="diff-to" /></div>
       </div>
-      <button class="calc-btn" onclick="calcDiff()">
+      <div class="btn-row">
+        <button class="calc-btn" onclick="calcDiff()">
         <span data-en="Calculate" data-ar="احسب">Calculate</span>
       </button>
+        <button type="button" class="clear-btn" onclick="clearCard(this)">
+          <span data-en="Clear" data-ar="مسح">Clear</span>
+        </button>
+      </div>
       <div class="error" id="diff-err"></div>
     </div>
     <div class="result-card" id="diff-result">
@@ -409,9 +427,14 @@
           </select>
         </div>
       </div>
-      <button class="calc-btn" onclick="calcAdd()">
+      <div class="btn-row">
+        <button class="calc-btn" onclick="calcAdd()">
         <span data-en="Calculate" data-ar="احسب">Calculate</span>
       </button>
+        <button type="button" class="clear-btn" onclick="clearCard(this)">
+          <span data-en="Clear" data-ar="مسح">Clear</span>
+        </button>
+      </div>
       <div class="error" id="add-err"></div>
     </div>
     <div class="result-card" id="add-result">
@@ -426,9 +449,14 @@
       <div class="form-row">
         <div class="field"><label data-en="Date of birth" data-ar="تاريخ الميلاد">Date of birth</label><input type="date" id="age-dob" /></div>
       </div>
-      <button class="calc-btn" onclick="calcAge()">
+      <div class="btn-row">
+        <button class="calc-btn" onclick="calcAge()">
         <span data-en="Calculate" data-ar="احسب">Calculate</span>
       </button>
+        <button type="button" class="clear-btn" onclick="clearCard(this)">
+          <span data-en="Clear" data-ar="مسح">Clear</span>
+        </button>
+      </div>
       <div class="error" id="age-err"></div>
     </div>
     <div class="result-card" id="age-result">
@@ -450,9 +478,14 @@
         <input type="checkbox" id="work-sat" checked />
         <label for="work-sat" data-en="Exclude Saturdays" data-ar="استبعاد السبت">Exclude Saturdays</label>
       </div>
-      <button class="calc-btn" onclick="calcWork()">
+      <div class="btn-row">
+        <button class="calc-btn" onclick="calcWork()">
         <span data-en="Calculate" data-ar="احسب">Calculate</span>
       </button>
+        <button type="button" class="clear-btn" onclick="clearCard(this)">
+          <span data-en="Clear" data-ar="مسح">Clear</span>
+        </button>
+      </div>
       <div class="error" id="work-err"></div>
     </div>
     <div class="result-card" id="work-result">
@@ -471,9 +504,14 @@
         </button>
         <span class="dur-counter" id="dur-counter"></span>
       </div>
-      <button class="calc-btn" onclick="calcCount()">
+      <div class="btn-row">
+        <button class="calc-btn" onclick="calcCount()">
         <span data-en="Calculate" data-ar="احسب">Calculate</span>
       </button>
+        <button type="button" class="clear-btn" onclick="clearCard(this)">
+          <span data-en="Clear" data-ar="مسح">Clear</span>
+        </button>
+      </div>
       <div class="error" id="count-err"></div>
     </div>
     <div class="result-card" id="count-result">
@@ -488,9 +526,14 @@
       <div class="form-row">
         <div class="field"><label data-en="Gregorian date" data-ar="التاريخ الميلادي">Gregorian date</label><input type="date" id="hijri-greg" /></div>
       </div>
-      <button class="calc-btn" onclick="calcGregToHijri()">
+      <div class="btn-row">
+        <button class="calc-btn" onclick="calcGregToHijri()">
         <span data-en="Convert to Hijri" data-ar="تحويل إلى هجري">Convert to Hijri</span>
       </button>
+        <button type="button" class="clear-btn" onclick="clearCard(this)">
+          <span data-en="Clear" data-ar="مسح">Clear</span>
+        </button>
+      </div>
       <div class="error" id="hijri-greg-err"></div>
     </div>
     <div class="result-card" id="hijri-greg-result" style="margin-bottom: 10px;">
@@ -507,9 +550,14 @@
         </div>
         <div class="field"><label data-en="Hijri day" data-ar="اليوم الهجري">Hijri day</label><input type="number" id="hijri-day" inputmode="numeric" min="1" max="30" placeholder="1" /></div>
       </div>
-      <button class="calc-btn" onclick="calcHijriToGreg()">
+      <div class="btn-row">
+        <button class="calc-btn" onclick="calcHijriToGreg()">
         <span data-en="Convert to Gregorian" data-ar="تحويل إلى ميلادي">Convert to Gregorian</span>
       </button>
+        <button type="button" class="clear-btn" onclick="clearCard(this)">
+          <span data-en="Clear" data-ar="مسح">Clear</span>
+        </button>
+      </div>
       <div class="error" id="hijri-err"></div>
     </div>
     <div class="result-card" id="hijri-result">
@@ -998,6 +1046,30 @@ function calcHijriToGreg() {
     <div class="big-sub">${d} ${c.hijriMonths[m - 1]} ${y} ${eraLabel}</div>
   `;
   showResult('hijri-result');
+}
+
+function clearCard(btn) {
+  const card = btn.closest('.card');
+  if (!card) return;
+  // Reset every input / select / checkbox to its default
+  card.querySelectorAll('input').forEach(el => {
+    if (el.type === 'checkbox') el.checked = el.defaultChecked;
+    else el.value = el.defaultValue;
+  });
+  card.querySelectorAll('select').forEach(sel => {
+    const i = [...sel.options].findIndex(o => o.defaultSelected);
+    sel.selectedIndex = i >= 0 ? i : 0;
+  });
+  // Sum Durations: back to the initial empty rows
+  const durWrap = card.querySelector('#dur-rows');
+  if (durWrap) {
+    durWrap.innerHTML = '';
+    initDurations();
+  }
+  // Hide errors and the result belonging to this card
+  card.querySelectorAll('.error').forEach(e => { e.style.display = 'none'; });
+  const res = card.nextElementSibling;
+  if (res && res.classList.contains('result-card')) res.classList.remove('visible');
 }
 
 window.addEventListener('portal-language-change', () => {

@@ -10,6 +10,22 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="portal.css">
+
+  <style>
+    .search-clear-wrap { position: relative; display: block; width: 100%; }
+    .search-clear-wrap .search-input { width: 100%; padding-inline-end: 52px; }
+    .search-clear-btn {
+      position: absolute; top: 50%; inset-inline-end: 12px; transform: translateY(-50%);
+      width: 30px; height: 30px; padding: 0; border: none; border-radius: 50%;
+      background: #d33; color: #fff; font-size: 16px; font-weight: 800; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10; pointer-events: auto; box-shadow: 0 2px 6px rgba(0,0,0,.28); transition: transform .15s, background .15s;
+    }
+    .search-clear-btn[hidden] { display: none; }
+    .search-clear-btn:hover, .search-clear-btn:focus-visible {
+      background: #b32020; transform: translateY(-50%) scale(1.12); outline: 2px solid #fff; outline-offset: 1px;
+    }
+  </style>
 </head>
 <body>
   <header class="portal-header">
@@ -438,11 +454,17 @@
         </div>
 
         <div id="documentSearchZone" class="search-zone">
-          <input type="text" id="documentSearch" class="search-input" data-en="Search documents..." data-ar="ابحث عن المستندات..." placeholder="Search documents...">
+          <div class="search-clear-wrap">
+            <input type="text" id="documentSearch" class="search-input" data-en="Search documents..." data-ar="ابحث عن المستندات..." placeholder="Search documents...">
+            <button type="button" class="search-clear-btn" data-clear-for="documentSearch" hidden aria-label="Clear search" title="Clear / مسح">&#x2715;</button>
+          </div>
         </div>
 
         <div id="employeeSearchZone" class="search-zone" hidden>
-          <input type="text" id="employeeSearch" class="search-input" data-en="Search employees by name or code..." data-ar="ابحث عن الموظف بالاسم أو الكود..." placeholder="ابحث عن الموظف بالاسم أو الكود...">
+          <div class="search-clear-wrap">
+            <input type="text" id="employeeSearch" class="search-input" data-en="Search employees by name or code..." data-ar="ابحث عن الموظف بالاسم أو الكود..." placeholder="ابحث عن الموظف بالاسم أو الكود...">
+            <button type="button" class="search-clear-btn" data-clear-for="employeeSearch" hidden aria-label="Clear search" title="Clear / مسح">&#x2715;</button>
+          </div>
 
           <!-- Employee filters live here (same left column as the document form) -->
           <div id="employeeFilterPanel" class="employee-filter-panel" aria-label="Employee filters">
@@ -2867,6 +2889,36 @@ function renderPlaceholderForm(doc, placeholders) {
       });
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !modal.hidden) closeGuide();
+      });
+    })();
+  </script>
+
+  <script>
+    // Visible "X" button that clears a search box and re-runs the search
+    (function () {
+      document.querySelectorAll('.search-clear-btn').forEach(function (btn) {
+        var input = document.getElementById(btn.dataset.clearFor);
+        if (!input) return;
+        function toggle() { btn.hidden = !input.value; }
+        input.addEventListener('input', toggle);
+        function doClear() {
+          input.value = '';
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          toggle();
+          input.focus();
+        }
+        btn.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); doClear(); });
+        // Fallback: if anything stylesheet-side sits over the X, catch the click by position
+        document.addEventListener('click', function (e) {
+          if (btn.hidden || e.target === btn) return;
+          var r = btn.getBoundingClientRect();
+          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) {
+            e.preventDefault(); e.stopPropagation(); doClear();
+          }
+        }, true);
+        // Also reflect programmatic clears (e.g. the employee "Clear" filter button)
+        document.addEventListener('click', function () { setTimeout(toggle, 0); });
+        toggle();
       });
     })();
   </script>
