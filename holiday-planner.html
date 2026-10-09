@@ -264,6 +264,9 @@ let emergencyBalance = DEFAULT_EMERGENCY;
 let weekendDays = [5, 6];
 /** @type {Map<string, 'annual'|'emergency'|'absence'>} */
 let selectedDays = new Map();
+// Days the user explicitly marked as emergency leave (right-click). reclassifySelections()
+// keeps these as emergency instead of re-sorting them into annual leave.
+let forcedEmergencyDays = new Set();
 
 const translations = {
   en: {
@@ -291,6 +294,7 @@ const translations = {
     downloadSummary: 'Download as text',
     importSummary: 'Import from text',
     importSuccess: 'Data imported successfully.',
+    importOtherYear: (count, year) => `${count} day(s) from other years were skipped — this page only shows ${year}.`,
     importInvalid: 'This file could not be read. Please choose a file exported from this page.',
     noDays: 'No leave days selected.',
     selectedSummary: count => `Selected leave days (${count}):`,
@@ -359,6 +363,7 @@ const translations = {
     downloadSummary: 'تحميل كنص',
     importSummary: 'استيراد من ملف نصي',
     importSuccess: 'تم استيراد البيانات بنجاح.',
+    importOtherYear: (count, year) => `تم تجاهل ${count} يوم من سنوات أخرى — هذه الصفحة تعرض سنة ${year} فقط.`,
     importInvalid: 'تعذّرت قراءة هذا الملف. يرجى اختيار ملف تم تصديره من هذه الصفحة.',
     noDays: 'لا توجد أيام إجازة مختارة.',
     selectedSummary: count => `أيام الإجازة المختارة (${count}):`,
@@ -551,8 +556,13 @@ function initializeBalanceControls() {
   annualInput.value = annualBalance;
   emergencyInput.value = emergencyBalance;
 
-  annualInput.addEventListener('input', () => setAnnualBalance(Number(annualInput.value)));
-  emergencyInput.addEventListener('input', () => setEmergencyBalance(Number(emergencyInput.value)));
+  // While typing, an empty field counts as 0 internally but is NOT rewritten (so it can be cleared and
+  // retyped). The field is only normalised when it loses focus or the typed value is out of range.
+  const outOfRange = raw => raw !== '' && !(Number(raw) >= 0 && Number(raw) <= 365);
+  annualInput.addEventListener('input', () => setAnnualBalance(Number(annualInput.value), outOfRange(annualInput.value)));
+  emergencyInput.addEventListener('input', () => setEmergencyBalance(Number(emergencyInput.value), outOfRange(emergencyInput.value)));
+  annualInput.addEventListener('blur', () => { annualInput.value = annualBalance; });
+  emergencyInput.addEventListener('blur', () => { emergencyInput.value = emergencyBalance; });
 }
 
 function initializeResetButton() {
@@ -565,6 +575,7 @@ function initializeResetButton() {
     });
     if (ok) {
       selectedDays.clear();
+      forcedEmergencyDays.clear();
       saveState();
       generateCalendar();
       updateAll();
@@ -609,32 +620,43 @@ function initializeWeekendControls() {
   };
 }
 
-function setAnnualBalance(value) {
+function setAnnualBalance(value, syncField = true) {
   annualBalance = Math.max(0, Math.min(365, Number.isFinite(value) ? Math.floor(value) : 0));
-  document.getElementById('balanceInput').value = annualBalance;
+  if (syncField) document.getElementById('balanceInput').value = annualBalance;
   reclassifySelections();
   saveState();
   generateCalendar();
   updateAll();
 }
 
-function setEmergencyBalance(value) {
+function setEmergencyBalance(value, syncField = true) {
   emergencyBalance = Math.max(0, Math.min(365, Number.isFinite(value) ? Math.floor(value) : 0));
-  document.getElementById('emergencyInput').value = emergencyBalance;
+  if (syncField) document.getElementById('emergencyInput').value = emergencyBalance;
   reclassifySelections();
   saveState();
   generateCalendar();
   updateAll();
 }
 
-/** Re-assign day types when balances change (chronological order). */
+/** Re-assign day types when balances change (chronological order).
+ *  Days the user forced to emergency (right-click) stay emergency while emergency balance remains. */
 function reclassifySelections() {
   const keys = [...selectedDays.keys()].sort();
+
+  // Forget forced days that are no longer selected, and any beyond the emergency balance.
+  const pinned = new Set();
+  for (const key of keys) {
+    if (forcedEmergencyDays.has(key) && pinned.size < emergencyBalance) pinned.add(key);
+  }
+  forcedEmergencyDays = pinned;
+
   selectedDays.clear();
   let annualUsed = 0;
-  let emergUsed = 0;
+  let emergUsed = pinned.size;
   for (const key of keys) {
-    if (annualUsed < annualBalance) {
+    if (pinned.has(key)) {
+      selectedDays.set(key, 'emergency');
+    } else if (annualUsed < annualBalance) {
       selectedDays.set(key, 'annual');
       annualUsed++;
     } else if (emergUsed < emergencyBalance) {
@@ -762,6 +784,7 @@ function toggleDay(dateKey, holidayKey, isWeekend, forceEmergency = false) {
   // otherwise a day picked before a weekend-rule change gets stuck forever.
   if (selectedDays.has(dateKey)) {
     selectedDays.delete(dateKey);
+    forcedEmergencyDays.delete(dateKey);
     reclassifySelections();
     saveState();
     generateCalendar();
@@ -786,6 +809,7 @@ function toggleDay(dateKey, holidayKey, isWeekend, forceEmergency = false) {
     // Right-click: force emergency leave mid-way (if balance remains)
     if (emergUsed < emergencyBalance) {
       selectedDays.set(dateKey, 'emergency');
+      forcedEmergencyDays.add(dateKey);
     } else {
       // No emergency left — fall back to normal priority
       if (annualUsed < annualBalance) {
@@ -892,7 +916,8 @@ function buildExportPayload() {
     annualBalance,
     emergencyBalance,
     weekendDays,
-    selectedDays: obj
+    selectedDays: obj,
+    forcedEmergency: [...forcedEmergencyDays]
   };
 }
 
@@ -965,13 +990,18 @@ function importFromText(text) {
   if (!weekendDays.length) weekendDays = [5, 6];
 
   selectedDays = new Map();
+  let skippedOtherYear = 0;
   if (payload.selectedDays && typeof payload.selectedDays === 'object') {
     Object.entries(payload.selectedDays).forEach(([key, type]) => {
-      if (type === 'annual' || type === 'emergency' || type === 'absence') {
-        selectedDays.set(key, type);
-      }
+      if (type !== 'annual' && type !== 'emergency' && type !== 'absence') return;
+      // Only days of the year shown on this page can be displayed (and removed), so only those are kept.
+      if (!isKeyInCalendarYear(key)) { skippedOtherYear++; return; }
+      selectedDays.set(key, type);
     });
   }
+  forcedEmergencyDays = new Set(
+    Array.isArray(payload.forcedEmergency) ? payload.forcedEmergency.filter(key => selectedDays.has(key)) : []
+  );
   reclassifySelections();
   holidayMapCache = null;
 
@@ -985,6 +1015,7 @@ function importFromText(text) {
   generateCalendar();
   updateAll();
   window.showToast(t('importSuccess'), 'info');
+  if (skippedOtherYear > 0) window.showToast(t('importOtherYear')(skippedOtherYear, CALENDAR_YEAR), 'warning');
 }
 
 function loadState() {
@@ -998,18 +1029,23 @@ function loadState() {
     if (!weekendDays.length) weekendDays = [5, 6];
 
     selectedDays = new Map();
+    forcedEmergencyDays = new Set();
     if (Array.isArray(state.selectedDays)) {
       // Legacy: plain array of date keys → treat as annual first
       state.selectedDays.forEach(key => {
-        if (typeof key === 'string') selectedDays.set(key, 'annual');
+        if (isKeyInCalendarYear(key)) selectedDays.set(key, 'annual');
       });
       reclassifySelections();
     } else if (state.selectedDays && typeof state.selectedDays === 'object') {
       Object.entries(state.selectedDays).forEach(([key, type]) => {
+        if (!isKeyInCalendarYear(key)) return; // also cleans out other-year days saved by older versions
         if (type === 'annual' || type === 'emergency' || type === 'absence') {
           selectedDays.set(key, type);
         }
       });
+      forcedEmergencyDays = new Set(
+        Array.isArray(state.forcedEmergency) ? state.forcedEmergency.filter(key => selectedDays.has(key)) : []
+      );
       reclassifySelections();
     }
   } catch {
@@ -1026,7 +1062,8 @@ function saveState() {
     annualBalance,
     emergencyBalance,
     weekendDays,
-    selectedDays: obj
+    selectedDays: obj,
+    forcedEmergency: [...forcedEmergencyDays]
   }));
 }
 
@@ -1036,6 +1073,15 @@ function t(key) {
 
 function holidayName(key) {
   return translations[currentLanguage].holidayNames[key] || key;
+}
+
+/** True only for a real date key (YYYY-MM-DD) inside the year this page shows. */
+function isKeyInCalendarYear(key) {
+  if (typeof key !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+  const [y, m, d] = key.split('-').map(Number);
+  if (y !== CALENDAR_YEAR) return false;
+  const date = new Date(y, m - 1, d);
+  return date.getMonth() === m - 1 && date.getDate() === d;
 }
 
 function toDateKey(date) {

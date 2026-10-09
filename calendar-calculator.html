@@ -590,6 +590,7 @@ const calcCopy = {
     },
     errors: {
       both: 'Please select both dates.',
+      invalidDate: 'That date does not exist. Please check the day and month.',
       start: 'Please select a start date.',
       days: 'Please enter a valid number.',
       dob: 'Please enter a date of birth.',
@@ -617,6 +618,7 @@ const calcCopy = {
     },
     errors: {
       both: 'اختر التاريخين من فضلك.',
+      invalidDate: 'هذا التاريخ غير موجود. راجع اليوم والشهر من فضلك.',
       start: 'اختر تاريخ البداية من فضلك.',
       days: 'اكتب رقما صحيحا.',
       dob: 'اكتب تاريخ الميلاد من فضلك.',
@@ -722,10 +724,40 @@ function populateHijriMonths() {
   if (current) select.value = current;
 }
 
+/* Strict: returns null for empty input AND for dates that do not exist
+   (31 Feb, 30 Apr 31, year 0025...) instead of letting Date roll them over. */
 function parseLocal(s) {
   if (!s) return null;
   const [y,m,d] = s.split('-').map(Number);
-  return new Date(y, m-1, d);
+  if (![y, m, d].every(Number.isInteger)) return null;
+  const date = new Date(y, m-1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+  return date;
+}
+
+/* True when a date field has something typed that is not a real date. */
+function hasInvalidDate(...ids) {
+  return ids.some(id => {
+    const v = document.getElementById(id).value;
+    return !!v && !parseLocal(v);
+  });
+}
+
+/* Years / months / days between two dates (start <= end).
+   Borrow days from the month before `end`; if that is still negative
+   (e.g. 31 Jan -> 1 Mar), count the leftover days from the clamped anchor
+   addMonths(start, totalMonths) instead. */
+function ymdBetween(start, end) {
+  let totalMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+  let days = end.getDate() - start.getDate();
+  if (days < 0) {
+    totalMonths--;
+    days += new Date(end.getFullYear(), end.getMonth(), 0).getDate();
+    if (days < 0) {
+      days = daysBetween(addMonths(start, totalMonths), end);
+    }
+  }
+  return { years: Math.floor(totalMonths / 12), months: totalMonths % 12, days };
 }
 
 function fmt(d) { 
@@ -774,7 +806,7 @@ function calcDiff() {
   hideErr('diff-err'); hideResult('diff-result');
   const from = parseLocal(document.getElementById('diff-from').value);
   const to   = parseLocal(document.getElementById('diff-to').value);
-  if (!from || !to) return showErr('diff-err', 'both');
+  if (!from || !to) return showErr('diff-err', hasInvalidDate('diff-from', 'diff-to') ? 'invalidDate' : 'both');
 
   const start = from <= to ? from : to;
   const end   = from <= to ? to   : from;
@@ -790,11 +822,7 @@ function calcDiff() {
     (t.getDay() === 5 || t.getDay() === 6) ? we++ : wd++;
   }
 
-  let yrs = end.getFullYear() - start.getFullYear();
-  let mos = end.getMonth() - start.getMonth();
-  let dys = end.getDate() - start.getDate();
-  if (dys < 0) { mos--; dys += new Date(end.getFullYear(), end.getMonth(), 0).getDate(); }
-  if (mos < 0) { yrs--; mos += 12; }
+  const { years: yrs, months: mos, days: dys } = ymdBetween(start, end);
 
   const c = copy();
   document.getElementById('diff-metrics').innerHTML = `
@@ -820,7 +848,7 @@ function calcAdd() {
   const amount = parseInt(document.getElementById('add-amount').value);
   const unit   = document.getElementById('add-unit').value;
   const dir    = parseInt(document.getElementById('add-dir').value);
-  if (!from) return showErr('add-err', 'start');
+  if (!from) return showErr('add-err', hasInvalidDate('add-from') ? 'invalidDate' : 'start');
   if (isNaN(amount) || amount < 0) return showErr('add-err', 'days');
 
   const signed = dir * amount;
@@ -850,16 +878,12 @@ function calcAdd() {
 function calcAge() {
   hideErr('age-err'); hideResult('age-result');
   const dob  = parseLocal(document.getElementById('age-dob').value);
-  if (!dob) return showErr('age-err', 'dob');
+  if (!dob) return showErr('age-err', hasInvalidDate('age-dob') ? 'invalidDate' : 'dob');
   const asof = new Date();
   asof.setHours(0,0,0,0);
   if (dob > asof) return showErr('age-err', 'futureDob');
 
-  let yrs = asof.getFullYear() - dob.getFullYear();
-  let mos = asof.getMonth() - dob.getMonth();
-  let dys = asof.getDate() - dob.getDate();
-  if (dys < 0) { mos--; dys += new Date(asof.getFullYear(), asof.getMonth(), 0).getDate(); }
-  if (mos < 0) { yrs--; mos += 12; }
+  const { years: yrs, months: mos, days: dys } = ymdBetween(dob, asof);
 
   const totalDays = Math.round((asof - dob) / 86400000);
   const c = copy();
@@ -884,7 +908,7 @@ function calcWork() {
   const to    = parseLocal(document.getElementById('work-to').value);
   const exFri = document.getElementById('work-fri').checked;
   const exSat = document.getElementById('work-sat').checked;
-  if (!from || !to) return showErr('work-err', 'both');
+  if (!from || !to) return showErr('work-err', hasInvalidDate('work-from', 'work-to') ? 'invalidDate' : 'both');
 
   const start = from <= to ? from : to;
   const end   = from <= to ? to   : from;
@@ -1017,7 +1041,7 @@ function calcCount() {
 function calcGregToHijri() {
   hideErr('hijri-greg-err'); hideResult('hijri-greg-result');
   const greg = parseLocal(document.getElementById('hijri-greg').value);
-  if (!greg) return showErr('hijri-greg-err', 'start');
+  if (!greg) return showErr('hijri-greg-err', hasInvalidDate('hijri-greg') ? 'invalidDate' : 'start');
 
   const h = gregorianToHijri(greg.getFullYear(), greg.getMonth() + 1, greg.getDate());
   const c = copy();
@@ -1035,7 +1059,11 @@ function calcHijriToGreg() {
   const y = parseInt(document.getElementById('hijri-year').value);
   const m = parseInt(document.getElementById('hijri-month').value);
   const d = parseInt(document.getElementById('hijri-day').value);
-  if (!y || !m || !d || d < 1 || d > 30 || y < 1) return showErr('hijri-err', 'hijriDate');
+  if (!y || !m || !d || d < 1 || d > 30 || y < 1 || m < 1 || m > 12) return showErr('hijri-err', 'hijriDate');
+
+  /* Reject e.g. day 30 in a 29-day month: it would silently roll into the next month. */
+  const back = jdToHijri(hijriToJD(y, m, d));
+  if (back.year !== y || back.month !== m || back.day !== d) return showErr('hijri-err', 'hijriDate');
 
   const g = hijriToGregorianDate(y, m, d);
   const gregDate = new Date(g.year, g.month - 1, g.day);

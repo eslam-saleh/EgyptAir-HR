@@ -59,8 +59,10 @@
       });
     });
 
-    setTheme(savedTheme);
+    // setLanguage first, then setTheme: the theme button label depends on the language,
+    // and setLanguage() rewrites every [data-en][data-ar] label (including the theme button).
     setLanguage(savedLanguage);
+    setTheme(savedTheme);
   });
 
   window.EgyptAirPortal = {

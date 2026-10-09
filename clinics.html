@@ -1616,7 +1616,7 @@ async function sha256Hex(value) {
       );
 
       if (!dayRows.length) {
-        window.showToast?.(isAll ? t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.') : t(`No applications were submitted on ${dayKey}.`, `لا توجد طلبات مقدمة بتاريخ ${dayKey}.`), 'warning');
+        window.showToast?.(isAll ? t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.') : t(`No applications were submitted on ${selectedDayLabel(dayKeys)}.`, `لا توجد طلبات مقدمة بتاريخ ${selectedDayLabel(dayKeys)}.`), 'warning');
         return;
       }
 
@@ -1718,29 +1718,30 @@ async function sha256Hex(value) {
     // Change any address below later if a department gets its own mailbox.
     const DEPARTMENT_EMAIL_ASSIGNMENTS = {
       'الادارة العامة للتموين': 'eslamsaleh1999@gmail.com',
-      'الادارة العامة للانتاج': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة للموارد البشرية': 'eslamsaleh1999@hotmail.com',
-      'إدارة التسويق والتعاقدات': 'eslamsaleh1999@hotmail.com',
-      'إدارة نظم المعلومات': 'eslamsaleh1999@hotmail.com',
-      'إداره السلامة والصحة المهنية وشئون البيئة': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة لمكتب رئيس مجلس الادارة': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة للتخطيط': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة للخدمات الفندقية': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة للسلامة والجودة': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة للشئون القانونية': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة للشئون المالية': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة للصيانة': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة للمخازن': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة للمشتريات': 'eslamsaleh1999@hotmail.com',
-      'إدارة البحوث والتطوير': 'eslamsaleh1999@hotmail.com',
-      'الادارة العامة لامن الخدمات الجوية': 'eslamsaleh1999@hotmail.com',
-      'بدون ادارة عامة': 'eslamsaleh1999@hotmail.com'
+      'الادارة العامة للانتاج': '',
+      'الادارة العامة للموارد البشرية': '',
+      'إدارة التسويق والتعاقدات': '',
+      'إدارة نظم المعلومات': '',
+      'إداره السلامة والصحة المهنية وشئون البيئة': '',
+      'الادارة العامة لمكتب رئيس مجلس الادارة': '',
+      'الادارة العامة للتخطيط': '',
+      'الادارة العامة للخدمات الفندقية': '',
+      'الادارة العامة للسلامة والجودة': '',
+      'الادارة العامة للشئون القانونية': '',
+      'الادارة العامة للشئون المالية': '',
+      'الادارة العامة للصيانة': '',
+      'الادارة العامة للمخازن': '',
+      'الادارة العامة للمشتريات': '',
+      'إدارة البحوث والتطوير': '',
+      'الادارة العامة لامن الخدمات الجوية': '',
+      'بدون ادارة عامة': ''
     };
     // Department names are compared after Arabic normalisation (أ/إ/آ→ا, ة→ه, ى→ي,
     // spacing...), so small spelling differences in the sheet still match.
     const NO_DEPARTMENT_LABEL = 'بدون ادارة عامة';
     const DEPARTMENT_EMAIL_LOOKUP = new Map(
       Object.entries(DEPARTMENT_EMAIL_ASSIGNMENTS)
+        .filter(([, recipient]) => recipient) // departments with no address are skipped
         .map(([department, recipient]) => [normalizeArabicText(department), { department, recipient }])
     );
     const BULK_EMAIL_MAX_BYTES = 48 * 1024;
@@ -2224,12 +2225,13 @@ async function sha256Hex(value) {
     let lastActivityAt = Date.now();
     let lastSheetSignature = '';
     let liveRefreshBusy = false;
+    let isSavingDecision = false; // true only while a confirm/deny is being saved
 
     async function liveRefreshSheet() {
       if (liveRefreshBusy || isLoadingSheet || document.hidden) return;
       if (document.activeElement?.classList.contains('nearest-time-input')) return; // user is typing a date
       if (typeof resultsPanel === 'undefined' || resultsPanel.classList.contains('hidden')) return;
-      if (tableBody.querySelector('.decision-btn:disabled')) return; // a decision is being saved
+      if (isSavingDecision) return; // a decision is being saved
       liveRefreshBusy = true;
       const startedId = latestSheetRequestId;
       try {
@@ -2238,7 +2240,7 @@ async function sha256Hex(value) {
         if (!response || response.ok === false) return;
         const signature = JSON.stringify([response.headers, response.rows]);
         if (signature === lastSheetSignature) return; // nothing new
-        if (tableBody.querySelector('.decision-btn:disabled')) return;
+        if (isSavingDecision) return;
         if (document.activeElement?.classList.contains('nearest-time-input')) return;
         applySheetResponse(response);
         lastActivityAt = Date.now(); // new data arrived: stay on the fast schedule
@@ -2405,7 +2407,7 @@ async function sha256Hex(value) {
       // The email field on the form is optional now. No (or an invalid)
       // address simply means no message is sent; the decision is still saved.
       const toEmail = String(getRowValue(row, ['email address', 'email', 'البريد']) || '').trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) return false;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) return 'none';
       if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
 
       const content = reservationMessage(row, decision);
@@ -2422,7 +2424,7 @@ async function sha256Hex(value) {
       let lastError = null;
       try {
         await sendWithAccountFailover(templateParams);
-        return true;
+        return 'sent';
       } catch (error) {
         lastError = error;
       }
@@ -2437,7 +2439,8 @@ async function sha256Hex(value) {
         'Automatic sending failed — your email client opened with the message ready, please hit send.',
         'فشل الإرسال التلقائي — تم فتح برنامج البريد بالرسالة جاهزة، برجاء الضغط على إرسال.'
       ), 'warning');
-      return true;
+      // Only the mail app was opened; the admin still has to press send.
+      return 'manual';
     }
 
     // One attempt. Network-level failures (script error / timeout) are
@@ -2529,6 +2532,7 @@ async function sha256Hex(value) {
       const decision = button.dataset.decision;
       const row = clinicRows.find(item => item.sheetRow === rowNumber);
       if (!row || row.isReserved === 'y' || row.isReserved === 'n') return;
+      if (isSavingDecision) return;
 
       const dateIndex = getColumnIndexByKey('date');
       const isNearest = !isNoDateClinic(row) && isNearestTimeValue(row.values[dateIndex]);
@@ -2552,6 +2556,7 @@ async function sha256Hex(value) {
         if (!ok) return;
       }
 
+      isSavingDecision = true;
       const rowButtons = tableBody.querySelectorAll(`[data-sheet-row="${rowNumber}"] .decision-btn`);
       rowButtons.forEach(item => { item.disabled = true; });
       setStatus(tableStatus, decision === 'y'
@@ -2561,7 +2566,8 @@ async function sha256Hex(value) {
 
       try {
         const emailAllowed = shouldSendDecisionEmail(decision, isNearest);
-        const emailSent = emailAllowed ? await sendDecisionEmail(row, decision) : false;
+        // Save to the sheet FIRST. If that fails nothing has been emailed, so a
+        // retry can never send the same email twice.
         // Persist the admin-picked date for "اقرب وقت" rows so inquiries
         // after a reload still show the real date instead of the placeholder.
         await updateSheetDecision(row, decision, isNearest && chosenIso ? chosenIso : null);
@@ -2571,14 +2577,33 @@ async function sha256Hex(value) {
           delete nearestTimeDates[rowNumber];
         }
         renderClinicsTable();
+        // The decision is saved. Now send / prepare the email; a failure here must not look like a failed save.
+        // emailResult: 'sent' | 'manual' (mail app opened, admin must press send) | 'none' | 'failed'
+        let emailResult = 'none';
+        if (emailAllowed) {
+          try {
+            emailResult = await sendDecisionEmail(row, decision);
+          } catch (emailError) {
+            console.warn('Decision email failed:', emailError);
+            emailResult = 'failed';
+          }
+        }
         setStatus(tableStatus, decision === 'y'
-          ? (emailSent
+          ? (emailResult === 'sent'
               ? t('Reservation confirmed and email sent.', 'تم تأكيد الحجز وإرسال البريد الإلكتروني.')
+              : emailResult === 'manual'
+                ? t('Reservation confirmed — automatic sending failed, press send in the mail window that opened.', 'تم تأكيد الحجز — فشل الإرسال التلقائي، اضغط إرسال في نافذة البريد التي فُتحت.')
+              : emailResult === 'failed'
+                ? t('Reservation confirmed, but the email could not be sent — please contact the patient manually.', 'تم تأكيد الحجز، لكن تعذر إرسال البريد الإلكتروني — برجاء التواصل مع المريض يدوياً.')
               : emailAllowed
                 ? t('Reservation confirmed (no email on file, nothing sent).', 'تم تأكيد الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).')
                 : t('Reservation confirmed (no email sent — only rejections and "اقرب وقت" requests get emails).', 'تم تأكيد الحجز (لم يتم إرسال بريد إلكتروني — يتم الإرسال فقط للرفض وطلبات "اقرب وقت").'))
-          : (emailSent
+          : (emailResult === 'sent'
               ? t('Reservation denied and email sent.', 'تم رفض الحجز وإرسال البريد الإلكتروني.')
+              : emailResult === 'manual'
+                ? t('Reservation denied — automatic sending failed, press send in the mail window that opened.', 'تم رفض الحجز — فشل الإرسال التلقائي، اضغط إرسال في نافذة البريد التي فُتحت.')
+              : emailResult === 'failed'
+                ? t('Reservation denied, but the email could not be sent — please contact the patient manually.', 'تم رفض الحجز، لكن تعذر إرسال البريد الإلكتروني — برجاء التواصل مع المريض يدوياً.')
               : t('Reservation denied (no email on file, nothing sent).', 'تم رفض الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).'))
         );
         window.showToast?.(tableStatus.textContent, 'info');
@@ -2586,6 +2611,8 @@ async function sha256Hex(value) {
         rowButtons.forEach(item => { item.disabled = false; });
         setStatus(tableStatus, error.message || t('Action failed.', 'فشل تنفيذ الإجراء.'), true);
         window.showToast?.(tableStatus.textContent, 'error');
+      } finally {
+        isSavingDecision = false;
       }
     }
 

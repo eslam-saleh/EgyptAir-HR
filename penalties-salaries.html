@@ -1453,8 +1453,13 @@
 
     function getAutoInsurable() {
       const meals = getMealGross();
-      const solidarity = parseFloat(document.getElementById('solidarityFee')?.value) || 100;
-      const medical = parseFloat(document.getElementById('medicalFund')?.value) || 100;
+      // Default to 100 only when the field is empty/invalid — an explicit 0 must stay 0.
+      const feeOrDefault = id => {
+        const v = parseFloat(document.getElementById(id)?.value);
+        return Number.isFinite(v) && v >= 0 ? v : 100;
+      };
+      const solidarity = feeOrDefault('solidarityFee');
+      const medical = feeOrDefault('medicalFund');
       const raw = getTotalGross() - meals - solidarity - medical;
       return Math.min(SI_MAX, Math.max(SI_MIN, Math.round(Math.max(0, raw))));
     }
@@ -1476,7 +1481,8 @@
 
     function getRaise() {
       const v = parseFloat(document.getElementById('raiseAmt').value);
-      return (!isNaN(v) && v > 0) ? v : basicSalary * 0.07;
+      // An explicit 0 is a real value; only an empty/invalid field falls back to 7% of basic.
+      return (!isNaN(v) && v >= 0) ? v : basicSalary * 0.07;
     }
 
     function clampBasic(v) {
@@ -1506,6 +1512,8 @@
       return String(s || '')
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // strip Latin accents
         .replace(/[\u064B-\u0652\u0670\u0640]/g, '')        // strip Arabic tashkeel + tatweel
+        .replace(/[\u0660-\u0669]/g, ch => String(ch.charCodeAt(0) - 0x0660)) // Arabic-Indic digits -> 0-9
+        .replace(/[\u06F0-\u06F9]/g, ch => String(ch.charCodeAt(0) - 0x06F0)) // Persian digits -> 0-9
         .replace(/[إأآا]/g, 'ا')                             // normalize alef variants
         .replace(/ى/g, 'ي')                                  // alef maksura -> yaa
         .replace(/ة/g, 'ه')                                  // taa marbuta -> haa

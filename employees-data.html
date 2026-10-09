@@ -1456,6 +1456,16 @@
       const $ = id => document.getElementById(id);
       const clean = value => String(value ?? '').trim();
       const normal = value => clean(value).toLocaleLowerCase('ar-EG');
+      // Forgiving text for SEARCH matching only (applied to both the query and the searched text):
+      // drops tatweel (ـ) and Arabic diacritics, folds alef variants (أ إ آ ٱ → ا),
+      // maqsura/yeh (ى ي → ي), taa marbuta/heh (ة ه → ه) and Arabic-Indic digits to 0-9.
+      const searchText = value => normal(value)
+        .replace(/[\u0640\u064B-\u065F\u0670]/g, '')
+        .replace(/[\u0622\u0623\u0625\u0671]/g, '\u0627')
+        .replace(/\u0649/g, '\u064A')
+        .replace(/\u0629/g, '\u0647')
+        .replace(/[\u0660-\u0669]/g, ch => String(ch.charCodeAt(0) - 0x0660))
+        .replace(/[\u06F0-\u06F9]/g, ch => String(ch.charCodeAt(0) - 0x06F0));
       const state = {
         employees: [],
         filtered: [],
@@ -2104,8 +2114,8 @@
         host.querySelector('[data-act="all"]').textContent = t('msSelectAll');
         host.querySelector('[data-act="none"]').textContent = t('msClear');
         const list = host.querySelector('.ms-list');
-        const q = normal(host.querySelector('.ms-search').value);
-        const shown = meta.options.filter(o => !q || normal(o.label).includes(q));
+        const q = searchText(host.querySelector('.ms-search').value);
+        const shown = meta.options.filter(o => !q || searchText(o.label).includes(q));
         const scroll = list.scrollTop;
         list.innerHTML = shown.length ? shown.map(o => {
           const on = set.has(o.value);
@@ -2156,8 +2166,8 @@
             if (act) {
               if (act.dataset.act === 'none') set.clear();
               else {
-                const q = normal(search.value);
-                (msMeta[id]?.options || []).forEach(o => { if (!q || normal(o.label).includes(q)) set.add(o.value); });
+                const q = searchText(search.value);
+                (msMeta[id]?.options || []).forEach(o => { if (!q || searchText(o.label).includes(q)) set.add(o.value); });
               }
               change();
               return;
@@ -2189,10 +2199,10 @@
       /** Employees that match every selected filter except those listed in exceptIds. */
       function employeesMatchingExcept(exceptIds = []) {
         const except = new Set(exceptIds);
-        const query = normal($('search')?.value);
+        const query = searchText($('search')?.value);
         const source = state.employees.map(computed);
         return source.filter(employee => {
-          if (query && !normal(employee.code).includes(query) && !normal(employee.name).includes(query)) {
+          if (query && !searchText(employee.code).includes(query) && !searchText(employee.name).includes(query)) {
             return false;
           }
           if (!except.has('status') && !matchesSel('status', normalizeStatusKey(employee.status))) return false;
@@ -2219,8 +2229,8 @@
           let pool;
           if (ctrl.parents && ctrl.parents.length) {
             pool = state.employees.map(computed).filter(employee => {
-              const query = normal($('search')?.value);
-              if (query && !normal(employee.code).includes(query) && !normal(employee.name).includes(query)) return false;
+              const query = searchText($('search')?.value);
+              if (query && !searchText(employee.code).includes(query) && !searchText(employee.name).includes(query)) return false;
               return (ctrl.parents || []).every(parentId => {
                 const parentCtrl = FILTER_CONTROLS.find(c => c.id === parentId);
                 if (!parentCtrl) return true;
@@ -2320,9 +2330,9 @@
       }
 
       function getFiltered() {
-        const query = normal($('search')?.value);
+        const query = searchText($('search')?.value);
         const list = state.employees.map(computed).filter(employee => {
-          const matchesSearch = !query || normal(employee.code).includes(query) || normal(employee.name).includes(query);
+          const matchesSearch = !query || searchText(employee.code).includes(query) || searchText(employee.name).includes(query);
           if (!matchesSearch) return false;
           if (!matchesSel('status', normalizeStatusKey(employee.status))) return false;
           if (state.upcomingOnly && !isUpcomingRetirement(employee)) return false;
@@ -2436,9 +2446,9 @@
           body.innerHTML = `<p class="empty">${escapeHtml(t('historyEmpty'))}</p>`;
           return;
         }
-        const q = normal($('historySearch')?.value);
+        const q = searchText($('historySearch')?.value);
         const visible = q
-          ? h.records.filter(record => normal(`${record.date} ${record.type} ${record.details}`).includes(q))
+          ? h.records.filter(record => searchText(`${record.date} ${record.type} ${record.details}`).includes(q))
           : h.records;
         if ($('historyMatch')) $('historyMatch').textContent = q ? t('historyMatches', { count: visible.length.toLocaleString(), total: h.records.length.toLocaleString() }) : '';
         if (!visible.length) {
@@ -3242,8 +3252,8 @@
         host.querySelector('[data-act="all"]').textContent = t('msSelectAll');
         host.querySelector('[data-act="none"]').textContent = t('msClear');
         const list = host.querySelector('.ms-list');
-        const q = normal(host.querySelector('.ms-search').value);
-        const shown = all.filter(f => !q || normal(f.label).includes(q) || normal(f.key).includes(q));
+        const q = searchText(host.querySelector('.ms-search').value);
+        const shown = all.filter(f => !q || searchText(f.label).includes(q) || searchText(f.key).includes(q));
         const scroll = list.scrollTop;
         list.innerHTML = shown.length ? shown.map(f => {
           const locked = EXPORT_LOCKED_KEYS.includes(f.key);
