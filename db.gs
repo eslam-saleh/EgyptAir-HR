@@ -158,6 +158,8 @@ function getDashboardData() {
     var sheet = findSheetByName(ss, name);
     out[name] = sheet ? getFilledRecords(sheet) : [];
   });
+  // Shown by tagging.html in the "اخر رقم تنفيذي" box (null when unavailable).
+  out['__lastExecutiveNumber'] = getLastExecutiveNumber(ss);
 
   if (cache) {
     try {
@@ -172,6 +174,28 @@ function getDashboardData() {
     }
   }
   return out;
+}
+
+// Last filled value in the الرقم column of the الارقام sheet, as a number (or null).
+function getLastExecutiveNumber(ss) {
+  try {
+    var sheet = findSheetByName(ss, NUMBERS_SHEET);
+    if (!sheet) return null;
+    var loaded = loadSheet(sheet);
+    var numCol = findHeaderCol(loaded.headers, 'الرقم');
+    if (numCol === -1) return null;
+    for (var i = loaded.data.length - 1; i >= 0; i--) {
+      var raw = loaded.data[i][numCol];
+      if (raw === '' || raw === null) continue;
+      var digits = String(raw)
+        .replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 0x0660); })
+        .match(/\d+/);
+      return digits ? parseInt(digits[0], 10) : null;
+    }
+  } catch (err) {
+    // The extra box must never break the dashboard.
+  }
+  return null;
 }
 
 function clearDashboardCache() {

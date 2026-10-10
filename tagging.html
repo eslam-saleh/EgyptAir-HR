@@ -27,6 +27,11 @@
     .eyebrow { margin: 0 0 7px; color: var(--accent); font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
     .tagging-workspace { display: block; }
     .upload-card { padding: clamp(22px, 3vw, 30px); }
+    .upload-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: stretch; }
+    .last-number-card { min-height: 258px; display: grid; place-items: center; align-content: center; gap: 8px; padding: 28px; border: 2px solid var(--primary); border-radius: 8px; background: color-mix(in srgb, var(--primary) 8%, var(--surface-2)); text-align: center; }
+    .last-number-label { color: var(--text); font-size: clamp(1.2rem, 2.4vw, 1.7rem); font-weight: 800; }
+    .last-number-value { color: var(--primary); font-size: clamp(2.6rem, 7vw, 4.6rem); font-weight: 900; line-height: 1.1; letter-spacing: .02em; direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+    @media (max-width: 700px) { .upload-split { grid-template-columns: 1fr; } }
     .file-input { min-height: 258px; display: grid; place-items: center; gap: 10px; padding: 28px; border: 2px dashed var(--line); border-radius: 8px; background: var(--surface-2); color: var(--muted); text-align: center; outline: none; transition: border-color .18s ease, background .18s ease, transform .18s ease; }
     .file-input:hover, .file-input:focus-within, .file-input.is-dragover { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 7%, var(--surface-2)); transform: translateY(-1px); }
     .file-input input { display: none; }
@@ -128,12 +133,18 @@
   <main class="tagging-page">
     <section class="tagging-workspace" aria-label="DOCX tagging workspace">
       <section class="panel-card upload-card" aria-label="DOCX tagging upload">
+        <div class="upload-split">
         <div id="docx-drop-zone" class="file-input" role="group" aria-labelledby="docx-upload-title" tabindex="0">
         <input id="docx-input" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
         <span aria-hidden="true">⇧</span>
         <strong id="docx-upload-title" data-en="Choose DOCX" data-ar="اختر ملف DOCX">Choose DOCX</strong>
         <button id="browse-docx" class="browse-docx" type="button" data-en="Browse for DOCX" data-ar="استعراض ملف DOCX">Browse for DOCX</button>
         <p id="selected-file" class="selected-file" aria-live="polite" data-en="No file selected" data-ar="لم يتم اختيار ملف">No file selected</p>
+        </div>
+        <div class="last-number-card" aria-live="polite">
+          <span class="last-number-label" dir="rtl" lang="ar">اخر رقم تنفيذي</span>
+          <strong id="last-exec-number" class="last-number-value">…</strong>
+        </div>
         </div>
         <div class="engine-status" aria-labelledby="status-heading">
           <span id="status-heading" class="status-kicker" data-en="Document status" data-ar="حالة المستند">Document status</span>
@@ -2047,6 +2058,11 @@ async function tagDocx(file, options = {}) {
               if (!payload || !payload.ok) throw new Error((payload && payload.message) || 'Unknown error');
 
               const data = payload.data || {};
+              const lastNumEl = document.getElementById('last-exec-number');
+              if (lastNumEl) {
+                const n = data['__lastExecutiveNumber'];
+                lastNumEl.textContent = (n === null || n === undefined) ? '—' : `${new Date().getFullYear()}/${n}`;
+              }
               sheetRecords.leave = Array.isArray(data[SHEETS.leave.key]) ? data[SHEETS.leave.key] : [];
               sheetRecords.penalty = Array.isArray(data[SHEETS.penalty.key]) ? data[SHEETS.penalty.key] : [];
               sheetRecords.suspension = Array.isArray(data[SHEETS.suspension.key]) ? data[SHEETS.suspension.key] : [];
@@ -2073,6 +2089,7 @@ async function tagDocx(file, options = {}) {
           }
 
           console.error(lastError);
+          { const el = document.getElementById('last-exec-number'); if (el && el.textContent === '…') el.textContent = '—'; }
           renderCurrent(
             renderError,
             'Could not load data. Check your connection and try again.',
