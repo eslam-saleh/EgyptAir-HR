@@ -1082,6 +1082,37 @@
 
     }
 
+    // ── الارقام sheet: running number for executive (تنفيذي) documents ─────
+    // When a .docx whose file name contains تنفيذي / تنفيذى is generated with
+    // BOTH the code and name fields filled, the backend takes the last الرقم in
+    // the "الارقام" sheet, adds one, and appends a row:
+    //   الرقم | التاريخ (today) | الكود | الاسم | الموضوع (file name without .docx)
+    // Never throws — failures only show the top-left toast, so they never block the download.
+    async function logExecutiveNumberToSheet(doc, valuesByRawKey, placeholders) {
+      const fileName = String(doc?.name || '');
+      if (!/\.docx$/i.test(fileName)) return;
+      if (!/تنفيذ[يى]/.test(fileName)) return;
+      try {
+        const code = String(findValueByLabelKeywords(placeholders, valuesByRawKey, ['كود']) || '').trim();
+        const name = String(findValueByLabelKeywords(placeholders, valuesByRawKey, ['اسم']) || '').trim();
+        if (!code || !name) return;
+        const data = await postToSheet({
+          action: 'nextNumber',
+          sheet: 'الارقام',
+          row: {
+            'التاريخ': sheetSyncToday(),
+            'الكود': code,
+            'الاسم': name,
+            'الموضوع': fileName.replace(/\.docx$/i, ''),
+          },
+        });
+        const num = data?.data?.number;
+        showSheetSyncToast(t(`Number ${num} recorded in the \"الارقام\" sheet.`, `تم تسجيل الرقم ${num} في شيت \"الارقام\".`));
+      } catch (err) {
+        showSheetSyncToast(err.message || t('Failed to update the sheet.', 'فشل تحديث الشيت.'), true);
+      }
+    }
+
     const PLACEHOLDER_RE = /\{([^{}]+)\}/g;
     const WORD_XML_RE = /^word\/(document|header|footer|footnotes|endnotes)\d*\.xml$/;
 
@@ -2360,6 +2391,7 @@ function renderPlaceholderForm(doc, placeholders) {
           const buffer = await downloadDriveFile(selectedDoc);
           const docxBlob = replacePlaceholdersInDocx(buffer, values, false, feminize);
           downloadBlob(docxBlob, getExportFileName(selectedDoc.name, 'docx', true));
+          await logExecutiveNumberToSheet(selectedDoc, values, [...selectedPlaceholders, ...autoPlaceholders]);
         }
 
         await syncGeneratedDocumentToSheet(selectedDoc, values);

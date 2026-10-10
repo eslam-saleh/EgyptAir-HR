@@ -561,8 +561,13 @@ function initializeBalanceControls() {
   const outOfRange = raw => raw !== '' && !(Number(raw) >= 0 && Number(raw) <= 365);
   annualInput.addEventListener('input', () => setAnnualBalance(Number(annualInput.value), outOfRange(annualInput.value)));
   emergencyInput.addEventListener('input', () => setEmergencyBalance(Number(emergencyInput.value), outOfRange(emergencyInput.value)));
-  annualInput.addEventListener('blur', () => { annualInput.value = annualBalance; });
-  emergencyInput.addEventListener('blur', () => { emergencyInput.value = emergencyBalance; });
+  // Forced-emergency flags are only pruned once typing is finished (blur), never mid-typing.
+  const commit = input => {
+    input.value = input === annualInput ? annualBalance : emergencyBalance;
+    commitBalances();
+  };
+  annualInput.addEventListener('blur', () => commit(annualInput));
+  emergencyInput.addEventListener('blur', () => commit(emergencyInput));
 }
 
 function initializeResetButton() {
@@ -620,10 +625,18 @@ function initializeWeekendControls() {
   };
 }
 
+/** Called when a balance field loses focus: now it is safe to drop forced-emergency flags that no longer fit. */
+function commitBalances() {
+  reclassifySelections(true);
+  saveState();
+  generateCalendar();
+  updateAll();
+}
+
 function setAnnualBalance(value, syncField = true) {
   annualBalance = Math.max(0, Math.min(365, Number.isFinite(value) ? Math.floor(value) : 0));
   if (syncField) document.getElementById('balanceInput').value = annualBalance;
-  reclassifySelections();
+  reclassifySelections(false);
   saveState();
   generateCalendar();
   updateAll();
@@ -632,7 +645,7 @@ function setAnnualBalance(value, syncField = true) {
 function setEmergencyBalance(value, syncField = true) {
   emergencyBalance = Math.max(0, Math.min(365, Number.isFinite(value) ? Math.floor(value) : 0));
   if (syncField) document.getElementById('emergencyInput').value = emergencyBalance;
-  reclassifySelections();
+  reclassifySelections(false);
   saveState();
   generateCalendar();
   updateAll();
@@ -640,15 +653,22 @@ function setEmergencyBalance(value, syncField = true) {
 
 /** Re-assign day types when balances change (chronological order).
  *  Days the user forced to emergency (right-click) stay emergency while emergency balance remains. */
-function reclassifySelections() {
+function reclassifySelections(prune = true) {
   const keys = [...selectedDays.keys()].sort();
 
-  // Forget forced days that are no longer selected, and any beyond the emergency balance.
+  // Pin forced days (chronologically) up to the emergency balance. Forced days beyond it are
+  // classified normally; they are only forgotten when prune is true (e.g. on blur), so a
+  // transient balance while retyping the field never drops the flag permanently.
   const pinned = new Set();
   for (const key of keys) {
     if (forcedEmergencyDays.has(key) && pinned.size < emergencyBalance) pinned.add(key);
   }
-  forcedEmergencyDays = pinned;
+  if (prune) {
+    forcedEmergencyDays = pinned;
+  } else {
+    // Still drop flags for days that are no longer selected.
+    forcedEmergencyDays = new Set([...forcedEmergencyDays].filter(k => selectedDays.has(k)));
+  }
 
   selectedDays.clear();
   let annualUsed = 0;
@@ -829,6 +849,8 @@ function toggleDay(dateKey, holidayKey, isWeekend, forceEmergency = false) {
     }
   }
 
+  // A new day may be earlier than existing ones, so re-sort annual/emergency/absence chronologically.
+  reclassifySelections();
   saveState();
   generateCalendar();
   updateAll();

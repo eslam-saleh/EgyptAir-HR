@@ -84,6 +84,8 @@
     .sheet-row.risk-danger { border-inline-start-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface-2)); }
     .sheet-row.risk-expired { border-inline-start-color: var(--muted); opacity: .78; }
     .sheet-row.risk-resolved { border-inline-start-color: var(--success); opacity: .78; }
+    /* Record has no value in الرقم — distinct colour regardless of risk level (must stay after the risk-* rules). */
+    .sheet-row.no-number { border-inline-start-color: #8e5bd9; background: color-mix(in srgb, #8e5bd9 14%, var(--surface-2)); }
     .sheet-row-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
     .sheet-row-name { color: var(--text); font-size: 1.12rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sheet-row-code, .sheet-row-extra, .sheet-row-meta { color: var(--muted); font-size: .9rem; line-height: 1.45; }
@@ -1670,9 +1672,20 @@ async function tagDocx(file, options = {}) {
         }
       });
 
+      // True only when the sheet actually has an الرقم column and this record's cell is empty.
+      const hasBlankNumber = (rec) => {
+        if (!rec) return false;
+        const target = normalizeAr('الرقم');
+        const key = Object.keys(rec).find((k) => normalizeAr(k) === target);
+        if (key === undefined) return false;
+        const v = rec[key];
+        return v == null || String(v).trim() === '';
+      };
+
       const buildRowShell = (level, name, code, extra, rec) => {
         const row = document.createElement('div');
         row.className = 'sheet-row risk-' + level;
+        if (hasBlankNumber(rec)) row.classList.add('no-number');
         if (rec) {
           row.classList.add('is-interactive');
           row.tabIndex = 0;

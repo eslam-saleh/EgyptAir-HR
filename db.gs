@@ -46,6 +46,11 @@
 // bound to the sheet.
 var SPREADSHEET_ID = '1YCAUm-0kSeXS5mdJDwuq3cSYNyC6d52DBTMHlRtQjHI';
 
+// Numbering sheet written by document-center.html when an executive (تنفيذي)
+// .docx is generated. Columns: الرقم | التاريخ | الكود | الاسم | الموضوع.
+// Only the 'nextNumber' action may touch it (see doPost).
+var NUMBERS_SHEET = 'الارقام';
+
 // Sheet tabs read by the tagging.html "Deadlines to track" dashboard.
 var DASHBOARD_SHEETS = ['اجازات', 'جزاءات', 'ايقاف'];
 // The dashboard is read far more often than these sheets are written. A short
@@ -73,8 +78,9 @@ function doPost(e) {
     var body = JSON.parse(e.postData.contents);
     if (!isAuthorized(body.token)) return respond(false, 'غير مصرح بهذا الطلب.');
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    // Only the dashboard tabs may be written (matches what document-center.html sends).
-    var allowed = DASHBOARD_SHEETS.some(function (n) { return normalizeAr(n) === normalizeAr(body.sheet); });
+    // Dashboard tabs accept the usual actions; the numbering sheet accepts ONLY 'nextNumber'.
+    var allowedNames = body.action === 'nextNumber' ? [NUMBERS_SHEET] : DASHBOARD_SHEETS;
+    var allowed = allowedNames.some(function (n) { return normalizeAr(n) === normalizeAr(body.sheet); });
     if (!allowed) return respond(false, 'شيت غير مسموح به: ' + body.sheet);
     var sheet = findSheetByName(ss, body.sheet);
     if (!sheet) return respond(false, 'لم يتم العثور على الشيت: ' + body.sheet);
@@ -88,6 +94,7 @@ function doPost(e) {
     var result;
     switch (body.action) {
       case 'append':        result = handleAppend(sheet, body); break;
+      case 'nextNumber':    result = handleNextNumber(sheet, body); break;
       case 'update':         result = handleUpdate(sheet, body); break;
       case 'updatePenalty':  result = handleUpdatePenalty(sheet, body); break;
       case 'deletePenalty':  result = handleDeletePenalty(sheet, body); break;
@@ -399,6 +406,66 @@ function handleAppend(sheet, body) {
   if (overwrittenCount) parts.push('تم استبدال ' + (overwrittenCount === 1 ? 'سجل واحد' : overwrittenCount + ' سجلات') + ' موجود بنفس الكود ونقله إلى نهاية الشيت');
   return respond(true, parts.join(' و') + ' في شيت ' + sheet.getName() + '.',
     { firstRow: startRow, count: tail.length, added: newCount, overwritten: overwrittenCount });
+}
+
+// ── NEXT NUMBER (الارقام sheet) ───────────────────────────────────────
+// Takes the last filled الرقم in the sheet, adds one, and appends a new row:
+// الرقم = last + 1 (1 if the sheet only has headers), plus the التاريخ /
+// الكود / الاسم / الموضوع sent in body.row. Column A (م) also gets last + 1. The date is written as plain
+// "yyyy/mm/dd" text like every other date in this script. Runs under the
+// script lock taken in doPost, so two simultaneous documents never get the
+// same number.
+function handleNextNumber(sheet, body) {
+  var row = body.row || {};
+  var loaded = loadSheet(sheet);
+  if (!loaded.headers.length) return respond(false, 'شيت ' + sheet.getName() + ' فارغ (لا توجد عناوين).');
+
+  var numCol = findHeaderCol(loaded.headers, 'الرقم');
+  if (numCol === -1) return respond(false, 'تعذر إيجاد عمود الرقم في شيت ' + sheet.getName() + '.');
+
+  // Last row (from the bottom) that actually holds a number.
+  var last = 0;
+  for (var i = loaded.data.length - 1; i >= 0; i--) {
+    var raw = loaded.data[i][numCol];
+    if (raw === '' || raw === null) continue;
+    var digits = String(raw)
+      .replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 0x0660); })
+      .replace(/[۰-۹]/g, function (d) { return String(d.charCodeAt(0) - 0x06F0); })
+      .match(/\d+/);
+    if (!digits) return respond(false, 'آخر قيمة في عمود الرقم ليست رقماً: ' + raw);
+    last = parseInt(digits[0], 10);
+    break;
+  }
+  var next = last + 1;
+
+  // Column A (م) is the running order, separate from الرقم: last filled م + 1.
+  var orderCol = numCol === 0 ? -1 : 0;
+  var nextOrder = 1;
+  if (orderCol === 0) {
+    for (var j = loaded.data.length - 1; j >= 0; j--) {
+      var o = loaded.data[j][0];
+      if (o === '' || o === null) continue;
+      nextOrder = (parseInt(String(o).replace(/[٠-٩]/g, function (d) { return String(d.charCodeAt(0) - 0x0660); }), 10) || 0) + 1;
+      break;
+    }
+  }
+
+  var out = new Array(loaded.lastCol).fill('');
+  if (orderCol === 0) out[0] = nextOrder;
+  out[numCol] = next;
+  Object.keys(row).forEach(function (key) {
+    var col = findHeaderCol(loaded.headers, key);
+    if (col < 0 || col === numCol || col === orderCol) return;
+    out[col] = isDateHeader(loaded.headers[col]) ? normalizeDateCellText(row[key]) : row[key];
+  });
+
+  var targetRow = loaded.lastRow + 1;
+  for (var c = 0; c < loaded.headers.length; c++) {
+    if (isDateHeader(loaded.headers[c])) sheet.getRange(targetRow, c + 1).setNumberFormat('@');
+  }
+  sheet.getRange(targetRow, 1, 1, loaded.lastCol).setValues([out]);
+  return respond(true, 'تمت إضافة الرقم ' + next + ' في شيت ' + sheet.getName() + '.',
+    { number: next, row: targetRow });
 }
 
 // ── UPDATE (نهاية الإيقاف: fills the newest still-open row for a code) ──

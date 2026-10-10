@@ -582,8 +582,14 @@
           <h2 class="ps-card-title">
             <span>💰</span>
             <span data-en="Salary & Deductions" data-ar="المرتب والخصومات">المرتب والخصومات</span>
+            <button type="button" id="salaryResetBtn"
+               title="Reset sliders and numbers to defaults"
+               style="margin-inline:auto; font-size:0.78rem; font-weight:700; color:var(--primary); background:var(--surface-2); border:1.5px solid var(--line); border-radius:8px; padding:5px 12px; cursor:pointer; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; font-family:inherit;">
+              <span>↺</span>
+              <span data-en="Reset" data-ar="إعادة تعيين">إعادة تعيين</span>
+            </button>
             <a href="https://ps.egyptair.com/Login" target="_blank" rel="noopener noreferrer"
-               style="margin-inline-start:auto; font-size:0.78rem; font-weight:700; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;">
+               style="margin-inline-start:0; font-size:0.78rem; font-weight:700; color:var(--primary); text-decoration:none; display:inline-flex; align-items:center; gap:5px; white-space:nowrap;">
               <span>🔗</span>
               <span data-en="Official Salaries Portal" data-ar="بوابة المرتبات الرسمية">بوابة المرتبات الرسمية</span>
             </a>
@@ -955,6 +961,24 @@
       incRng.addEventListener('input', () => {
         incentives = +incRng.value;
         incNum.value = incentives;
+        updateTotalGross();
+        recalcPenalty();
+        updateSummary();
+      });
+
+      // Reset all salary sliders/numbers back to their defaults
+      document.getElementById('salaryResetBtn').addEventListener('click', () => {
+        clearTimeout(basicDebounce);
+        clearTimeout(incDebounce);
+        basicSalary = 2000;
+        incentives = 13000;
+        basicNum.value = basicRng.value = 2000;
+        incNum.value = incRng.value = 13000;
+        applyMeals(0);
+        const defaults = { unionFee: '5.00', solidarityFee: '100.00', medicalFund: '100.00', healingProject: '58.00' };
+        Object.entries(defaults).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
+        insurableManualOverride = false;
+        updateRaise();
         updateTotalGross();
         recalcPenalty();
         updateSummary();
