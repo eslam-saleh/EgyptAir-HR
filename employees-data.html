@@ -1459,13 +1459,23 @@
       // Forgiving text for SEARCH matching only (applied to both the query and the searched text):
       // drops tatweel (ـ) and Arabic diacritics, folds alef variants (أ إ آ ٱ → ا),
       // maqsura/yeh (ى ي → ي), taa marbuta/heh (ة ه → ه) and Arabic-Indic digits to 0-9.
+      // Also strips the definite article ال from the start of every word so
+      // "الادارة" and "ادارة" match the same search.
       const searchText = value => normal(value)
         .replace(/[\u0640\u064B-\u065F\u0670]/g, '')
         .replace(/[\u0622\u0623\u0625\u0671]/g, '\u0627')
         .replace(/\u0649/g, '\u064A')
         .replace(/\u0629/g, '\u0647')
         .replace(/[\u0660-\u0669]/g, ch => String(ch.charCodeAt(0) - 0x0660))
-        .replace(/[\u06F0-\u06F9]/g, ch => String(ch.charCodeAt(0) - 0x06F0));
+        .replace(/[\u06F0-\u06F9]/g, ch => String(ch.charCodeAt(0) - 0x06F0))
+        .replace(/(^|[\s_\-]+)ال(?=\S)/g, '$1')
+        .replace(/^ال/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      // Strong key for FILTER matching (sector, job, department, …): same folding
+      // as searchText, plus remove all remaining spaces/punctuation so orthographic
+      // and spacing variants collapse to one option and one match.
+      const filterKey = value => searchText(value).replace(/[\s_\-]+/g, '');
       const state = {
         employees: [],
         filtered: [],
@@ -2077,11 +2087,25 @@
       const MS_IDS = ['status', 'sector', 'department', 'section', 'appointmentType', 'gender', 'grade', 'workType', 'serviceType', 'secondedJob2', 'ageGroup', 'jobTitle', 'workSchedule', 'report2024', 'report2025', 'report2026'];
       const msMeta = {}; // id -> { options: [{value,label}], placeholder }
 
-      /** True when the filter has no selection, or the value is one of the selected ones. */
+      /** True when the filter has no selection, or the value is one of the selected ones.
+       *  Text filters (sector, job, …) match via filterKey so Arabic orthographic
+       *  variants and leading ال are treated as the same value. Status uses
+       *  canonical keys and stays exact. */
       function matchesSel(id, actual) {
         const set = state.sel[id];
         if (!set || !set.size) return true;
-        return actual ? set.has(actual) : set.has(EMPTY_FILTER);
+        if (!actual) return set.has(EMPTY_FILTER);
+        if (id === 'status') return set.has(actual);
+        // Selected option values are already filterKeys (see refreshFilters).
+        // Compare the employee's value under the same key so variants match.
+        const key = filterKey(actual);
+        if (set.has(key)) return true;
+        // Back-compat: if a raw display string is still selected, match it too.
+        if (set.has(actual)) return true;
+        for (const selected of set) {
+          if (selected !== EMPTY_FILTER && filterKey(selected) === key) return true;
+        }
+        return false;
       }
 
       function selCount(id) { return state.sel[id] ? state.sel[id].size : 0; }
@@ -2240,11 +2264,24 @@
           } else {
             pool = employeesMatchingExcept([ctrl.id]);
           }
-          const values = uniqueFrom(pool, e => filterValueFor(e, ctrl));
+          // Group orthographic variants (أ/ا, ة/ه, ى/ي, leading ال, spaces)
+          // under one filterKey so the dropdown shows a single option and
+          // selecting it matches every spelling variant in the roster.
+          const byKey = new Map(); // filterKey -> display label (first seen)
+          pool.forEach(e => {
+            const display = filterValueFor(e, ctrl);
+            if (!display) return;
+            const key = filterKey(display);
+            if (!key) return;
+            if (!byKey.has(key)) byKey.set(key, display);
+          });
+          const values = [...byKey.entries()].sort((a, b) =>
+            a[1].localeCompare(b[1], 'ar')
+          );
           const hasEmpty = pool.some(e => !filterValueFor(e, ctrl));
           const options = [
             ...(hasEmpty ? [{ value: EMPTY_FILTER, label: t('emptyFilter') }] : []),
-            ...values.map(value => ({ value, label: value }))
+            ...values.map(([key, label]) => ({ value: key, label }))
           ];
           msSetOptions(ctrl.id, options, t(ctrl.allKey));
         });

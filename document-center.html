@@ -1402,16 +1402,21 @@
         .replace(/[\u064B-\u0652\u0670\u0640]/g, '')
         // Hyphen / dash / underscore → space (e.g. كبير-طباخين ≡ كبير طباخين)
         .replace(/[\u002D\u2010-\u2015_]+/g, ' ')
-        // Alef variants → ا
-        .replace(/[إأآا]/g, 'ا')
-        // Maqsura ى and yeh ي treated as equivalent
+        // Alef variants (أ إ آ ٱ) → ا
+        .replace(/[إأآٱا]/g, 'ا')
+        // Maqsura ى and yeh ي treated as equivalent (both directions)
         .replace(/[يى]/g, 'ي')
-        // Taa marbuta ة and heh ه treated as equivalent
+        // Taa marbuta ة and heh ه treated as equivalent (both directions)
         .replace(/[هة]/g, 'ه')
         .toLowerCase()
         .replace(/\s+/g, ' ')
         .trim();
-      if (stripLeadingAl) value = value.replace(/^ال/, '');
+      // Strip definite article ال from the start of every word so
+      // "الادارة العامة" ≡ "ادارة عامة" ≡ "الإدارة العامه"
+      if (stripLeadingAl) {
+        value = value.replace(/(^|[\s_\-]+)ال(?=\S)/g, '$1');
+        value = value.replace(/^ال/, '');
+      }
       if (compact) value = value.replace(/[\s_\-]/g, '');
       return value;
     }
