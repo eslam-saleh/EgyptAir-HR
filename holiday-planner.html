@@ -651,10 +651,12 @@ function setEmergencyBalance(value, syncField = true) {
   updateAll();
 }
 
-/** Re-assign day types when balances change (chronological order).
+/** Re-assign day types when balances change or a day is removed (in the order the days were picked).
  *  Days the user forced to emergency (right-click) stay emergency while emergency balance remains. */
 function reclassifySelections(prune = true) {
-  const keys = [...selectedDays.keys()].sort();
+  // Selection order (Map insertion order), NOT calendar order: a day you already picked never
+  // changes type because a new day was added before it. Only removing a day can promote later ones.
+  const keys = [...selectedDays.keys()];
 
   // Pin forced days (chronologically) up to the emergency balance. Forced days beyond it are
   // classified normally; they are only forgotten when prune is true (e.g. on blur), so a
@@ -844,7 +846,7 @@ function toggleDay(dateKey, holidayKey, isWeekend, forceEmergency = false) {
     }
   }
 
-  // A new day may be earlier than existing ones, so re-sort annual/emergency/absence chronologically.
+  // Re-check types in selection order (keeps earlier picks stable).
   reclassifySelections();
   saveState();
   generateCalendar();
