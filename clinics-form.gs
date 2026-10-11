@@ -28,8 +28,8 @@ function updateNext30Days() {
   // Array for Arabic day names
   var arabicDays = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
   
-  // 2. Loop through the next 30 days and drop Fridays and Saturdays
-  for (var i = 0; i < 30; i++) {
+  // 2. Loop through the next 31 days and drop Fridays and Saturdays
+  for (var i = 0; i < 31; i++) {
     var targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + i); // Increment day by day
     

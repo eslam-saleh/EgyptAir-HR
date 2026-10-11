@@ -59,7 +59,7 @@
             <div class="header-copy">
                 <p class="eyebrow" data-en="Egypt full-year planner" data-ar="مخطط السنة الكاملة لمصر">Egypt full-year planner</p>
                 <h1 data-en="Employee Holiday Planner" data-ar="مخطط إجازات الموظفين">Employee Holiday Planner</h1>
-                <p class="intro" data-en="Choose personal leave days from January 1 to December 31 of the current year. Annual leave is used first, then emergency (عارضة), then absence (غياب)." data-ar="اختر أيام الإجازة الشخصية من العام الحالي. تُستخدم الإجازة السنوية أولاً ثم العارضة ثم الغياب.">Choose personal leave days from January 1 to December 31 of the current year. Annual leave is used first, then emergency (عارضة), then absence (غياب).</p>
+                <p class="intro" data-en="Choose personal leave days from January 1 to December 31 of the current year. Annual leave is used first, then absence (غياب). Emergency leave (عارضة) is a separate balance: right-click a day to use it." data-ar="اختر أيام الإجازة الشخصية من العام الحالي. تُستخدم الإجازة السنوية أولاً ثم الغياب. العارضة رصيد منفصل: انقر بزر الفأرة الأيمن على يوم لاستخدامها.">Choose personal leave days from January 1 to December 31 of the current year. Annual leave is used first, then absence (غياب). Emergency leave (عارضة) is a separate balance: right-click a day to use it.</p>
             </div>
         </header>
 
@@ -77,7 +77,7 @@
                 <div class="balance-row balance-row-single">
                     <input id="emergencyInput" type="number" min="0" max="365" step="1" value="7" aria-label="Emergency leave balance">
                 </div>
-                <p class="hint" data-en="Used after annual leave is finished. Right-click a day to force emergency leave anytime." data-ar="انقر بزر الفأرة الأيمن.">Used after annual leave is finished. Right-click a day to force emergency leave anytime.</p>
+                <p class="hint" data-en="Independent of annual leave. Right-click a day to use emergency leave." data-ar="انقر بزر الفأرة الأيمن.">Independent of annual leave. Right-click a day to use emergency leave.</p>
 				</div>
 
             <div class="balance-card">
@@ -273,11 +273,11 @@ const translations = {
     appTitle: 'Employee Holiday Planner',
     eyebrow: 'Egypt full-year planner',
     title: 'Employee Holiday Planner',
-    intro: 'Choose personal leave days from January 1 to December 31 of the current year. Annual leave is used first, then emergency (عارضة), then absence (غياب).',
+    intro: 'Choose personal leave days from January 1 to December 31 of the current year. Annual leave is used first, then absence (غياب). Emergency leave (عارضة) is a separate balance: right-click a day to use it.',
     balanceLabel: 'Annual holiday balance',
     balanceHint: 'Type your annual leave days.',
     emergencyLabel: 'Emergency leave (عارضة)',
-    emergencyHint: 'Used after annual leave is finished. Right-click a day to force emergency leave anytime.',
+    emergencyHint: 'Independent of annual leave. Right-click a day to use emergency leave.',
     takenLabel: 'Annual used',
     remainingLabel: 'Annual remaining',
     emergencyRemainingLabel: 'Emergency remaining',
@@ -342,11 +342,11 @@ const translations = {
     appTitle: 'مخطط إجازات الموظفين',
     eyebrow: 'مخطط سنوي كامل لمصر',
     title: 'مخطط إجازات الموظفين',
-    intro: 'اختر أيام الإجازة الشخصية من 1 يناير إلى 31 ديسمبر في السنة الحالية. تُستخدم الإجازة السنوية أولاً ثم العارضة ثم الغياب.',
+    intro: 'اختر أيام الإجازة الشخصية من 1 يناير إلى 31 ديسمبر في السنة الحالية. تُستخدم الإجازة السنوية أولاً ثم الغياب. العارضة رصيد منفصل: انقر بزر الفأرة الأيمن على يوم لاستخدامها.',
     balanceLabel: 'رصيد الإجازات السنوي',
     balanceHint: 'اكتب عدد أيام الإجازة السنوية.',
     emergencyLabel: 'رصيد العارضة',
-    emergencyHint: 'تُستخدم بعد انتهاء الإجازة السنوية. انقر بزر الفأرة الأيمن على يوم لفرض العارضة في أي وقت.',
+    emergencyHint: 'مستقلة عن الإجازة السنوية. انقر بزر الفأرة الأيمن على يوم لاستخدام العارضة.',
     takenLabel: 'الإجازة المستخدمة',
     remainingLabel: 'رصيد الإجازة المتبقي',
     emergencyRemainingLabel: 'رصيد العارضة المتبقي',
@@ -672,17 +672,14 @@ function reclassifySelections(prune = true) {
 
   selectedDays.clear();
   let annualUsed = 0;
-  let emergUsed = pinned.size;
   for (const key of keys) {
     if (pinned.has(key)) {
       selectedDays.set(key, 'emergency');
     } else if (annualUsed < annualBalance) {
       selectedDays.set(key, 'annual');
       annualUsed++;
-    } else if (emergUsed < emergencyBalance) {
-      selectedDays.set(key, 'emergency');
-      emergUsed++;
     } else {
+      // Emergency leave is independent: once annual leave runs out, the day is absence.
       selectedDays.set(key, 'absence');
     }
   }
@@ -831,7 +828,7 @@ function toggleDay(dateKey, holidayKey, isWeekend, forceEmergency = false) {
       selectedDays.set(dateKey, 'emergency');
       forcedEmergencyDays.add(dateKey);
     } else {
-      // No emergency left — fall back to normal priority
+      // No emergency left — fall back to annual, then absence
       if (annualUsed < annualBalance) {
         selectedDays.set(dateKey, 'annual');
       } else {
@@ -839,11 +836,9 @@ function toggleDay(dateKey, holidayKey, isWeekend, forceEmergency = false) {
       }
     }
   } else {
-    // Left-click: annual first, then emergency, then absence
+    // Left-click: annual first, then absence (emergency is only set via right-click)
     if (annualUsed < annualBalance) {
       selectedDays.set(dateKey, 'annual');
-    } else if (emergUsed < emergencyBalance) {
-      selectedDays.set(dateKey, 'emergency');
     } else {
       selectedDays.set(dateKey, 'absence');
     }
