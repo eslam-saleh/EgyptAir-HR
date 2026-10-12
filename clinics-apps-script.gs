@@ -76,9 +76,11 @@ function doGet(e) {
   const params = e.parameter || {};
   const callback = String(params.callback || '');
 
-  const payload = params.action === 'getData'
-    ? getSheetDataCached_()
-    : updateDecision(params);
+// in doGet, replace the `payload` line with:
+const payload = params.action === 'getData' ? getSheetDataCached_()
+  : params.action === 'lookup' ? lookupByCode_(params.id)
+  : updateDecision(params);
+
 
   if (/^[A-Za-z_$][\w$]*$/.test(callback)) {
     return ContentService
@@ -89,6 +91,20 @@ function doGet(e) {
   return jsonResponse(payload);
 }
 
+function lookupByCode_(rawId) {
+  const id = String(rawId || '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).trim();
+  if (!id || id.length > 20) return { ok: false, error: 'Invalid ID.' };
+  const data = getSheetDataCached_();
+  if (!data || !data.ok) return data;
+  const low = data.headers.map(h => String(h).toLowerCase());
+  const codeIdx = low.findIndex(h => h.includes('code') || h.includes('كود'));
+  if (codeIdx < 0) return { ok: false, error: 'Code column not found.' };
+  const keep = low.map((h, i) => (h.includes('email') || h.includes('البريد')) ? -1 : i).filter(i => i >= 0);
+  const rows = data.rows
+    .filter(r => String(r[codeIdx]).replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).trim() === id)
+    .map(r => keep.map(i => r[i]));
+  return { ok: true, headers: keep.map(i => data.headers[i]), rows };
+}
 function getResponsesSheet_() {
   return SpreadsheetApp.openById(CLINIC_SHEET_ID).getSheets()[0];
 }
