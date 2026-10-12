@@ -620,7 +620,9 @@
               <div class="day-multi-select" id="exportDaySelect"></div>
             </div>
             <button class="ghost-btn export-btn" id="exportExcelBtn" type="button" data-en="Download Excel" data-ar="تحميل إكسل">Download Excel</button>
+            <!-- TO DELETE: Email all records button
             <button class="ghost-btn export-btn" id="emailAllRecordsBtn" type="button" data-en="Email all records" data-ar="إرسال كل السجلات بالبريد">Email all records</button>
+            -->
           </div>
         </div>
       </div>
@@ -794,7 +796,8 @@
     const tableBody = document.getElementById('clinicTableBody');
     const tableStatus = document.getElementById('tableStatus');
     const exportExcelBtn = document.getElementById('exportExcelBtn');
-    const emailAllRecordsBtn = document.getElementById('emailAllRecordsBtn');
+    // TO DELETE: Email all records button (commented out in HTML)
+    // const emailAllRecordsBtn = document.getElementById('emailAllRecordsBtn');
     const exportDaySelect = document.getElementById('exportDaySelect');
     const exportDayLabel = document.getElementById('exportDayLabel');
     const refreshBtn = document.getElementById('refreshBtn');
@@ -2037,7 +2040,8 @@ async function sha256Hex(value) {
       }
     }
 
-    emailAllRecordsBtn.addEventListener('click', emailAllTableRecords);
+    // TO DELETE: Email all records button listener
+    // emailAllRecordsBtn.addEventListener('click', emailAllTableRecords);
     refreshBtn.addEventListener('click', () => loadClinicSheet());
     populateDaySelect();
 
