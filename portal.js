@@ -1,14 +1,36 @@
 (function () {
+  // localStorage can throw (private mode, blocked cookies, old browsers): never let that stop the page.
+  const store = {
+    get(key) {
+      try { return window.localStorage.getItem(key); } catch (error) { return null; }
+    },
+    set(key, value) {
+      try { window.localStorage.setItem(key, value); } catch (error) { /* ignore */ }
+    }
+  };
+
+  // CustomEvent constructor fallback for older browsers.
+  function emit(name, detail) {
+    let event;
+    if (typeof window.CustomEvent === 'function') {
+      event = new CustomEvent(name, { detail: detail });
+    } else {
+      event = document.createEvent('CustomEvent');
+      event.initCustomEvent(name, false, false, detail);
+    }
+    window.dispatchEvent(event);
+  }
+
   const LANGUAGE_KEY = 'egyptairPortal:language';
   const THEME_KEY = 'egyptairPortal:theme';
 
-  const savedLanguage = localStorage.getItem(LANGUAGE_KEY) || localStorage.getItem('holidayPlanner:language') || 'en';
-  const savedTheme = localStorage.getItem(THEME_KEY) || 'light';
+  const savedLanguage = store.get(LANGUAGE_KEY) || store.get('holidayPlanner:language') || 'en';
+  const savedTheme = store.get(THEME_KEY) || 'light';
 
   function setLanguage(language) {
     const lang = language === 'ar' ? 'ar' : 'en';
-    localStorage.setItem(LANGUAGE_KEY, lang);
-    localStorage.setItem('holidayPlanner:language', lang);
+    store.set(LANGUAGE_KEY, lang);
+    store.set('holidayPlanner:language', lang);
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
 
@@ -29,16 +51,16 @@
       button.classList.toggle('active', button.dataset.langOption === lang);
     });
 
-    window.dispatchEvent(new CustomEvent('portal-language-change', { detail: { language: lang } }));
+    emit('portal-language-change', { language: lang });
   }
 
   function setTheme(theme) {
     const nextTheme = theme === 'dark' ? 'dark' : 'light';
-    localStorage.setItem(THEME_KEY, nextTheme);
+    store.set(THEME_KEY, nextTheme);
     document.documentElement.dataset.theme = nextTheme;
 
     document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
-      const lang = localStorage.getItem(LANGUAGE_KEY) || 'en';
+      const lang = store.get(LANGUAGE_KEY) || 'en';
       const lightLabel = lang === 'ar' ? 'فاتح' : 'Light';
       const darkLabel = lang === 'ar' ? 'داكن' : 'Dark';
       button.textContent = nextTheme === 'dark' ? lightLabel : darkLabel;
@@ -49,13 +71,13 @@
     document.querySelectorAll('[data-lang-option]').forEach((button) => {
       button.addEventListener('click', () => {
         setLanguage(button.dataset.langOption);
-        setTheme(localStorage.getItem(THEME_KEY) || 'light');
+        setTheme(store.get(THEME_KEY) || 'light');
       });
     });
 
     document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
       button.addEventListener('click', () => {
-        setTheme((localStorage.getItem(THEME_KEY) || 'light') === 'dark' ? 'light' : 'dark');
+        setTheme((store.get(THEME_KEY) || 'light') === 'dark' ? 'light' : 'dark');
       });
     });
 
@@ -67,7 +89,7 @@
 
   window.EgyptAirPortal = {
     get language() {
-      return localStorage.getItem(LANGUAGE_KEY) || 'en';
+      return store.get(LANGUAGE_KEY) || 'en';
     },
     setLanguage,
     setTheme

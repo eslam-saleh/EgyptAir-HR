@@ -34,10 +34,10 @@
       align-items: center;
       justify-content: center;
       width: 44px;
-      border: 1px solid var(--line);
+      border: 1px solid #e2e8f0; border: 1px solid var(--line);
       border-radius: 10px;
-      background: var(--surface);
-      color: var(--primary);
+      background: #ffffff; background: var(--surface);
+      color: #005daa; color: var(--primary);
       cursor: pointer;
       transition: border-color .15s ease, box-shadow .15s ease, color .15s ease, background .15s ease;
     }
@@ -49,7 +49,7 @@
 
     .copy-link-btn:hover,
     .copy-link-btn:focus-visible {
-      border-color: var(--primary);
+      border-color: #005daa; border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
       outline: none;
     }
@@ -57,7 +57,7 @@
     .copy-link-btn.copied {
       border-color: var(--success);
       color: var(--success);
-      background: color-mix(in srgb, var(--success) 12%, var(--surface));
+      background: rgba(18,128,92,0.12); background: color-mix(in srgb, var(--success) 12%, var(--surface));
     }
 
     .copy-link-btn .copy-link-icon-check {
@@ -76,14 +76,14 @@
     .admin-panel h2,
     .results-panel h2 {
       margin-bottom: 8px;
-      color: var(--primary);
+      color: #005daa; color: var(--primary);
     }
 
     .reservation-panel p,
     .admin-panel p,
     .results-panel p {
       margin-bottom: 0;
-      color: var(--muted);
+      color: #4a5568; color: var(--muted);
       line-height: 1.6;
     }
 
@@ -98,7 +98,7 @@
     .admin-field label {
       display: block;
       margin-bottom: 6px;
-      color: var(--text);
+      color: #1a202c; color: var(--text);
       font-weight: 800;
     }
 
@@ -106,21 +106,21 @@
       width: 100%;
       min-height: 42px;
       padding: 10px 12px;
-      border: 1px solid var(--line);
+      border: 1px solid #e2e8f0; border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--surface-2);
-      color: var(--text);
+      background: #eef3f8; background: var(--surface-2);
+      color: #1a202c; color: var(--text);
       outline: none;
     }
 
     .admin-field input:focus {
-      border-color: var(--primary);
+      border-color: #005daa; border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
     }
 
     .status-line {
       margin-top: 12px;
-      color: var(--muted);
+      color: #4a5568; color: var(--muted);
       font-weight: 700;
     }
 
@@ -158,7 +158,7 @@
     .export-day-field label {
       display: block;
       margin-bottom: 4px;
-      color: var(--muted);
+      color: #4a5568; color: var(--muted);
       font-size: 0.8rem;
       font-weight: 800;
     }
@@ -167,17 +167,17 @@
       min-height: 42px;
       min-width: 230px;
       padding: 8px 10px;
-      border: 1px solid var(--line);
+      border: 1px solid #e2e8f0; border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--surface-2);
-      color: var(--text);
+      background: #eef3f8; background: var(--surface-2);
+      color: #1a202c; color: var(--text);
       font: inherit;
       font-size: 0.9rem;
     }
 
     .export-day-select:focus {
       outline: none;
-      border-color: var(--primary);
+      border-color: #005daa; border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
     }
 
@@ -194,10 +194,10 @@
       width: 100%;
       min-height: 42px;
       padding: 8px 10px;
-      border: 1px solid var(--line);
+      border: 1px solid #e2e8f0; border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--surface-2);
-      color: var(--text);
+      background: #eef3f8; background: var(--surface-2);
+      color: #1a202c; color: var(--text);
       font: inherit;
       font-size: 0.9rem;
       cursor: pointer;
@@ -207,7 +207,7 @@
     .day-multi-select.open .day-ms-btn,
     .day-ms-btn:focus-visible {
       outline: none;
-      border-color: var(--primary);
+      border-color: #005daa; border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
     }
 
@@ -217,9 +217,9 @@
       inset-inline: 0;
       top: calc(100% + 6px);
       padding: 8px;
-      border: 1px solid var(--line);
+      border: 1px solid #e2e8f0; border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--surface);
+      background: #ffffff; background: var(--surface);
       box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
       /* Closed state: invisible and not clickable, but still animatable */
       opacity: 0;
@@ -250,11 +250,11 @@
     }
 
     .day-ms-actions { display: flex; gap: 6px; margin-bottom: 6px; }
-    .day-ms-actions button { flex: 1; min-height: 32px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--text); cursor: pointer; font: inherit; font-size: .8rem; }
+    .day-ms-actions button { flex: 1; min-height: 32px; border: 1px solid #e2e8f0; border: 1px solid var(--line); border-radius: 6px; background: #eef3f8; background: var(--surface-2); color: #1a202c; color: var(--text); cursor: pointer; font: inherit; font-size: .8rem; }
     .day-ms-list { max-height: 250px; overflow: auto; display: grid; gap: 2px; }
-    .day-ms-opt { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; color: var(--text); }
-    .day-ms-opt:hover, .day-ms-opt.selected { background: color-mix(in srgb, var(--primary) 12%, var(--surface)); }
-    .day-ms-check { width: 18px; color: var(--primary); font-weight: 800; visibility: hidden; }
+    .day-ms-opt { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; color: #1a202c; color: var(--text); }
+    .day-ms-opt:hover, .day-ms-opt.selected { background: rgba(0,93,170,0.12); background: color-mix(in srgb, var(--primary) 12%, var(--surface)); }
+    .day-ms-check { width: 18px; color: #005daa; color: var(--primary); font-weight: 800; visibility: hidden; }
     .day-ms-opt.selected .day-ms-check { visibility: visible; }
 
     .refresh-btn.loading {
@@ -271,7 +271,7 @@
     }
 
     .no-date-note {
-      color: var(--muted);
+      color: #4a5568; color: var(--muted);
       font-size: 0.82rem;
       font-weight: 700;
       white-space: nowrap;
@@ -280,9 +280,9 @@
     .table-wrap {
       margin-top: 18px;
       overflow-x: auto;
-      border: 1px solid var(--line);
+      border: 1px solid #e2e8f0; border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--surface);
+      background: #ffffff; background: var(--surface);
     }
 
     .clinics-table {
@@ -294,30 +294,39 @@
     .clinics-table th,
     .clinics-table td {
       padding: 12px 14px;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid #e2e8f0; border-bottom: 1px solid var(--line);
       text-align: start;
       vertical-align: top;
       font-size: 0.92rem;
     }
 
     .clinics-table th {
-      color: var(--primary);
-      background: var(--surface-2);
+      color: #005daa; color: var(--primary);
+      background: #eef3f8; background: var(--surface-2);
       font-weight: 800;
       white-space: nowrap;
     }
 
+    /* No "to" keyframe: the highlight fades back to whatever the row's own colour is (incl. zebra). */
     @keyframes newRowFade {
       from { background-color: #fde68a; }
-      to   { background-color: transparent; }
     }
     .clinics-table tbody tr.new-row > td {
       animation: newRowFade 3s ease-out var(--hl-delay, 0s) forwards;
     }
 
+    /* Zebra striping (like Excel): every even row is a touch heavier. Semi-transparent so it works in light and dark. */
+    .clinics-table tbody tr:nth-child(even) {
+      background-color: rgba(0, 93, 170, 0.08);
+    }
+
+    .clinics-table tbody tr:hover {
+      background-color: rgba(0, 93, 170, 0.14);
+    }
+
     .clinics-table tbody tr.decided {
       opacity: 0.5;
-      background: color-mix(in srgb, var(--muted) 8%, var(--surface));
+      background: rgba(74,85,104,0.08); background: color-mix(in srgb, var(--muted) 8%, var(--surface));
     }
 
     .decision-cell {
@@ -328,9 +337,9 @@
     .decision-btn {
       width: 38px;
       height: 38px;
-      border: 1px solid var(--line);
+      border: 1px solid #e2e8f0; border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--surface);
+      background: #ffffff; background: var(--surface);
       cursor: pointer;
       font-size: 1.2rem;
       line-height: 1;
@@ -338,7 +347,7 @@
 
     .decision-btn:hover:not(:disabled),
     .decision-btn:focus-visible:not(:disabled) {
-      border-color: var(--primary);
+      border-color: #005daa; border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
       outline: none;
     }
@@ -362,8 +371,8 @@
       min-height: 28px;
       padding: 3px 10px;
       border-radius: 8px;
-      background: var(--surface-2);
-      color: var(--muted);
+      background: #eef3f8; background: var(--surface-2);
+      color: #4a5568; color: var(--muted);
       font-weight: 800;
       white-space: nowrap;
     }
@@ -393,17 +402,17 @@
     .nearest-time-input {
       min-height: 34px;
       padding: 4px 8px;
-      border: 1px solid var(--line);
+      border: 1px solid #e2e8f0; border: 1px solid var(--line);
       border-radius: 6px;
-      background: var(--surface);
-      color: var(--text);
+      background: #ffffff; background: var(--surface);
+      color: #1a202c; color: var(--text);
       font: inherit;
       font-size: 0.85rem;
     }
 
     .nearest-time-input:focus {
       outline: none;
-      border-color: var(--primary);
+      border-color: #005daa; border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(0, 93, 170, 0.12);
     }
 
@@ -452,7 +461,7 @@
       flex-wrap: wrap;
       gap: 6px;
       margin-top: 18px;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 1px solid #e2e8f0; border-bottom: 1px solid var(--line);
     }
 
     .clinic-tab {
@@ -465,7 +474,7 @@
       border-bottom: none;
       border-radius: 8px 8px 0 0;
       background: transparent;
-      color: var(--muted);
+      color: #4a5568; color: var(--muted);
       font: inherit;
       font-weight: 800;
       cursor: pointer;
@@ -473,21 +482,21 @@
 
     .clinic-tab:hover,
     .clinic-tab:focus-visible {
-      color: var(--primary);
+      color: #005daa; color: var(--primary);
       outline: none;
     }
 
     .clinic-tab.active {
-      border-color: var(--line);
-      background: var(--surface);
-      color: var(--primary);
+      border-color: #e2e8f0; border-color: var(--line);
+      background: #ffffff; background: var(--surface);
+      color: #005daa; color: var(--primary);
     }
 
     .clinic-tab-count {
       min-width: 24px;
       padding: 1px 8px;
       border-radius: 999px;
-      background: var(--surface-2);
+      background: #eef3f8; background: var(--surface-2);
       font-size: 0.8rem;
       text-align: center;
     }
@@ -520,9 +529,9 @@
   </style>
   <style>
     /* ───── Custom popup (replaces window.alert / window.confirm) ───── */
-    .ea-pop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 18px; background: rgba(3, 18, 34, .62); }
+    .ea-pop { position: fixed; top: 0; right: 0; bottom: 0; left: 0; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 18px; background: rgba(3, 18, 34, .62); }
     .ea-pop[hidden] { display: none; }
-    .ea-pop-dialog { width: min(480px, 100%); max-height: 94vh; overflow: auto; border: 1px solid var(--line, #d5dde6); border-radius: 14px; background: var(--surface, #fff); color: var(--text, #14202c); box-shadow: 0 28px 80px rgba(0, 0, 0, .4); }
+    .ea-pop-dialog { width: 100%; max-width: 480px; width: min(480px, 100%); max-height: 94vh; overflow: auto; border: 1px solid var(--line, #d5dde6); border-radius: 14px; background: var(--surface, #fff); color: var(--text, #14202c); box-shadow: 0 28px 80px rgba(0, 0, 0, .4); }
     .ea-pop-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 20px; border-bottom: 1px solid var(--line, #d5dde6); }
     .ea-pop-head h2 { margin: 0; font-size: 1.2rem; color: var(--text, #14202c); }
     .ea-pop-x { width: 34px; height: 34px; border: 1px solid var(--line, #d5dde6); border-radius: 8px; background: var(--surface-2, #f3f6f9); color: var(--text, #14202c); font-size: 1.3rem; line-height: 1; cursor: pointer; }
@@ -531,9 +540,23 @@
     .ea-pop-foot { display: flex; justify-content: flex-end; gap: 12px; padding: 14px 20px; border-top: 1px solid var(--line, #d5dde6); }
     .ea-pop-btn { min-height: 42px; padding: 0 18px; border: 1px solid transparent; border-radius: 8px; background: var(--primary, #0b3a66); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
     .ea-pop-btn.secondary { border-color: var(--line, #d5dde6); background: var(--surface-2, #f3f6f9); color: var(--text, #14202c); }
-    .ea-pop-btn.danger { background: color-mix(in srgb, var(--danger, #c0392b) 88%, #000); }
-    .ea-pop-btn:focus-visible, .ea-pop-x:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary, #0b3a66) 45%, transparent); outline-offset: 2px; }
+    .ea-pop-btn.danger { background: #af3030; background: color-mix(in srgb, var(--danger, #c0392b) 88%, #000); }
+    .ea-pop-btn:focus-visible, .ea-pop-x:focus-visible { outline: 3px solid rgba(11,58,102,.45); outline: 3px solid color-mix(in srgb, var(--primary, #0b3a66) 45%, transparent); outline-offset: 2px; }
   </style>
+<script>
+    /* Storage can throw (private mode / blocked): these wrappers never do. */
+    (function () {
+      function wrap(kind) {
+        return {
+          getItem: function (k) { try { return window[kind].getItem(k); } catch (e) { return null; } },
+          setItem: function (k, v) { try { window[kind].setItem(k, v); } catch (e) {} },
+          removeItem: function (k) { try { window[kind].removeItem(k); } catch (e) {} }
+        };
+      }
+      window.__ls = wrap('localStorage');
+      window.__ss = wrap('sessionStorage');
+    })();
+    </script>
 </head>
 <body>
   <header class="portal-header">
@@ -662,168 +685,167 @@
   <script src="site-data.js"></script>
 <script src="portal.js"></script>
   <script>
-  /* ───── Custom popup (replaces window.alert / window.confirm) ───── */
-  (function () {
-    function isAr() {
-      return (window.EgyptAirPortal && window.EgyptAirPortal.language === 'ar') || document.documentElement.lang === 'ar';
-    }
-    let root = null;
-    function build() {
-      root = document.createElement('div');
-      root.className = 'ea-pop';
+/* ───── Custom popup (replaces window.alert / window.confirm) ───── */
+(function () {
+  function isAr() {
+    return window.EgyptAirPortal && window.EgyptAirPortal.language === 'ar' || document.documentElement.lang === 'ar';
+  }
+  let root = null;
+  function build() {
+    root = document.createElement('div');
+    root.className = 'ea-pop';
+    root.hidden = true;
+    root.innerHTML = '<section class="ea-pop-dialog" role="dialog" aria-modal="true" aria-labelledby="eaPopTitle">' +
+    '<div class="ea-pop-head"><h2 id="eaPopTitle"></h2><button type="button" class="ea-pop-x" aria-label="Close">×</button></div>' +
+    '<div class="ea-pop-body"><p id="eaPopText"></p></div>' +
+    '<div class="ea-pop-foot"></div></section>';
+    document.body.appendChild(root);
+  }
+  const queue = [];
+  let busy = false;
+  function next() {
+    if (busy || !queue.length) return;
+    busy = true;
+    const job = queue.shift();
+    if (!root) build();
+    const ar = isAr();
+    root.dir = ar ? 'rtl' : 'ltr';
+    const title = root.querySelector('#eaPopTitle');
+    const text = root.querySelector('#eaPopText');
+    const foot = root.querySelector('.ea-pop-foot');
+    const closeX = root.querySelector('.ea-pop-x');
+    title.textContent = job.title || (job.confirm ? ar ? 'تأكيد' : 'Please confirm' : ar ? 'تنبيه' : 'Notice');
+    text.textContent = job.message;
+    foot.innerHTML = '';
+    const previous = document.activeElement;
+    function finish(result) {
       root.hidden = true;
-      root.innerHTML = '<section class="ea-pop-dialog" role="dialog" aria-modal="true" aria-labelledby="eaPopTitle">' +
-        '<div class="ea-pop-head"><h2 id="eaPopTitle"></h2><button type="button" class="ea-pop-x" aria-label="Close">×</button></div>' +
-        '<div class="ea-pop-body"><p id="eaPopText"></p></div>' +
-        '<div class="ea-pop-foot"></div></section>';
-      document.body.appendChild(root);
+      document.removeEventListener('keydown', onKey, true);
+      root.removeEventListener('mousedown', onBackdrop);
+      busy = false;
+      if (previous && previous.focus) {try {previous.focus();} catch (e) {}}
+      job.resolve(result);
+      next();
     }
-    const queue = [];
-    let busy = false;
-    function next() {
-      if (busy || !queue.length) return;
-      busy = true;
-      const job = queue.shift();
-      if (!root) build();
-      const ar = isAr();
-      root.dir = ar ? 'rtl' : 'ltr';
-      const title = root.querySelector('#eaPopTitle');
-      const text = root.querySelector('#eaPopText');
-      const foot = root.querySelector('.ea-pop-foot');
-      const closeX = root.querySelector('.ea-pop-x');
-      title.textContent = job.title || (job.confirm ? (ar ? 'تأكيد' : 'Please confirm') : (ar ? 'تنبيه' : 'Notice'));
-      text.textContent = job.message;
-      foot.innerHTML = '';
-      const previous = document.activeElement;
-      function finish(result) {
-        root.hidden = true;
-        document.removeEventListener('keydown', onKey, true);
-        root.removeEventListener('mousedown', onBackdrop);
-        busy = false;
-        if (previous && previous.focus) { try { previous.focus(); } catch (e) {} }
-        job.resolve(result);
-        next();
-      }
-      function onKey(ev) {
-        if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); finish(false); }
-      }
-      function onBackdrop(ev) { if (ev.target === root) finish(false); }
-      let okBtn;
-      if (job.confirm) {
-        const cancel = document.createElement('button');
-        cancel.type = 'button';
-        cancel.className = 'ea-pop-btn secondary';
-        cancel.textContent = job.cancelText || (ar ? 'إلغاء' : 'Cancel');
-        cancel.onclick = () => finish(false);
-        foot.appendChild(cancel);
-      }
-      okBtn = document.createElement('button');
-      okBtn.type = 'button';
-      okBtn.className = 'ea-pop-btn' + (job.danger ? ' danger' : '');
-      okBtn.textContent = job.okText || (job.confirm ? (ar ? 'تأكيد' : 'Confirm') : (ar ? 'حسناً' : 'OK'));
-      okBtn.onclick = () => finish(true);
-      foot.appendChild(okBtn);
-      closeX.onclick = () => finish(false);
-      document.addEventListener('keydown', onKey, true);
-      root.addEventListener('mousedown', onBackdrop);
-      root.hidden = false;
-      okBtn.focus();
+    function onKey(ev) {
+      if (ev.key === 'Escape') {ev.preventDefault();ev.stopPropagation();finish(false);}
     }
-    function enqueue(job) {
-      return new Promise(resolve => { job.resolve = resolve; queue.push(job); next(); });
+    function onBackdrop(ev) {if (ev.target === root) finish(false);}
+    let okBtn;
+    if (job.confirm) {
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'ea-pop-btn secondary';
+      cancel.textContent = job.cancelText || (ar ? 'إلغاء' : 'Cancel');
+      cancel.onclick = () => finish(false);
+      foot.appendChild(cancel);
     }
-    window.EAPopup = {
-      alert: (message, opts) => enqueue(Object.assign({ message: String(message == null ? '' : message), confirm: false }, opts)),
-      confirm: (message, opts) => enqueue(Object.assign({ message: String(message == null ? '' : message), confirm: true }, opts))
-    };
-    // Any remaining window.alert() call (including ones inside script.js) uses the popup as well.
-    window.alert = function (message) { window.EAPopup.alert(message); };
-  })();
-  </script>
+    okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.className = 'ea-pop-btn' + (job.danger ? ' danger' : '');
+    okBtn.textContent = job.okText || (job.confirm ? ar ? 'تأكيد' : 'Confirm' : ar ? 'حسناً' : 'OK');
+    okBtn.onclick = () => finish(true);
+    foot.appendChild(okBtn);
+    closeX.onclick = () => finish(false);
+    document.addEventListener('keydown', onKey, true);
+    root.addEventListener('mousedown', onBackdrop);
+    root.hidden = false;
+    okBtn.focus();
+  }
+  function enqueue(job) {
+    return new Promise((resolve) => {job.resolve = resolve;queue.push(job);next();});
+  }
+  window.EAPopup = {
+    alert: (message, opts) => enqueue(Object.assign({ message: String(message == null ? '' : message), confirm: false }, opts)),
+    confirm: (message, opts) => enqueue(Object.assign({ message: String(message == null ? '' : message), confirm: true }, opts))
+  };
+  // Any remaining window.alert() call (including ones inside script.js) uses the popup as well.
+  window.alert = function (message) {window.EAPopup.alert(message);};
+})();</script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
   <script>
-    const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
-    const ADMIN_PASSWORD_HASH = 'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64';
+const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
+const ADMIN_PASSWORD_HASH = 'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64';
 
-    // Add as many EmailJS accounts as you want here. Each account needs its
-    // OWN copy of the same template (same variable names: title, name, time,
-    // message, to_email, email, reply_to) since templates don't carry over
-    // between EmailJS accounts. When the currently-used account's monthly
-    // quota (200 on the free plan) runs out, sending automatically rolls
-    // over to the next account in this list.
-    const EMAILJS_ACCOUNTS = [
-      { serviceId: 'service_ulzc3yq', templateId: 'template_2ww2fmf', publicKey: '2HT2DiS7Jke92DnaM' },
-      // Hotmail-backed account disabled for now — EmailJS might flag/ban it.
-      // Falls back to the mailto: trick below instead (see sendDecisionEmail).
-      // { serviceId: 'service_w5ir8kq', templateId: 'template_ygdl3ir', publicKey: 'tD0jDmxF7s4DZrqR1' },
-      // { serviceId: 'service_yyyyyyy', templateId: 'template_yyyyyyy', publicKey: 'yyyyyyyyyyyyyyyy' },
-    ];
+// Add as many EmailJS accounts as you want here. Each account needs its
+// OWN copy of the same template (same variable names: title, name, time,
+// message, to_email, email, reply_to) since templates don't carry over
+// between EmailJS accounts. When the currently-used account's monthly
+// quota (200 on the free plan) runs out, sending automatically rolls
+// over to the next account in this list.
+const EMAILJS_ACCOUNTS = [
+{ serviceId: 'service_ulzc3yq', templateId: 'template_2ww2fmf', publicKey: '2HT2DiS7Jke92DnaM' }
+// Hotmail-backed account disabled for now — EmailJS might flag/ban it.
+// Falls back to the mailto: trick below instead (see sendDecisionEmail).
+// { serviceId: 'service_w5ir8kq', templateId: 'template_ygdl3ir', publicKey: 'tD0jDmxF7s4DZrqR1' },
+// { serviceId: 'service_yyyyyyy', templateId: 'template_yyyyyyy', publicKey: 'yyyyyyyyyyyyyyyy' },
+];
 
-    // Google Sheets needs a writable backend for updates. Paste the deployed
-    // Apps Script Web App URL here after deploying clinics-apps-script.gs.
-    const SHEET_UPDATE_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw_gRRaCBY_iBYHQkQ4SUCxGQ4AAg45VS1PW6dLDukN_DQVJUvkHyzyviUBCBmzLI8L/exec';
+// Google Sheets needs a writable backend for updates. Paste the deployed
+// Apps Script Web App URL here after deploying clinics-apps-script.gs.
+const SHEET_UPDATE_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw_gRRaCBY_iBYHQkQ4SUCxGQ4AAg45VS1PW6dLDukN_DQVJUvkHyzyviUBCBmzLI8L/exec';
 
-    // Column order configuration
-    const COLUMN_ORDER = [
-      'timestamp',
-      'code',
-      'name',
-      'date',
-      'clinic',
-      'shift',
-      'department',
-      'isreserved'
-    ];
+// Column order configuration
+const COLUMN_ORDER = [
+'timestamp',
+'code',
+'name',
+'date',
+'clinic',
+'shift',
+'department',
+'isreserved'];
 
-    let clinicRows = [];
-    let clinicColumns = [];
-    let isLoadingSheet = false;
-    let latestSheetRequestId = 0;
-    let isAdmin = false;
-    let filterPatientId = null;
-    let activeTab = 'dated'; // 'dated' = clinics with a date, 'nodate' = Dental & General
-    // When a patient's submitted date is "اقرب وقت" (nearest available time),
-    // the admin picks an actual date here before confirming; keyed by sheetRow.
-    let nearestTimeDates = {};
 
-    const adminForm = document.getElementById('adminForm');
-    const inquiryForm = document.getElementById('inquiryForm');
-    const patientId = document.getElementById('patientId');
-    const adminPassword = document.getElementById('adminPassword');
-    const adminStatus = document.getElementById('adminStatus');
-    const resultsPanel = document.getElementById('resultsPanel');
-    const tableHead = document.getElementById('clinicTableHead');
-    const tableBody = document.getElementById('clinicTableBody');
-    const tableStatus = document.getElementById('tableStatus');
-    const exportExcelBtn = document.getElementById('exportExcelBtn');
-    // TO DELETE: Email all records button (commented out in HTML)
-    // const emailAllRecordsBtn = document.getElementById('emailAllRecordsBtn');
-    const exportDaySelect = document.getElementById('exportDaySelect');
-    const exportDayLabel = document.getElementById('exportDayLabel');
-    const refreshBtn = document.getElementById('refreshBtn');
-    const refreshBtnLabel = document.getElementById('refreshBtnLabel');
-    const copyFormLinkBtn = document.getElementById('copyFormLinkBtn');
-    const clearInquiryBtn = document.getElementById('clearInquiryBtn');
-    const clinicTabs = document.getElementById('clinicTabs');
+let clinicRows = [];
+let clinicColumns = [];
+let isLoadingSheet = false;
+let latestSheetRequestId = 0;
+let isAdmin = false;
+let filterPatientId = null;
+let activeTab = 'dated'; // 'dated' = clinics with a date, 'nodate' = Dental & General
+// When a patient's submitted date is "اقرب وقت" (nearest available time),
+// the admin picks an actual date here before confirming; keyed by sheetRow.
+let nearestTimeDates = {};
 
-    function lang() {
-      return window.EgyptAirPortal?.language === 'ar' ? 'ar' : 'en';
-    }
+const adminForm = document.getElementById('adminForm');
+const inquiryForm = document.getElementById('inquiryForm');
+const patientId = document.getElementById('patientId');
+const adminPassword = document.getElementById('adminPassword');
+const adminStatus = document.getElementById('adminStatus');
+const resultsPanel = document.getElementById('resultsPanel');
+const tableHead = document.getElementById('clinicTableHead');
+const tableBody = document.getElementById('clinicTableBody');
+const tableStatus = document.getElementById('tableStatus');
+const exportExcelBtn = document.getElementById('exportExcelBtn');
+// TO DELETE: Email all records button (commented out in HTML)
+// const emailAllRecordsBtn = document.getElementById('emailAllRecordsBtn');
+const exportDaySelect = document.getElementById('exportDaySelect');
+const exportDayLabel = document.getElementById('exportDayLabel');
+const refreshBtn = document.getElementById('refreshBtn');
+const refreshBtnLabel = document.getElementById('refreshBtnLabel');
+const copyFormLinkBtn = document.getElementById('copyFormLinkBtn');
+const clearInquiryBtn = document.getElementById('clearInquiryBtn');
+const clinicTabs = document.getElementById('clinicTabs');
 
-    function t(en, ar) {
-      return lang() === 'ar' ? ar : en;
-    }
+function lang() {var _window$EgyptAirPorta;
+  return ((_window$EgyptAirPorta = window.EgyptAirPortal) === null || _window$EgyptAirPorta === void 0 ? void 0 : _window$EgyptAirPorta.language) === 'ar' ? 'ar' : 'en';
+}
 
-    function setStatus(element, message, isError = false) {
-      element.textContent = message;
-      element.classList.toggle('error', isError);
-    }
+function t(en, ar) {
+  return lang() === 'ar' ? ar : en;
+}
+
+function setStatus(element, message, isError = false) {
+  element.textContent = message;
+  element.classList.toggle('error', isError);
+}
 
 async function sha256Hex(value) {
   // Pure JS SHA-256 (works on HTTP)
   function sha256(ascii) {
     function rightRotate(value, amount) {
-      return (value >>> amount) | (value << (32 - amount));
+      return value >>> amount | value << 32 - amount;
     }
     const mathPow = Math.pow;
     const maxWord = mathPow(2, 32);
@@ -834,8 +856,8 @@ async function sha256Hex(value) {
     const words = [];
     const asciiBitLength = ascii[lengthProperty] * 8;
 
-    let hash = (sha256.h = sha256.h || []);
-    const k = (sha256.k = sha256.k || []);
+    let hash = sha256.h = sha256.h || [];
+    const k = sha256.k = sha256.k || [];
     let primeCounter = k[lengthProperty];
 
     const isComposite = {};
@@ -844,58 +866,58 @@ async function sha256Hex(value) {
         for (i = 0; i < 313; i += candidate) {
           isComposite[i] = candidate;
         }
-        hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
-        k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+        hash[primeCounter] = mathPow(candidate, 0.5) * maxWord | 0;
+        k[primeCounter++] = mathPow(candidate, 1 / 3) * maxWord | 0;
       }
     }
 
     ascii += '\x80';
-    while ((ascii[lengthProperty] % 64) - 56) ascii += '\x00';
+    while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
     for (i = 0; i < ascii[lengthProperty]; i++) {
       j = ascii.charCodeAt(i);
       if (j >> 8) return; // ASCII check
-      words[i >> 2] |= j << (((3 - i) % 4) * 8);
+      words[i >> 2] |= j << (3 - i) % 4 * 8;
     }
-    words[words[lengthProperty]] = (asciiBitLength / maxWord) | 0;
+    words[words[lengthProperty]] = asciiBitLength / maxWord | 0;
     words[words[lengthProperty]] = asciiBitLength;
 
-    for (j = 0; j < words[lengthProperty]; ) {
-      const w = words.slice(j, (j += 16));
+    for (j = 0; j < words[lengthProperty];) {
+      const w = words.slice(j, j += 16);
       const oldHash = hash;
       hash = hash.slice(0, 8);
 
       for (i = 0; i < 64; i++) {
-        const w15 = w[i - 15], w2 = w[i - 2];
-        const a = hash[0], e = hash[4];
+        const w15 = w[i - 15],w2 = w[i - 2];
+        const a = hash[0],e = hash[4];
         const temp1 =
-          hash[7] +
-          (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
-          ((e & hash[5]) ^ (~e & hash[6])) +
-          k[i] +
-          (w[i] =
-            i < 16
-              ? w[i]
-              : (w[i - 16] +
-                  (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
-                  w[i - 7] +
-                  (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
-                0);
+        hash[7] + (
+        rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) + (
+        e & hash[5] ^ ~e & hash[6]) +
+        k[i] + (
+        w[i] =
+        i < 16 ?
+        w[i] :
+        w[i - 16] + (
+        rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ w15 >>> 3) +
+        w[i - 7] + (
+        rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ w2 >>> 10) |
+        0);
         const temp2 =
-          (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
-          ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+        (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) + (
+        a & hash[1] ^ a & hash[2] ^ hash[1] & hash[2]);
 
-        hash = [(temp1 + temp2) | 0].concat(hash);
-        hash[4] = (hash[4] + temp1) | 0;
+        hash = [temp1 + temp2 | 0].concat(hash);
+        hash[4] = hash[4] + temp1 | 0;
       }
 
       for (i = 0; i < 8; i++) {
-        hash[i] = (hash[i] + oldHash[i]) | 0;
+        hash[i] = hash[i] + oldHash[i] | 0;
       }
     }
 
     for (i = 0; i < 8; i++) {
       for (j = 3; j + 1; j--) {
-        const b = (hash[i] >> (j * 8)) & 255;
+        const b = hash[i] >> j * 8 & 255;
         result += (b < 16 ? '0' : '') + b.toString(16);
       }
     }
@@ -905,362 +927,362 @@ async function sha256Hex(value) {
   return sha256(String(value));
 }
 
-    function normalizeDigits(value) {
-      if (value === null || value === undefined) return '';
-      const str = String(value);
-      const arabicMap = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
-      const easternMap = { '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9' };
-      return str
-        .replace(/[٠-٩]/g, d => arabicMap[d])
-        .replace(/[۰-۹]/g, d => easternMap[d]);
-    }
+function normalizeDigits(value) {
+  if (value === null || value === undefined) return '';
+  const str = String(value);
+  const arabicMap = { '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
+  const easternMap = { '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9' };
+  return str.
+  replace(/[٠-٩]/g, (d) => arabicMap[d]).
+  replace(/[۰-۹]/g, (d) => easternMap[d]);
+}
 
-    // Unifies every date shape that can appear in the sheet into yyyy/mm/dd.
-    // Handles "2026-08-16 - الأحد", yyyy/mm/dd, d/m/yyyy, "M/d/yyyy HH:mm:ss"
-    // (Date cells delivered by the Apps Script) and Arabic-Indic digits.
-    // Non-date text such as "اقرب وقت" is returned untouched.
-    function formatDateYMD(value) {
-      if (value === null || value === undefined) return '';
-      const str = normalizeDigits(value).trim();
-      if (!str) return '';
-      let m = str.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
-      if (m) return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
-      m = str.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})(.*)$/);
-      if (m) {
-        let a = Number(m[1]), b = Number(m[2]);
-        const hasTime = /\d{1,2}:\d{2}/.test(m[4]);
-        // Date cells with a time part come from the script as month-first;
-        // typed dates are day-first unless that is impossible.
-        let month, day;
-        if (hasTime || (b > 12 && a <= 12)) { month = a; day = b; } else { day = a; month = b; }
-        return `${m[3]}/${pad2(month)}/${pad2(day)}`;
+// Unifies every date shape that can appear in the sheet into yyyy/mm/dd.
+// Handles "2026-08-16 - الأحد", yyyy/mm/dd, d/m/yyyy, "M/d/yyyy HH:mm:ss"
+// (Date cells delivered by the Apps Script) and Arabic-Indic digits.
+// Non-date text such as "اقرب وقت" is returned untouched.
+function formatDateYMD(value) {
+  if (value === null || value === undefined) return '';
+  const str = normalizeDigits(value).trim();
+  if (!str) return '';
+  let m = str.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  if (m) return `${m[1]}/${pad2(m[2])}/${pad2(m[3])}`;
+  m = str.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})(.*)$/);
+  if (m) {
+    let a = Number(m[1]),b = Number(m[2]);
+    const hasTime = /\d{1,2}:\d{2}/.test(m[4]);
+    // Date cells with a time part come from the script as month-first;
+    // typed dates are day-first unless that is impossible.
+    let month, day;
+    if (hasTime || b > 12 && a <= 12) {month = a;day = b;} else {day = a;month = b;}
+    return `${m[3]}/${pad2(month)}/${pad2(day)}`;
+  }
+  return String(value);
+}
+
+// yyyy/mm/dd followed by the Arabic weekday, e.g. "2026/10/12 - الإثنين".
+// Text that is not a date (such as "اقرب وقت") is returned untouched.
+function formatDateWithDay(value) {
+  const ymd = formatDateYMD(value);
+  const m = ymd.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if (!m) return ymd;
+  const weekday = ARABIC_WEEKDAYS[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()];
+  return `${ymd} - ${weekday}`;
+}
+
+function formatTimestamp(value) {
+  if (!value) return '';
+  // Display only the date (yyyy/mm/dd). The full timestamp, including the
+  // time, is still stored in the sheet and kept in row.values untouched.
+  // Google Sheets typically returns "M/D/YYYY HH:MM:SS" in its JSON output
+  const dateMatch = String(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!dateMatch) return value;
+
+  // dateMatch[1] is Month, dateMatch[2] is Day
+  const month = String(dateMatch[1]).padStart(2, '0');
+  const day = String(dateMatch[2]).padStart(2, '0');
+  const year = dateMatch[3];
+
+  return `${year}/${month}/${day}`;
+}
+
+function getColumnMatcher(columnKey) {
+  const matchers = {
+    'timestamp': ['timestamp', 'طابع', 'الطابع', 'الوقت', 'time'],
+    'code': ['code', 'كود', 'الموظف', 'emp'],
+    'name': ['name', 'الاسم'],
+    'date': ['date', 'التاريخ'],
+    'clinic': ['clinic', 'العيادة'],
+    'shift': ['shift', 'ميعاد', 'النوبة'],
+    'email': ['email', 'البريد'],
+    // normalizeHeader() folds أ/إ/آ into ا, so 'ادار' matches الادارة / الإدارة / إدارة
+    'department': ['ادار', 'department', 'management'],
+    'isreserved': ['isreserved']
+  };
+  return matchers[columnKey] || [];
+}
+
+function getColumnIndexByKey(columnKey) {
+  return findColumnIndex(getColumnMatcher(columnKey));
+}
+
+function escapeHtml(value) {
+  return String(value !== null && value !== void 0 ? value : '').
+  replace(/&/g, '&amp;').
+  replace(/</g, '&lt;').
+  replace(/>/g, '&gt;').
+  replace(/"/g, '&quot;');
+}
+
+function normalizeHeader(label) {
+  return String(label || '').trim().toLowerCase().replace(/[أإآ]/g, 'ا');
+}
+
+function findColumnIndex(matchers) {
+  return clinicColumns.findIndex((column) => {
+    const label = normalizeHeader(column.label);
+    return matchers.some((matcher) => label.includes(matcher));
+  });
+}
+
+function getRowValue(row, matchers) {
+  const index = findColumnIndex(matchers);
+  return index >= 0 ? row.values[index] : '';
+}
+
+function isReservedColumn(column) {
+  return normalizeHeader(column.label) === 'isreserved';
+}
+
+function isCodeColumn(column) {
+  if (!column) return false;
+  const label = normalizeHeader(column.label || column.id || '');
+  return label.includes('code') || label.includes('كود') || label.includes('emp') || label.includes('الموظف');
+}
+
+function decisionLabel(value) {
+  if (value === 'y') return t('Confirmed', 'تم التأكيد');
+  if (value === 'n') return t('Denied', 'تم الرفض');
+  return t('Pending', 'قيد الانتظار');
+}
+
+// The Google Form lets a patient submit "اقرب وقت" (nearest available
+// time) instead of a specific date when they have no preference.
+const NEAREST_TIME_VALUE = 'اقرب وقت';
+function isNearestTimeValue(value) {
+  return String(value !== null && value !== void 0 ? value : '').trim() === NEAREST_TIME_VALUE;
+}
+
+const ARABIC_WEEKDAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+// Formats an admin-picked date (YYYY-MM-DD, from <input type="date">) to
+// match the existing clinic date convention, e.g. "2026-08-24 - الإثنين".
+function formatArabicDateWithWeekday(isoDateStr) {
+  const parts = String(isoDateStr || '').split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return '';
+  const [year, month, day] = parts;
+  const dateObj = new Date(year, month - 1, day);
+  const weekday = ARABIC_WEEKDAYS[dateObj.getDay()];
+  const mm = String(month).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  return `${year}-${mm}-${dd} - ${weekday}`;
+}
+
+// ---- Egypt-time helpers ----
+const EGYPT_TZ = 'Africa/Cairo';
+const EXPORT_DAYS_BACK = 40; // matches the 40-day purge in the Apps Script
+
+function pad2(n) {return String(n).padStart(2, '0');}
+
+// Today's calendar date in Egypt as YYYY-MM-DD, regardless of the
+// admin's own device time zone.
+function egyptTodayKey() {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: EGYPT_TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((p) => p.type === type).value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+// Pure calendar arithmetic on YYYY-MM-DD keys (no time zones involved).
+function shiftDayKey(key, deltaDays) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + deltaDays)).toISOString().slice(0, 10);
+}
+
+function weekdayName(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Intl.DateTimeFormat(lang() === 'ar' ? 'ar-EG' : 'en-GB', { weekday: 'long', timeZone: 'UTC' }).
+  format(new Date(Date.UTC(y, m - 1, d)));
+}
+
+// The sheet timestamps are delivered by the Apps Script already in
+// Egypt time as "M/d/yyyy HH:mm:ss"; this returns that day as YYYY-MM-DD.
+function getTimestampDayKey(value) {
+  const str = normalizeDigits(value);
+  let m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) return `${m[3]}-${pad2(m[1])}-${pad2(m[2])}`;
+  m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
+}
+
+// Date restrictions for "اقرب وقت" picker: today (Egypt) .. today+30, no Fri/Sat.
+function getDateRestrictions() {
+  const today = egyptTodayKey();
+  return { min: today, max: shiftDayKey(today, 30) };
+}
+
+// Dental / general clinics don't use a date at all.
+function normalizeArabicText(value) {
+  return String(value !== null && value !== void 0 ? value : '').
+  normalize('NFKC').
+  replace(/[\u064B-\u065F\u0640]/g, '').
+  replace(/[أإآٱ]/g, 'ا').
+  replace(/ى/g, 'ي').
+  replace(/ة/g, 'ه').
+  replace(/\s+/g, ' ').
+  trim().
+  toLowerCase();
+}
+const NO_DATE_CLINICS = ['اسنان', 'عيادة عامة'].map(normalizeArabicText);
+function isNoDateClinic(row) {
+  const index = getColumnIndexByKey('clinic');
+  return index >= 0 && NO_DATE_CLINICS.includes(normalizeArabicText(row.values[index]));
+}
+
+function isWeekend(isoDateStr) {
+  const parts = String(isoDateStr || '').split('-').map(Number);
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return false;
+  const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
+  const day = dateObj.getDay(); // 5 = Friday, 6 = Saturday
+  return day === 5 || day === 6;
+}
+
+// Sheet header text is whatever was literally typed in row 1 (mixed
+// languages, since Google Forms auto-names the Timestamp/Email columns
+// in English regardless of form language). Translate by column key
+// instead of echoing the raw sheet label, so headers follow the site's
+// language toggle consistently.
+const COLUMN_HEADER_LABELS = {
+  timestamp: ['Timestamp', 'الوقت'],
+  code: ['Employee Code', 'الكود'],
+  name: ['Full Name', 'الاسم كامل'],
+  date: ['Date', 'التاريخ'],
+  clinic: ['Clinic', 'العيادة المختارة'],
+  shift: ['Shift', 'ميعاد النوبة'],
+  email: ['Email Address', 'البريد الإلكتروني'],
+  department: ['Department', 'الادارة']
+};
+
+function columnHeaderLabel(item) {
+  const pair = COLUMN_HEADER_LABELS[item.key];
+  if (pair) return t(pair[0], pair[1]);
+  return item.column.label || item.column.id || '';
+}
+
+// Columns shown for a tab. The Dental & General tab has no Date column.
+function columnsForTab(tab) {
+  const columns = [];
+  for (const columnKey of COLUMN_ORDER) {
+    if (columnKey === 'isreserved') continue; // handled separately (Status)
+    if (tab === 'nodate' && columnKey === 'date') continue;
+    const index = getColumnIndexByKey(columnKey);
+    if (index >= 0) columns.push({ index, column: clinicColumns[index], key: columnKey });
+  }
+  return columns;
+}
+
+// Rows after the patient-ID filter, newest first, pending above decided.
+function getFilteredRows() {
+  let rows = [...clinicRows].reverse();
+
+  // Day picker (submission day, Egypt time). Multiple selected days are combined.
+  // An active patient inquiry searches across all days.
+  const dayKeys = getSelectedDayKeys();
+  const tsIdx = getColumnIndexByKey('timestamp');
+  if (!filterPatientId && !dayKeys.includes(ALL_DAYS) && tsIdx >= 0) {
+    rows = rows.filter((row) => dayKeys.includes(getTimestampDayKey(row.values[tsIdx])));
+  }
+
+  if (filterPatientId) {
+    const codeIndex = getColumnIndexByKey('code');
+    rows = rows.filter((row) => normalizeDigits(row.values[codeIndex]) === filterPatientId);
+  }
+
+  rows.sort((a, b) => {
+    const aDecided = a.isReserved === 'y' || a.isReserved === 'n';
+    const bDecided = b.isReserved === 'y' || b.isReserved === 'n';
+    if (aDecided !== bDecided) return aDecided ? 1 : -1; // pending first
+    return 0; // preserve reverse-chronological order within each group
+  });
+  return rows;
+}
+
+function updateTabsUi(datedCount, noDateCount) {
+  document.getElementById('tabDatedLabel').textContent = t('Clinics', 'العيادات');
+  document.getElementById('tabNoDateLabel').textContent = t('Dental & General', 'أسنان وعيادة عامة');
+  document.getElementById('tabDatedCount').textContent = datedCount;
+  document.getElementById('tabNoDateCount').textContent = noDateCount;
+  clinicTabs.querySelectorAll('.clinic-tab').forEach((tab) => {
+    const isActive = tab.dataset.tab === activeTab;
+    tab.classList.toggle('active', isActive);
+    tab.setAttribute('aria-selected', String(isActive));
+  });
+}
+
+// After an inquiry, jump to the tab that actually has the patient's rows.
+function switchToTabWithResults() {
+  const rows = getFilteredRows();
+  const datedCount = rows.filter((row) => !isNoDateClinic(row)).length;
+  const noDateCount = rows.length - datedCount;
+  if (activeTab === 'dated' && datedCount === 0 && noDateCount > 0) activeTab = 'nodate';else
+  if (activeTab === 'nodate' && noDateCount === 0 && datedCount > 0) activeTab = 'dated';
+}
+
+// Renders the active tab. Returns the total number of rows (both tabs).
+function renderClinicsTable() {
+  const allRows = getFilteredRows();
+  const datedRows = allRows.filter((row) => !isNoDateClinic(row));
+  const noDateRows = allRows.filter(isNoDateClinic);
+  updateTabsUi(datedRows.length, noDateRows.length);
+
+  const rowsToRender = activeTab === 'nodate' ? noDateRows : datedRows;
+  const orderedColumns = columnsForTab(activeTab);
+
+  let headerHtml = `<tr>${orderedColumns.map((item) => `<th>${escapeHtml(columnHeaderLabel(item))}</th>`).join('')}<th>${t('Status', 'الحالة')}</th>`;
+  if (isAdmin) {
+    headerHtml += `<th>${t('Confirm', 'تأكيد')}</th><th>${t('Deny', 'رفض')}</th>`;
+  }
+  headerHtml += `</tr>`;
+  tableHead.innerHTML = headerHtml;
+
+  if (!rowsToRender.length) {
+    tableBody.innerHTML = `<tr><td colspan="${orderedColumns.length + (isAdmin ? 3 : 1)}">${t('No reservations found.', 'لا توجد حجوزات.')}</td></tr>`;
+    return allRows.length;
+  }
+
+  tableBody.innerHTML = rowsToRender.map((row) => {
+    const decided = row.isReserved === 'y' || row.isReserved === 'n';
+    const dateIndex = getColumnIndexByKey('date');
+    const needsDatePick = activeTab === 'dated' && isNearestTimeValue(row.values[dateIndex]);
+    const valuesHtml = orderedColumns.map((item) => {
+      let value = row.values[item.index];
+
+      if (item.key === 'timestamp') {
+        value = formatTimestamp(value);
       }
-      return String(value);
-    }
 
-    // yyyy/mm/dd followed by the Arabic weekday, e.g. "2026/10/12 - الإثنين".
-    // Text that is not a date (such as "اقرب وقت") is returned untouched.
-    function formatDateWithDay(value) {
-      const ymd = formatDateYMD(value);
-      const m = ymd.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
-      if (!m) return ymd;
-      const weekday = ARABIC_WEEKDAYS[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()];
-      return `${ymd} - ${weekday}`;
-    }
-
-    function formatTimestamp(value) {
-      if (!value) return '';
-      // Display only the date (yyyy/mm/dd). The full timestamp, including the
-      // time, is still stored in the sheet and kept in row.values untouched.
-      // Google Sheets typically returns "M/D/YYYY HH:MM:SS" in its JSON output
-      const dateMatch = String(value).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (!dateMatch) return value;
-
-      // dateMatch[1] is Month, dateMatch[2] is Day
-      const month = String(dateMatch[1]).padStart(2, '0');
-      const day = String(dateMatch[2]).padStart(2, '0');
-      const year = dateMatch[3];
-
-      return `${year}/${month}/${day}`;
-    }
-
-    function getColumnMatcher(columnKey) {
-      const matchers = {
-       'timestamp': ['timestamp', 'طابع', 'الطابع', 'الوقت', 'time'],
-        'code': ['code', 'كود', 'الموظف', 'emp'],
-        'name': ['name', 'الاسم'],
-        'date': ['date', 'التاريخ'],
-        'clinic': ['clinic', 'العيادة'],
-        'shift': ['shift', 'ميعاد', 'النوبة'],
-        'email': ['email', 'البريد'],
-        // normalizeHeader() folds أ/إ/آ into ا, so 'ادار' matches الادارة / الإدارة / إدارة
-        'department': ['ادار', 'department', 'management'],
-        'isreserved': ['isreserved']
-      };
-      return matchers[columnKey] || [];
-    }
-
-    function getColumnIndexByKey(columnKey) {
-      return findColumnIndex(getColumnMatcher(columnKey));
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    function normalizeHeader(label) {
-      return String(label || '').trim().toLowerCase().replace(/[أإآ]/g, 'ا');
-    }
-
-    function findColumnIndex(matchers) {
-      return clinicColumns.findIndex(column => {
-        const label = normalizeHeader(column.label);
-        return matchers.some(matcher => label.includes(matcher));
-      });
-    }
-
-    function getRowValue(row, matchers) {
-      const index = findColumnIndex(matchers);
-      return index >= 0 ? row.values[index] : '';
-    }
-
-    function isReservedColumn(column) {
-      return normalizeHeader(column.label) === 'isreserved';
-    }
-
-    function isCodeColumn(column) {
-      if (!column) return false;
-      const label = normalizeHeader(column.label || column.id || '');
-      return label.includes('code') || label.includes('كود') || label.includes('emp') || label.includes('الموظف');
-    }
-
-    function decisionLabel(value) {
-      if (value === 'y') return t('Confirmed', 'تم التأكيد');
-      if (value === 'n') return t('Denied', 'تم الرفض');
-      return t('Pending', 'قيد الانتظار');
-    }
-
-    // The Google Form lets a patient submit "اقرب وقت" (nearest available
-    // time) instead of a specific date when they have no preference.
-    const NEAREST_TIME_VALUE = 'اقرب وقت';
-    function isNearestTimeValue(value) {
-      return String(value ?? '').trim() === NEAREST_TIME_VALUE;
-    }
-
-    const ARABIC_WEEKDAYS = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    // Formats an admin-picked date (YYYY-MM-DD, from <input type="date">) to
-    // match the existing clinic date convention, e.g. "2026-08-24 - الإثنين".
-    function formatArabicDateWithWeekday(isoDateStr) {
-      const parts = String(isoDateStr || '').split('-').map(Number);
-      if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return '';
-      const [year, month, day] = parts;
-      const dateObj = new Date(year, month - 1, day);
-      const weekday = ARABIC_WEEKDAYS[dateObj.getDay()];
-      const mm = String(month).padStart(2, '0');
-      const dd = String(day).padStart(2, '0');
-      return `${year}-${mm}-${dd} - ${weekday}`;
-    }
-
-    // ---- Egypt-time helpers ----
-    const EGYPT_TZ = 'Africa/Cairo';
-    const EXPORT_DAYS_BACK = 40; // matches the 40-day purge in the Apps Script
-
-    function pad2(n) { return String(n).padStart(2, '0'); }
-
-    // Today's calendar date in Egypt as YYYY-MM-DD, regardless of the
-    // admin's own device time zone.
-    function egyptTodayKey() {
-      const parts = new Intl.DateTimeFormat('en-CA', {
-        timeZone: EGYPT_TZ, year: 'numeric', month: '2-digit', day: '2-digit'
-      }).formatToParts(new Date());
-      const get = type => parts.find(p => p.type === type).value;
-      return `${get('year')}-${get('month')}-${get('day')}`;
-    }
-
-    // Pure calendar arithmetic on YYYY-MM-DD keys (no time zones involved).
-    function shiftDayKey(key, deltaDays) {
-      const [y, m, d] = key.split('-').map(Number);
-      return new Date(Date.UTC(y, m - 1, d + deltaDays)).toISOString().slice(0, 10);
-    }
-
-    function weekdayName(key) {
-      const [y, m, d] = key.split('-').map(Number);
-      return new Intl.DateTimeFormat(lang() === 'ar' ? 'ar-EG' : 'en-GB', { weekday: 'long', timeZone: 'UTC' })
-        .format(new Date(Date.UTC(y, m - 1, d)));
-    }
-
-    // The sheet timestamps are delivered by the Apps Script already in
-    // Egypt time as "M/d/yyyy HH:mm:ss"; this returns that day as YYYY-MM-DD.
-    function getTimestampDayKey(value) {
-      const str = normalizeDigits(value);
-      let m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-      if (m) return `${m[3]}-${pad2(m[1])}-${pad2(m[2])}`;
-      m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      return m ? `${m[1]}-${m[2]}-${m[3]}` : '';
-    }
-
-    // Date restrictions for "اقرب وقت" picker: today (Egypt) .. today+30, no Fri/Sat.
-    function getDateRestrictions() {
-      const today = egyptTodayKey();
-      return { min: today, max: shiftDayKey(today, 30) };
-    }
-
-    // Dental / general clinics don't use a date at all.
-    function normalizeArabicText(value) {
-      return String(value ?? '')
-        .normalize('NFKC')
-        .replace(/[\u064B-\u065F\u0640]/g, '')
-        .replace(/[أإآٱ]/g, 'ا')
-        .replace(/ى/g, 'ي')
-        .replace(/ة/g, 'ه')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .toLowerCase();
-    }
-    const NO_DATE_CLINICS = ['اسنان', 'عيادة عامة'].map(normalizeArabicText);
-    function isNoDateClinic(row) {
-      const index = getColumnIndexByKey('clinic');
-      return index >= 0 && NO_DATE_CLINICS.includes(normalizeArabicText(row.values[index]));
-    }
-
-    function isWeekend(isoDateStr) {
-      const parts = String(isoDateStr || '').split('-').map(Number);
-      if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return false;
-      const dateObj = new Date(parts[0], parts[1] - 1, parts[2]);
-      const day = dateObj.getDay(); // 5 = Friday, 6 = Saturday
-      return day === 5 || day === 6;
-    }
-
-    // Sheet header text is whatever was literally typed in row 1 (mixed
-    // languages, since Google Forms auto-names the Timestamp/Email columns
-    // in English regardless of form language). Translate by column key
-    // instead of echoing the raw sheet label, so headers follow the site's
-    // language toggle consistently.
-    const COLUMN_HEADER_LABELS = {
-      timestamp: ['Timestamp', 'الوقت'],
-      code: ['Employee Code', 'الكود'],
-      name: ['Full Name', 'الاسم كامل'],
-      date: ['Date', 'التاريخ'],
-      clinic: ['Clinic', 'العيادة المختارة'],
-      shift: ['Shift', 'ميعاد النوبة'],
-      email: ['Email Address', 'البريد الإلكتروني'],
-      department: ['Department', 'الادارة']
-    };
-
-    function columnHeaderLabel(item) {
-      const pair = COLUMN_HEADER_LABELS[item.key];
-      if (pair) return t(pair[0], pair[1]);
-      return item.column.label || item.column.id || '';
-    }
-
-    // Columns shown for a tab. The Dental & General tab has no Date column.
-    function columnsForTab(tab) {
-      const columns = [];
-      for (const columnKey of COLUMN_ORDER) {
-        if (columnKey === 'isreserved') continue; // handled separately (Status)
-        if (tab === 'nodate' && columnKey === 'date') continue;
-        const index = getColumnIndexByKey(columnKey);
-        if (index >= 0) columns.push({ index, column: clinicColumns[index], key: columnKey });
-      }
-      return columns;
-    }
-
-    // Rows after the patient-ID filter, newest first, pending above decided.
-    function getFilteredRows() {
-      let rows = [...clinicRows].reverse();
-
-      // Day picker (submission day, Egypt time). Multiple selected days are combined.
-      // An active patient inquiry searches across all days.
-      const dayKeys = getSelectedDayKeys();
-      const tsIdx = getColumnIndexByKey('timestamp');
-      if (!filterPatientId && !dayKeys.includes(ALL_DAYS) && tsIdx >= 0) {
-        rows = rows.filter(row => dayKeys.includes(getTimestampDayKey(row.values[tsIdx])));
-      }
-
-      if (filterPatientId) {
-        const codeIndex = getColumnIndexByKey('code');
-        rows = rows.filter(row => normalizeDigits(row.values[codeIndex]) === filterPatientId);
-      }
-
-      rows.sort((a, b) => {
-        const aDecided = a.isReserved === 'y' || a.isReserved === 'n';
-        const bDecided = b.isReserved === 'y' || b.isReserved === 'n';
-        if (aDecided !== bDecided) return aDecided ? 1 : -1; // pending first
-        return 0; // preserve reverse-chronological order within each group
-      });
-      return rows;
-    }
-
-    function updateTabsUi(datedCount, noDateCount) {
-      document.getElementById('tabDatedLabel').textContent = t('Clinics', 'العيادات');
-      document.getElementById('tabNoDateLabel').textContent = t('Dental & General', 'أسنان وعيادة عامة');
-      document.getElementById('tabDatedCount').textContent = datedCount;
-      document.getElementById('tabNoDateCount').textContent = noDateCount;
-      clinicTabs.querySelectorAll('.clinic-tab').forEach(tab => {
-        const isActive = tab.dataset.tab === activeTab;
-        tab.classList.toggle('active', isActive);
-        tab.setAttribute('aria-selected', String(isActive));
-      });
-    }
-
-    // After an inquiry, jump to the tab that actually has the patient's rows.
-    function switchToTabWithResults() {
-      const rows = getFilteredRows();
-      const datedCount = rows.filter(row => !isNoDateClinic(row)).length;
-      const noDateCount = rows.length - datedCount;
-      if (activeTab === 'dated' && datedCount === 0 && noDateCount > 0) activeTab = 'nodate';
-      else if (activeTab === 'nodate' && noDateCount === 0 && datedCount > 0) activeTab = 'dated';
-    }
-
-    // Renders the active tab. Returns the total number of rows (both tabs).
-    function renderClinicsTable() {
-      const allRows = getFilteredRows();
-      const datedRows = allRows.filter(row => !isNoDateClinic(row));
-      const noDateRows = allRows.filter(isNoDateClinic);
-      updateTabsUi(datedRows.length, noDateRows.length);
-
-      const rowsToRender = activeTab === 'nodate' ? noDateRows : datedRows;
-      const orderedColumns = columnsForTab(activeTab);
-
-      let headerHtml = `<tr>${orderedColumns.map(item => `<th>${escapeHtml(columnHeaderLabel(item))}</th>`).join('')}<th>${t('Status', 'الحالة')}</th>`;
-      if (isAdmin) {
-        headerHtml += `<th>${t('Confirm', 'تأكيد')}</th><th>${t('Deny', 'رفض')}</th>`;
-      }
-      headerHtml += `</tr>`;
-      tableHead.innerHTML = headerHtml;
-
-      if (!rowsToRender.length) {
-        tableBody.innerHTML = `<tr><td colspan="${orderedColumns.length + (isAdmin ? 3 : 1)}">${t('No reservations found.', 'لا توجد حجوزات.')}</td></tr>`;
-        return allRows.length;
-      }
-
-      tableBody.innerHTML = rowsToRender.map(row => {
-        const decided = row.isReserved === 'y' || row.isReserved === 'n';
-        const dateIndex = getColumnIndexByKey('date');
-        const needsDatePick = activeTab === 'dated' && isNearestTimeValue(row.values[dateIndex]);
-        const valuesHtml = orderedColumns.map(item => {
-          let value = row.values[item.index];
-
-          if (item.key === 'timestamp') {
-            value = formatTimestamp(value);
-          }
-
-          if (item.key === 'date' && needsDatePick) {
-            const chosen = nearestTimeDates[row.sheetRow] || '';
-            // After a decision, show the final chosen date as plain text
-            // (same format as regular clinic dates) instead of the picker.
-            if (decided && chosen) {
-              return `<td>${escapeHtml(formatDateWithDay(formatArabicDateWithWeekday(chosen)))}</td>`;
-            }
-            const { min, max } = getDateRestrictions();
-            return `<td>
+      if (item.key === 'date' && needsDatePick) {
+        const chosen = nearestTimeDates[row.sheetRow] || '';
+        // After a decision, show the final chosen date as plain text
+        // (same format as regular clinic dates) instead of the picker.
+        if (decided && chosen) {
+          return `<td>${escapeHtml(formatDateWithDay(formatArabicDateWithWeekday(chosen)))}</td>`;
+        }
+        const { min, max } = getDateRestrictions();
+        return `<td>
               <div class="nearest-time-cell">
                 <span class="nearest-time-label">${escapeHtml(NEAREST_TIME_VALUE)}</span>
                 <input type="date" class="nearest-time-input" data-sheet-row="${row.sheetRow}" value="${escapeHtml(chosen)}" min="${min}" max="${max}" ${decided ? 'disabled' : ''} aria-label="${t('Pick a date for this patient', 'اختر تاريخاً لهذا المريض')}">
               </div>
             </td>`;
-          }
+      }
 
-          if (item.key === 'date' && !needsDatePick) value = formatDateWithDay(value);
+      if (item.key === 'date' && !needsDatePick) value = formatDateWithDay(value);
 
-          return `<td>${escapeHtml(value)}</td>`;
-        }).join('');
+      return `<td>${escapeHtml(value)}</td>`;
+    }).join('');
 
-        const confirmBlocked = needsDatePick && !nearestTimeDates[row.sheetRow];
-        const confirmDisabled = decided || confirmBlocked;
-        const confirmTitle = confirmBlocked ? t('Pick a date for this patient first', 'اختر تاريخاً لهذا المريض أولاً') : '';
+    const confirmBlocked = needsDatePick && !nearestTimeDates[row.sheetRow];
+    const confirmDisabled = decided || confirmBlocked;
+    const confirmTitle = confirmBlocked ? t('Pick a date for this patient first', 'اختر تاريخاً لهذا المريض أولاً') : '';
 
-        const hlUntil = newRowHighlights[rowKey(row)] || 0;
-        const hlLeft = hlUntil - Date.now();
-        const hlStyle = hlLeft > 0 ? ` style="--hl-delay:${(hlLeft - 3000) / 1000}s"` : '';
-        const hlClass = hlLeft > 0 ? ' new-row' : '';
-        let rowHtml = `<tr class="${decided ? 'decided' : ''}${hlClass}"${hlStyle} data-sheet-row="${row.sheetRow}">${valuesHtml}<td><span class="status-badge ${escapeHtml(row.isReserved)}">${decisionLabel(row.isReserved)}</span></td>`;
-        if (isAdmin) {
-          rowHtml += `
+    const hlUntil = newRowHighlights[rowKey(row)] || 0;
+    const hlLeft = hlUntil - Date.now();
+    const hlStyle = hlLeft > 0 ? ` style="--hl-delay:${(hlLeft - 3000) / 1000}s"` : '';
+    const hlClass = hlLeft > 0 ? ' new-row' : '';
+    let rowHtml = `<tr class="${decided ? 'decided' : ''}${hlClass}"${hlStyle} data-sheet-row="${row.sheetRow}">${valuesHtml}<td><span class="status-badge ${escapeHtml(row.isReserved)}">${decisionLabel(row.isReserved)}</span></td>`;
+    if (isAdmin) {
+      rowHtml += `
             <td class="decision-cell">
               <button class="decision-btn confirm" type="button" data-decision="y" data-sheet-row="${row.sheetRow}" ${confirmDisabled ? 'disabled' : ''} title="${escapeHtml(confirmTitle)}" aria-label="${t('Confirm reservation', 'تأكيد الحجز')}">✅</button>
             </td>
@@ -1268,1477 +1290,1476 @@ async function sha256Hex(value) {
               <button class="decision-btn deny" type="button" data-decision="n" data-sheet-row="${row.sheetRow}" ${decided ? 'disabled' : ''} aria-label="${t('Deny reservation', 'رفض الحجز')}">❌</button>
             </td>
           `;
-        }
-        rowHtml += `</tr>`;
-        return rowHtml;
-      }).join('');
-
-      return allRows.length;
     }
+    rowHtml += `</tr>`;
+    return rowHtml;
+  }).join('');
 
-    // Tabs only change what the table shows; Excel export is unaffected.
-    clinicTabs.addEventListener('click', event => {
-      const tab = event.target.closest('.clinic-tab');
-      if (!tab || tab.dataset.tab === activeTab) return;
-      activeTab = tab.dataset.tab;
-      renderClinicsTable();
+  return allRows.length;
+}
+
+// Tabs only change what the table shows; Excel export is unaffected.
+clinicTabs.addEventListener('click', (event) => {
+  const tab = event.target.closest('.clinic-tab');
+  if (!tab || tab.dataset.tab === activeTab) return;
+  activeTab = tab.dataset.tab;
+  renderClinicsTable();
+});
+
+// ---------- Day picker + Excel export ----------
+const ALL_DAYS = 'all';
+
+// ---------- New-row highlight (fades over 3s) ----------
+let seenRowKeys = null; // null until the first load completes
+let newRowHighlights = {}; // rowKey -> timestamp when highlight ends
+
+function rowKey(row) {var _row$values$tsIdx;
+  const tsIdx = getColumnIndexByKey('timestamp');
+  const ts = tsIdx >= 0 ? String((_row$values$tsIdx = row.values[tsIdx]) !== null && _row$values$tsIdx !== void 0 ? _row$values$tsIdx : '').trim() : '';
+  return ts || row.values.join('|');
+}
+
+function trackNewRows() {
+  const keys = clinicRows.map(rowKey);
+  if (seenRowKeys !== null) {
+    const now = Date.now();
+    keys.forEach((k) => {
+      if (!seenRowKeys.has(k)) newRowHighlights[k] = now + 3000;
     });
+  }
+  seenRowKeys = new Set([...(seenRowKeys || []), ...keys]);
+}
 
-    // ---------- Day picker + Excel export ----------
-    const ALL_DAYS = 'all';
+function buildDayKeys() {
+  const today = egyptTodayKey();
+  return Array.from({ length: EXPORT_DAYS_BACK }, (_, i) => shiftDayKey(today, -i));
+}
 
-    // ---------- New-row highlight (fades over 3s) ----------
-    let seenRowKeys = null;          // null until the first load completes
-    let newRowHighlights = {};       // rowKey -> timestamp when highlight ends
+let selectedDayKeys = new Set([ALL_DAYS]);
 
-    function rowKey(row) {
-      const tsIdx = getColumnIndexByKey('timestamp');
-      const ts = tsIdx >= 0 ? String(row.values[tsIdx] ?? '').trim() : '';
-      return ts || row.values.join('|');
+function getSelectedDayKeys() {
+  return selectedDayKeys.size ? [...selectedDayKeys] : [ALL_DAYS];
+}
+
+function selectedDayLabel(dayKeys) {
+  if (dayKeys.includes(ALL_DAYS)) return t('All clinics', 'كل العيادات');
+  return dayKeys.map((key) => `${weekdayName(key)} ${key.replace(/-/g, '/')}`).join(', ');
+}
+
+function daySelectionChanged() {
+  switchToTabWithResults();
+  const renderedCount = renderClinicsTable();
+  setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
+}
+
+// ── Day picker (multi-select dropdown) ──────────────────────────────────
+// The panel is opened/closed with a CSS class (so it can fade/slide) and
+// selecting days updates the existing markup in place, so the list stays
+// open while several days are ticked and keeps its scroll position.
+let dayPickerOpen = false;
+let dayPickerGlobalsBound = false;
+let dayPickerKeys = [];
+
+function setDayPickerOpen(open) {var _exportDaySelect$quer;
+  dayPickerOpen = open;
+  exportDaySelect.classList.toggle('open', open);
+  (_exportDaySelect$quer = exportDaySelect.querySelector('.day-ms-btn')) === null || _exportDaySelect$quer === void 0 ? void 0 : _exportDaySelect$quer.setAttribute('aria-expanded', String(open));
+}
+
+function dayPickerButtonLabel() {
+  const selected = getSelectedDayKeys();
+  if (selected.includes(ALL_DAYS)) return t('All clinics', 'كل العيادات');
+  if (selected.length === 1) return `${selected[0].replace(/-/g, '/')} - ${weekdayName(selected[0])}`;
+  return t(`${selected.length} days selected`, `تم اختيار ${selected.length} أيام`);
+}
+
+function refreshDayPickerSelection() {
+  const selected = getSelectedDayKeys();
+  exportDaySelect.querySelectorAll('.day-ms-opt').forEach((option) => {
+    const on = selected.includes(option.dataset.value);
+    option.classList.toggle('selected', on);
+    option.setAttribute('aria-selected', String(on));
+  });
+  const text = exportDaySelect.querySelector('.day-ms-text');
+  if (text) text.textContent = dayPickerButtonLabel();
+}
+
+function handleDayPickerChoice(target) {var _target$closest;
+  const action = (_target$closest = target.closest('[data-day-act]')) === null || _target$closest === void 0 ? void 0 : _target$closest.dataset.dayAct;
+  if (action === 'all') {
+    // Every listed day ticked individually (handy for emailing everything at once).
+    selectedDayKeys = new Set(dayPickerKeys);
+    refreshDayPickerSelection();
+    daySelectionChanged();
+    return;
+  }
+  if (action === 'none') {
+    // Back to "All clinics" (no date restriction).
+    selectedDayKeys = new Set([ALL_DAYS]);
+    refreshDayPickerSelection();
+    daySelectionChanged();
+    setDayPickerOpen(false);
+    return;
+  }
+  const option = target.closest('.day-ms-opt');
+  if (!option) return;
+  const value = option.dataset.value;
+  if (value === ALL_DAYS) {
+    selectedDayKeys = new Set([ALL_DAYS]);
+    refreshDayPickerSelection();
+    daySelectionChanged();
+    setDayPickerOpen(false); // "All clinics" is exclusive, nothing more to pick
+    return;
+  }
+  const next = new Set(selectedDayKeys);
+  next.delete(ALL_DAYS);
+  next.has(value) ? next.delete(value) : next.add(value);
+  selectedDayKeys = next.size ? next : new Set([ALL_DAYS]);
+  refreshDayPickerSelection();
+  daySelectionChanged();
+}
+
+function bindDayPickerGlobals() {
+  if (dayPickerGlobalsBound) return;
+  dayPickerGlobalsBound = true;
+  // Click anywhere outside closes the list.
+  document.addEventListener('click', (event) => {
+    if (dayPickerOpen && !event.composedPath().includes(exportDaySelect)) setDayPickerOpen(false);
+  });
+  // Escape closes it and hands focus back to the button.
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && dayPickerOpen) {var _exportDaySelect$quer2;
+      setDayPickerOpen(false);
+      (_exportDaySelect$quer2 = exportDaySelect.querySelector('.day-ms-btn')) === null || _exportDaySelect$quer2 === void 0 ? void 0 : _exportDaySelect$quer2.focus();
     }
+  });
+  // Tabbing away from the picker closes it too.
+  exportDaySelect.addEventListener('focusout', (event) => {
+    if (dayPickerOpen && event.relatedTarget && !exportDaySelect.contains(event.relatedTarget)) setDayPickerOpen(false);
+  });
+}
 
-    function trackNewRows() {
-      const keys = clinicRows.map(rowKey);
-      if (seenRowKeys !== null) {
-        const now = Date.now();
-        keys.forEach(k => {
-          if (!seenRowKeys.has(k)) newRowHighlights[k] = now + 3000;
-        });
-      }
-      seenRowKeys = new Set([...(seenRowKeys || []), ...keys]);
+function renderDaySelect(keys) {
+  const host = exportDaySelect;
+  dayPickerKeys = keys;
+  const allLabel = t('All clinics', 'كل العيادات');
+  const allOptions = [[ALL_DAYS, allLabel], ...keys.map((key) => [key, `${key.replace(/-/g, '/')} - ${weekdayName(key)}`])];
+
+  host.innerHTML = `<button type="button" class="day-ms-btn" aria-haspopup="listbox" aria-expanded="false"><span class="day-ms-text"></span><span class="day-ms-caret" aria-hidden="true">▾</span></button><div class="day-ms-panel"><div class="day-ms-actions"><button type="button" data-day-act="all">${escapeHtml(t('Select all days', 'اختيار كل الأيام'))}</button><button type="button" data-day-act="none">${escapeHtml(t('Reset', 'إعادة ضبط'))}</button></div><div class="day-ms-list" role="listbox" aria-multiselectable="true">${allOptions.map(([value, label]) => `<div class="day-ms-opt" role="option" tabindex="0" aria-selected="false" data-value="${escapeHtml(value)}"><span class="day-ms-check">✓</span><span>${escapeHtml(label)}</span></div>`).join('')}</div></div>`;
+
+  const button = host.querySelector('.day-ms-btn');
+  const panel = host.querySelector('.day-ms-panel');
+
+  button.addEventListener('click', () => setDayPickerOpen(!dayPickerOpen));
+  panel.addEventListener('click', (event) => handleDayPickerChoice(event.target));
+  // Keyboard: Enter/Space toggles the focused day, arrows move between days.
+  panel.addEventListener('keydown', (event) => {
+    const option = event.target.closest('.day-ms-opt');
+    if (!option) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleDayPickerChoice(option);
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      const options = [...panel.querySelectorAll('.day-ms-opt')];
+      const next = options[options.indexOf(option) + (event.key === 'ArrowDown' ? 1 : -1)];
+      next === null || next === void 0 ? void 0 : next.focus();
     }
+  });
 
-    function buildDayKeys() {
-      const today = egyptTodayKey();
-      return Array.from({ length: EXPORT_DAYS_BACK }, (_, i) => shiftDayKey(today, -i));
+  refreshDayPickerSelection();
+  setDayPickerOpen(dayPickerOpen); // keep the open/closed state across re-renders
+  bindDayPickerGlobals();
+}
+
+function populateDaySelect() {
+  const previous = getSelectedDayKeys();
+  const keys = buildDayKeys();
+  const valid = previous.filter((key) => key === ALL_DAYS || keys.includes(key));
+  selectedDayKeys = new Set(valid.length ? valid : [ALL_DAYS]); // default: all clinics
+  renderDaySelect(keys);
+  exportDayLabel.textContent = t('Day(s) (Egypt time)', 'اليوم/الأيام (بتوقيت مصر)');
+  refreshBtnLabel.textContent = t('Refresh', 'تحديث');
+}
+
+function sortRowsForExport(rows) {
+  // Newest first; pending reservations above decided ones.
+  const list = [...rows].reverse();
+  list.sort((a, b) => {
+    const aDecided = a.isReserved === 'y' || a.isReserved === 'n';
+    const bDecided = b.isReserved === 'y' || b.isReserved === 'n';
+    if (aDecided !== bDecided) return aDecided ? 1 : -1;
+    return 0;
+  });
+  return list;
+}
+
+// Excel styling helpers
+const NAVY = '003F73',BLUE = '005DAA',GOLD = 'C99C39';
+const argb = (hex) => 'FF' + hex.toUpperCase();
+const solid = (hex) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: argb(hex) } });
+const borderAll = (hex, style = 'thin') => {
+  const side = { style, color: { argb: argb(hex) } };
+  return { top: side, left: side, bottom: side, right: side };
+};
+const XL_BODY = 14; // body font size (pt)
+const XL_HEAD = 15; // header font size (pt)
+const XL_TITLE = 18; // big top row font size (pt)
+const xlFont = (opts = {}) => ({ name: 'Arial', size: XL_BODY, ...opts });
+const cellAlign = { horizontal: 'center', vertical: 'middle', wrapText: false, readingOrder: 'rtl' };
+const titleAlign = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
+
+// A4 landscape with 0.4" side margins leaves ~1030px of printable width at
+// 100%. A column of width w units is ~(7w + 5)px wide, so the widths below
+// are scaled to add up to exactly one page: the sheet prints full width,
+// at (nearly) 100% scale, with no column cut off.
+const XL_PAGE_PX = 1030;
+const XL_CHAR = 1.3; // width units needed per character at 14pt
+
+const longestLine = (value) => Math.max(0, ...String(value !== null && value !== void 0 ? value : '').split('\n').map((line) => line.length));
+
+function computeColumnWidths(headers, rows) {
+  const natural = headers.map((label, c) => {
+    let longest = longestLine(label) * 1.35; // header is bold and larger
+    rows.forEach((r) => {longest = Math.max(longest, longestLine(r.values[c]) * XL_CHAR);});
+    return Math.max(7, longest + 3); // no cap: every column fits its longest text
+  });
+  // Allow up to 15% over one page: Excel scales the print down by the same
+  // amount (14pt still prints as ~12pt) in exchange for fewer wrapped cells.
+  const target = (XL_PAGE_PX - 5 * headers.length) / 7 * 1.15;
+  const total = natural.reduce((sum, w) => sum + w, 0);
+  if (total <= target) {
+    // Room to spare: stretch every column evenly so the table fills the page.
+    const factor = target / total;
+    return natural.map((w) => Math.round(w * factor * 100) / 100);
+  }
+  // Wider than one page: keep full widths (no wrapping); the print setup scales it to fit.
+  return natural.map((w) => Math.round(w * 100) / 100);
+}
+
+// Text never wraps, so every row has one compact fixed height.
+const XL_ROW_H = 24,XL_HEAD_H = 30;
+
+function addReservationSheet(wb, sheetName, headers, rows, tabColor, titleText) {
+  const ws = wb.addWorksheet(sheetName, {
+    // Reads right-to-left: column A on the right (mostly-Arabic content).
+    // Row 1 = big title, row 2 = column headers (both stay frozen).
+    views: [{ rightToLeft: true, showGridLines: false, state: 'frozen', ySplit: 2 }],
+    properties: { tabColor: { argb: argb(tabColor) } },
+    pageSetup: {
+      orientation: 'landscape', paperSize: 9,
+      fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      horizontalCentered: true,
+      margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
+      printTitlesRow: '2:2'
     }
+  });
 
-    let selectedDayKeys = new Set([ALL_DAYS]);
+  const widths = computeColumnWidths(headers, rows);
+  ws.columns = widths.map((width) => ({ width }));
+  const colCount = headers.length;
 
-    function getSelectedDayKeys() {
-      return selectedDayKeys.size ? [...selectedDayKeys] : [ALL_DAYS];
-    }
+  // ---- Big title row: the day + number of clinics in both sheets ----
+  const titleRow = ws.addRow([titleText]);
+  titleRow.height = 56;
+  for (let c = 1; c <= colCount; c++) {
+    const cell = titleRow.getCell(c);
+    cell.fill = solid(BLUE);
+    cell.border = { bottom: { style: 'thick', color: { argb: argb(GOLD) } } };
+  }
+  ws.mergeCells(1, 1, 1, colCount);
+  const titleCell = titleRow.getCell(1);
+  titleCell.font = xlFont({ size: XL_TITLE, bold: true, color: { argb: 'FFFFFFFF' } });
+  titleCell.alignment = titleAlign;
 
-    function selectedDayLabel(dayKeys) {
-      if (dayKeys.includes(ALL_DAYS)) return t('All clinics', 'كل العيادات');
-      return dayKeys.map(key => `${weekdayName(key)} ${key.replace(/-/g, '/')}`).join(', ');
-    }
-
-    function daySelectionChanged() {
-      switchToTabWithResults();
-      const renderedCount = renderClinicsTable();
-      setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
-    }
-
-    // ── Day picker (multi-select dropdown) ──────────────────────────────────
-    // The panel is opened/closed with a CSS class (so it can fade/slide) and
-    // selecting days updates the existing markup in place, so the list stays
-    // open while several days are ticked and keeps its scroll position.
-    let dayPickerOpen = false;
-    let dayPickerGlobalsBound = false;
-    let dayPickerKeys = [];
-
-    function setDayPickerOpen(open) {
-      dayPickerOpen = open;
-      exportDaySelect.classList.toggle('open', open);
-      exportDaySelect.querySelector('.day-ms-btn')?.setAttribute('aria-expanded', String(open));
-    }
-
-    function dayPickerButtonLabel() {
-      const selected = getSelectedDayKeys();
-      if (selected.includes(ALL_DAYS)) return t('All clinics', 'كل العيادات');
-      if (selected.length === 1) return `${selected[0].replace(/-/g, '/')} - ${weekdayName(selected[0])}`;
-      return t(`${selected.length} days selected`, `تم اختيار ${selected.length} أيام`);
-    }
-
-    function refreshDayPickerSelection() {
-      const selected = getSelectedDayKeys();
-      exportDaySelect.querySelectorAll('.day-ms-opt').forEach(option => {
-        const on = selected.includes(option.dataset.value);
-        option.classList.toggle('selected', on);
-        option.setAttribute('aria-selected', String(on));
-      });
-      const text = exportDaySelect.querySelector('.day-ms-text');
-      if (text) text.textContent = dayPickerButtonLabel();
-    }
-
-    function handleDayPickerChoice(target) {
-      const action = target.closest('[data-day-act]')?.dataset.dayAct;
-      if (action === 'all') {
-        // Every listed day ticked individually (handy for emailing everything at once).
-        selectedDayKeys = new Set(dayPickerKeys);
-        refreshDayPickerSelection();
-        daySelectionChanged();
-        return;
-      }
-      if (action === 'none') {
-        // Back to "All clinics" (no date restriction).
-        selectedDayKeys = new Set([ALL_DAYS]);
-        refreshDayPickerSelection();
-        daySelectionChanged();
-        setDayPickerOpen(false);
-        return;
-      }
-      const option = target.closest('.day-ms-opt');
-      if (!option) return;
-      const value = option.dataset.value;
-      if (value === ALL_DAYS) {
-        selectedDayKeys = new Set([ALL_DAYS]);
-        refreshDayPickerSelection();
-        daySelectionChanged();
-        setDayPickerOpen(false); // "All clinics" is exclusive, nothing more to pick
-        return;
-      }
-      const next = new Set(selectedDayKeys);
-      next.delete(ALL_DAYS);
-      next.has(value) ? next.delete(value) : next.add(value);
-      selectedDayKeys = next.size ? next : new Set([ALL_DAYS]);
-      refreshDayPickerSelection();
-      daySelectionChanged();
-    }
-
-    function bindDayPickerGlobals() {
-      if (dayPickerGlobalsBound) return;
-      dayPickerGlobalsBound = true;
-      // Click anywhere outside closes the list.
-      document.addEventListener('click', event => {
-        if (dayPickerOpen && !event.composedPath().includes(exportDaySelect)) setDayPickerOpen(false);
-      });
-      // Escape closes it and hands focus back to the button.
-      document.addEventListener('keydown', event => {
-        if (event.key === 'Escape' && dayPickerOpen) {
-          setDayPickerOpen(false);
-          exportDaySelect.querySelector('.day-ms-btn')?.focus();
-        }
-      });
-      // Tabbing away from the picker closes it too.
-      exportDaySelect.addEventListener('focusout', event => {
-        if (dayPickerOpen && event.relatedTarget && !exportDaySelect.contains(event.relatedTarget)) setDayPickerOpen(false);
-      });
-    }
-
-    function renderDaySelect(keys) {
-      const host = exportDaySelect;
-      dayPickerKeys = keys;
-      const allLabel = t('All clinics', 'كل العيادات');
-      const allOptions = [[ALL_DAYS, allLabel], ...keys.map(key => [key, `${key.replace(/-/g, '/')} - ${weekdayName(key)}`])];
-
-      host.innerHTML = `<button type="button" class="day-ms-btn" aria-haspopup="listbox" aria-expanded="false"><span class="day-ms-text"></span><span class="day-ms-caret" aria-hidden="true">▾</span></button><div class="day-ms-panel"><div class="day-ms-actions"><button type="button" data-day-act="all">${escapeHtml(t('Select all days', 'اختيار كل الأيام'))}</button><button type="button" data-day-act="none">${escapeHtml(t('Reset', 'إعادة ضبط'))}</button></div><div class="day-ms-list" role="listbox" aria-multiselectable="true">${allOptions.map(([value, label]) => `<div class="day-ms-opt" role="option" tabindex="0" aria-selected="false" data-value="${escapeHtml(value)}"><span class="day-ms-check">✓</span><span>${escapeHtml(label)}</span></div>`).join('')}</div></div>`;
-
-      const button = host.querySelector('.day-ms-btn');
-      const panel = host.querySelector('.day-ms-panel');
-
-      button.addEventListener('click', () => setDayPickerOpen(!dayPickerOpen));
-      panel.addEventListener('click', event => handleDayPickerChoice(event.target));
-      // Keyboard: Enter/Space toggles the focused day, arrows move between days.
-      panel.addEventListener('keydown', event => {
-        const option = event.target.closest('.day-ms-opt');
-        if (!option) return;
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          handleDayPickerChoice(option);
-        } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-          event.preventDefault();
-          const options = [...panel.querySelectorAll('.day-ms-opt')];
-          const next = options[options.indexOf(option) + (event.key === 'ArrowDown' ? 1 : -1)];
-          next?.focus();
-        }
-      });
-
-      refreshDayPickerSelection();
-      setDayPickerOpen(dayPickerOpen); // keep the open/closed state across re-renders
-      bindDayPickerGlobals();
-    }
-
-    function populateDaySelect() {
-      const previous = getSelectedDayKeys();
-      const keys = buildDayKeys();
-      const valid = previous.filter(key => key === ALL_DAYS || keys.includes(key));
-      selectedDayKeys = new Set(valid.length ? valid : [ALL_DAYS]); // default: all clinics
-      renderDaySelect(keys);
-      exportDayLabel.textContent = t('Day(s) (Egypt time)', 'اليوم/الأيام (بتوقيت مصر)');
-      refreshBtnLabel.textContent = t('Refresh', 'تحديث');
-    }
-
-    function sortRowsForExport(rows) {
-      // Newest first; pending reservations above decided ones.
-      const list = [...rows].reverse();
-      list.sort((a, b) => {
-        const aDecided = a.isReserved === 'y' || a.isReserved === 'n';
-        const bDecided = b.isReserved === 'y' || b.isReserved === 'n';
-        if (aDecided !== bDecided) return aDecided ? 1 : -1;
-        return 0;
-      });
-      return list;
-    }
-
-    // Excel styling helpers
-    const NAVY = '003F73', BLUE = '005DAA', GOLD = 'C99C39';
-    const argb = hex => 'FF' + hex.toUpperCase();
-    const solid = hex => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: argb(hex) } });
-    const borderAll = (hex, style = 'thin') => {
-      const side = { style, color: { argb: argb(hex) } };
-      return { top: side, left: side, bottom: side, right: side };
+  // ---- Header row ----
+  const headerRow = ws.addRow(headers);
+  headerRow.height = XL_HEAD_H;
+  headers.forEach((label, i) => {
+    const cell = headerRow.getCell(i + 1);
+    cell.font = xlFont({ size: XL_HEAD, bold: true, color: { argb: 'FFFFFFFF' } });
+    cell.fill = solid(NAVY);
+    cell.alignment = cellAlign;
+    cell.border = {
+      top: { style: 'thin', color: { argb: argb(NAVY) } },
+      left: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+      right: { style: 'thin', color: { argb: 'FFFFFFFF' } },
+      bottom: { style: 'thick', color: { argb: argb(GOLD) } }
     };
-    const XL_BODY = 14;   // body font size (pt)
-    const XL_HEAD = 15;   // header font size (pt)
-    const XL_TITLE = 18;  // big top row font size (pt)
-    const xlFont = (opts = {}) => ({ name: 'Arial', size: XL_BODY, ...opts });
-    const cellAlign = { horizontal: 'center', vertical: 'middle', wrapText: false, readingOrder: 'rtl' };
-    const titleAlign = { horizontal: 'center', vertical: 'middle', wrapText: true, readingOrder: 'rtl' };
+  });
 
-    // A4 landscape with 0.4" side margins leaves ~1030px of printable width at
-    // 100%. A column of width w units is ~(7w + 5)px wide, so the widths below
-    // are scaled to add up to exactly one page: the sheet prints full width,
-    // at (nearly) 100% scale, with no column cut off.
-    const XL_PAGE_PX = 1030;
-    const XL_CHAR = 1.3;    // width units needed per character at 14pt
+  const statusLook = {
+    y: { color: '12805C', fill: solid('E3F4EC') },
+    n: { color: 'B3261E', fill: solid('FBE9E7') }
+  };
+  const pendingLook = { color: '9A7420', fill: solid('FFF3D6') };
+  const statusCol = colCount;
 
-    const longestLine = value => Math.max(0, ...String(value ?? '').split('\n').map(line => line.length));
-
-    function computeColumnWidths(headers, rows) {
-      const natural = headers.map((label, c) => {
-        let longest = longestLine(label) * 1.35; // header is bold and larger
-        rows.forEach(r => { longest = Math.max(longest, longestLine(r.values[c]) * XL_CHAR); });
-        return Math.max(7, longest + 3); // no cap: every column fits its longest text
-      });
-      // Allow up to 15% over one page: Excel scales the print down by the same
-      // amount (14pt still prints as ~12pt) in exchange for fewer wrapped cells.
-      const target = ((XL_PAGE_PX - 5 * headers.length) / 7) * 1.15;
-      const total = natural.reduce((sum, w) => sum + w, 0);
-      if (total <= target) {
-        // Room to spare: stretch every column evenly so the table fills the page.
-        const factor = target / total;
-        return natural.map(w => Math.round(w * factor * 100) / 100);
-      }
-      // Wider than one page: keep full widths (no wrapping); the print setup scales it to fit.
-      return natural.map(w => Math.round(w * 100) / 100);
+  rows.forEach((r, ri) => {
+    const row = ws.addRow(r.values);
+    row.height = XL_ROW_H;
+    const zebra = solid(ri % 2 ? 'F3F7FB' : 'FFFFFF');
+    for (let c = 1; c <= colCount; c++) {
+      const cell = row.getCell(c);
+      cell.font = xlFont();
+      cell.fill = zebra;
+      cell.border = borderAll('D5DEE8');
+      cell.alignment = cellAlign;
     }
+    const look = statusLook[r.status] || pendingLook;
+    const statusCell = row.getCell(statusCol);
+    statusCell.font = xlFont({ bold: true, color: { argb: argb(look.color) } });
+    statusCell.fill = look.fill;
+  });
 
-    // Text never wraps, so every row has one compact fixed height.
-    const XL_ROW_H = 24, XL_HEAD_H = 30;
+  ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: colCount } };
+  return ws;
+}
 
-    function addReservationSheet(wb, sheetName, headers, rows, tabColor, titleText) {
-      const ws = wb.addWorksheet(sheetName, {
-        // Reads right-to-left: column A on the right (mostly-Arabic content).
-        // Row 1 = big title, row 2 = column headers (both stay frozen).
-        views: [{ rightToLeft: true, showGridLines: false, state: 'frozen', ySplit: 2 }],
-        properties: { tabColor: { argb: argb(tabColor) } },
-        pageSetup: {
-          orientation: 'landscape', paperSize: 9,
-          fitToPage: true, fitToWidth: 1, fitToHeight: 0,
-          horizontalCentered: true,
-          margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
-          printTitlesRow: '2:2'
-        }
-      });
+// Exports every application SUBMITTED on the selected Egypt day (by the
+// sheet's timestamp). Email is never included (the Department column is
+// shown instead). Two sheets per file, each with a big title row (day +
+// clinic counts):
+//   1) all clinics that use a date (with the Date column)
+//   2) Dental (اسنان) / General (عيادة عامة) clinics (no Date column)
+async function exportTableToExcel() {
+  if (typeof ExcelJS === 'undefined') {var _window$showToast, _window;
+    (_window$showToast = (_window = window).showToast) === null || _window$showToast === void 0 ? void 0 : _window$showToast.call(_window, t('Export library not available.', 'مكتبة التصدير غير متوفرة.'), 'error');
+    return;
+  }
 
-      const widths = computeColumnWidths(headers, rows);
-      ws.columns = widths.map(width => ({ width }));
-      const colCount = headers.length;
+  const dayKeys = getSelectedDayKeys();
+  const tsIndex = getColumnIndexByKey('timestamp');
+  if (!dayKeys.length || tsIndex < 0) {var _window$showToast2, _window2; // timestamp is needed to filter selected days
+    (_window$showToast2 = (_window2 = window).showToast) === null || _window$showToast2 === void 0 ? void 0 : _window$showToast2.call(_window2, t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.'), 'warning');
+    return;
+  }
 
-      // ---- Big title row: the day + number of clinics in both sheets ----
-      const titleRow = ws.addRow([titleText]);
-      titleRow.height = 56;
-      for (let c = 1; c <= colCount; c++) {
-        const cell = titleRow.getCell(c);
-        cell.fill = solid(BLUE);
-        cell.border = { bottom: { style: 'thick', color: { argb: argb(GOLD) } } };
-      }
-      ws.mergeCells(1, 1, 1, colCount);
-      const titleCell = titleRow.getCell(1);
-      titleCell.font = xlFont({ size: XL_TITLE, bold: true, color: { argb: 'FFFFFFFF' } });
-      titleCell.alignment = titleAlign;
+  const isAll = dayKeys.includes(ALL_DAYS);
+  const dayRows = sortRowsForExport(
+    isAll ? clinicRows : clinicRows.filter((row) => dayKeys.includes(getTimestampDayKey(row.values[tsIndex])))
+  );
 
-      // ---- Header row ----
-      const headerRow = ws.addRow(headers);
-      headerRow.height = XL_HEAD_H;
-      headers.forEach((label, i) => {
-        const cell = headerRow.getCell(i + 1);
-        cell.font = xlFont({ size: XL_HEAD, bold: true, color: { argb: 'FFFFFFFF' } });
-        cell.fill = solid(NAVY);
-        cell.alignment = cellAlign;
-        cell.border = {
-          top: { style: 'thin', color: { argb: argb(NAVY) } },
-          left: { style: 'thin', color: { argb: 'FFFFFFFF' } },
-          right: { style: 'thin', color: { argb: 'FFFFFFFF' } },
-          bottom: { style: 'thick', color: { argb: argb(GOLD) } }
-        };
-      });
+  if (!dayRows.length) {var _window$showToast3, _window3;
+    (_window$showToast3 = (_window3 = window).showToast) === null || _window$showToast3 === void 0 ? void 0 : _window$showToast3.call(_window3, isAll ? t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.') : t(`No applications were submitted on ${selectedDayLabel(dayKeys)}.`, `لا توجد طلبات مقدمة بتاريخ ${selectedDayLabel(dayKeys)}.`), 'warning');
+    return;
+  }
 
-      const statusLook = {
-        y: { color: '12805C', fill: solid('E3F4EC') },
-        n: { color: 'B3261E', fill: solid('FBE9E7') }
-      };
-      const pendingLook = { color: '9A7420', fill: solid('FFF3D6') };
-      const statusCol = colCount;
+  const excluded = new Set(['isreserved', 'email', 'timestamp']); // no emails / time column in Excel
+  const baseColumns = [];
+  for (const columnKey of COLUMN_ORDER) {
+    if (excluded.has(columnKey)) continue;
+    const index = getColumnIndexByKey(columnKey);
+    if (index >= 0) baseColumns.push({ index, column: clinicColumns[index], key: columnKey });
+  }
+  const dateIndex = getColumnIndexByKey('date');
 
-      rows.forEach((r, ri) => {
-        const row = ws.addRow(r.values);
-        row.height = XL_ROW_H;
-        const zebra = solid(ri % 2 ? 'F3F7FB' : 'FFFFFF');
-        for (let c = 1; c <= colCount; c++) {
-          const cell = row.getCell(c);
-          cell.font = xlFont();
-          cell.fill = zebra;
-          cell.border = borderAll('D5DEE8');
-          cell.alignment = cellAlign;
-        }
-        const look = statusLook[r.status] || pendingLook;
-        const statusCell = row.getCell(statusCol);
-        statusCell.font = xlFont({ bold: true, color: { argb: argb(look.color) } });
-        statusCell.fill = look.fill;
-      });
-
-      ws.autoFilter = { from: { row: 2, column: 1 }, to: { row: 2, column: colCount } };
-      return ws;
-    }
-
-    // Exports every application SUBMITTED on the selected Egypt day (by the
-    // sheet's timestamp). Email is never included (the Department column is
-    // shown instead). Two sheets per file, each with a big title row (day +
-    // clinic counts):
-    //   1) all clinics that use a date (with the Date column)
-    //   2) Dental (اسنان) / General (عيادة عامة) clinics (no Date column)
-    async function exportTableToExcel() {
-      if (typeof ExcelJS === 'undefined') {
-        window.showToast?.(t('Export library not available.', 'مكتبة التصدير غير متوفرة.'), 'error');
-        return;
-      }
-
-      const dayKeys = getSelectedDayKeys();
-      const tsIndex = getColumnIndexByKey('timestamp');
-      if (!dayKeys.length || tsIndex < 0) { // timestamp is needed to filter selected days
-        window.showToast?.(t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.'), 'warning');
-        return;
-      }
-
-      const isAll = dayKeys.includes(ALL_DAYS);
-      const dayRows = sortRowsForExport(
-        isAll ? clinicRows : clinicRows.filter(row => dayKeys.includes(getTimestampDayKey(row.values[tsIndex])))
-      );
-
-      if (!dayRows.length) {
-        window.showToast?.(isAll ? t('Nothing to export yet.', 'لا يوجد شيء لتصديره بعد.') : t(`No applications were submitted on ${selectedDayLabel(dayKeys)}.`, `لا توجد طلبات مقدمة بتاريخ ${selectedDayLabel(dayKeys)}.`), 'warning');
-        return;
-      }
-
-      const excluded = new Set(['isreserved', 'email', 'timestamp']); // no emails / time column in Excel
-      const baseColumns = [];
-      for (const columnKey of COLUMN_ORDER) {
-        if (excluded.has(columnKey)) continue;
-        const index = getColumnIndexByKey(columnKey);
-        if (index >= 0) baseColumns.push({ index, column: clinicColumns[index], key: columnKey });
-      }
-      const dateIndex = getColumnIndexByKey('date');
-
-      const buildRows = (rows, columns) => rows.map((row, rowIndex) => {
-        const values = columns.map(item => {
-          let value = row.values[item.index];
-          if (item.key === 'date') {
-            if (isNearestTimeValue(value)) {
-              const chosen = nearestTimeDates[row.sheetRow] || '';
-              value = chosen ? formatDateWithDay(formatArabicDateWithWeekday(chosen)) : NEAREST_TIME_VALUE;
-            } else {
-              value = formatDateWithDay(value);
-            }
-          }
-          return value == null ? '' : String(value);
-        });
-        values.unshift(String(rowIndex + 1)); // الرقم: plain 1..n ordering
-        values.push(decisionLabel(row.isReserved));
-        return { values, status: row.isReserved };
-      });
-
-      const datedRows = dayRows.filter(row => !isNoDateClinic(row));
-      const noDateRows = dayRows.filter(isNoDateClinic);
-      const noDateColumns = baseColumns.filter(item => item.key !== 'date');
-
-      const ar = lang() === 'ar';
-      const originalLabel = exportExcelBtn.textContent;
-      exportExcelBtn.disabled = true;
-      exportExcelBtn.textContent = t('Exporting...', 'جارٍ التصدير...');
-
-      try {
-        await new Promise(resolve => setTimeout(resolve, 20)); // let the disabled state paint first
-
-        const wb = new ExcelJS.Workbook();
-        wb.creator = 'EgyptAir Work Tools';
-        wb.created = new Date();
-
-        const sheet1Name = t('Clinics', 'العيادات');
-        const sheet2Name = t('Dental & General', 'أسنان وعيادة عامة');
-        const total = datedRows.length + noDateRows.length;
-        const dayLabel = selectedDayLabel(dayKeys);
-        const titleText = ar
-          ? `${dayLabel}\nعدد العيادات: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`
-          : `${dayLabel}\nTotal clinics: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`;
-
-        addReservationSheet(
-          wb,
-          sheet1Name,
-          [t('No.', 'الرقم'), ...baseColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
-          buildRows(datedRows, baseColumns),
-          BLUE,
-          titleText
-        );
-        addReservationSheet(
-          wb,
-          sheet2Name,
-          [t('No.', 'الرقم'), ...noDateColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
-          buildRows(noDateRows, noDateColumns),
-          GOLD,
-          titleText
-        );
-
-        const buffer = await wb.xlsx.writeBuffer();
-        const url = URL.createObjectURL(new Blob([buffer], {
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        }));
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `clinics-${isAll ? 'all' : dayKeys.join('_')}.xlsx`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-      } catch (error) {
-        console.error(error);
-        window.showToast?.((ar ? 'فشل التصدير: ' : 'Export failed: ') + (error.message || error), 'error');
-      } finally {
-        exportExcelBtn.disabled = false;
-        exportExcelBtn.textContent = originalLabel;
-      }
-    }
-
-    exportExcelBtn.addEventListener('click', exportTableToExcel);
-    // Sends the loaded reservations to the department owners.
-    // - Departments are routed to an owner (mailbox) below.
-    // - Everything one owner is responsible for (several departments, several
-    //   selected days) is MERGED into a single email; it is only split into
-    //   "parts" when it would not fit EmailJS's 50 KB request limit.
-    // This is separate from the per-reservation decision emails further down.
-    // Change any address below later if a department gets its own mailbox.
-    const DEPARTMENT_EMAIL_ASSIGNMENTS = {
-      'الادارة العامة للتموين': 'eslamsaleh1999@gmail.com',
-      'الادارة العامة للانتاج': '',
-      'الادارة العامة للموارد البشرية': '',
-      'إدارة التسويق والتعاقدات': '',
-      'إدارة نظم المعلومات': '',
-      'إداره السلامة والصحة المهنية وشئون البيئة': '',
-      'الادارة العامة لمكتب رئيس مجلس الادارة': '',
-      'الادارة العامة للتخطيط': '',
-      'الادارة العامة للخدمات الفندقية': '',
-      'الادارة العامة للسلامة والجودة': '',
-      'الادارة العامة للشئون القانونية': '',
-      'الادارة العامة للشئون المالية': '',
-      'الادارة العامة للصيانة': '',
-      'الادارة العامة للمخازن': '',
-      'الادارة العامة للمشتريات': '',
-      'إدارة البحوث والتطوير': '',
-      'الادارة العامة لامن الخدمات الجوية': '',
-      'بدون ادارة عامة': ''
-    };
-    // Department names are compared after Arabic normalisation (أ/إ/آ→ا, ة→ه, ى→ي,
-    // spacing...), so small spelling differences in the sheet still match.
-    const NO_DEPARTMENT_LABEL = 'بدون ادارة عامة';
-    const DEPARTMENT_EMAIL_LOOKUP = new Map(
-      Object.entries(DEPARTMENT_EMAIL_ASSIGNMENTS)
-        .filter(([, recipient]) => recipient) // departments with no address are skipped
-        .map(([department, recipient]) => [normalizeArabicText(department), { department, recipient }])
-    );
-    const BULK_EMAIL_MAX_BYTES = 48 * 1024;
-    const BULK_EMAIL_MIN_INTERVAL_MS = 1100; // EmailJS rate limit is 1 request/sec
-    let isSendingBulkEmail = false;
-
-    // EmailJS HTML-escapes {{variables}}, so a "/" would reach the inbox as
-    // "&#x2F;" (and & ' " < > = similarly). Swap those characters for safe ones.
-    function emailSafeText(value) {
-      return String(value ?? '')
-        .replace(/\//g, '-')
-        .replace(/&/g, '+')
-        .replace(/'/g, '\u2019')
-        .replace(/"/g, '\u201D')
-        .replace(/[<>`=]/g, ' ');
-    }
-
-    function bulkEmailColumns() {
-      return COLUMN_ORDER
-        // Do not include Timestamp (الوقت) or Department (الادارة) in emailed tables:
-        // the department is shown once as a section heading instead.
-        .filter(key => key !== 'isreserved' && key !== 'timestamp' && key !== 'department')
-        .map(key => {
-          const index = getColumnIndexByKey(key);
-          return index >= 0 ? { key, index } : null;
-        })
-        .filter(Boolean);
-    }
-
-    function bulkEmailCellValue(row, column) {
-      let value = row.values[column.index];
-
-      if (column.key === 'code') value = normalizeDigits(value);
-      if (column.key === 'timestamp') value = formatTimestamp(value);
-      if (column.key === 'date') {
+  const buildRows = (rows, columns) => rows.map((row, rowIndex) => {
+    const values = columns.map((item) => {
+      let value = row.values[item.index];
+      if (item.key === 'date') {
         if (isNearestTimeValue(value)) {
           const chosen = nearestTimeDates[row.sheetRow] || '';
-          value = chosen ? formatDateWithDay(formatArabicDateWithWeekday(chosen)) : value;
+          value = chosen ? formatDateWithDay(formatArabicDateWithWeekday(chosen)) : NEAREST_TIME_VALUE;
         } else {
           value = formatDateWithDay(value);
         }
       }
+      return value == null ? '' : String(value);
+    });
+    values.unshift(String(rowIndex + 1)); // الرقم: plain 1..n ordering
+    values.push(decisionLabel(row.isReserved));
+    return { values, status: row.isReserved };
+  });
 
-      return emailSafeText(String(value ?? '')
-        .replace(/[\r\n]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim());
+  const datedRows = dayRows.filter((row) => !isNoDateClinic(row));
+  const noDateRows = dayRows.filter(isNoDateClinic);
+  const noDateColumns = baseColumns.filter((item) => item.key !== 'date');
+
+  const ar = lang() === 'ar';
+  const originalLabel = exportExcelBtn.textContent;
+  exportExcelBtn.disabled = true;
+  exportExcelBtn.textContent = t('Exporting...', 'جارٍ التصدير...');
+
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 20)); // let the disabled state paint first
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'EgyptAir Work Tools';
+    wb.created = new Date();
+
+    const sheet1Name = t('Clinics', 'العيادات');
+    const sheet2Name = t('Dental & General', 'أسنان وعيادة عامة');
+    const total = datedRows.length + noDateRows.length;
+    const dayLabel = selectedDayLabel(dayKeys);
+    const titleText = ar ?
+    `${dayLabel}\nعدد العيادات: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})` :
+    `${dayLabel}\nTotal clinics: ${total}   (${sheet1Name}: ${datedRows.length}  +  ${sheet2Name}: ${noDateRows.length})`;
+
+    addReservationSheet(
+      wb,
+      sheet1Name,
+      [t('No.', 'الرقم'), ...baseColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
+      buildRows(datedRows, baseColumns),
+      BLUE,
+      titleText
+    );
+    addReservationSheet(
+      wb,
+      sheet2Name,
+      [t('No.', 'الرقم'), ...noDateColumns.map(columnHeaderLabel), t('Status', 'الحالة')],
+      buildRows(noDateRows, noDateColumns),
+      GOLD,
+      titleText
+    );
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const url = URL.createObjectURL(new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `clinics-${isAll ? 'all' : dayKeys.join('_')}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch (error) {var _window$showToast4, _window4;
+    console.error(error);
+    (_window$showToast4 = (_window4 = window).showToast) === null || _window$showToast4 === void 0 ? void 0 : _window$showToast4.call(_window4, (ar ? 'فشل التصدير: ' : 'Export failed: ') + (error.message || error), 'error');
+  } finally {
+    exportExcelBtn.disabled = false;
+    exportExcelBtn.textContent = originalLabel;
+  }
+}
+
+exportExcelBtn.addEventListener('click', exportTableToExcel);
+// Sends the loaded reservations to the department owners.
+// - Departments are routed to an owner (mailbox) below.
+// - Everything one owner is responsible for (several departments, several
+//   selected days) is MERGED into a single email; it is only split into
+//   "parts" when it would not fit EmailJS's 50 KB request limit.
+// This is separate from the per-reservation decision emails further down.
+// Change any address below later if a department gets its own mailbox.
+const DEPARTMENT_EMAIL_ASSIGNMENTS = {
+  'الادارة العامة للتموين': 'eslamsaleh1999@gmail.com',
+  'الادارة العامة للانتاج': '',
+  'الادارة العامة للموارد البشرية': '',
+  'إدارة التسويق والتعاقدات': '',
+  'إدارة نظم المعلومات': '',
+  'إداره السلامة والصحة المهنية وشئون البيئة': '',
+  'الادارة العامة لمكتب رئيس مجلس الادارة': '',
+  'الادارة العامة للتخطيط': '',
+  'الادارة العامة للخدمات الفندقية': '',
+  'الادارة العامة للسلامة والجودة': '',
+  'الادارة العامة للشئون القانونية': '',
+  'الادارة العامة للشئون المالية': '',
+  'الادارة العامة للصيانة': '',
+  'الادارة العامة للمخازن': '',
+  'الادارة العامة للمشتريات': '',
+  'إدارة البحوث والتطوير': '',
+  'الادارة العامة لامن الخدمات الجوية': '',
+  'بدون ادارة عامة': ''
+};
+// Department names are compared after Arabic normalisation (أ/إ/آ→ا, ة→ه, ى→ي,
+// spacing...), so small spelling differences in the sheet still match.
+const NO_DEPARTMENT_LABEL = 'بدون ادارة عامة';
+const DEPARTMENT_EMAIL_LOOKUP = new Map(
+  Object.entries(DEPARTMENT_EMAIL_ASSIGNMENTS).
+  filter(([, recipient]) => recipient) // departments with no address are skipped
+  .map(([department, recipient]) => [normalizeArabicText(department), { department, recipient }])
+);
+const BULK_EMAIL_MAX_BYTES = 48 * 1024;
+const BULK_EMAIL_MIN_INTERVAL_MS = 1100; // EmailJS rate limit is 1 request/sec
+let isSendingBulkEmail = false;
+
+// EmailJS HTML-escapes {{variables}}, so a "/" would reach the inbox as
+// "&#x2F;" (and & ' " < > = similarly). Swap those characters for safe ones.
+function emailSafeText(value) {
+  return String(value !== null && value !== void 0 ? value : '').
+  replace(/\//g, '-').
+  replace(/&/g, '+').
+  replace(/'/g, '\u2019').
+  replace(/"/g, '\u201D').
+  replace(/[<>`=]/g, ' ');
+}
+
+function bulkEmailColumns() {
+  return COLUMN_ORDER
+  // Do not include Timestamp (الوقت) or Department (الادارة) in emailed tables:
+  // the department is shown once as a section heading instead.
+  .filter((key) => key !== 'isreserved' && key !== 'timestamp' && key !== 'department').
+  map((key) => {
+    const index = getColumnIndexByKey(key);
+    return index >= 0 ? { key, index } : null;
+  }).
+  filter(Boolean);
+}
+
+function bulkEmailCellValue(row, column) {var _value;
+  let value = row.values[column.index];
+
+  if (column.key === 'code') value = normalizeDigits(value);
+  if (column.key === 'timestamp') value = formatTimestamp(value);
+  if (column.key === 'date') {
+    if (isNearestTimeValue(value)) {
+      const chosen = nearestTimeDates[row.sheetRow] || '';
+      value = chosen ? formatDateWithDay(formatArabicDateWithWeekday(chosen)) : value;
+    } else {
+      value = formatDateWithDay(value);
+    }
+  }
+
+  return emailSafeText(String((_value = value) !== null && _value !== void 0 ? _value : '').
+  replace(/[\r\n]+/g, ' ').
+  replace(/\s+/g, ' ').
+  trim());
+}
+
+function bulkEmailRowText(row, columns, number) {
+  const values = columns.map((column) => bulkEmailCellValue(row, column));
+  values.push(decisionLabel(row.isReserved));
+  // RLE/PDF keep Arabic text visually right-to-left in the plain-text template.
+  return `\u202B${number}. ${values.join(' | ')}\u202C`;
+}
+
+function bulkEmailRequestBody(recipient, subject, message) {var _EMAILJS_ACCOUNTS$, _EMAILJS_ACCOUNTS$2, _EMAILJS_ACCOUNTS$3;
+  const templateParams = {
+    title: emailSafeText(subject),
+    name: t('Clinic administration', 'إدارة العيادات'),
+    time: new Date().toLocaleString('ar-EG'),
+    message,
+    to_email: recipient,
+    email: recipient,
+    reply_to: 'eslamsaleh1999@gmail.com'
+  };
+
+  return {
+    templateParams,
+    json: JSON.stringify({
+      service_id: (_EMAILJS_ACCOUNTS$ = EMAILJS_ACCOUNTS[0]) === null || _EMAILJS_ACCOUNTS$ === void 0 ? void 0 : _EMAILJS_ACCOUNTS$.serviceId,
+      template_id: (_EMAILJS_ACCOUNTS$2 = EMAILJS_ACCOUNTS[0]) === null || _EMAILJS_ACCOUNTS$2 === void 0 ? void 0 : _EMAILJS_ACCOUNTS$2.templateId,
+      user_id: (_EMAILJS_ACCOUNTS$3 = EMAILJS_ACCOUNTS[0]) === null || _EMAILJS_ACCOUNTS$3 === void 0 ? void 0 : _EMAILJS_ACCOUNTS$3.publicKey,
+      template_params: templateParams
+    })
+  };
+}
+
+// "2026-10-07"  /  "2026-10-06, 2026-10-07"  /  "5 days (2026-10-03 to 2026-10-07)"
+function emailDayLabel(dayKeys) {
+  const days = dayKeys.filter((key) => key !== ALL_DAYS).sort();
+  if (days.length <= 3) return days.join(t(', ', '، '));
+  return t(
+    `${days.length} days (${days[0]} to ${days[days.length - 1]})`,
+    `${days.length} أيام (من ${days[0]} إلى ${days[days.length - 1]})`
+  );
+}
+
+function emailSubject(departments, dayLabel, partIndex, partCount) {
+  const who = departments.length === 1 ?
+  departments[0] :
+  t(`${departments.length} departments`, `${departments.length} إدارات`);
+  const part = partCount > 1 ? t(` (part ${partIndex} of ${partCount})`, ` (الجزء ${partIndex} من ${partCount})`) : '';
+  return `${t('Clinic records', 'سجلات العيادات')} - ${who} - ${dayLabel}${part}`;
+}
+
+// sections: [{ department, lines: [rowText...] }] -> full plain-text email body
+function bulkEmailMessage(sections, header, dayLabel, partIndex, partCount) {
+  const out = [`\u202B${t('Clinic reservation records', 'سجلات حجوزات العيادات')}\u202C`];
+  out.push(`\u202B${t('Submitted on: ', 'تاريخ التسجيل: ')}${dayLabel}\u202C`);
+  if (partCount > 1) out.push(`\u202B${t(`Part ${partIndex} of ${partCount}`, `الجزء ${partIndex} من ${partCount}`)}\u202C`);
+  for (const section of sections) {
+    out.push('', `\u202B${emailSafeText(section.department)} - ${t(`${section.lines.length} record(s)`, `${section.lines.length} سجل`)}\u202C`, header, ...section.lines);
+  }
+  return out.join('\n') + '\n';
+}
+
+// Packs one owner's departments into as few emails as possible (usually one).
+// A department continued in the next part gets its heading repeated there.
+function buildOwnerEmails(owner, columns, header, dayLabel) {
+  const measure = (sections) => {
+    const subject = emailSubject(sections.map((s) => s.department), dayLabel, 99, 99);
+    const message = bulkEmailMessage(sections, header, dayLabel, 99, 99);
+    return new TextEncoder().encode(bulkEmailRequestBody(owner.recipient, subject, message).json).length;
+  };
+  const tooLarge = (number) => new Error(t(
+    `Record ${number} is too large to send in one EmailJS request.`,
+    `السجل رقم ${number} كبير جداً لإرساله في طلب EmailJS واحد.`
+  ));
+
+  const parts = [];
+  let current = [];
+  const add = (sections, department, line) => {
+    const last = sections[sections.length - 1];
+    if (last && last.department === department) last.lines.push(line);else
+    sections.push({ department, lines: [line] });
+  };
+  const removeLast = (sections) => {
+    const last = sections[sections.length - 1];
+    last.lines.pop();
+    if (!last.lines.length) sections.pop();
+  };
+
+  for (const dep of owner.departments) {
+    dep.rows.forEach((row, index) => {
+      const line = bulkEmailRowText(row, columns, index + 1);
+      add(current, dep.department, line);
+      if (measure(current) <= BULK_EMAIL_MAX_BYTES) return;
+      removeLast(current);
+      if (!current.length) throw tooLarge(index + 1);
+      parts.push(current);
+      current = [];
+      add(current, dep.department, line);
+      if (measure(current) > BULK_EMAIL_MAX_BYTES) throw tooLarge(index + 1);
+    });
+  }
+  if (current.length) parts.push(current);
+
+  return parts.map((sections, i) => {
+    const departments = [...new Set(sections.map((s) => s.department))];
+    return {
+      recipient: owner.recipient,
+      subject: emailSubject(departments, dayLabel, i + 1, parts.length),
+      message: bulkEmailMessage(sections, header, dayLabel, i + 1, parts.length)
+    };
+  });
+}
+
+function sleepForBulkEmail(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function emailAllTableRecords() {
+  if (isSendingBulkEmail) return;
+  if (!EMAILJS_ACCOUNTS.length) {var _window$showToast5, _window5;
+    (_window$showToast5 = (_window5 = window).showToast) === null || _window$showToast5 === void 0 ? void 0 : _window$showToast5.call(_window5, t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'), 'error');
+    return;
+  }
+  if (!clinicRows.length) {var _window$showToast6, _window6;
+    (_window$showToast6 = (_window6 = window).showToast) === null || _window$showToast6 === void 0 ? void 0 : _window$showToast6.call(_window6, t('There are no records to send.', 'لا توجد سجلات لإرسالها.'), 'warning');
+    return;
+  }
+
+  const dayKeys = getSelectedDayKeys();
+  if (dayKeys.includes(ALL_DAYS)) {var _window$showToast7, _window7;
+    (_window$showToast7 = (_window7 = window).showToast) === null || _window$showToast7 === void 0 ? void 0 : _window$showToast7.call(_window7, t('Select one or more specific days before sending email.', 'اختر يوماً واحداً أو أكثر قبل إرسال البريد الإلكتروني.'), 'warning');
+    return;
+  }
+
+  const timestampIndex = getColumnIndexByKey('timestamp');
+  const departmentIndex = getColumnIndexByKey('department');
+  if (departmentIndex < 0) {var _window$showToast8, _window8;
+    (_window$showToast8 = (_window8 = window).showToast) === null || _window$showToast8 === void 0 ? void 0 : _window$showToast8.call(_window8, t('The Department column was not found.', 'لم يتم العثور على عمود الإدارة.'), 'error');
+    return;
+  }
+
+  const dayLabel = emailDayLabel(dayKeys);
+  let dateRows = clinicRows;
+  if (timestampIndex >= 0) {
+    dateRows = dateRows.filter((row) => dayKeys.includes(getTimestampDayKey(row.values[timestampIndex])));
+  }
+
+  // Group rows by department (spelling-tolerant); remember departments with no owner.
+  const rowsByDepartment = new Map();
+  const unmapped = new Map();
+  for (const row of dateRows) {var _row$values$departmen;
+    const raw = String((_row$values$departmen = row.values[departmentIndex]) !== null && _row$values$departmen !== void 0 ? _row$values$departmen : '').trim();
+    const key = normalizeArabicText(raw || NO_DEPARTMENT_LABEL);
+    if (!DEPARTMENT_EMAIL_LOOKUP.has(key)) {
+      const label = raw || NO_DEPARTMENT_LABEL;
+      unmapped.set(label, (unmapped.get(label) || 0) + 1);
+      continue;
+    }
+    if (!rowsByDepartment.has(key)) rowsByDepartment.set(key, []);
+    rowsByDepartment.get(key).push(row);
+  }
+
+  // One entry per owner (mailbox), holding all of that owner's departments.
+  const owners = new Map();
+  const summary = [];
+  for (const [key, { department, recipient }] of DEPARTMENT_EMAIL_LOOKUP) {
+    const rows = rowsByDepartment.get(key);
+    if (!rows || !rows.length) continue;
+    if (!owners.has(recipient)) owners.set(recipient, { recipient, departments: [] });
+    owners.get(recipient).departments.push({ department, rows: sortRowsForExport(rows) });
+    summary.push(`• ${department}: ${t(`${rows.length} record(s)`, `${rows.length} سجل`)}`);
+  }
+
+  const unmappedCount = [...unmapped.values()].reduce((sum, n) => sum + n, 0);
+  if (!owners.size) {var _window$showToast9, _window9;
+    (_window$showToast9 = (_window9 = window).showToast) === null || _window$showToast9 === void 0 ? void 0 : _window$showToast9.call(_window9, unmappedCount ?
+    t('These records belong to departments with no assigned email, so nothing was sent.', 'هذه السجلات تخص إدارات ليس لها بريد محدد، لذا لم يتم إرسال شيء.') :
+    t('No records match the selected days.', 'لا توجد سجلات مطابقة للأيام المحددة.'), 'warning');
+    return;
+  }
+
+  const columns = bulkEmailColumns();
+  const headers = [...columns.map((column) => columnHeaderLabel({ key: column.key, index: column.index, column: clinicColumns[column.index] })), t('Status', 'الحالة')];
+  const header = `\u202B${headers.join(' | ')}\u202C`;
+
+  let emails;
+  try {
+    emails = [...owners.values()].flatMap((owner) => buildOwnerEmails(owner, columns, header, dayLabel));
+  } catch (error) {var _window$showToast0, _window0;
+    (_window$showToast0 = (_window0 = window).showToast) === null || _window$showToast0 === void 0 ? void 0 : _window$showToast0.call(_window0, error.message, 'error');
+    setStatus(tableStatus, error.message, true);
+    return;
+  }
+
+  const totalRows = [...owners.values()].reduce((sum, owner) => sum + owner.departments.reduce((s, d) => s + d.rows.length, 0), 0);
+  const skippedNote = unmappedCount ?
+  '\n\n' + t(
+    `⚠ ${unmappedCount} record(s) in departments with no assigned email will be skipped: ${[...unmapped.keys()].join(', ')}`,
+    `⚠ سيتم تخطي ${unmappedCount} سجل لإدارات ليس لها بريد محدد: ${[...unmapped.keys()].join('، ')}`
+  ) :
+  '';
+
+  const confirmed = await window.EAPopup.confirm(t(
+    `Send ${totalRows} record(s) for ${dayLabel}?\n\n${summary.join('\n')}${skippedNote}\n\nThis will send ${emails.length} email(s).`,
+    `هل تريد إرسال ${totalRows} سجل بتاريخ ${dayLabel}؟\n\n${summary.join('\n')}${skippedNote}\n\nسيتم إرسال ${emails.length} رسالة بريد إلكتروني.`
+  ), {
+    title: t('Send department records', 'إرسال سجلات الإدارات'),
+    okText: t('Yes, send', 'نعم، أرسل'),
+    cancelText: t('Cancel', 'إلغاء')
+  });
+  if (!confirmed) return;
+
+  const originalLabel = emailAllRecordsBtn.textContent;
+  isSendingBulkEmail = true;
+  emailAllRecordsBtn.disabled = true;
+  setDayPickerOpen(false);
+  let sent = 0;
+  try {var _window$showToast1, _window1;
+    for (const email of emails) {
+      emailAllRecordsBtn.textContent = t(`Sending ${sent + 1}/${emails.length}...`, `جارٍ الإرسال ${sent + 1}/${emails.length}...`);
+      setStatus(tableStatus, t(`Sending email ${sent + 1} of ${emails.length}...`, `جارٍ إرسال الرسالة ${sent + 1} من ${emails.length}...`));
+      const { templateParams } = bulkEmailRequestBody(email.recipient, email.subject, email.message);
+      await sendWithAccountFailover(templateParams);
+      sent++;
+      if (sent < emails.length) await sleepForBulkEmail(BULK_EMAIL_MIN_INTERVAL_MS);
     }
 
-    function bulkEmailRowText(row, columns, number) {
-      const values = columns.map(column => bulkEmailCellValue(row, column));
-      values.push(decisionLabel(row.isReserved));
-      // RLE/PDF keep Arabic text visually right-to-left in the plain-text template.
-      return `\u202B${number}. ${values.join(' | ')}\u202C`;
+    setStatus(tableStatus, t(
+      `${totalRows} record(s) sent in ${emails.length} email(s).`,
+      `تم إرسال ${totalRows} سجل في ${emails.length} رسالة.`
+    ));
+    (_window$showToast1 = (_window1 = window).showToast) === null || _window$showToast1 === void 0 ? void 0 : _window$showToast1.call(_window1, t('All department records were emailed successfully.', 'تم إرسال سجلات الإدارات بالبريد بنجاح.'), 'success');
+  } catch (error) {var _window$showToast10, _window10;
+    console.error('Bulk table email failed:', error);
+    const partial = sent ?
+    ' ' + t(
+      `${sent} of ${emails.length} email(s) were already sent, so do not resend the same days or those recipients will get duplicates.`,
+      `تم إرسال ${sent} من ${emails.length} رسالة بالفعل، فلا تُعد إرسال نفس الأيام حتى لا يصل التكرار لنفس المستلمين.`
+    ) :
+    '';
+    const message = (error.message || t('Bulk email failed.', 'فشل إرسال السجلات بالبريد.')) + partial;
+    setStatus(tableStatus, message, true);
+    (_window$showToast10 = (_window10 = window).showToast) === null || _window$showToast10 === void 0 ? void 0 : _window$showToast10.call(_window10, message, 'error');
+  } finally {
+    isSendingBulkEmail = false;
+    emailAllRecordsBtn.disabled = false;
+    emailAllRecordsBtn.textContent = originalLabel;
+  }
+}
+
+// TO DELETE: Email all records button listener
+// emailAllRecordsBtn.addEventListener('click', emailAllTableRecords);
+refreshBtn.addEventListener('click', () => loadClinicSheet());
+populateDaySelect();
+
+// Copies the Google Form reservation link to the clipboard. Falls back to
+// the legacy execCommand trick when navigator.clipboard is unavailable
+// (e.g. plain http:// or file:// — clipboard API requires a secure context).
+async function copyReservationFormLink() {
+  try {var _window$showToast11, _window11;
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(RESERVATION_FORM_URL);
+    } else {
+      const textarea = document.createElement('textarea');
+      textarea.value = RESERVATION_FORM_URL;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const copied = document.execCommand('copy');
+      textarea.remove();
+      if (!copied) throw new Error('execCommand copy failed');
     }
+    copyFormLinkBtn.classList.add('copied');
+    setTimeout(() => copyFormLinkBtn.classList.remove('copied'), 1500);
+    (_window$showToast11 = (_window11 = window).showToast) === null || _window$showToast11 === void 0 ? void 0 : _window$showToast11.call(_window11, t('Reservation form link copied.', 'تم نسخ رابط نموذج الحجز.'), 'success');
+  } catch (error) {var _window$showToast12, _window12;
+    console.warn('Copy failed:', error);
+    (_window$showToast12 = (_window12 = window).showToast) === null || _window$showToast12 === void 0 ? void 0 : _window$showToast12.call(_window12, t('Could not copy the link.', 'تعذر نسخ الرابط.'), 'error');
+  }
+}
 
-    function bulkEmailRequestBody(recipient, subject, message) {
-      const templateParams = {
-        title: emailSafeText(subject),
-        name: t('Clinic administration', 'إدارة العيادات'),
-        time: new Date().toLocaleString('ar-EG'),
-        message,
-        to_email: recipient,
-        email: recipient,
-        reply_to: 'eslamsaleh1999@gmail.com'
-      };
+function updateCopyLinkTitle() {
+  const label = t('Copy reservation form link', 'نسخ رابط نموذج الحجز');
+  copyFormLinkBtn.title = label;
+  copyFormLinkBtn.setAttribute('aria-label', label);
+}
 
-      return {
-        templateParams,
-        json: JSON.stringify({
-          service_id: EMAILJS_ACCOUNTS[0]?.serviceId,
-          template_id: EMAILJS_ACCOUNTS[0]?.templateId,
-          user_id: EMAILJS_ACCOUNTS[0]?.publicKey,
-          template_params: templateParams
-        })
-      };
-    }
+copyFormLinkBtn.addEventListener('click', copyReservationFormLink);
+updateCopyLinkTitle();
 
-    // "2026-10-07"  /  "2026-10-06, 2026-10-07"  /  "5 days (2026-10-03 to 2026-10-07)"
-    function emailDayLabel(dayKeys) {
-      const days = dayKeys.filter(key => key !== ALL_DAYS).sort();
-      if (days.length <= 3) return days.join(t(', ', '، '));
-      return t(
-        `${days.length} days (${days[0]} to ${days[days.length - 1]})`,
-        `${days.length} أيام (من ${days[0]} إلى ${days[days.length - 1]})`
-      );
-    }
+// Turns a successful backend response into table rows and renders them.
+function applySheetResponse(response) {
+  if (!response || response.ok === false) {
+    throw new Error((response === null || response === void 0 ? void 0 : response.error) || 'Missing data.');
+  }
+  lastSheetSignature = JSON.stringify([response.headers, response.rows]);
 
-    function emailSubject(departments, dayLabel, partIndex, partCount) {
-      const who = departments.length === 1
-        ? departments[0]
-        : t(`${departments.length} departments`, `${departments.length} إدارات`);
-      const part = partCount > 1 ? t(` (part ${partIndex} of ${partCount})`, ` (الجزء ${partIndex} من ${partCount})`) : '';
-      return `${t('Clinic records', 'سجلات العيادات')} - ${who} - ${dayLabel}${part}`;
-    }
+  // headers/rows come straight from Apps Script's SpreadsheetApp.getValues(),
+  // which returns the exact stored cell content (no gviz type inference,
+  // so Arabic-Indic digit codes survive instead of being nulled out).
+  // Remember not-yet-saved "اقرب وقت" date picks by the row's timestamp, so a
+  // background refresh (or a purge that shifts row numbers) can't wipe or misplace them.
+  const prevPicks = {};
+  const prevTsIdx = getColumnIndexByKey('timestamp');
+  if (prevTsIdx >= 0) {
+    clinicRows.forEach((r) => {var _r$values$prevTsIdx;
+      if (nearestTimeDates[r.sheetRow]) prevPicks[String((_r$values$prevTsIdx = r.values[prevTsIdx]) !== null && _r$values$prevTsIdx !== void 0 ? _r$values$prevTsIdx : '').trim()] = nearestTimeDates[r.sheetRow];
+    });
+  }
 
-    // sections: [{ department, lines: [rowText...] }] -> full plain-text email body
-    function bulkEmailMessage(sections, header, dayLabel, partIndex, partCount) {
-      const out = [`\u202B${t('Clinic reservation records', 'سجلات حجوزات العيادات')}\u202C`];
-      out.push(`\u202B${t('Submitted on: ', 'تاريخ التسجيل: ')}${dayLabel}\u202C`);
-      if (partCount > 1) out.push(`\u202B${t(`Part ${partIndex} of ${partCount}`, `الجزء ${partIndex} من ${partCount}`)}\u202C`);
-      for (const section of sections) {
-        out.push('', `\u202B${emailSafeText(section.department)} - ${t(`${section.lines.length} record(s)`, `${section.lines.length} سجل`)}\u202C`, header, ...section.lines);
-      }
-      return out.join('\n') + '\n';
-    }
+  clinicColumns = (response.headers || []).map((label) => ({ label }));
+  const reservedIndex = clinicColumns.findIndex(isReservedColumn);
+  clinicRows = (response.rows || []).map((row, index) => {
+    const values = clinicColumns.map((column, colIndex) => {var _row$colIndex;
+      let val = (_row$colIndex = row[colIndex]) !== null && _row$colIndex !== void 0 ? _row$colIndex : '';
+      if (isCodeColumn(column)) val = normalizeDigits(val);
+      return val;
+    });
+    return {
+      sheetRow: index + 2,
+      values,
+      isReserved: String(values[reservedIndex] || '').trim().toLowerCase()
+    };
+  });
 
-    // Packs one owner's departments into as few emails as possible (usually one).
-    // A department continued in the next part gets its heading repeated there.
-    function buildOwnerEmails(owner, columns, header, dayLabel) {
-      const measure = sections => {
-        const subject = emailSubject(sections.map(s => s.department), dayLabel, 99, 99);
-        const message = bulkEmailMessage(sections, header, dayLabel, 99, 99);
-        return new TextEncoder().encode(bulkEmailRequestBody(owner.recipient, subject, message).json).length;
-      };
-      const tooLarge = number => new Error(t(
-        `Record ${number} is too large to send in one EmailJS request.`,
-        `السجل رقم ${number} كبير جداً لإرساله في طلب EmailJS واحد.`
-      ));
+  nearestTimeDates = {};
+  const newTsIdx = getColumnIndexByKey('timestamp');
+  if (newTsIdx >= 0) {
+    clinicRows.forEach((r) => {var _r$values$newTsIdx;
+      const pick = prevPicks[String((_r$values$newTsIdx = r.values[newTsIdx]) !== null && _r$values$newTsIdx !== void 0 ? _r$values$newTsIdx : '').trim()];
+      if (pick && r.isReserved !== 'y' && r.isReserved !== 'n') nearestTimeDates[r.sheetRow] = pick;
+    });
+  }
 
-      const parts = [];
-      let current = [];
-      const add = (sections, department, line) => {
-        const last = sections[sections.length - 1];
-        if (last && last.department === department) last.lines.push(line);
-        else sections.push({ department, lines: [line] });
-      };
-      const removeLast = sections => {
-        const last = sections[sections.length - 1];
-        last.lines.pop();
-        if (!last.lines.length) sections.pop();
-      };
+  trackNewRows();
+  populateDaySelect(); // must run before rendering: the table filters by it
+  const renderedCount = renderClinicsTable();
+  setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
+}
 
-      for (const dep of owner.departments) {
-        dep.rows.forEach((row, index) => {
-          const line = bulkEmailRowText(row, columns, index + 1);
-          add(current, dep.department, line);
-          if (measure(current) <= BULK_EMAIL_MAX_BYTES) return;
-          removeLast(current);
-          if (!current.length) throw tooLarge(index + 1);
-          parts.push(current);
-          current = [];
-          add(current, dep.department, line);
-          if (measure(current) > BULK_EMAIL_MAX_BYTES) throw tooLarge(index + 1);
-        });
-      }
-      if (current.length) parts.push(current);
+const SHEET_TIMEOUT_MS = 20000; // give up on a single attempt after 20s
+const SHEET_MAX_ATTEMPTS = 4; // then retry automatically
 
-      return parts.map((sections, i) => {
-        const departments = [...new Set(sections.map(s => s.department))];
-        return {
-          recipient: owner.recipient,
-          subject: emailSubject(departments, dayLabel, i + 1, parts.length),
-          message: bulkEmailMessage(sections, header, dayLabel, i + 1, parts.length)
-        };
-      });
-    }
+function sleep(ms) {return new Promise((resolve) => setTimeout(resolve, ms));}
 
-    function sleepForBulkEmail(milliseconds) {
-      return new Promise(resolve => setTimeout(resolve, milliseconds));
-    }
+// One JSONP attempt. Always settles: it resolves with the payload, or
+// rejects on network error / timeout / a non-JS reply (e.g. an Apps
+// Script error page, which never calls the callback). This is what
+// used to leave the page stuck on "Loading..." forever.
+function requestSheetOnce(requestId, attempt) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `handleClinicSheetResponse_${requestId}_${attempt}_${Date.now()}`;
+    const script = document.createElement('script');
+    let settled = false;
+    let timer = null;
 
-    async function emailAllTableRecords() {
-      if (isSendingBulkEmail) return;
-      if (!EMAILJS_ACCOUNTS.length) {
-        window.showToast?.(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'), 'error');
-        return;
-      }
-      if (!clinicRows.length) {
-        window.showToast?.(t('There are no records to send.', 'لا توجد سجلات لإرسالها.'), 'warning');
-        return;
-      }
+    const settle = (fn, arg) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      script.remove();
+      // Keep a harmless no-op so a very late response doesn't throw.
+      window[callbackName] = () => {};
+      setTimeout(() => {delete window[callbackName];}, 120000);
+      fn(arg);
+    };
 
-      const dayKeys = getSelectedDayKeys();
-      if (dayKeys.includes(ALL_DAYS)) {
-        window.showToast?.(t('Select one or more specific days before sending email.', 'اختر يوماً واحداً أو أكثر قبل إرسال البريد الإلكتروني.'), 'warning');
-        return;
-      }
+    window[callbackName] = (result) => settle(resolve, result);
+    script.onerror = () => settle(reject, new Error('Network error'));
+    timer = setTimeout(() => settle(reject, new Error('Timed out')), SHEET_TIMEOUT_MS);
 
-      const timestampIndex = getColumnIndexByKey('timestamp');
-      const departmentIndex = getColumnIndexByKey('department');
-      if (departmentIndex < 0) {
-        window.showToast?.(t('The Department column was not found.', 'لم يتم العثور على عمود الإدارة.'), 'error');
-        return;
-      }
+    const url = new URL(SHEET_UPDATE_WEB_APP_URL);
+    url.searchParams.set('action', 'getData');
+    url.searchParams.set('callback', callbackName);
+    url.searchParams.set('t', Date.now());
+    script.src = url.toString();
+    document.body.appendChild(script);
+  });
+}
 
-      const dayLabel = emailDayLabel(dayKeys);
-      let dateRows = clinicRows;
-      if (timestampIndex >= 0) {
-        dateRows = dateRows.filter(row => dayKeys.includes(getTimestampDayKey(row.values[timestampIndex])));
-      }
+function setLoadingUi(loading) {
+  isLoadingSheet = loading;
+  refreshBtn.classList.toggle('loading', loading);
+}
 
-      // Group rows by department (spelling-tolerant); remember departments with no owner.
-      const rowsByDepartment = new Map();
-      const unmapped = new Map();
-      for (const row of dateRows) {
-        const raw = String(row.values[departmentIndex] ?? '').trim();
-        const key = normalizeArabicText(raw || NO_DEPARTMENT_LABEL);
-        if (!DEPARTMENT_EMAIL_LOOKUP.has(key)) {
-          const label = raw || NO_DEPARTMENT_LABEL;
-          unmapped.set(label, (unmapped.get(label) || 0) + 1);
-          continue;
-        }
-        if (!rowsByDepartment.has(key)) rowsByDepartment.set(key, []);
-        rowsByDepartment.get(key).push(row);
-      }
+// Loads (or reloads) the sheet. Safe to call at any time: a newer call
+// supersedes an older one still in flight (its late result is ignored).
+async function loadClinicSheet() {
+  if (!SHEET_UPDATE_WEB_APP_URL) {
+    setStatus(tableStatus, t('Sheet endpoint is not configured yet.', 'لم يتم إعداد رابط الجدول بعد.'), true);
+    return;
+  }
 
-      // One entry per owner (mailbox), holding all of that owner's departments.
-      const owners = new Map();
-      const summary = [];
-      for (const [key, { department, recipient }] of DEPARTMENT_EMAIL_LOOKUP) {
-        const rows = rowsByDepartment.get(key);
-        if (!rows || !rows.length) continue;
-        if (!owners.has(recipient)) owners.set(recipient, { recipient, departments: [] });
-        owners.get(recipient).departments.push({ department, rows: sortRowsForExport(rows) });
-        summary.push(`• ${department}: ${t(`${rows.length} record(s)`, `${rows.length} سجل`)}`);
-      }
+  const requestId = ++latestSheetRequestId;
+  setLoadingUi(true);
+  setStatus(tableStatus, t('Loading reservations...', 'جارٍ تحميل الحجوزات...'));
 
-      const unmappedCount = [...unmapped.values()].reduce((sum, n) => sum + n, 0);
-      if (!owners.size) {
-        window.showToast?.(unmappedCount
-          ? t('These records belong to departments with no assigned email, so nothing was sent.', 'هذه السجلات تخص إدارات ليس لها بريد محدد، لذا لم يتم إرسال شيء.')
-          : t('No records match the selected days.', 'لا توجد سجلات مطابقة للأيام المحددة.'), 'warning');
-        return;
-      }
-
-      const columns = bulkEmailColumns();
-      const headers = [...columns.map(column => columnHeaderLabel({ key: column.key, index: column.index, column: clinicColumns[column.index] })), t('Status', 'الحالة')];
-      const header = `\u202B${headers.join(' | ')}\u202C`;
-
-      let emails;
-      try {
-        emails = [...owners.values()].flatMap(owner => buildOwnerEmails(owner, columns, header, dayLabel));
-      } catch (error) {
-        window.showToast?.(error.message, 'error');
-        setStatus(tableStatus, error.message, true);
-        return;
-      }
-
-      const totalRows = [...owners.values()].reduce((sum, owner) => sum + owner.departments.reduce((s, d) => s + d.rows.length, 0), 0);
-      const skippedNote = unmappedCount
-        ? '\n\n' + t(
-            `⚠ ${unmappedCount} record(s) in departments with no assigned email will be skipped: ${[...unmapped.keys()].join(', ')}`,
-            `⚠ سيتم تخطي ${unmappedCount} سجل لإدارات ليس لها بريد محدد: ${[...unmapped.keys()].join('، ')}`
-          )
-        : '';
-
-      const confirmed = await window.EAPopup.confirm(t(
-        `Send ${totalRows} record(s) for ${dayLabel}?\n\n${summary.join('\n')}${skippedNote}\n\nThis will send ${emails.length} email(s).`,
-        `هل تريد إرسال ${totalRows} سجل بتاريخ ${dayLabel}؟\n\n${summary.join('\n')}${skippedNote}\n\nسيتم إرسال ${emails.length} رسالة بريد إلكتروني.`
-      ), {
-        title: t('Send department records', 'إرسال سجلات الإدارات'),
-        okText: t('Yes, send', 'نعم، أرسل'),
-        cancelText: t('Cancel', 'إلغاء')
-      });
-      if (!confirmed) return;
-
-      const originalLabel = emailAllRecordsBtn.textContent;
-      isSendingBulkEmail = true;
-      emailAllRecordsBtn.disabled = true;
-      setDayPickerOpen(false);
-      let sent = 0;
-      try {
-        for (const email of emails) {
-          emailAllRecordsBtn.textContent = t(`Sending ${sent + 1}/${emails.length}...`, `جارٍ الإرسال ${sent + 1}/${emails.length}...`);
-          setStatus(tableStatus, t(`Sending email ${sent + 1} of ${emails.length}...`, `جارٍ إرسال الرسالة ${sent + 1} من ${emails.length}...`));
-          const { templateParams } = bulkEmailRequestBody(email.recipient, email.subject, email.message);
-          await sendWithAccountFailover(templateParams);
-          sent++;
-          if (sent < emails.length) await sleepForBulkEmail(BULK_EMAIL_MIN_INTERVAL_MS);
-        }
-
-        setStatus(tableStatus, t(
-          `${totalRows} record(s) sent in ${emails.length} email(s).`,
-          `تم إرسال ${totalRows} سجل في ${emails.length} رسالة.`
-        ));
-        window.showToast?.(t('All department records were emailed successfully.', 'تم إرسال سجلات الإدارات بالبريد بنجاح.'), 'success');
-      } catch (error) {
-        console.error('Bulk table email failed:', error);
-        const partial = sent
-          ? ' ' + t(
-              `${sent} of ${emails.length} email(s) were already sent, so do not resend the same days or those recipients will get duplicates.`,
-              `تم إرسال ${sent} من ${emails.length} رسالة بالفعل، فلا تُعد إرسال نفس الأيام حتى لا يصل التكرار لنفس المستلمين.`
-            )
-          : '';
-        const message = (error.message || t('Bulk email failed.', 'فشل إرسال السجلات بالبريد.')) + partial;
-        setStatus(tableStatus, message, true);
-        window.showToast?.(message, 'error');
-      } finally {
-        isSendingBulkEmail = false;
-        emailAllRecordsBtn.disabled = false;
-        emailAllRecordsBtn.textContent = originalLabel;
-      }
-    }
-
-    // TO DELETE: Email all records button listener
-    // emailAllRecordsBtn.addEventListener('click', emailAllTableRecords);
-    refreshBtn.addEventListener('click', () => loadClinicSheet());
-    populateDaySelect();
-
-    // Copies the Google Form reservation link to the clipboard. Falls back to
-    // the legacy execCommand trick when navigator.clipboard is unavailable
-    // (e.g. plain http:// or file:// — clipboard API requires a secure context).
-    async function copyReservationFormLink() {
-      try {
-        if (navigator.clipboard && window.isSecureContext) {
-          await navigator.clipboard.writeText(RESERVATION_FORM_URL);
-        } else {
-          const textarea = document.createElement('textarea');
-          textarea.value = RESERVATION_FORM_URL;
-          textarea.style.position = 'fixed';
-          textarea.style.opacity = '0';
-          document.body.appendChild(textarea);
-          textarea.focus();
-          textarea.select();
-          const copied = document.execCommand('copy');
-          textarea.remove();
-          if (!copied) throw new Error('execCommand copy failed');
-        }
-        copyFormLinkBtn.classList.add('copied');
-        setTimeout(() => copyFormLinkBtn.classList.remove('copied'), 1500);
-        window.showToast?.(t('Reservation form link copied.', 'تم نسخ رابط نموذج الحجز.'), 'success');
-      } catch (error) {
-        console.warn('Copy failed:', error);
-        window.showToast?.(t('Could not copy the link.', 'تعذر نسخ الرابط.'), 'error');
-      }
-    }
-
-    function updateCopyLinkTitle() {
-      const label = t('Copy reservation form link', 'نسخ رابط نموذج الحجز');
-      copyFormLinkBtn.title = label;
-      copyFormLinkBtn.setAttribute('aria-label', label);
-    }
-
-    copyFormLinkBtn.addEventListener('click', copyReservationFormLink);
-    updateCopyLinkTitle();
-
-    // Turns a successful backend response into table rows and renders them.
-    function applySheetResponse(response) {
-      if (!response || response.ok === false) {
-        throw new Error(response?.error || 'Missing data.');
-      }
-      lastSheetSignature = JSON.stringify([response.headers, response.rows]);
-
-      // headers/rows come straight from Apps Script's SpreadsheetApp.getValues(),
-      // which returns the exact stored cell content (no gviz type inference,
-      // so Arabic-Indic digit codes survive instead of being nulled out).
-      // Remember not-yet-saved "اقرب وقت" date picks by the row's timestamp, so a
-      // background refresh (or a purge that shifts row numbers) can't wipe or misplace them.
-      const prevPicks = {};
-      const prevTsIdx = getColumnIndexByKey('timestamp');
-      if (prevTsIdx >= 0) {
-        clinicRows.forEach(r => {
-          if (nearestTimeDates[r.sheetRow]) prevPicks[String(r.values[prevTsIdx] ?? '').trim()] = nearestTimeDates[r.sheetRow];
-        });
-      }
-
-      clinicColumns = (response.headers || []).map(label => ({ label }));
-      const reservedIndex = clinicColumns.findIndex(isReservedColumn);
-      clinicRows = (response.rows || []).map((row, index) => {
-        const values = clinicColumns.map((column, colIndex) => {
-          let val = row[colIndex] ?? '';
-          if (isCodeColumn(column)) val = normalizeDigits(val);
-          return val;
-        });
-        return {
-          sheetRow: index + 2,
-          values,
-          isReserved: String(values[reservedIndex] || '').trim().toLowerCase()
-        };
-      });
-
-      nearestTimeDates = {};
-      const newTsIdx = getColumnIndexByKey('timestamp');
-      if (newTsIdx >= 0) {
-        clinicRows.forEach(r => {
-          const pick = prevPicks[String(r.values[newTsIdx] ?? '').trim()];
-          if (pick && r.isReserved !== 'y' && r.isReserved !== 'n') nearestTimeDates[r.sheetRow] = pick;
-        });
-      }
-
-      trackNewRows();
-      populateDaySelect(); // must run before rendering: the table filters by it
-      const renderedCount = renderClinicsTable();
-      setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
-    }
-
-    const SHEET_TIMEOUT_MS = 20000;   // give up on a single attempt after 20s
-    const SHEET_MAX_ATTEMPTS = 4;     // then retry automatically
-
-    function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-
-    // One JSONP attempt. Always settles: it resolves with the payload, or
-    // rejects on network error / timeout / a non-JS reply (e.g. an Apps
-    // Script error page, which never calls the callback). This is what
-    // used to leave the page stuck on "Loading..." forever.
-    function requestSheetOnce(requestId, attempt) {
-      return new Promise((resolve, reject) => {
-        const callbackName = `handleClinicSheetResponse_${requestId}_${attempt}_${Date.now()}`;
-        const script = document.createElement('script');
-        let settled = false;
-        let timer = null;
-
-        const settle = (fn, arg) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timer);
-          script.remove();
-          // Keep a harmless no-op so a very late response doesn't throw.
-          window[callbackName] = () => {};
-          setTimeout(() => { delete window[callbackName]; }, 120000);
-          fn(arg);
-        };
-
-        window[callbackName] = result => settle(resolve, result);
-        script.onerror = () => settle(reject, new Error('Network error'));
-        timer = setTimeout(() => settle(reject, new Error('Timed out')), SHEET_TIMEOUT_MS);
-
-        const url = new URL(SHEET_UPDATE_WEB_APP_URL);
-        url.searchParams.set('action', 'getData');
-        url.searchParams.set('callback', callbackName);
-        url.searchParams.set('t', Date.now());
-        script.src = url.toString();
-        document.body.appendChild(script);
-      });
-    }
-
-    function setLoadingUi(loading) {
-      isLoadingSheet = loading;
-      refreshBtn.classList.toggle('loading', loading);
-    }
-
-    // Loads (or reloads) the sheet. Safe to call at any time: a newer call
-    // supersedes an older one still in flight (its late result is ignored).
-    async function loadClinicSheet() {
-      if (!SHEET_UPDATE_WEB_APP_URL) {
-        setStatus(tableStatus, t('Sheet endpoint is not configured yet.', 'لم يتم إعداد رابط الجدول بعد.'), true);
-        return;
-      }
-
-      const requestId = ++latestSheetRequestId;
-      setLoadingUi(true);
-      setStatus(tableStatus, t('Loading reservations...', 'جارٍ تحميل الحجوزات...'));
-
-      for (let attempt = 1; attempt <= SHEET_MAX_ATTEMPTS; attempt++) {
-        try {
-          const response = await requestSheetOnce(requestId, attempt);
-          if (requestId !== latestSheetRequestId) return; // superseded
-          applySheetResponse(response);
-          setLoadingUi(false);
-          return;
-        } catch (error) {
-          if (requestId !== latestSheetRequestId) return; // superseded
-          console.warn(`Clinic sheet load attempt ${attempt} failed:`, error);
-          if (attempt < SHEET_MAX_ATTEMPTS) {
-            setStatus(tableStatus, t(
-              `Loading failed, retrying (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`,
-              `فشل التحميل، جارٍ إعادة المحاولة (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`
-            ));
-            await sleep(1000 * attempt);
-            if (requestId !== latestSheetRequestId) return;
-          }
-        }
-      }
-
+  for (let attempt = 1; attempt <= SHEET_MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await requestSheetOnce(requestId, attempt);
+      if (requestId !== latestSheetRequestId) return; // superseded
+      applySheetResponse(response);
       setLoadingUi(false);
-      setStatus(tableStatus, t(
-        'Could not load the clinic sheet. Press Refresh to try again.',
-        'تعذر تحميل جدول العيادات. اضغط تحديث للمحاولة مرة أخرى.'
-      ), true);
-    }
-
-    // ── Live refresh ──────────────────────────────────────────────────────
-    // New form submissions show up on their own: the table is re-checked every
-    // LIVE_REFRESH_MS while the tab is visible (and the moment the tab is
-    // focused again). It is silent (no spinner / status text), skipped while a
-    // load or a confirm/deny is in progress, and the table is only redrawn when
-    // the sheet content actually changed.
-    const LIVE_REFRESH_MS = 8000;        // while someone is using the page
-    const LIVE_REFRESH_IDLE_MS = 30000;  // after 2 minutes without any click/keypress or new data
-    const LIVE_IDLE_AFTER_MS = 120000;
-    let lastActivityAt = Date.now();
-    let lastSheetSignature = '';
-    let liveRefreshBusy = false;
-    let isSavingDecision = false; // true only while a confirm/deny is being saved
-
-    async function liveRefreshSheet() {
-      if (liveRefreshBusy || isLoadingSheet || document.hidden) return;
-      if (document.activeElement?.classList.contains('nearest-time-input')) return; // user is typing a date
-      if (typeof resultsPanel === 'undefined' || resultsPanel.classList.contains('hidden')) return;
-      if (isSavingDecision) return; // a decision is being saved
-      liveRefreshBusy = true;
-      const startedId = latestSheetRequestId;
-      try {
-        const response = await requestSheetOnce(startedId, 'live');
-        if (startedId !== latestSheetRequestId || isLoadingSheet) return; // a manual load took over
-        if (!response || response.ok === false) return;
-        const signature = JSON.stringify([response.headers, response.rows]);
-        if (signature === lastSheetSignature) return; // nothing new
-        if (isSavingDecision) return;
-        if (document.activeElement?.classList.contains('nearest-time-input')) return;
-        applySheetResponse(response);
-        lastActivityAt = Date.now(); // new data arrived: stay on the fast schedule
-      } catch (error) {
-        /* silent: the next tick (or the Refresh button) tries again */
-      } finally {
-        liveRefreshBusy = false;
-      }
-    }
-    ['pointerdown', 'keydown'].forEach(name =>
-      document.addEventListener(name, () => { lastActivityAt = Date.now(); }, { passive: true }));
-    (function scheduleLiveRefresh() {
-      const idle = Date.now() - lastActivityAt > LIVE_IDLE_AFTER_MS;
-      setTimeout(async () => {
-        await liveRefreshSheet();
-        scheduleLiveRefresh();
-      }, idle ? LIVE_REFRESH_IDLE_MS : LIVE_REFRESH_MS);
-    })();
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) { lastActivityAt = Date.now(); liveRefreshSheet(); }
-    });
-
-    function reservationMessage(row, decision) {
-      const name = getRowValue(row, ['الاسم', 'name']) || t('employee', 'الموظف');
-      const clinic = getRowValue(row, ['العيادة', 'clinic']);
-      const shift = getRowValue(row, ['ميعاد', 'النوبة', 'shift']);
-      let date = getRowValue(row, ['التاريخ', 'date']);
-      if (isNearestTimeValue(date) && nearestTimeDates[row.sheetRow]) {
-        date = formatArabicDateWithWeekday(nearestTimeDates[row.sheetRow]);
-      }
-      // Dental / general clinics have no date, so leave it out of the text.
-      const datePart = isNoDateClinic(row) || !date ? '' : ` بتاريخ ${date}`;
-
-      // Who the reservation belongs to: "السيد / الاسم كود (الكود) بإدارة ...".
-      // Code / department parts are left out if the sheet has no value.
-      const codeIdx = getColumnIndexByKey('code');
-      const deptIdx = getColumnIndexByKey('department');
-      const code = codeIdx >= 0 ? String(row.values[codeIdx] ?? '').trim() : '';
-      const dept = deptIdx >= 0 ? String(row.values[deptIdx] ?? '').trim() : '';
-      const codePart = code ? ` كود (${code})` : '';
-      // Avoid "بإدارة إدارة ..." when the value already starts with "ادارة/إدارة".
-      const deptPart = dept ? (/^[اإ]دار/.test(dept) ? ` ب${dept}` : ` بإدارة ${dept}`) : '';
-      const who = `السيد / ${name}${codePart}${deptPart}`;
-
-      if (decision === 'y') {
-        return {
-          title: 'تأكيد حجز العيادة',
-          name,
-          message: `تم تأكيد حجز ${who} في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء الالتزام بالموعد المحدد.`
-        };
-      }
-
-      return {
-        title: 'رفض حجز العيادة',
-        name,
-        message: `نعتذر، لم يتم قبول حجز ${who} في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء تسجيل طلب جديد أو مراجعة الإدارة المختصة.`
-      };
-    }
-
-    const EMAIL_ACCOUNT_INDEX_KEY = 'egyptairPortal:emailAccountIndex';
-    const EMAIL_ACCOUNT_MONTH_KEY = 'egyptairPortal:emailAccountMonth';
-
-    function currentMonthKey() {
-      const now = new Date();
-      return `${now.getFullYear()}-${now.getMonth()}`;
-    }
-
-    function getEmailAccountIndex() {
-      // EmailJS quotas reset monthly, so once a new calendar month starts
-      // it's safe to try account 0 first again. Note: EmailJS's actual
-      // reset date is tied to your signup/billing date, not necessarily the
-      // 1st of the month — this is an approximation. If your accounts reset
-      // on a different day, adjust currentMonthKey() accordingly.
-      const savedMonth = localStorage.getItem(EMAIL_ACCOUNT_MONTH_KEY);
-      const thisMonth = currentMonthKey();
-      if (savedMonth !== thisMonth) {
-        localStorage.setItem(EMAIL_ACCOUNT_MONTH_KEY, thisMonth);
-        localStorage.setItem(EMAIL_ACCOUNT_INDEX_KEY, '0');
-        return 0;
-      }
-      const saved = parseInt(localStorage.getItem(EMAIL_ACCOUNT_INDEX_KEY) || '0', 10);
-      return Number.isInteger(saved) && saved >= 0 && saved < EMAILJS_ACCOUNTS.length ? saved : 0;
-    }
-
-    function setEmailAccountIndex(index) {
-      localStorage.setItem(EMAIL_ACCOUNT_INDEX_KEY, String(index));
-    }
-
-    async function sendEmailWithAccount(account, templateParams) {
-      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: account.serviceId,
-          template_id: account.templateId,
-          user_id: account.publicKey,
-          template_params: templateParams
-        })
-      });
-
-      if (!response.ok) {
-        const details = await response.text().catch(() => '');
-        throw new Error(details || `EmailJS request failed (${response.status}).`);
-      }
-    }
-
-    // Sends one email, trying the saved EmailJS account first and then rolling
-    // forward through the rest of the list (wrapping around). The account that
-    // succeeds becomes the new starting point, so an exhausted account is not
-    // retried on every send. Throws the last error if every account fails.
-    async function sendWithAccountFailover(templateParams) {
-      if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
-      const startIndex = getEmailAccountIndex();
-      let lastError = null;
-      for (let step = 0; step < EMAILJS_ACCOUNTS.length; step++) {
-        const index = (startIndex + step) % EMAILJS_ACCOUNTS.length;
-        try {
-          await sendEmailWithAccount(EMAILJS_ACCOUNTS[index], templateParams);
-          setEmailAccountIndex(index);
-          return;
-        } catch (error) {
-          lastError = error;
-        }
-      }
-      throw lastError;
-    }
-
-    // The mailto: trick — used as a fallback when EmailJS can't send.
-    // Building a real <form action="mailto:..."> submit isn't practical here
-    // since decisions are triggered by button clicks, not a form submission,
-    // so this does the equivalent: it points the browser at a mailto: URL,
-    // which opens the admin's default email client (Outlook, Mail, Gmail...)
-    // with the same subject/body already filled in, ready for a manual send.
-    function openMailtoFallback(toEmail, content) {
-      const subject = encodeURIComponent(content.title);
-      const body = encodeURIComponent(`${content.name}،\n\n${content.message}`);
-
-      // Firefox only: it often has no mail app set as the mailto: handler,
-      // so open an Outlook web compose window instead. Other browsers keep
-      // using the normal mailto: link below.
-      const isFirefox = /firefox/i.test(navigator.userAgent);
-      if (isFirefox) {
-        const outlookUrl = `https://outlook.live.com/mail/0/deeplink/compose?to=${encodeURIComponent(toEmail)}&subject=${subject}&body=${body}`;
-        const win = window.open(outlookUrl, '_blank');
-        if (win) return;
-        // Popup blocked — fall through to the regular mailto: link.
-      }
-
-      window.location.href = `mailto:${toEmail}?subject=${subject}&body=${body}`;
-    }
-
-    // EmailJS has a monthly send limit (200), so emails are only sent when
-    // they really matter:
-    //   - every rejection ('n'), and
-    //   - confirmations for patients who picked "اقرب وقت" (they don't know
-    //     their date until the admin picks it, so the email is how they find out).
-    // Confirmations for patients who already chose a specific date (and for
-    // the no-date clinics) are saved to the sheet without an email.
-    function shouldSendDecisionEmail(decision, isNearest) {
-      return decision === 'n' || (decision === 'y' && isNearest);
-    }
-
-    async function sendDecisionEmail(row, decision) {
-      // The email field on the form is optional now. No (or an invalid)
-      // address simply means no message is sent; the decision is still saved.
-      const toEmail = String(getRowValue(row, ['email address', 'email', 'البريد']) || '').trim();
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) return 'none';
-      if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
-
-      const content = reservationMessage(row, decision);
-      const templateParams = {
-        title: emailSafeText(content.title),
-        name: emailSafeText(content.name),
-        time: new Date().toLocaleString('ar-EG'),
-        message: emailSafeText(content.message),
-        to_email: toEmail,
-        email: toEmail,
-        reply_to: 'eslamsaleh1999@gmail.com'
-      };
-
-      let lastError = null;
-      try {
-        await sendWithAccountFailover(templateParams);
-        return 'sent';
-      } catch (error) {
-        lastError = error;
-      }
-
-      // All configured EmailJS accounts failed (or none left, since the
-      // hotmail account is commented out above) — fall back to the mailto:
-      // trick instead of erroring out. This opens the admin's own email
-      // client with the same subject/body so they can hit send manually.
-      if (lastError) console.warn('EmailJS failed, falling back to mailto:', lastError);
-      openMailtoFallback(toEmail, content);
-      window.showToast?.(t(
-        'Automatic sending failed — your email client opened with the message ready, please hit send.',
-        'فشل الإرسال التلقائي — تم فتح برنامج البريد بالرسالة جاهزة، برجاء الضغط على إرسال.'
-      ), 'warning');
-      // Only the mail app was opened; the admin still has to press send.
-      return 'manual';
-    }
-
-    // One attempt. Network-level failures (script error / timeout) are
-    // flagged with isNetworkError so the wrapper below can safely retry them;
-    // errors the server answered with (result.error) are NOT retried.
-    async function updateSheetDecisionOnce(row, decision, chosenDateIso) {
-      if (!SHEET_UPDATE_WEB_APP_URL) {
-        throw new Error(t(
-          'Sheet update endpoint is not configured yet.',
-          'لم يتم إعداد رابط تحديث جدول Google Sheets بعد.'
+      return;
+    } catch (error) {
+      if (requestId !== latestSheetRequestId) return; // superseded
+      console.warn(`Clinic sheet load attempt ${attempt} failed:`, error);
+      if (attempt < SHEET_MAX_ATTEMPTS) {
+        setStatus(tableStatus, t(
+          `Loading failed, retrying (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`,
+          `فشل التحميل، جارٍ إعادة المحاولة (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`
         ));
-      }
-
-      return new Promise((resolve, reject) => {
-        const callbackName = `handleClinicUpdate_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-        const script = document.createElement('script');
-        const url = new URL(SHEET_UPDATE_WEB_APP_URL);
-        url.searchParams.set('rowNumber', row.sheetRow);
-        url.searchParams.set('isReserved', decision);
-        // Row numbers shift when old rows are purged, so also send the row's
-        // submission timestamp; the backend refuses the write if it no longer matches.
-        const tsIdx = getColumnIndexByKey('timestamp');
-        url.searchParams.set('ts', String(tsIdx >= 0 ? row.values[tsIdx] : row.values[0] ?? '').trim());
-        // When the patient chose "اقرب وقت", also write the admin-picked
-        // date into the sheet so later inquiries see the real date.
-        if (chosenDateIso) {
-          url.searchParams.set('date', formatArabicDateWithWeekday(chosenDateIso));
-        }
-        url.searchParams.set('callback', callbackName);
-        url.searchParams.set('t', Date.now());
-
-        let timer = null;
-        const cleanup = () => {
-          clearTimeout(timer);
-          delete window[callbackName];
-          script.remove();
-        };
-        const networkFail = () => {
-          cleanup();
-          const err = new Error(t('Sheet update failed.', 'فشل تحديث الجدول.'));
-          err.isNetworkError = true;
-          reject(err);
-        };
-
-        window[callbackName] = result => {
-          cleanup();
-          if (result?.ok) {
-            resolve(result);
-          } else {
-            reject(new Error(result?.error || t('Sheet update failed.', 'فشل تحديث الجدول.')));
-          }
-        };
-
-        script.onerror = networkFail;
-        timer = setTimeout(networkFail, SHEET_TIMEOUT_MS);
-
-        script.src = url.toString();
-        document.body.appendChild(script);
-      });
-    }
-
-    // Retries the sheet update on network-level failures. The update is
-    // idempotent (it just sets the same isReserved/date values), so a retry
-    // is safe even if an earlier attempt actually went through but its
-    // reply never reached the page (e.g. the tab lost focus when the email
-    // compose window opened, or Apps Script was slow to wake up).
-    async function updateSheetDecision(row, decision, chosenDateIso) {
-      let lastError = null;
-      for (let attempt = 1; attempt <= SHEET_MAX_ATTEMPTS; attempt++) {
-        try {
-          return await updateSheetDecisionOnce(row, decision, chosenDateIso);
-        } catch (error) {
-          lastError = error;
-          if (!error.isNetworkError) throw error;
-          if (attempt < SHEET_MAX_ATTEMPTS) {
-            setStatus(tableStatus, t(
-              `Saving failed, retrying (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`,
-              `فشل الحفظ، جارٍ إعادة المحاولة (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`
-            ));
-            await sleep(1000 * attempt);
-          }
-        }
-      }
-      throw lastError;
-    }
-
-    async function decideReservation(button) {
-      const rowNumber = Number(button.dataset.sheetRow);
-      const decision = button.dataset.decision;
-      const row = clinicRows.find(item => item.sheetRow === rowNumber);
-      if (!row || row.isReserved === 'y' || row.isReserved === 'n') return;
-      if (isSavingDecision) return;
-
-      const dateIndex = getColumnIndexByKey('date');
-      const isNearest = !isNoDateClinic(row) && isNearestTimeValue(row.values[dateIndex]);
-      const chosenIso = nearestTimeDates[rowNumber] || '';
-      if (decision === 'y' && isNearest && !chosenIso) {
-        setStatus(tableStatus, t('Pick a date for this patient first.', 'اختر تاريخاً لهذا المريض أولاً.'), true);
-        return;
-      }
-
-      if (decision === 'n') {
-        const who = getRowValue(row, ['الاسم', 'name']) || '';
-        const ok = await window.EAPopup.confirm(t(
-          `Are you sure you want to reject this reservation${who ? ' for ' + who : ''}? A rejection email will be sent.`,
-          `هل أنت متأكد من رفض هذا الحجز${who ? ' الخاص بـ ' + who : ''}؟ سيتم إرسال رسالة رفض بالبريد الإلكتروني.`
-        ), {
-          title: t('Reject reservation', 'رفض الحجز'),
-          okText: t('Yes, reject', 'نعم، ارفض'),
-          cancelText: t('Cancel', 'إلغاء'),
-          danger: true
-        });
-        if (!ok) return;
-      }
-
-      isSavingDecision = true;
-      const rowButtons = tableBody.querySelectorAll(`[data-sheet-row="${rowNumber}"] .decision-btn`);
-      rowButtons.forEach(item => { item.disabled = true; });
-      setStatus(tableStatus, decision === 'y'
-        ? t('Confirming reservation...', 'جارٍ تأكيد الحجز...')
-        : t('Denying reservation...', 'جارٍ رفض الحجز...')
-      );
-
-      try {
-        const emailAllowed = shouldSendDecisionEmail(decision, isNearest);
-        // Save to the sheet FIRST. If that fails nothing has been emailed, so a
-        // retry can never send the same email twice.
-        // Persist the admin-picked date for "اقرب وقت" rows so inquiries
-        // after a reload still show the real date instead of the placeholder.
-        await updateSheetDecision(row, decision, isNearest && chosenIso ? chosenIso : null);
-        row.isReserved = decision;
-        if (isNearest && chosenIso && dateIndex >= 0) {
-          row.values[dateIndex] = formatArabicDateWithWeekday(chosenIso);
-          delete nearestTimeDates[rowNumber];
-        }
-        renderClinicsTable();
-        // The decision is saved. Now send / prepare the email; a failure here must not look like a failed save.
-        // emailResult: 'sent' | 'manual' (mail app opened, admin must press send) | 'none' | 'failed'
-        let emailResult = 'none';
-        if (emailAllowed) {
-          try {
-            emailResult = await sendDecisionEmail(row, decision);
-          } catch (emailError) {
-            console.warn('Decision email failed:', emailError);
-            emailResult = 'failed';
-          }
-        }
-        setStatus(tableStatus, decision === 'y'
-          ? (emailResult === 'sent'
-              ? t('Reservation confirmed and email sent.', 'تم تأكيد الحجز وإرسال البريد الإلكتروني.')
-              : emailResult === 'manual'
-                ? t('Reservation confirmed — automatic sending failed, press send in the mail window that opened.', 'تم تأكيد الحجز — فشل الإرسال التلقائي، اضغط إرسال في نافذة البريد التي فُتحت.')
-              : emailResult === 'failed'
-                ? t('Reservation confirmed, but the email could not be sent — please contact the patient manually.', 'تم تأكيد الحجز، لكن تعذر إرسال البريد الإلكتروني — برجاء التواصل مع المريض يدوياً.')
-              : emailAllowed
-                ? t('Reservation confirmed (no email on file, nothing sent).', 'تم تأكيد الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).')
-                : t('Reservation confirmed (no email sent — only rejections and "اقرب وقت" requests get emails).', 'تم تأكيد الحجز (لم يتم إرسال بريد إلكتروني — يتم الإرسال فقط للرفض وطلبات "اقرب وقت").'))
-          : (emailResult === 'sent'
-              ? t('Reservation denied and email sent.', 'تم رفض الحجز وإرسال البريد الإلكتروني.')
-              : emailResult === 'manual'
-                ? t('Reservation denied — automatic sending failed, press send in the mail window that opened.', 'تم رفض الحجز — فشل الإرسال التلقائي، اضغط إرسال في نافذة البريد التي فُتحت.')
-              : emailResult === 'failed'
-                ? t('Reservation denied, but the email could not be sent — please contact the patient manually.', 'تم رفض الحجز، لكن تعذر إرسال البريد الإلكتروني — برجاء التواصل مع المريض يدوياً.')
-              : t('Reservation denied (no email on file, nothing sent).', 'تم رفض الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).'))
-        );
-        window.showToast?.(tableStatus.textContent, 'info');
-      } catch (error) {
-        rowButtons.forEach(item => { item.disabled = false; });
-        setStatus(tableStatus, error.message || t('Action failed.', 'فشل تنفيذ الإجراء.'), true);
-        window.showToast?.(tableStatus.textContent, 'error');
-      } finally {
-        isSavingDecision = false;
+        await sleep(1000 * attempt);
+        if (requestId !== latestSheetRequestId) return;
       }
     }
+  }
 
-    adminForm.addEventListener('submit', async event => {
-      event.preventDefault();
-      setStatus(adminStatus, t('Checking password...', 'جارٍ التحقق من كلمة المرور...'));
+  setLoadingUi(false);
+  setStatus(tableStatus, t(
+    'Could not load the clinic sheet. Press Refresh to try again.',
+    'تعذر تحميل جدول العيادات. اضغط تحديث للمحاولة مرة أخرى.'
+  ), true);
+}
 
-      // Convert Arabic numbers to English before hashing
-      const normalizedPassword = normalizeDigits(adminPassword.value);
-      const hash = await sha256Hex(normalizedPassword);
-      if (hash !== ADMIN_PASSWORD_HASH) {
-        setStatus(adminStatus, t('Incorrect password.', 'كلمة المرور غير صحيحة.'), true);
-        return;
-      }
+// ── Live refresh ──────────────────────────────────────────────────────
+// New form submissions show up on their own: the table is re-checked every
+// LIVE_REFRESH_MS while the tab is visible (and the moment the tab is
+// focused again). It is silent (no spinner / status text), skipped while a
+// load or a confirm/deny is in progress, and the table is only redrawn when
+// the sheet content actually changed.
+const LIVE_REFRESH_MS = 8000; // while someone is using the page
+const LIVE_REFRESH_IDLE_MS = 30000; // after 2 minutes without any click/keypress or new data
+const LIVE_IDLE_AFTER_MS = 120000;
+let lastActivityAt = Date.now();
+let lastSheetSignature = '';
+let liveRefreshBusy = false;
+let isSavingDecision = false; // true only while a confirm/deny is being saved
 
-      adminPassword.value = '';
-      isAdmin = true;
-      filterPatientId = null;
-      patientId.value = '';
-      updateClearBtn();
-      inquiryForm.classList.remove('hidden');
-      setStatus(adminStatus, t('Access granted.', 'تم السماح بالدخول.'));
-      resultsPanel.classList.remove('hidden');
-      loadClinicSheet();
-    });
+async function liveRefreshSheet() {var _document$activeEleme;
+  if (liveRefreshBusy || isLoadingSheet || document.hidden) return;
+  if ((_document$activeEleme = document.activeElement) !== null && _document$activeEleme !== void 0 && _document$activeEleme.classList.contains('nearest-time-input')) return; // user is typing a date
+  if (typeof resultsPanel === 'undefined' || resultsPanel.classList.contains('hidden')) return;
+  if (isSavingDecision) return; // a decision is being saved
+  liveRefreshBusy = true;
+  const startedId = latestSheetRequestId;
+  try {var _document$activeEleme2;
+    const response = await requestSheetOnce(startedId, 'live');
+    if (startedId !== latestSheetRequestId || isLoadingSheet) return; // a manual load took over
+    if (!response || response.ok === false) return;
+    const signature = JSON.stringify([response.headers, response.rows]);
+    if (signature === lastSheetSignature) return; // nothing new
+    if (isSavingDecision) return;
+    if ((_document$activeEleme2 = document.activeElement) !== null && _document$activeEleme2 !== void 0 && _document$activeEleme2.classList.contains('nearest-time-input')) return;
+    applySheetResponse(response);
+    lastActivityAt = Date.now(); // new data arrived: stay on the fast schedule
+  } catch (error) {
 
-    inquiryForm.addEventListener('submit', async event => {
-      event.preventDefault();
-      if (!isAdmin) {
-        setStatus(adminStatus, t('Enter the admin password first.', 'يرجى إدخال كلمة مرور المسؤول أولاً.'), true);
-        return;
-      }
-      const id = normalizeDigits(patientId.value).trim();
-      if (!id) {
-        setStatus(adminStatus, t('Please enter a patient ID.', 'يرجى إدخال كود الموظف.'), true);
-        return;
-      }
-      filterPatientId = id;
-      updateClearBtn();
-      setStatus(adminStatus, t('Searching for ID...', 'جارٍ البحث عن الكود...'));
-      resultsPanel.classList.remove('hidden');
-      if (clinicRows.length > 0) {
-        switchToTabWithResults();
-        const renderedCount = renderClinicsTable();
-        setStatus(adminStatus, t('Filter applied.', 'تم تطبيق التصفية.'));
-        setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
+    /* silent: the next tick (or the Refresh button) tries again */} finally {
+    liveRefreshBusy = false;
+  }
+}
+['pointerdown', 'keydown'].forEach((name) =>
+document.addEventListener(name, () => {lastActivityAt = Date.now();}, { passive: true }));
+(function scheduleLiveRefresh() {
+  const idle = Date.now() - lastActivityAt > LIVE_IDLE_AFTER_MS;
+  setTimeout(async () => {
+    await liveRefreshSheet();
+    scheduleLiveRefresh();
+  }, idle ? LIVE_REFRESH_IDLE_MS : LIVE_REFRESH_MS);
+})();
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {lastActivityAt = Date.now();liveRefreshSheet();}
+});
+
+function reservationMessage(row, decision) {var _row$values$codeIdx, _row$values$deptIdx;
+  const name = getRowValue(row, ['الاسم', 'name']) || t('employee', 'الموظف');
+  const clinic = getRowValue(row, ['العيادة', 'clinic']);
+  const shift = getRowValue(row, ['ميعاد', 'النوبة', 'shift']);
+  let date = getRowValue(row, ['التاريخ', 'date']);
+  if (isNearestTimeValue(date) && nearestTimeDates[row.sheetRow]) {
+    date = formatArabicDateWithWeekday(nearestTimeDates[row.sheetRow]);
+  }
+  // Dental / general clinics have no date, so leave it out of the text.
+  const datePart = isNoDateClinic(row) || !date ? '' : ` بتاريخ ${date}`;
+
+  // Who the reservation belongs to: "السيد / الاسم كود (الكود) بإدارة ...".
+  // Code / department parts are left out if the sheet has no value.
+  const codeIdx = getColumnIndexByKey('code');
+  const deptIdx = getColumnIndexByKey('department');
+  const code = codeIdx >= 0 ? String((_row$values$codeIdx = row.values[codeIdx]) !== null && _row$values$codeIdx !== void 0 ? _row$values$codeIdx : '').trim() : '';
+  const dept = deptIdx >= 0 ? String((_row$values$deptIdx = row.values[deptIdx]) !== null && _row$values$deptIdx !== void 0 ? _row$values$deptIdx : '').trim() : '';
+  const codePart = code ? ` كود (${code})` : '';
+  // Avoid "بإدارة إدارة ..." when the value already starts with "ادارة/إدارة".
+  const deptPart = dept ? /^[اإ]دار/.test(dept) ? ` ب${dept}` : ` بإدارة ${dept}` : '';
+  const who = `السيد / ${name}${codePart}${deptPart}`;
+
+  if (decision === 'y') {
+    return {
+      title: 'تأكيد حجز العيادة',
+      name,
+      message: `تم تأكيد حجز ${who} في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء الالتزام بالموعد المحدد.`
+    };
+  }
+
+  return {
+    title: 'رفض حجز العيادة',
+    name,
+    message: `نعتذر، لم يتم قبول حجز ${who} في عيادة ${clinic}${datePart} خلال نوبة ${shift}. برجاء تسجيل طلب جديد أو مراجعة الإدارة المختصة.`
+  };
+}
+
+const EMAIL_ACCOUNT_INDEX_KEY = 'egyptairPortal:emailAccountIndex';
+const EMAIL_ACCOUNT_MONTH_KEY = 'egyptairPortal:emailAccountMonth';
+
+function currentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${now.getMonth()}`;
+}
+
+function getEmailAccountIndex() {
+  // EmailJS quotas reset monthly, so once a new calendar month starts
+  // it's safe to try account 0 first again. Note: EmailJS's actual
+  // reset date is tied to your signup/billing date, not necessarily the
+  // 1st of the month — this is an approximation. If your accounts reset
+  // on a different day, adjust currentMonthKey() accordingly.
+  const savedMonth = __ls.getItem(EMAIL_ACCOUNT_MONTH_KEY);
+  const thisMonth = currentMonthKey();
+  if (savedMonth !== thisMonth) {
+    __ls.setItem(EMAIL_ACCOUNT_MONTH_KEY, thisMonth);
+    __ls.setItem(EMAIL_ACCOUNT_INDEX_KEY, '0');
+    return 0;
+  }
+  const saved = parseInt(__ls.getItem(EMAIL_ACCOUNT_INDEX_KEY) || '0', 10);
+  return Number.isInteger(saved) && saved >= 0 && saved < EMAILJS_ACCOUNTS.length ? saved : 0;
+}
+
+function setEmailAccountIndex(index) {
+  __ls.setItem(EMAIL_ACCOUNT_INDEX_KEY, String(index));
+}
+
+async function sendEmailWithAccount(account, templateParams) {
+  const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      service_id: account.serviceId,
+      template_id: account.templateId,
+      user_id: account.publicKey,
+      template_params: templateParams
+    })
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => '');
+    throw new Error(details || `EmailJS request failed (${response.status}).`);
+  }
+}
+
+// Sends one email, trying the saved EmailJS account first and then rolling
+// forward through the rest of the list (wrapping around). The account that
+// succeeds becomes the new starting point, so an exhausted account is not
+// retried on every send. Throws the last error if every account fails.
+async function sendWithAccountFailover(templateParams) {
+  if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
+  const startIndex = getEmailAccountIndex();
+  let lastError = null;
+  for (let step = 0; step < EMAILJS_ACCOUNTS.length; step++) {
+    const index = (startIndex + step) % EMAILJS_ACCOUNTS.length;
+    try {
+      await sendEmailWithAccount(EMAILJS_ACCOUNTS[index], templateParams);
+      setEmailAccountIndex(index);
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
+// The mailto: trick — used as a fallback when EmailJS can't send.
+// Building a real <form action="mailto:..."> submit isn't practical here
+// since decisions are triggered by button clicks, not a form submission,
+// so this does the equivalent: it points the browser at a mailto: URL,
+// which opens the admin's default email client (Outlook, Mail, Gmail...)
+// with the same subject/body already filled in, ready for a manual send.
+function openMailtoFallback(toEmail, content) {
+  const subject = encodeURIComponent(content.title);
+  const body = encodeURIComponent(`${content.name}،\n\n${content.message}`);
+
+  // Firefox only: it often has no mail app set as the mailto: handler,
+  // so open an Outlook web compose window instead. Other browsers keep
+  // using the normal mailto: link below.
+  const isFirefox = /firefox/i.test(navigator.userAgent);
+  if (isFirefox) {
+    const outlookUrl = `https://outlook.live.com/mail/0/deeplink/compose?to=${encodeURIComponent(toEmail)}&subject=${subject}&body=${body}`;
+    const win = window.open(outlookUrl, '_blank');
+    if (win) return;
+    // Popup blocked — fall through to the regular mailto: link.
+  }
+
+  window.location.href = `mailto:${toEmail}?subject=${subject}&body=${body}`;
+}
+
+// EmailJS has a monthly send limit (200), so emails are only sent when
+// they really matter:
+//   - every rejection ('n'), and
+//   - confirmations for patients who picked "اقرب وقت" (they don't know
+//     their date until the admin picks it, so the email is how they find out).
+// Confirmations for patients who already chose a specific date (and for
+// the no-date clinics) are saved to the sheet without an email.
+function shouldSendDecisionEmail(decision, isNearest) {
+  return decision === 'n' || decision === 'y' && isNearest;
+}
+
+async function sendDecisionEmail(row, decision) {var _window$showToast13, _window13;
+  // The email field on the form is optional now. No (or an invalid)
+  // address simply means no message is sent; the decision is still saved.
+  const toEmail = String(getRowValue(row, ['email address', 'email', 'البريد']) || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) return 'none';
+  if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
+
+  const content = reservationMessage(row, decision);
+  const templateParams = {
+    title: emailSafeText(content.title),
+    name: emailSafeText(content.name),
+    time: new Date().toLocaleString('ar-EG'),
+    message: emailSafeText(content.message),
+    to_email: toEmail,
+    email: toEmail,
+    reply_to: 'eslamsaleh1999@gmail.com'
+  };
+
+  let lastError = null;
+  try {
+    await sendWithAccountFailover(templateParams);
+    return 'sent';
+  } catch (error) {
+    lastError = error;
+  }
+
+  // All configured EmailJS accounts failed (or none left, since the
+  // hotmail account is commented out above) — fall back to the mailto:
+  // trick instead of erroring out. This opens the admin's own email
+  // client with the same subject/body so they can hit send manually.
+  if (lastError) console.warn('EmailJS failed, falling back to mailto:', lastError);
+  openMailtoFallback(toEmail, content);
+  (_window$showToast13 = (_window13 = window).showToast) === null || _window$showToast13 === void 0 ? void 0 : _window$showToast13.call(_window13, t(
+    'Automatic sending failed — your email client opened with the message ready, please hit send.',
+    'فشل الإرسال التلقائي — تم فتح برنامج البريد بالرسالة جاهزة، برجاء الضغط على إرسال.'
+  ), 'warning');
+  // Only the mail app was opened; the admin still has to press send.
+  return 'manual';
+}
+
+// One attempt. Network-level failures (script error / timeout) are
+// flagged with isNetworkError so the wrapper below can safely retry them;
+// errors the server answered with (result.error) are NOT retried.
+async function updateSheetDecisionOnce(row, decision, chosenDateIso) {
+  if (!SHEET_UPDATE_WEB_APP_URL) {
+    throw new Error(t(
+      'Sheet update endpoint is not configured yet.',
+      'لم يتم إعداد رابط تحديث جدول Google Sheets بعد.'
+    ));
+  }
+
+  return new Promise((resolve, reject) => {var _row$values$;
+    const callbackName = `handleClinicUpdate_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement('script');
+    const url = new URL(SHEET_UPDATE_WEB_APP_URL);
+    url.searchParams.set('rowNumber', row.sheetRow);
+    url.searchParams.set('isReserved', decision);
+    // Row numbers shift when old rows are purged, so also send the row's
+    // submission timestamp; the backend refuses the write if it no longer matches.
+    const tsIdx = getColumnIndexByKey('timestamp');
+    url.searchParams.set('ts', String(tsIdx >= 0 ? row.values[tsIdx] : (_row$values$ = row.values[0]) !== null && _row$values$ !== void 0 ? _row$values$ : '').trim());
+    // When the patient chose "اقرب وقت", also write the admin-picked
+    // date into the sheet so later inquiries see the real date.
+    if (chosenDateIso) {
+      url.searchParams.set('date', formatArabicDateWithWeekday(chosenDateIso));
+    }
+    url.searchParams.set('callback', callbackName);
+    url.searchParams.set('t', Date.now());
+
+    let timer = null;
+    const cleanup = () => {
+      clearTimeout(timer);
+      delete window[callbackName];
+      script.remove();
+    };
+    const networkFail = () => {
+      cleanup();
+      const err = new Error(t('Sheet update failed.', 'فشل تحديث الجدول.'));
+      err.isNetworkError = true;
+      reject(err);
+    };
+
+    window[callbackName] = (result) => {
+      cleanup();
+      if (result !== null && result !== void 0 && result.ok) {
+        resolve(result);
       } else {
-        loadClinicSheet();
+        reject(new Error((result === null || result === void 0 ? void 0 : result.error) || t('Sheet update failed.', 'فشل تحديث الجدول.')));
       }
-    });
+    };
 
-    // The X inside the inquiry box: empties it and removes the filtering.
-    function updateClearBtn() {
-      clearInquiryBtn.classList.toggle('hidden', !patientId.value && !filterPatientId);
-      const label = t('Clear filter', 'مسح التصفية');
-      clearInquiryBtn.title = label;
-      clearInquiryBtn.setAttribute('aria-label', label);
+    script.onerror = networkFail;
+    timer = setTimeout(networkFail, SHEET_TIMEOUT_MS);
+
+    script.src = url.toString();
+    document.body.appendChild(script);
+  });
+}
+
+// Retries the sheet update on network-level failures. The update is
+// idempotent (it just sets the same isReserved/date values), so a retry
+// is safe even if an earlier attempt actually went through but its
+// reply never reached the page (e.g. the tab lost focus when the email
+// compose window opened, or Apps Script was slow to wake up).
+async function updateSheetDecision(row, decision, chosenDateIso) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= SHEET_MAX_ATTEMPTS; attempt++) {
+    try {
+      return await updateSheetDecisionOnce(row, decision, chosenDateIso);
+    } catch (error) {
+      lastError = error;
+      if (!error.isNetworkError) throw error;
+      if (attempt < SHEET_MAX_ATTEMPTS) {
+        setStatus(tableStatus, t(
+          `Saving failed, retrying (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`,
+          `فشل الحفظ، جارٍ إعادة المحاولة (${attempt + 1}/${SHEET_MAX_ATTEMPTS})...`
+        ));
+        await sleep(1000 * attempt);
+      }
     }
+  }
+  throw lastError;
+}
 
-    function clearInquiry() {
-      const wasFiltered = filterPatientId !== null;
-      patientId.value = '';
-      filterPatientId = null;
-      updateClearBtn();
-      if (wasFiltered && clinicRows.length > 0) {
-        const renderedCount = renderClinicsTable();
-        setStatus(adminStatus, t('Filter cleared.', 'تم إلغاء التصفية.'));
-        setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
-      }
-      patientId.focus();
+async function decideReservation(button) {
+  const rowNumber = Number(button.dataset.sheetRow);
+  const decision = button.dataset.decision;
+  const row = clinicRows.find((item) => item.sheetRow === rowNumber);
+  if (!row || row.isReserved === 'y' || row.isReserved === 'n') return;
+  if (isSavingDecision) return;
+
+  const dateIndex = getColumnIndexByKey('date');
+  const isNearest = !isNoDateClinic(row) && isNearestTimeValue(row.values[dateIndex]);
+  const chosenIso = nearestTimeDates[rowNumber] || '';
+  if (decision === 'y' && isNearest && !chosenIso) {
+    setStatus(tableStatus, t('Pick a date for this patient first.', 'اختر تاريخاً لهذا المريض أولاً.'), true);
+    return;
+  }
+
+  if (decision === 'n') {
+    const who = getRowValue(row, ['الاسم', 'name']) || '';
+    const ok = await window.EAPopup.confirm(t(
+      `Are you sure you want to reject this reservation${who ? ' for ' + who : ''}? A rejection email will be sent.`,
+      `هل أنت متأكد من رفض هذا الحجز${who ? ' الخاص بـ ' + who : ''}؟ سيتم إرسال رسالة رفض بالبريد الإلكتروني.`
+    ), {
+      title: t('Reject reservation', 'رفض الحجز'),
+      okText: t('Yes, reject', 'نعم، ارفض'),
+      cancelText: t('Cancel', 'إلغاء'),
+      danger: true
+    });
+    if (!ok) return;
+  }
+
+  isSavingDecision = true;
+  const rowButtons = tableBody.querySelectorAll(`[data-sheet-row="${rowNumber}"] .decision-btn`);
+  rowButtons.forEach((item) => {item.disabled = true;});
+  setStatus(tableStatus, decision === 'y' ?
+  t('Confirming reservation...', 'جارٍ تأكيد الحجز...') :
+  t('Denying reservation...', 'جارٍ رفض الحجز...')
+  );
+
+  try {var _window$showToast14, _window14;
+    const emailAllowed = shouldSendDecisionEmail(decision, isNearest);
+    // Save to the sheet FIRST. If that fails nothing has been emailed, so a
+    // retry can never send the same email twice.
+    // Persist the admin-picked date for "اقرب وقت" rows so inquiries
+    // after a reload still show the real date instead of the placeholder.
+    await updateSheetDecision(row, decision, isNearest && chosenIso ? chosenIso : null);
+    row.isReserved = decision;
+    if (isNearest && chosenIso && dateIndex >= 0) {
+      row.values[dateIndex] = formatArabicDateWithWeekday(chosenIso);
+      delete nearestTimeDates[rowNumber];
     }
-
-    clearInquiryBtn.addEventListener('click', clearInquiry);
-    patientId.addEventListener('input', updateClearBtn);
-    updateClearBtn();
-
-    tableBody.addEventListener('click', event => {
-      const button = event.target.closest('.decision-btn');
-      if (!button) return;
-      decideReservation(button);
-    });
-
-    function updateRowConfirmState(sheetRow) {
-      const btn = tableBody.querySelector(`.decision-btn.confirm[data-sheet-row="${sheetRow}"]`);
-      if (!btn) return;
-      const blocked = !nearestTimeDates[sheetRow];
-      btn.disabled = blocked;
-      btn.title = blocked ? t('Pick a date for this patient first', 'اختر تاريخاً لهذا المريض أولاً') : '';
+    renderClinicsTable();
+    // The decision is saved. Now send / prepare the email; a failure here must not look like a failed save.
+    // emailResult: 'sent' | 'manual' (mail app opened, admin must press send) | 'none' | 'failed'
+    let emailResult = 'none';
+    if (emailAllowed) {
+      try {
+        emailResult = await sendDecisionEmail(row, decision);
+      } catch (emailError) {
+        console.warn('Decision email failed:', emailError);
+        emailResult = 'failed';
+      }
     }
+    setStatus(tableStatus, decision === 'y' ?
+    emailResult === 'sent' ?
+    t('Reservation confirmed and email sent.', 'تم تأكيد الحجز وإرسال البريد الإلكتروني.') :
+    emailResult === 'manual' ?
+    t('Reservation confirmed — automatic sending failed, press send in the mail window that opened.', 'تم تأكيد الحجز — فشل الإرسال التلقائي، اضغط إرسال في نافذة البريد التي فُتحت.') :
+    emailResult === 'failed' ?
+    t('Reservation confirmed, but the email could not be sent — please contact the patient manually.', 'تم تأكيد الحجز، لكن تعذر إرسال البريد الإلكتروني — برجاء التواصل مع المريض يدوياً.') :
+    emailAllowed ?
+    t('Reservation confirmed (no email on file, nothing sent).', 'تم تأكيد الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).') :
+    t('Reservation confirmed (no email sent — only rejections and "اقرب وقت" requests get emails).', 'تم تأكيد الحجز (لم يتم إرسال بريد إلكتروني — يتم الإرسال فقط للرفض وطلبات "اقرب وقت").') :
+    emailResult === 'sent' ?
+    t('Reservation denied and email sent.', 'تم رفض الحجز وإرسال البريد الإلكتروني.') :
+    emailResult === 'manual' ?
+    t('Reservation denied — automatic sending failed, press send in the mail window that opened.', 'تم رفض الحجز — فشل الإرسال التلقائي، اضغط إرسال في نافذة البريد التي فُتحت.') :
+    emailResult === 'failed' ?
+    t('Reservation denied, but the email could not be sent — please contact the patient manually.', 'تم رفض الحجز، لكن تعذر إرسال البريد الإلكتروني — برجاء التواصل مع المريض يدوياً.') :
+    t('Reservation denied (no email on file, nothing sent).', 'تم رفض الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).')
+    );
+    (_window$showToast14 = (_window14 = window).showToast) === null || _window$showToast14 === void 0 ? void 0 : _window$showToast14.call(_window14, tableStatus.textContent, 'info');
+  } catch (error) {var _window$showToast15, _window15;
+    rowButtons.forEach((item) => {item.disabled = false;});
+    setStatus(tableStatus, error.message || t('Action failed.', 'فشل تنفيذ الإجراء.'), true);
+    (_window$showToast15 = (_window15 = window).showToast) === null || _window$showToast15 === void 0 ? void 0 : _window$showToast15.call(_window15, tableStatus.textContent, 'error');
+  } finally {
+    isSavingDecision = false;
+  }
+}
 
-    tableBody.addEventListener('change', event => {
-      const input = event.target.closest('.nearest-time-input');
-      if (!input) return;
-      const sheetRow = Number(input.dataset.sheetRow);
-      const { min, max } = getDateRestrictions();
-      const v = input.value;
-      // Ignore empty, partial (e.g. year 0002 while typing) or out-of-range
-      // values; min/max only limit the popup, not typed input.
-      if (!v || v < min || v > max) {
-        delete nearestTimeDates[sheetRow];
-        updateRowConfirmState(sheetRow);
-        return;
-      }
-      if (isWeekend(v)) {
-        input.value = '';
-        delete nearestTimeDates[sheetRow];
-        window.showToast?.(t('Fridays and Saturdays are not allowed.', 'لا يمكن اختيار يوم الجمعة أو السبت.'), 'warning');
-        updateRowConfirmState(sheetRow);
-        return;
-      }
-      nearestTimeDates[sheetRow] = v;
-      updateRowConfirmState(sheetRow); // no full re-render: keeps focus
-    });
+adminForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  setStatus(adminStatus, t('Checking password...', 'جارٍ التحقق من كلمة المرور...'));
 
-    window.addEventListener('portal-language-change', () => {
-      if (!resultsPanel.classList.contains('hidden')) {
-        renderClinicsTable();
-        populateDaySelect();
-      }
-      updateCopyLinkTitle();
-      updateClearBtn();
-    });
-  </script>
+  // Convert Arabic numbers to English before hashing
+  const normalizedPassword = normalizeDigits(adminPassword.value);
+  const hash = await sha256Hex(normalizedPassword);
+  if (hash !== ADMIN_PASSWORD_HASH) {
+    setStatus(adminStatus, t('Incorrect password.', 'كلمة المرور غير صحيحة.'), true);
+    return;
+  }
+
+  adminPassword.value = '';
+  isAdmin = true;
+  filterPatientId = null;
+  patientId.value = '';
+  updateClearBtn();
+  inquiryForm.classList.remove('hidden');
+  setStatus(adminStatus, t('Access granted.', 'تم السماح بالدخول.'));
+  resultsPanel.classList.remove('hidden');
+  loadClinicSheet();
+});
+
+inquiryForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!isAdmin) {
+    setStatus(adminStatus, t('Enter the admin password first.', 'يرجى إدخال كلمة مرور المسؤول أولاً.'), true);
+    return;
+  }
+  const id = normalizeDigits(patientId.value).trim();
+  if (!id) {
+    setStatus(adminStatus, t('Please enter a patient ID.', 'يرجى إدخال كود الموظف.'), true);
+    return;
+  }
+  filterPatientId = id;
+  updateClearBtn();
+  setStatus(adminStatus, t('Searching for ID...', 'جارٍ البحث عن الكود...'));
+  resultsPanel.classList.remove('hidden');
+  if (clinicRows.length > 0) {
+    switchToTabWithResults();
+    const renderedCount = renderClinicsTable();
+    setStatus(adminStatus, t('Filter applied.', 'تم تطبيق التصفية.'));
+    setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
+  } else {
+    loadClinicSheet();
+  }
+});
+
+// The X inside the inquiry box: empties it and removes the filtering.
+function updateClearBtn() {
+  clearInquiryBtn.classList.toggle('hidden', !patientId.value && !filterPatientId);
+  const label = t('Clear filter', 'مسح التصفية');
+  clearInquiryBtn.title = label;
+  clearInquiryBtn.setAttribute('aria-label', label);
+}
+
+function clearInquiry() {
+  const wasFiltered = filterPatientId !== null;
+  patientId.value = '';
+  filterPatientId = null;
+  updateClearBtn();
+  if (wasFiltered && clinicRows.length > 0) {
+    const renderedCount = renderClinicsTable();
+    setStatus(adminStatus, t('Filter cleared.', 'تم إلغاء التصفية.'));
+    setStatus(tableStatus, t(`${renderedCount} reservation(s) loaded.`, `تم تحميل ${renderedCount} حجز.`));
+  }
+  patientId.focus();
+}
+
+clearInquiryBtn.addEventListener('click', clearInquiry);
+patientId.addEventListener('input', updateClearBtn);
+updateClearBtn();
+
+tableBody.addEventListener('click', (event) => {
+  const button = event.target.closest('.decision-btn');
+  if (!button) return;
+  decideReservation(button);
+});
+
+function updateRowConfirmState(sheetRow) {
+  const btn = tableBody.querySelector(`.decision-btn.confirm[data-sheet-row="${sheetRow}"]`);
+  if (!btn) return;
+  const blocked = !nearestTimeDates[sheetRow];
+  btn.disabled = blocked;
+  btn.title = blocked ? t('Pick a date for this patient first', 'اختر تاريخاً لهذا المريض أولاً') : '';
+}
+
+tableBody.addEventListener('change', (event) => {
+  const input = event.target.closest('.nearest-time-input');
+  if (!input) return;
+  const sheetRow = Number(input.dataset.sheetRow);
+  const { min, max } = getDateRestrictions();
+  const v = input.value;
+  // Ignore empty, partial (e.g. year 0002 while typing) or out-of-range
+  // values; min/max only limit the popup, not typed input.
+  if (!v || v < min || v > max) {
+    delete nearestTimeDates[sheetRow];
+    updateRowConfirmState(sheetRow);
+    return;
+  }
+  if (isWeekend(v)) {var _window$showToast16, _window16;
+    input.value = '';
+    delete nearestTimeDates[sheetRow];
+    (_window$showToast16 = (_window16 = window).showToast) === null || _window$showToast16 === void 0 ? void 0 : _window$showToast16.call(_window16, t('Fridays and Saturdays are not allowed.', 'لا يمكن اختيار يوم الجمعة أو السبت.'), 'warning');
+    updateRowConfirmState(sheetRow);
+    return;
+  }
+  nearestTimeDates[sheetRow] = v;
+  updateRowConfirmState(sheetRow); // no full re-render: keeps focus
+});
+
+window.addEventListener('portal-language-change', () => {
+  if (!resultsPanel.classList.contains('hidden')) {
+    renderClinicsTable();
+    populateDaySelect();
+  }
+  updateCopyLinkTitle();
+  updateClearBtn();
+});</script>
 </body>
 </html>
