@@ -3,8 +3,8 @@ const SPREADSHEET_ID = '1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y';
 const SHEET_NAME = 'Employees';
 const RETIRED_SHEET_NAME = 'Retired';
 const HISTORY_SHEET_NAME = 'History';
-// History sheet: exactly 3 columns — التاريخ | النوع | التفاصيل
-const HISTORY_HEADERS = ['التاريخ', 'النوع', 'التفاصيل'];
+// History sheet: exactly 4 columns — التاريخ | النوع | التفاصيل | المختص
+const HISTORY_HEADERS = ['التاريخ', 'النوع', 'التفاصيل', 'المختص'];
 const HISTORY_WINDOW_DAYS = 30; // the "آخر التعديلات" card counts only this window
 const HISTORY_DATE_FORMAT = 'h:mm am/pm  d/m/yyyy'; // e.g. 3:00 pm  1/10/2026
 const HISTORY_TYPE_ADD = 'إضافة';
@@ -178,7 +178,7 @@ function ensureRetiredSheet() {
 }
 
 /**
- * Create the History sheet (3 columns: التاريخ / النوع / التفاصيل) if missing.
+ * Create the History sheet (4 columns: التاريخ / النوع / التفاصيل / المختص) if missing.
  * Same header styling approach as Employees / Retired. Cheap when already set up.
  */
 function ensureHistorySheet() {
@@ -204,7 +204,8 @@ function ensureHistorySheet() {
       .setWrap(true);
     sh.setColumnWidth(1, 170);
     sh.setColumnWidth(2, 110);
-    sh.setColumnWidth(3, 620);
+    sh.setColumnWidth(3, 520);
+    sh.setColumnWidth(4, 100);
   }
   return sh;
 }
@@ -314,10 +315,12 @@ function historyDiff_(before, after) {
  * Append one row to History: [date-time, type, details].
  * Never throws — a logging problem must not undo or block the real save.
  */
-function logHistory(type, details) {
+function logHistory(type, details, actor) {
   try {
     const sh = ensureHistorySheet();
-    sh.appendRow([new Date(), type, String(details || '').slice(0, 40000)]);
+    // Always write 4 columns: التاريخ | النوع | التفاصيل | المختص
+    const who = String(actor || '').trim();
+    sh.appendRow([new Date(), type, String(details || '').slice(0, 40000), who]);
     const row = sh.getLastRow();
     sh.getRange(row, 1).setNumberFormat(HISTORY_DATE_FORMAT);
     sh.getRange(row, 3).setWrap(true);
@@ -368,12 +371,14 @@ function readHistory() {
       if (!when || when.getTime() < cutoff) return;
       const type = String(row[1] || '').trim();
       const details = String(row[2] || '').trim();
+      const actor = String(row[3] || '').trim(); // المختص (42554 / 86942)
       if (!type && !details) return;
       records.push({
         time: when.getTime(),
         date: Utilities.formatDate(when, tz, 'h:mm a  d/M/yyyy').toLowerCase(),
         type: type,
-        details: details
+        details: details,
+        actor: actor
       });
     });
     records.sort((a, b) => b.time - a.time);
@@ -453,13 +458,20 @@ function doPost(e) {
     }
     let employee;
     wrote = true; // from here on the sheet may change, even if a later step throws
+    const actor = String(body.actor || '').trim();
     if (action === 'retire' || action === 'moveToRetired') {
-      employee = moveEmployeeToRetired(body.employee || {});
+      const payload = body.employee || {};
+      payload._actor = actor;
+      employee = moveEmployeeToRetired(payload);
     } else if (action === 'update') {
       // Updates only apply to the active Employees sheet.
-      employee = updateEmployee(body.employee || {});
+      const payload = body.employee || {};
+      payload._actor = actor;
+      employee = updateEmployee(payload);
     } else {
-      employee = createEmployee(body.employee || {});
+      const payload = body.employee || {};
+      payload._actor = actor;
+      employee = createEmployee(payload);
     }
     return json({ ok: true, saved: true, employee: employee });
   } catch (err) {
@@ -925,7 +937,8 @@ function moveEmployeeToRetired(input) {
   }
   logHistory(
     HISTORY_TYPE_RETIRE,
-    'تم نقل الموظف إلى المتقاعدين (' + historyEmployeeLine_(displayRow) + ')'
+    'تم نقل الموظف إلى المتقاعدين (' + historyEmployeeLine_(displayRow) + ')',
+    input._actor
   );
   const result = rowToObject(
     retiredSh.getRange(newRow, 1, 1, FIELDS.length).getDisplayValues()[0],
@@ -1006,7 +1019,8 @@ function updateEmployee(input) {
   if (changes.length) {
     logHistory(
       HISTORY_TYPE_EDIT,
-      'تم تعديل بيانات الموظف (' + historyEmployeeLine_(afterDisplay) + '):\n' + changes.join('\n')
+      'تم تعديل بيانات الموظف (' + historyEmployeeLine_(afterDisplay) + '):\n' + changes.join('\n'),
+      input._actor
     );
   }
   const result = rowToObject(afterDisplay, row);
@@ -1029,7 +1043,8 @@ function createEmployee(input) {
   assertWriteLanded_(afterDisplay, input.code, 'new employee');
   logHistory(
     HISTORY_TYPE_ADD,
-    'تمت إضافة موظف جديد (' + historyEmployeeLine_(afterDisplay) + ')'
+    'تمت إضافة موظف جديد (' + historyEmployeeLine_(afterDisplay) + ')',
+    input._actor
   );
   const result = rowToObject(afterDisplay, row);
   result._sheet = SHEET_NAME;

@@ -1140,8 +1140,10 @@
 
       .history-table td.h-date,
       .history-table td.h-type,
+      .history-table td.h-actor,
       .history-table th.h-date,
-      .history-table th.h-type {
+      .history-table th.h-type,
+      .history-table th.h-actor {
         text-align: center;
         white-space: nowrap;
         font-variant-numeric: tabular-nums;
@@ -1420,7 +1422,7 @@
           <button class="icon-btn" type="button" data-close="historyModal" aria-label="Close">×</button>
         </div>
         <div class="dialog-body">
-          <div class="history-search"><input class="input" id="historySearch" type="search" autocomplete="off" data-en-placeholder="Search modifications (date, type, details)…" data-ar-placeholder="بحث في التعديلات (التاريخ، النوع، التفاصيل)…" placeholder="Search modifications (date, type, details)…"><span class="history-match" id="historyMatch"></span></div>
+          <div class="history-search"><input class="input" id="historySearch" type="search" autocomplete="off" data-en-placeholder="Search modifications (date, type, editor, details)…" data-ar-placeholder="بحث في التعديلات (التاريخ، النوع، المختص، التفاصيل)…" placeholder="Search modifications (date, type, editor, details)…"><span class="history-match" id="historyMatch"></span></div>
           <div class="report-table-wrap" id="historyBody"></div>
         </div>
       </section>
@@ -1467,14 +1469,24 @@
 /* API_TOKEN is only a compatibility fallback. For HR data, restrict the Apps Script deployment and use its email allowlist. */
 const API_URL = 'https://script.google.com/macros/s/AKfycbzoF2Cpp1bG18ZbZcHTTafFFhkTD6mZi7BIw_a0iEtqwBS1k2oDxDetGd3p8Jk30CVb/exec';
 const API_TOKEN = '';
-/* All of these unlock the directory. Only EDITOR_PASSWORD_HASH enables Add / Edit / Move to retired. */
+/* All of these unlock the directory. EDITOR_PASSWORD_HASHES enable Add / Edit / Move to retired. */
 const UNLOCK_PASSWORD_HASHES = new Set([
 '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb', // 42554 — full edit
+'a8c855fbaeaf16e3f04d4352ff0e576a32a3dc4cbb07e310f6fdfb61f6c28cce', // 86942 — full edit
 '3f64a7f4dd53bb20cfbc148d34d8bf866c5f8728da9dce2066be0e3e408c612e', // 42069 — view only
 'd073e341e454ce18f401d4dc19e7c72661eb45dd8bf1bc802cb8416ef71aa971', // 68224 — view only
 '492f431bae35265f2e5f4ed49bd8c58dda912431be561504846988d00d05d117' // 32000 — view only
 ]);
-const EDITOR_PASSWORD_HASH = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb'; // 42554
+const EDITOR_PASSWORD_HASHES = new Set([
+'3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb', // 42554
+'a8c855fbaeaf16e3f04d4352ff0e576a32a3dc4cbb07e310f6fdfb61f6c28cce' // 86942
+]);
+/** Map editor password hash → short label stored in History "المختص". */
+const EDITOR_LABEL_BY_HASH = {
+  '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb': '42554',
+  'a8c855fbaeaf16e3f04d4352ff0e576a32a3dc4cbb07e310f6fdfb61f6c28cce': '86942'
+};
+const EDITOR_PASSWORD_HASH = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb'; // legacy alias
 const $ = (id) => document.getElementById(id);
 const clean = (value) => String(value !== null && value !== void 0 ? value : '').trim();
 const normal = (value) => clean(value).toLocaleLowerCase('ar-EG');
@@ -1510,7 +1522,8 @@ const state = {
   loading: false,
   view: 'active', // 'active' | 'retired' — separate lists, never merged
   upcomingOnly: false, // date-period filter: retiring within 12 months
-  canEdit: false, // true only when unlocked with the editor password (42554)
+  canEdit: false, // true when unlocked with an editor password (42554 or 86942)
+  editorLabel: '', // "42554" | "86942" | "" — who is logged in (for History المختص)
   sel: {}, // multi-select filters: control id -> Set of selected values
   history: { loaded: false, failed: false, count: 0, records: [] } // last-30-days log from the History sheet
 };
@@ -1599,6 +1612,7 @@ const i18n = {
     historyDate: 'Date',
     historyType: 'Type',
     historyDetails: 'Details',
+    historyActor: 'Editor',
     upcomingRetirements: 'Upcoming retirements',
     retiredHint: 'Archived from active roster',
     moveToRetired: 'Move to retired',
@@ -1699,6 +1713,7 @@ const i18n = {
     historyDate: 'التاريخ',
     historyType: 'النوع',
     historyDetails: 'التفاصيل',
+    historyActor: 'المختص',
     upcomingRetirements: 'التقاعد خلال 12 شهراً',
     retiredHint: 'مؤرشف من القائمة النشطة',
     moveToRetired: 'نقل إلى المتقاعدين',
@@ -1991,7 +2006,7 @@ function setLoading(loading) {
 }
 
 /* "Latest modifications" card + popup: same rule as the Add / Edit buttons —
-   only the editor password (42554) sees them. */
+   only editor passwords (42554 / 86942) see them. */
 function applyHistoryVisibility() {var _document$querySelect;
   const show = state.canEdit;
   if ($('historyStat')) $('historyStat').hidden = !show;
@@ -2514,15 +2529,15 @@ function renderHistoryTable() {var _$15;
   }
   const q = searchText((_$15 = $('historySearch')) === null || _$15 === void 0 ? void 0 : _$15.value);
   const visible = q ?
-  h.records.filter((record) => searchText(`${record.date} ${record.type} ${record.details}`).includes(q)) :
+  h.records.filter((record) => searchText(`${record.date} ${record.type} ${record.actor || ''} ${record.details}`).includes(q)) :
   h.records;
   if ($('historyMatch')) $('historyMatch').textContent = q ? t('historyMatches', { count: visible.length.toLocaleString(), total: h.records.length.toLocaleString() }) : '';
   if (!visible.length) {
     body.innerHTML = `<p class="empty">${escapeHtml(t('historyNoMatch'))}</p>`;
     return;
   }
-  const head = `<tr><th class="h-date">${escapeHtml(t('historyDate'))}</th><th class="h-type">${escapeHtml(t('historyType'))}</th><th>${escapeHtml(t('historyDetails'))}</th></tr>`;
-  const rows = visible.map((record) => `<tr><td class="h-date" dir="ltr">${escapeHtml(record.date)}</td><td class="h-type"><span class="pill ${historyTypeClass(record.type)}">${escapeHtml(record.type)}</span></td><td class="h-details">${escapeHtml(record.details).replace(/\n/g, '<br>')}</td></tr>`).join('');
+  const head = `<tr><th class="h-date">${escapeHtml(t('historyDate'))}</th><th class="h-type">${escapeHtml(t('historyType'))}</th><th class="h-actor">${escapeHtml(t('historyActor'))}</th><th>${escapeHtml(t('historyDetails'))}</th></tr>`;
+  const rows = visible.map((record) => `<tr><td class="h-date" dir="ltr">${escapeHtml(record.date)}</td><td class="h-type"><span class="pill ${historyTypeClass(record.type)}">${escapeHtml(record.type)}</span></td><td class="h-actor">${escapeHtml(record.actor || '—')}</td><td class="h-details">${escapeHtml(record.details).replace(/\n/g, '<br>')}</td></tr>`).join('');
   body.innerHTML = `<table class="history-table"><thead>${head}</thead><tbody>${rows}</tbody></table>`;
 }
 
@@ -2795,6 +2810,7 @@ async function postRetire(employee) {
             version: employee.version,
             id: employee.id
           },
+          actor: state.editorLabel || undefined,
           token: API_TOKEN || undefined
         })
       });
@@ -3101,9 +3117,11 @@ async function unlockEmployeeData(event) {
       input.select();
       return;
     }
-    state.canEdit = hash === EDITOR_PASSWORD_HASH;
+    state.canEdit = EDITOR_PASSWORD_HASHES.has(hash);
+    state.editorLabel = EDITOR_LABEL_BY_HASH[hash] || '';
     __ss.setItem('employee-data-unlocked', hash);
     __ss.setItem('employee-data-can-edit', state.canEdit ? '1' : '0');
+    __ss.setItem('employee-data-editor-label', state.editorLabel);
     $('accessGate').hidden = true;
     applyViewChrome();
     setLoading(state.loading);
@@ -3122,8 +3140,10 @@ async function initAccessGate() {
   employeeDataLoadPromise = load({ quiet: true });
   const storedHash = __ss.getItem('employee-data-unlocked');
   if (storedHash && UNLOCK_PASSWORD_HASHES.has(storedHash)) {
-    state.canEdit = __ss.getItem('employee-data-can-edit') === '1' || storedHash === EDITOR_PASSWORD_HASH;
+    state.canEdit = __ss.getItem('employee-data-can-edit') === '1' || EDITOR_PASSWORD_HASHES.has(storedHash);
+    state.editorLabel = __ss.getItem('employee-data-editor-label') || EDITOR_LABEL_BY_HASH[storedHash] || '';
     __ss.setItem('employee-data-can-edit', state.canEdit ? '1' : '0');
+    __ss.setItem('employee-data-editor-label', state.editorLabel);
     $('accessGate').hidden = true;
     applyViewChrome();
     await employeeDataLoadPromise;
@@ -3148,6 +3168,7 @@ async function postEmployee(employee, isEdit) {
         body: JSON.stringify({
           action: isEdit ? 'update' : 'create',
           employee,
+          actor: state.editorLabel || undefined,
           token: API_TOKEN || undefined
         })
       });
@@ -3788,7 +3809,15 @@ function initEvents() {var _$16, _$17, _$18, _$19, _$20, _$21, _$22, _$23, _$24,
   document.querySelector('[data-theme-toggle]').addEventListener('click', () => {
     applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   });
-  $('search').addEventListener('input', applyFilter);
+  let searchDebounceTimer = null;
+  $('search').addEventListener('input', () => {
+    // Keep typing responsive: defer the heavy filter/render until the user pauses.
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      searchDebounceTimer = null;
+      applyFilter();
+    }, 280);
+  });
   (_$16 = $('historySearch')) === null || _$16 === void 0 ? void 0 : _$16.addEventListener('input', renderHistoryTable);
   initMultiSelects();
   initExportColsPicker();
