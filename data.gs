@@ -4,7 +4,7 @@ const SHEET_NAME = 'Employees';
 const RETIRED_SHEET_NAME = 'Retired';
 const HISTORY_SHEET_NAME = 'History';
 // History sheet: exactly 4 columns — التاريخ | النوع | التفاصيل | المختص
-const HISTORY_HEADERS = ['التاريخ', 'النوع', 'التفاصيل', 'المختص'];
+const HISTORY_HEADERS = ['التاريخ', 'المختص', 'النوع', 'التفاصيل'];
 const HISTORY_WINDOW_DAYS = 30; // the "آخر التعديلات" card counts only this window
 const HISTORY_DATE_FORMAT = 'h:mm am/pm  d/m/yyyy'; // e.g. 3:00 pm  1/10/2026
 const HISTORY_TYPE_ADD = 'إضافة';
@@ -318,12 +318,12 @@ function historyDiff_(before, after) {
 function logHistory(type, details, actor) {
   try {
     const sh = ensureHistorySheet();
-    // Always write 4 columns: التاريخ | النوع | التفاصيل | المختص
     const who = String(actor || '').trim();
-    sh.appendRow([new Date(), type, String(details || '').slice(0, 40000), who]);
+    // التاريخ | المختص | النوع | التفاصيل
+    sh.appendRow([new Date(), who, type, String(details || '').slice(0, 40000)]);
     const row = sh.getLastRow();
     sh.getRange(row, 1).setNumberFormat(HISTORY_DATE_FORMAT);
-    sh.getRange(row, 3).setWrap(true);
+    sh.getRange(row, 4).setWrap(true); // التفاصيل is column 4
   } catch (err) {
     console.error('History log failed: ' + errorMessage(err));
   }
@@ -369,9 +369,9 @@ function readHistory() {
     values.forEach(row => {
       const when = parseHistoryDate_(row[0]);
       if (!when || when.getTime() < cutoff) return;
-      const type = String(row[1] || '').trim();
-      const details = String(row[2] || '').trim();
-      const actor = String(row[3] || '').trim(); // المختص (42554 / 86942)
+const type = String(row[2] || '').trim();      // النوع
+const details = String(row[3] || '').trim();   // التفاصيل
+const actor = String(row[1] || '').trim();     // المختص
       if (!type && !details) return;
       records.push({
         time: when.getTime(),
