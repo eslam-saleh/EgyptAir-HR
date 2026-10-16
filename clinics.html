@@ -1313,10 +1313,8 @@ const ALL_DAYS = 'all';
 let seenRowKeys = null; // null until the first load completes
 let newRowHighlights = {}; // rowKey -> timestamp when highlight ends
 
-function rowKey(row) {var _row$values$tsIdx;
-  const tsIdx = getColumnIndexByKey('timestamp');
-  const ts = tsIdx >= 0 ? String((_row$values$tsIdx = row.values[tsIdx]) !== null && _row$values$tsIdx !== void 0 ? _row$values$tsIdx : '').trim() : '';
-  return ts || row.values.join('|');
+function rowKey(row) {
+  return row.key || row.values.join('|');
 }
 
 function trackNewRows() {
@@ -2114,39 +2112,39 @@ function applySheetResponse(response) {
   // headers/rows come straight from Apps Script's SpreadsheetApp.getValues(),
   // which returns the exact stored cell content (no gviz type inference,
   // so Arabic-Indic digit codes survive instead of being nulled out).
-  // Remember not-yet-saved "اقرب وقت" date picks by the row's timestamp, so a
-  // background refresh (or a purge that shifts row numbers) can't wipe or misplace them.
+  // Remember not-yet-saved "اقرب وقت" date picks by the row's key (timestamp +
+  // employee code), so a background refresh (or a purge that shifts row numbers)
+  // can't wipe or misplace them, and same-second submissions can't swap picks.
   const prevPicks = {};
-  const prevTsIdx = getColumnIndexByKey('timestamp');
-  if (prevTsIdx >= 0) {
-    clinicRows.forEach((r) => {var _r$values$prevTsIdx;
-      if (nearestTimeDates[r.sheetRow]) prevPicks[String((_r$values$prevTsIdx = r.values[prevTsIdx]) !== null && _r$values$prevTsIdx !== void 0 ? _r$values$prevTsIdx : '').trim()] = nearestTimeDates[r.sheetRow];
-    });
-  }
+  clinicRows.forEach((r) => {
+    if (nearestTimeDates[r.sheetRow]) prevPicks[r.key] = nearestTimeDates[r.sheetRow];
+  });
 
   clinicColumns = (response.headers || []).map((label) => ({ label }));
   const reservedIndex = clinicColumns.findIndex(isReservedColumn);
+  const keyTsIdx = getColumnIndexByKey('timestamp');
+  const keyCodeIdx = clinicColumns.findIndex(isCodeColumn);
   clinicRows = (response.rows || []).map((row, index) => {
     const values = clinicColumns.map((column, colIndex) => {var _row$colIndex;
       let val = (_row$colIndex = row[colIndex]) !== null && _row$colIndex !== void 0 ? _row$colIndex : '';
       if (isCodeColumn(column)) val = normalizeDigits(val);
       return val;
     });
+    const key = String(values[keyTsIdx >= 0 ? keyTsIdx : 0] === null || values[keyTsIdx >= 0 ? keyTsIdx : 0] === undefined ? '' : values[keyTsIdx >= 0 ? keyTsIdx : 0]).trim() + '|' + (
+    keyCodeIdx >= 0 ? normalizeDigits(values[keyCodeIdx]).trim() : '');
     return {
       sheetRow: index + 2,
+      key,
       values,
       isReserved: String(values[reservedIndex] || '').trim().toLowerCase()
     };
   });
 
   nearestTimeDates = {};
-  const newTsIdx = getColumnIndexByKey('timestamp');
-  if (newTsIdx >= 0) {
-    clinicRows.forEach((r) => {var _r$values$newTsIdx;
-      const pick = prevPicks[String((_r$values$newTsIdx = r.values[newTsIdx]) !== null && _r$values$newTsIdx !== void 0 ? _r$values$newTsIdx : '').trim()];
-      if (pick && r.isReserved !== 'y' && r.isReserved !== 'n') nearestTimeDates[r.sheetRow] = pick;
-    });
-  }
+  clinicRows.forEach((r) => {
+    const pick = prevPicks[r.key];
+    if (pick && r.isReserved !== 'y' && r.isReserved !== 'n') nearestTimeDates[r.sheetRow] = pick;
+  });
 
   trackNewRows();
   populateDaySelect(); // must run before rendering: the table filters by it
@@ -2480,16 +2478,15 @@ async function updateSheetDecisionOnce(row, decision, chosenDateIso) {
     ));
   }
 
-  return new Promise((resolve, reject) => {var _row$values$;
+  return new Promise((resolve, reject) => {
     const callbackName = `handleClinicUpdate_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement('script');
     const url = new URL(SHEET_UPDATE_WEB_APP_URL);
     url.searchParams.set('rowNumber', row.sheetRow);
     url.searchParams.set('isReserved', decision);
-    // Row numbers shift when old rows are purged, so also send the row's
-    // submission timestamp; the backend refuses the write if it no longer matches.
-    const tsIdx = getColumnIndexByKey('timestamp');
-    url.searchParams.set('ts', String(tsIdx >= 0 ? row.values[tsIdx] : (_row$values$ = row.values[0]) !== null && _row$values$ !== void 0 ? _row$values$ : '').trim());
+    // Row numbers shift when old rows are purged, so also send the row's key
+    // (timestamp + employee code); the backend refuses the write if it no longer matches.
+    url.searchParams.set('key', row.key);
     // When the patient chose "اقرب وقت", also write the admin-picked
     // date into the sheet so later inquiries see the real date.
     if (chosenDateIso) {

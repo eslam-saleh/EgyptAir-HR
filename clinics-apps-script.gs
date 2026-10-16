@@ -81,16 +81,6 @@ const payload = params.action === 'getData' ? getSheetDataCached_()
   : params.action === 'lookup' ? lookupByCode_(params.id)
   : updateDecision(params);
 
-
-  if (/^[A-Za-z_$][\w$]*$/.test(callback)) {
-    return ContentService
-      .createTextOutput(`${callback}(${JSON.stringify(payload)});`)
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-
-  return jsonResponse(payload);
-}
-
 function lookupByCode_(rawId) {
   const id = String(rawId || '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).trim();
   if (!id || id.length > 20) return { ok: false, error: 'Invalid ID.' };
@@ -105,6 +95,16 @@ function lookupByCode_(rawId) {
     .map(r => keep.map(i => r[i]));
   return { ok: true, headers: keep.map(i => data.headers[i]), rows };
 }
+
+  if (/^[A-Za-z_$][\w$]*$/.test(callback)) {
+    return ContentService
+      .createTextOutput(`${callback}(${JSON.stringify(payload)});`)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return jsonResponse(payload);
+}
+
 function getResponsesSheet_() {
   return SpreadsheetApp.openById(CLINIC_SHEET_ID).getSheets()[0];
 }
@@ -175,12 +175,12 @@ function updateDecision(params) {
     const decision = String(params.isReserved || '').toLowerCase();
     // Optional: admin-picked date for rows that originally had "اقرب وقت"
     const dateValue = params.date ? String(params.date).trim() : '';
-    const expectedTs = String(params.ts || '').trim();
+    const expectedKey = String(params.key || '').trim();
 
     if (!Number.isInteger(rowNumber) || !['y', 'n'].includes(decision)) {
       return { ok: false, error: 'Invalid row or decision.' };
     }
-    if (!expectedTs) {
+    if (!expectedKey) {
       return { ok: false, error: 'Missing row identifier. Please refresh the page and try again.' };
     }
 
@@ -201,9 +201,17 @@ function updateDecision(params) {
 
     // Rows shift when old records are purged. Make sure this row is still the
     // same submission the admin was looking at before touching it.
+    // Identity = timestamp + employee code (same rule as the page), so two
+    // submissions in the same second can't be mixed up.
     const tsColumn = findTimestampColumn_(headers) + 1;
-    const actualTs = formatCell_(sheet.getRange(rowNumber, tsColumn).getValue()).trim();
-    if (actualTs !== expectedTs) {
+    const codeIdx = headers.findIndex(h => {
+      const l = String(h).trim().toLowerCase();
+      return l.includes('code') || l.includes('كود') || l.includes('emp') || l.includes('الموظف');
+    });
+    const rowVals = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const actualKey = formatCell_(rowVals[tsColumn - 1]).trim() + '|' +
+      (codeIdx >= 0 ? formatCell_(rowVals[codeIdx]).replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).replace(/[۰-۹]/g, d => d.charCodeAt(0) - 1776).trim() : '');
+    if (actualKey !== expectedKey) {
       clearClinicCache();
       return { ok: false, error: 'The sheet changed since it was loaded. Please refresh the page.' };
     }
