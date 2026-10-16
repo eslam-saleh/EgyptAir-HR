@@ -4,60 +4,6 @@ const CLINIC_SHEET_ID = '1LCk4J_McBFhDuRf4s-5HIirck3uwfZzCFeI3084dGig';
 const EGYPT_TIME_ZONE = 'Africa/Cairo';
 const PURGE_AFTER_DAYS = 40;
 
-// ── Stable submission ID ─────────────────────────────────────────────────
-// Timestamps only have 1-second resolution, so two submissions in the same
-// second look identical, and row numbers shift when old rows are purged.
-// Every response therefore gets its own random ID in this extra column
-// (created automatically, to the right of the form's columns). Decisions and
-// picked dates are matched on this ID, never on the timestamp alone.
-const SUBMISSION_ID_HEADER = 'submissionId';
-
-function findSubmissionIdColumn_(headers) {
-  return headers.findIndex(h => String(h).trim().toLowerCase() === SUBMISSION_ID_HEADER.toLowerCase());
-}
-
-// Makes sure the sheet has the submissionId column and that every response
-// row has a unique, non-empty ID (blank or duplicated IDs get a fresh one).
-// Existing IDs are never changed. The caller must hold the script lock.
-// Returns true if anything was written.
-function ensureSubmissionIds_(sheet) {
-  const lastCol = sheet.getLastColumn();
-  if (lastCol < 1) return false;
-  let changed = false;
-
-  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  let idCol = findSubmissionIdColumn_(headers) + 1;
-  if (!idCol) {
-    idCol = lastCol + 1;
-    if (idCol > sheet.getMaxColumns()) sheet.insertColumnAfter(sheet.getMaxColumns());
-    sheet.getRange(1, idCol).setValue(SUBMISSION_ID_HEADER);
-    changed = true;
-  }
-
-  const lastRow = sheet.getLastRow();
-  if (lastRow < 2) return changed;
-
-  const range = sheet.getRange(2, idCol, lastRow - 1, 1);
-  const ids = range.getValues();
-  const seen = {};
-  let dirty = false;
-  for (let i = 0; i < ids.length; i++) {
-    let id = String(ids[i][0]).trim();
-    if (!id || seen[id]) {
-      id = Utilities.getUuid();
-      ids[i][0] = id;
-      dirty = true;
-    }
-    seen[id] = true;
-  }
-  if (dirty) {
-    range.setNumberFormat('@'); // keep it as plain text
-    range.setValues(ids);
-    changed = true;
-  }
-  return changed;
-}
-
 // ── Short-lived cache for the dashboard read ─────────────────────────────
 // Form submissions write to the sheet without going through this script, so
 // installClinicTriggers() (run it ONCE) adds an "On form submit" trigger that
@@ -105,39 +51,15 @@ function getSheetDataCached_() {
   return data;
 }
 
-/** Run ONCE from the Apps Script editor (run it again after updating this script):
- *  gives every existing response an ID, and installs the "On form submit"
- *  trigger that gives each NEW response an ID and refreshes the dashboard. */
+/** Run ONCE from the Apps Script editor: new form submissions then show instantly. */
 function installClinicTriggers() {
   ScriptApp.getProjectTriggers().forEach(t => {
-    const fn = t.getHandlerFunction();
-    if (fn === 'clearClinicCache' || fn === 'onClinicFormSubmit') ScriptApp.deleteTrigger(t);
+    if (t.getHandlerFunction() === 'clearClinicCache') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('onClinicFormSubmit')
+  ScriptApp.newTrigger('clearClinicCache')
     .forSpreadsheet(CLINIC_SHEET_ID)
     .onFormSubmit()
     .create();
-  onClinicFormSubmit(); // backfill IDs for rows that already exist
-}
-
-// Runs on every form submission. It scans the whole sheet (not just the new
-// row), so even several submissions landing at once all end up with an ID.
-function onClinicFormSubmit() {
-  let lock;
-  try {
-    lock = LockService.getScriptLock();
-    if (lock.tryLock(30000)) {
-      ensureSubmissionIds_(getResponsesSheet_());
-      SpreadsheetApp.flush();
-    } else {
-      Logger.log('ID assignment skipped: sheet busy (the next dashboard load will retry).');
-    }
-  } catch (error) {
-    Logger.log('Error assigning submission IDs: ' + error.message);
-  } finally {
-    if (lock) lock.releaseLock();
-    clearClinicCache();
-  }
 }
 
 function clearClinicCache() {
@@ -177,7 +99,7 @@ function lookupByCode_(rawId) {
   const low = data.headers.map(h => String(h).toLowerCase());
   const codeIdx = low.findIndex(h => h.includes('code') || h.includes('كود'));
   if (codeIdx < 0) return { ok: false, error: 'Code column not found.' };
-  const keep = low.map((h, i) => (h.includes('email') || h.includes('البريد') || h === SUBMISSION_ID_HEADER.toLowerCase()) ? -1 : i).filter(i => i >= 0);
+  const keep = low.map((h, i) => (h.includes('email') || h.includes('البريد')) ? -1 : i).filter(i => i >= 0);
   const rows = data.rows
     .filter(r => String(r[codeIdx]).replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).trim() === id)
     .map(r => keep.map(i => r[i]));
@@ -195,42 +117,29 @@ function formatCell_(cell) {
   return cell === null || cell === undefined ? '' : String(cell);
 }
 
-// Reads the header row and the raw data rows (no formatting applied).
-function readSheetRaw_(sheet) {
-  const lastRow = sheet.getLastRow();
-  const lastCol = sheet.getLastColumn();
-  if (lastRow < 1 || lastCol < 1) return null;
-  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
-  const values = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, lastCol).getValues() : [];
-  return { headers, values };
-}
-
 // Reads the sheet directly via SpreadsheetApp, which returns the exact stored
 // cell values with no per-column type inference (so Arabic-Indic digits in a
 // mostly-numeric column are not nulled out like the gviz endpoint did).
-// If any row is still missing its submission ID (e.g. the form trigger has not
-// run yet), IDs are assigned first so the page always receives them.
 function getSheetData() {
   try {
     const sheet = getResponsesSheet_();
-    let raw = readSheetRaw_(sheet);
-    if (!raw) return { ok: true, headers: [], rows: [] };
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
 
-    const idIdx = findSubmissionIdColumn_(raw.headers);
-    const missing = idIdx < 0 || raw.values.some(r => !String(r[idIdx]).trim());
-    if (missing) {
-      const lock = LockService.getScriptLock();
-      if (lock.tryLock(10000)) {
-        try {
-          if (ensureSubmissionIds_(sheet)) SpreadsheetApp.flush();
-        } finally {
-          lock.releaseLock();
-        }
-        raw = readSheetRaw_(sheet) || raw;
-      }
+    if (lastRow < 1 || lastCol < 1) {
+      return { ok: true, headers: [], rows: [] };
     }
 
-    return { ok: true, headers: raw.headers, rows: raw.values.map(row => row.map(formatCell_)) };
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+    const numDataRows = lastRow - 1;
+    let rows = [];
+
+    if (numDataRows > 0) {
+      const values = sheet.getRange(2, 1, numDataRows, lastCol).getValues();
+      rows = values.map(row => row.map(formatCell_));
+    }
+
+    return { ok: true, headers, rows };
   } catch (error) {
     return { ok: false, error: error.message };
   }
@@ -262,62 +171,41 @@ function findDateColumn_(headers) {
 function updateDecision(params) {
   let lock;
   try {
+    const rowNumber = Number(params.rowNumber);
     const decision = String(params.isReserved || '').toLowerCase();
     // Optional: admin-picked date for rows that originally had "اقرب وقت"
     const dateValue = params.date ? String(params.date).trim() : '';
-    const sid = String(params.sid || '').trim();
     const expectedTs = String(params.ts || '').trim();
 
-    if (!['y', 'n'].includes(decision)) {
-      return { ok: false, error: 'Invalid decision.' };
+    if (!Number.isInteger(rowNumber) || !['y', 'n'].includes(decision)) {
+      return { ok: false, error: 'Invalid row or decision.' };
     }
-    if (!sid || sid.length > 100) {
-      return { ok: false, error: 'Missing submission ID. Please refresh the page and try again.' };
+    if (!expectedTs) {
+      return { ok: false, error: 'Missing row identifier. Please refresh the page and try again.' };
     }
 
     lock = LockService.getScriptLock();
     if (!lock.tryLock(20000)) return { ok: false, error: 'The sheet is busy. Please try again.' };
 
     const sheet = getResponsesSheet_();
-    const lastRow = sheet.getLastRow();
+    // Row 1 is the header: never allow it (or anything past the data) to be written.
+    if (rowNumber < 2 || rowNumber > sheet.getLastRow()) {
+      return { ok: false, error: 'Row out of range. Please refresh the page.' };
+    }
+
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const reservedColumn = headers.findIndex(header => String(header).trim() === 'isReserved') + 1;
     if (!reservedColumn) {
       return { ok: false, error: 'isReserved column was not found.' };
     }
-    const idColumn = findSubmissionIdColumn_(headers) + 1;
-    if (!idColumn || lastRow < 2) {
+
+    // Rows shift when old records are purged. Make sure this row is still the
+    // same submission the admin was looking at before touching it.
+    const tsColumn = findTimestampColumn_(headers) + 1;
+    const actualTs = formatCell_(sheet.getRange(rowNumber, tsColumn).getValue()).trim();
+    if (actualTs !== expectedTs) {
       clearClinicCache();
       return { ok: false, error: 'The sheet changed since it was loaded. Please refresh the page.' };
-    }
-
-    // Locate the row by its unique submission ID. Row numbers shift when old
-    // records are purged and timestamps can repeat, so neither is trusted to
-    // pick the row. Row 1 is the header and is never a candidate.
-    const ids = sheet.getRange(2, idColumn, lastRow - 1, 1).getValues();
-    const matches = [];
-    for (let i = 0; i < ids.length; i++) {
-      if (String(ids[i][0]).trim() === sid) matches.push(i + 2);
-    }
-    if (matches.length !== 1) {
-      clearClinicCache();
-      return {
-        ok: false,
-        error: matches.length === 0
-          ? 'This record no longer exists. Please refresh the page.'
-          : 'Duplicate submission ID found. Please refresh the page and try again.'
-      };
-    }
-    const rowNumber = matches[0];
-
-    // Extra safety net: when the page also sent the timestamp, it must match.
-    if (expectedTs) {
-      const tsColumn = findTimestampColumn_(headers) + 1;
-      const actualTs = formatCell_(sheet.getRange(rowNumber, tsColumn).getValue()).trim();
-      if (actualTs !== expectedTs) {
-        clearClinicCache();
-        return { ok: false, error: 'The sheet changed since it was loaded. Please refresh the page.' };
-      }
     }
 
     sheet.getRange(rowNumber, reservedColumn).setValue(decision);
