@@ -997,13 +997,23 @@ function getColumnMatcher(columnKey) {
     'email': ['email', 'البريد'],
     // normalizeHeader() folds أ/إ/آ into ا, so 'ادار' matches الادارة / الإدارة / إدارة
     'department': ['ادار', 'department', 'management'],
-    'isreserved': ['isreserved']
+    'isreserved': ['isreserved'],
+    // Unique per-submission ID added by the Apps Script (never shown).
+    'sid': ['submissionid']
   };
   return matchers[columnKey] || [];
 }
 
 function getColumnIndexByKey(columnKey) {
   return findColumnIndex(getColumnMatcher(columnKey));
+}
+
+// Unique ID of a submission (empty if the sheet has none yet).
+function getRowSubmissionId(row) {
+  const i = getColumnIndexByKey('sid');
+  if (i < 0) return '';
+  const v = row.values[i];
+  return String(v === null || v === undefined ? '' : v).trim();
 }
 
 function escapeHtml(value) {
@@ -1314,6 +1324,8 @@ let seenRowKeys = null; // null until the first load completes
 let newRowHighlights = {}; // rowKey -> timestamp when highlight ends
 
 function rowKey(row) {var _row$values$tsIdx;
+  const sid = getRowSubmissionId(row);
+  if (sid) return sid;
   const tsIdx = getColumnIndexByKey('timestamp');
   const ts = tsIdx >= 0 ? String((_row$values$tsIdx = row.values[tsIdx]) !== null && _row$values$tsIdx !== void 0 ? _row$values$tsIdx : '').trim() : '';
   return ts || row.values.join('|');
@@ -2114,15 +2126,14 @@ function applySheetResponse(response) {
   // headers/rows come straight from Apps Script's SpreadsheetApp.getValues(),
   // which returns the exact stored cell content (no gviz type inference,
   // so Arabic-Indic digit codes survive instead of being nulled out).
-  // Remember not-yet-saved "اقرب وقت" date picks by the row's timestamp, so a
-  // background refresh (or a purge that shifts row numbers) can't wipe or misplace them.
+  // Remember not-yet-saved "اقرب وقت" date picks by the row's unique submission
+  // ID (timestamps can repeat within a second), so a background refresh (or a
+  // purge that shifts row numbers) can't wipe or misplace them.
   const prevPicks = {};
-  const prevTsIdx = getColumnIndexByKey('timestamp');
-  if (prevTsIdx >= 0) {
-    clinicRows.forEach((r) => {var _r$values$prevTsIdx;
-      if (nearestTimeDates[r.sheetRow]) prevPicks[String((_r$values$prevTsIdx = r.values[prevTsIdx]) !== null && _r$values$prevTsIdx !== void 0 ? _r$values$prevTsIdx : '').trim()] = nearestTimeDates[r.sheetRow];
-    });
-  }
+  clinicRows.forEach((r) => {
+    const sid = getRowSubmissionId(r);
+    if (sid && nearestTimeDates[r.sheetRow]) prevPicks[sid] = nearestTimeDates[r.sheetRow];
+  });
 
   clinicColumns = (response.headers || []).map((label) => ({ label }));
   const reservedIndex = clinicColumns.findIndex(isReservedColumn);
@@ -2140,13 +2151,11 @@ function applySheetResponse(response) {
   });
 
   nearestTimeDates = {};
-  const newTsIdx = getColumnIndexByKey('timestamp');
-  if (newTsIdx >= 0) {
-    clinicRows.forEach((r) => {var _r$values$newTsIdx;
-      const pick = prevPicks[String((_r$values$newTsIdx = r.values[newTsIdx]) !== null && _r$values$newTsIdx !== void 0 ? _r$values$newTsIdx : '').trim()];
-      if (pick && r.isReserved !== 'y' && r.isReserved !== 'n') nearestTimeDates[r.sheetRow] = pick;
-    });
-  }
+  clinicRows.forEach((r) => {
+    const sid = getRowSubmissionId(r);
+    const pick = sid ? prevPicks[sid] : '';
+    if (pick && r.isReserved !== 'y' && r.isReserved !== 'n') nearestTimeDates[r.sheetRow] = pick;
+  });
 
   trackNewRows();
   populateDaySelect(); // must run before rendering: the table filters by it
@@ -2486,8 +2495,15 @@ async function updateSheetDecisionOnce(row, decision, chosenDateIso) {
     const url = new URL(SHEET_UPDATE_WEB_APP_URL);
     url.searchParams.set('rowNumber', row.sheetRow);
     url.searchParams.set('isReserved', decision);
-    // Row numbers shift when old rows are purged, so also send the row's
-    // submission timestamp; the backend refuses the write if it no longer matches.
+    // Row numbers shift when old rows are purged and timestamps can repeat, so
+    // the backend finds the row by its unique submission ID. The timestamp is
+    // still sent as an extra check.
+    const sid = getRowSubmissionId(row);
+    if (!sid) {
+      reject(new Error(t('This record has no ID yet. Please refresh the page and try again.', 'هذا السجل ليس له معرّف بعد. برجاء تحديث الصفحة والمحاولة مرة أخرى.')));
+      return;
+    }
+    url.searchParams.set('sid', sid);
     const tsIdx = getColumnIndexByKey('timestamp');
     url.searchParams.set('ts', String(tsIdx >= 0 ? row.values[tsIdx] : (_row$values$ = row.values[0]) !== null && _row$values$ !== void 0 ? _row$values$ : '').trim());
     // When the patient chose "اقرب وقت", also write the admin-picked
