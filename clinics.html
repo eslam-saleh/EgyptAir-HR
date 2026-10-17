@@ -1242,6 +1242,8 @@ function renderClinicsTable() {
 
   tableBody.innerHTML = rowsToRender.map((row) => {
     const decided = row.isReserved === 'y' || row.isReserved === 'n';
+    const saving = savingKeys.has(row.key);
+    const locked = decided || saving;
     const dateIndex = getColumnIndexByKey('date');
     const needsDatePick = activeTab === 'dated' && isNearestTimeValue(row.values[dateIndex]);
     const valuesHtml = orderedColumns.map((item) => {
@@ -1262,7 +1264,7 @@ function renderClinicsTable() {
         return `<td>
               <div class="nearest-time-cell">
                 <span class="nearest-time-label">${escapeHtml(NEAREST_TIME_VALUE)}</span>
-                <input type="date" class="nearest-time-input" data-sheet-row="${row.sheetRow}" value="${escapeHtml(chosen)}" min="${min}" max="${max}" ${decided ? 'disabled' : ''} aria-label="${t('Pick a date for this patient', 'اختر تاريخاً لهذا المريض')}">
+                <input type="date" class="nearest-time-input" data-sheet-row="${row.sheetRow}" value="${escapeHtml(chosen)}" min="${min}" max="${max}" ${locked ? 'disabled' : ''} aria-label="${t('Pick a date for this patient', 'اختر تاريخاً لهذا المريض')}">
               </div>
             </td>`;
       }
@@ -1273,21 +1275,21 @@ function renderClinicsTable() {
     }).join('');
 
     const confirmBlocked = needsDatePick && !nearestTimeDates[row.sheetRow];
-    const confirmDisabled = decided || confirmBlocked;
+    const confirmDisabled = locked || confirmBlocked;
     const confirmTitle = confirmBlocked ? t('Pick a date for this patient first', 'اختر تاريخاً لهذا المريض أولاً') : '';
 
     const hlUntil = newRowHighlights[rowKey(row)] || 0;
     const hlLeft = hlUntil - Date.now();
     const hlStyle = hlLeft > 0 ? ` style="--hl-delay:${(hlLeft - 3000) / 1000}s"` : '';
     const hlClass = hlLeft > 0 ? ' new-row' : '';
-    let rowHtml = `<tr class="${decided ? 'decided' : ''}${hlClass}"${hlStyle} data-sheet-row="${row.sheetRow}">${valuesHtml}<td><span class="status-badge ${escapeHtml(row.isReserved)}">${decisionLabel(row.isReserved)}</span></td>`;
+    let rowHtml = `<tr class="${decided ? 'decided' : ''}${hlClass}"${hlStyle} data-sheet-row="${row.sheetRow}">${valuesHtml}<td><span class="status-badge ${escapeHtml(row.isReserved)}">${saving ? t('Saving...', 'جارٍ الحفظ...') : decisionLabel(row.isReserved)}</span></td>`;
     if (isAdmin) {
       rowHtml += `
             <td class="decision-cell">
               <button class="decision-btn confirm" type="button" data-decision="y" data-sheet-row="${row.sheetRow}" ${confirmDisabled ? 'disabled' : ''} title="${escapeHtml(confirmTitle)}" aria-label="${t('Confirm reservation', 'تأكيد الحجز')}">✅</button>
             </td>
             <td class="decision-cell">
-              <button class="decision-btn deny" type="button" data-decision="n" data-sheet-row="${row.sheetRow}" ${decided ? 'disabled' : ''} aria-label="${t('Deny reservation', 'رفض الحجز')}">❌</button>
+              <button class="decision-btn deny" type="button" data-decision="n" data-sheet-row="${row.sheetRow}" ${locked ? 'disabled' : ''} aria-label="${t('Deny reservation', 'رفض الحجز')}">❌</button>
             </td>
           `;
     }
@@ -2249,13 +2251,23 @@ const LIVE_IDLE_AFTER_MS = 120000;
 let lastActivityAt = Date.now();
 let lastSheetSignature = '';
 let liveRefreshBusy = false;
-let isSavingDecision = false; // true only while a confirm/deny is being saved
+// Decisions are saved in the background, so several can be in flight at
+// once. savingKeys = rows whose decision has not been saved yet.
+const savingKeys = new Set();
+// Sheet writes run one after another (the Apps Script lock handles one
+// write at a time anyway), while the admin keeps clicking other rows.
+let saveChain = Promise.resolve();
+function enqueueSheetSave(task) {
+  return new Promise((resolve, reject) => {
+    saveChain = saveChain.then(() => task().then(resolve, reject));
+  });
+}
 
 async function liveRefreshSheet() {var _document$activeEleme;
   if (liveRefreshBusy || isLoadingSheet || document.hidden) return;
   if ((_document$activeEleme = document.activeElement) !== null && _document$activeEleme !== void 0 && _document$activeEleme.classList.contains('nearest-time-input')) return; // user is typing a date
   if (typeof resultsPanel === 'undefined' || resultsPanel.classList.contains('hidden')) return;
-  if (isSavingDecision) return; // a decision is being saved
+  if (savingKeys.size) return; // decisions are being saved
   liveRefreshBusy = true;
   const startedId = latestSheetRequestId;
   try {var _document$activeEleme2;
@@ -2264,7 +2276,7 @@ async function liveRefreshSheet() {var _document$activeEleme;
     if (!response || response.ok === false) return;
     const signature = JSON.stringify([response.headers, response.rows]);
     if (signature === lastSheetSignature) return; // nothing new
-    if (isSavingDecision) return;
+    if (savingKeys.size) return;
     if ((_document$activeEleme2 = document.activeElement) !== null && _document$activeEleme2 !== void 0 && _document$activeEleme2.classList.contains('nearest-time-input')) return;
     applySheetResponse(response);
     lastActivityAt = Date.now(); // new data arrived: stay on the fast schedule
@@ -2555,7 +2567,7 @@ async function decideReservation(button) {
   const decision = button.dataset.decision;
   const row = clinicRows.find((item) => item.sheetRow === rowNumber);
   if (!row || row.isReserved === 'y' || row.isReserved === 'n') return;
-  if (isSavingDecision) return;
+  if (savingKeys.has(row.key)) return; // this row is already being saved
 
   const dateIndex = getColumnIndexByKey('date');
   const isNearest = !isNoDateClinic(row) && isNearestTimeValue(row.values[dateIndex]);
@@ -2579,9 +2591,11 @@ async function decideReservation(button) {
     if (!ok) return;
   }
 
-  isSavingDecision = true;
-  const rowButtons = tableBody.querySelectorAll(`[data-sheet-row="${rowNumber}"] .decision-btn`);
-  rowButtons.forEach((item) => {item.disabled = true;});
+  // Lock only THIS row; the admin can keep deciding other rows meanwhile.
+  const rowKeyValue = row.key;
+  const whoLabel = getRowValue(row, ['الاسم', 'name']) || '';
+  savingKeys.add(rowKeyValue);
+  renderClinicsTable();
   setStatus(tableStatus, decision === 'y' ?
   t('Confirming reservation...', 'جارٍ تأكيد الحجز...') :
   t('Denying reservation...', 'جارٍ رفض الحجز...')
@@ -2593,12 +2607,17 @@ async function decideReservation(button) {
     // retry can never send the same email twice.
     // Persist the admin-picked date for "اقرب وقت" rows so inquiries
     // after a reload still show the real date instead of the placeholder.
-    await updateSheetDecision(row, decision, isNearest && chosenIso ? chosenIso : null);
-    row.isReserved = decision;
-    if (isNearest && chosenIso && dateIndex >= 0) {
-      row.values[dateIndex] = formatArabicDateWithWeekday(chosenIso);
-      delete nearestTimeDates[rowNumber];
-    }
+    await enqueueSheetSave(() => updateSheetDecision(row, decision, isNearest && chosenIso ? chosenIso : null));
+    savingKeys.delete(rowKeyValue);
+    // A table reload may have replaced the row objects while we were
+    // saving, so update the current copy (found by key) as well.
+    const liveRow = clinicRows.find((item) => item.key === rowKeyValue);
+    [row, liveRow].forEach((r) => {
+      if (!r) return;
+      r.isReserved = decision;
+      if (isNearest && chosenIso && dateIndex >= 0) r.values[dateIndex] = formatArabicDateWithWeekday(chosenIso);
+    });
+    if (isNearest && chosenIso) delete nearestTimeDates[rowNumber];
     renderClinicsTable();
     // The decision is saved. Now send / prepare the email; a failure here must not look like a failed save.
     // emailResult: 'sent' | 'manual' (mail app opened, admin must press send) | 'none' | 'failed'
@@ -2629,13 +2648,14 @@ async function decideReservation(button) {
     t('Reservation denied, but the email could not be sent — please contact the patient manually.', 'تم رفض الحجز، لكن تعذر إرسال البريد الإلكتروني — برجاء التواصل مع المريض يدوياً.') :
     t('Reservation denied (no email on file, nothing sent).', 'تم رفض الحجز (لا يوجد بريد إلكتروني، لم يتم إرسال رسالة).')
     );
-    (_window$showToast14 = (_window14 = window).showToast) === null || _window$showToast14 === void 0 ? void 0 : _window$showToast14.call(_window14, tableStatus.textContent, 'info');
+    (_window$showToast14 = (_window14 = window).showToast) === null || _window$showToast14 === void 0 ? void 0 : _window$showToast14.call(_window14, (whoLabel ? whoLabel + ': ' : '') + tableStatus.textContent, 'info');
   } catch (error) {var _window$showToast15, _window15;
-    rowButtons.forEach((item) => {item.disabled = false;});
+    savingKeys.delete(rowKeyValue);
+    renderClinicsTable(); // re-enable this row's buttons
     setStatus(tableStatus, error.message || t('Action failed.', 'فشل تنفيذ الإجراء.'), true);
-    (_window$showToast15 = (_window15 = window).showToast) === null || _window$showToast15 === void 0 ? void 0 : _window$showToast15.call(_window15, tableStatus.textContent, 'error');
+    (_window$showToast15 = (_window15 = window).showToast) === null || _window$showToast15 === void 0 ? void 0 : _window$showToast15.call(_window15, (whoLabel ? whoLabel + ': ' : '') + tableStatus.textContent, 'error');
   } finally {
-    isSavingDecision = false;
+    savingKeys.delete(rowKeyValue);
   }
 }
 
