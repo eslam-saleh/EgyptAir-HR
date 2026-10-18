@@ -116,3 +116,90 @@
     setTimeout(() => toast.remove(), 4000);
   };
 }());
+
+/* ── Fun plane game (ES5, no dependencies, works on old browsers) ── */
+(function () {
+  var SVG_PLANE = '<svg viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true">' +
+    '<path fill="currentColor" d="M62 30c0-2-3-4-6-4H41L26 6c-.4-.6-1-1-1.8-1h-3.6c-1 0-1.600.9-1.300 1.800L25 26H12l-5-7c-.4-.6-1-1-1.800-1H3c-1 0-1.500.9-1.200 1.800L5 30l-3.200 10.200C1.500 41.100 2 42 3 42h2.200c.7 0 1.400-.4 1.800-1l5-7h13l-4.700 19.200c-.3.9.3 1.800 1.300 1.800h3.600c.7 0 1.400-.4 1.800-1l15-20h15c3 0 6-2 6-4z"/></svg>';
+
+  var raf = window.requestAnimationFrame || window.webkitRequestAnimationFrame ||
+    window.mozRequestAnimationFrame || function (cb) { return window.setTimeout(function () { cb(new Date().getTime()); }, 16); };
+
+  function now() { return new Date().getTime(); }
+  function rand(min, max) { return min + Math.random() * (max - min); }
+
+  var sky = null;
+
+  function getSky() {
+    if (!sky) {
+      sky = document.createElement('div');
+      sky.className = 'plane-sky';
+      document.body.appendChild(sky);
+    }
+    return sky;
+  }
+
+  function flyPlane(delay) {
+    var layer = getSky();
+    var vw = document.documentElement.clientWidth || window.innerWidth || 1000;
+    var vh = document.documentElement.clientHeight || window.innerHeight || 700;
+
+    var size = Math.round(rand(40, 90));
+    var baseTop = rand(30, Math.max(60, vh - size - 40));
+    var wobble = rand(8, 28);
+    var duration = rand(3200, 5200);
+    var startX = -(size + 100);
+    var endX = vw + 40;
+
+    var el = document.createElement('div');
+    el.className = 'plane-fly';
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.style.left = startX + 'px';
+    el.style.top = baseTop + 'px';
+    el.style.display = 'none';
+    el.innerHTML = '<span class="plane-trail"></span>' + SVG_PLANE;
+    layer.appendChild(el);
+
+    var startTime = now() + delay;
+
+    function step() {
+      var t = now() - startTime;
+      if (t < 0) { raf(step); return; }
+      if (t === 0 || el.style.display === 'none') { el.style.display = 'block'; }
+      var p = t / duration;
+      if (p >= 1) {
+        if (el.parentNode) { el.parentNode.removeChild(el); }
+        return;
+      }
+      el.style.left = Math.round(startX + (endX - startX) * p) + 'px';
+      el.style.top = Math.round(baseTop + Math.sin(p * Math.PI * 3) * wobble) + 'px';
+      raf(step);
+    }
+    raf(step);
+  }
+
+  function launchPlanes() {
+    var count = 6;
+    for (var i = 0; i < count; i++) {
+      flyPlane(i * 280 + rand(0, 200));
+    }
+  }
+
+  function init() {
+    var btn = document.getElementById('planeBtn');
+    if (!btn) { return; }
+    var handler = function (e) {
+      if (e && e.preventDefault) { e.preventDefault(); }
+      launchPlanes();
+    };
+    if (btn.addEventListener) { btn.addEventListener('click', handler, false); }
+    else if (btn.attachEvent) { btn.attachEvent('onclick', handler); }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+}());

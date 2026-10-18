@@ -755,3 +755,98 @@ html[dir="rtl"] .toast {
     gap: 8px;
   }
 }
+
+/* ── Fun plane game ── */
+.hero-title-row {
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -ms-flex-wrap: wrap;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.hero-title-row h1 {
+  margin: 0;
+}
+
+.fun-plane-btn {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  -webkit-box-pack: center;
+  -ms-flex-pack: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0; border: 1px solid var(--line);
+  border-radius: 50%;
+  background: #ffffff; background: var(--surface);
+  color: #123b73; color: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  -webkit-transition: -webkit-transform 0.2s ease;
+  transition: transform 0.2s ease;
+}
+
+.fun-plane-btn:hover {
+  -webkit-transform: translateY(-2px) rotate(-12deg);
+  transform: translateY(-2px) rotate(-12deg);
+}
+
+.fun-plane-btn:active {
+  -webkit-transform: scale(0.92);
+  transform: scale(0.92);
+}
+
+.fun-plane-btn svg {
+  display: block;
+}
+
+.plane-sky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 2000;
+  pointer-events: none;
+}
+
+.plane-fly {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #123b73;
+  line-height: 0;
+  filter: drop-shadow(0 6px 4px rgba(0, 0, 0, 0.25));
+}
+
+.plane-fly svg {
+  display: block;
+}
+
+.plane-trail {
+  position: absolute;
+  right: 92%;
+  top: 50%;
+  width: 90px;
+  height: 3px;
+  margin-top: -1px;
+  border-radius: 3px;
+  background: #ffffff;
+  background: -webkit-linear-gradient(right, rgba(255,255,255,0.9), rgba(255,255,255,0));
+  background: linear-gradient(to left, rgba(120,140,170,0.55), rgba(120,140,170,0));
+}
+
+:root[data-theme="dark"] .plane-fly {
+  color: #74b8ff;
+}
