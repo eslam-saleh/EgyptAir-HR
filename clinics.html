@@ -1165,6 +1165,9 @@ function columnsForTab(tab) {
   for (const columnKey of COLUMN_ORDER) {
     if (columnKey === 'isreserved') continue; // handled separately (Status)
     if (tab === 'nodate' && columnKey === 'date') continue;
+    // Timestamp stays in the data (day filter, row keys, exports, backend
+    // matching) but is not displayed in the table to save horizontal space.
+    if (columnKey === 'timestamp') continue;
     const index = getColumnIndexByKey(columnKey);
     if (index >= 0) columns.push({ index, column: clinicColumns[index], key: columnKey });
   }
