@@ -2939,7 +2939,7 @@ function appointmentReportModel(list, mode = reportMode) {
     const sector = clean(emp.currentSector) || (lang() === 'ar' ? 'بدون قطاع' : 'No sector');
     const dept = clean(emp.currentGeneralDepartment) || (lang() === 'ar' ? 'بدون اداره عامه' : 'No department');
     const type = mode === 'job' ?
-    clean(emp.jobTitle) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified') :
+    clean(emp.statisticsJob) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified') :
     normalizeAppointmentType(emp.appointmentType) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified');
     if (!tree[sector]) tree[sector] = {};
     if (!tree[sector][dept]) tree[sector][dept] = {};
