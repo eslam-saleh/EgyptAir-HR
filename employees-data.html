@@ -1304,7 +1304,7 @@
           <h1 id="pageTitle" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</h1>
           <p id="pageSubtitle" data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p>
         </div>
-        <div class="actions"><button class="btn" id="reportBtn" type="button" data-en="Appointment report" data-ar="تقرير نوع التعيين">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
+        <div class="actions"><button class="btn" id="jobReportBtn" type="button" data-en="Jobs report" data-ar="تقرير الوظائف">Jobs report</button><button class="btn" id="reportBtn" type="button" data-en="Appointment report" data-ar="تقرير نوع التعيين">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
       </section>
       <div class="view-tabs" role="tablist" aria-label="Employee view">
         <button type="button" class="view-tab active" id="viewActiveBtn" data-view="active" role="tab" aria-selected="true" data-en="Active employees" data-ar="الموظفون النشطون">Active employees</button>
@@ -1998,6 +1998,7 @@ function setLoading(loading) {
   $('refreshBtn').disabled = loading;
   $('newBtn').disabled = loading || state.view === 'retired' || !state.canEdit;
   $('reportBtn').disabled = loading;
+  if ($('jobReportBtn')) $('jobReportBtn').disabled = loading;
   if ($('exportFilteredBtn')) $('exportFilteredBtn').disabled = loading;
   const activeTab = $('viewActiveBtn');
   const retiredTab = $('viewRetiredBtn');
@@ -2026,6 +2027,7 @@ function applyViewChrome() {var _$, _$2, _$3, _$4;
   if ($('newBtn')) $('newBtn').hidden = isRetired || !state.canEdit;
   applyHistoryVisibility();
   if ($('reportBtn')) $('reportBtn').hidden = isRetired;
+  if ($('jobReportBtn')) $('jobReportBtn').hidden = isRetired;
   const subtitle = $('pageSubtitle');
   if (subtitle) {
     subtitle.textContent = isRetired ? t('subtitleRetired') : t('subtitleActive');
@@ -2921,7 +2923,8 @@ function normalizeAppointmentType(value) {
 }
 
 /** sector → department → appointment-type counts, in display order (shared by the popup and the Excel export). */
-function appointmentReportModel(list) {
+let reportMode = 'appointment'; // 'appointment' | 'job'
+function appointmentReportModel(list, mode = reportMode) {
   const typeOrder = [
   'تثبيت',
   'تعاقد بعد سن الستين',
@@ -2935,12 +2938,14 @@ function appointmentReportModel(list) {
   list.forEach((emp) => {
     const sector = clean(emp.currentSector) || (lang() === 'ar' ? 'بدون قطاع' : 'No sector');
     const dept = clean(emp.currentGeneralDepartment) || (lang() === 'ar' ? 'بدون اداره عامه' : 'No department');
-    const type = normalizeAppointmentType(emp.appointmentType) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified');
+    const type = mode === 'job' ?
+    clean(emp.jobTitle) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified') :
+    normalizeAppointmentType(emp.appointmentType) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified');
     if (!tree[sector]) tree[sector] = {};
     if (!tree[sector][dept]) tree[sector][dept] = {};
     tree[sector][dept][type] = (tree[sector][dept][type] || 0) + 1;
   });
-  const allTypes = [...typeOrder];
+  const allTypes = mode === 'job' ? [] : [...typeOrder];
   Object.values(tree).forEach((depts) => {
     Object.values(depts).forEach((counts) => {
       Object.keys(counts).forEach((type) => {
@@ -2948,6 +2953,7 @@ function appointmentReportModel(list) {
       });
     });
   });
+  if (mode === 'job') allTypes.sort((a, b) => a.localeCompare(b, 'ar'));
   const rows = Object.keys(tree).sort((a, b) => a.localeCompare(b, 'ar')).map((sector) => ({
     sector,
     depts: Object.keys(tree[sector]).sort((a, b) => a.localeCompare(b, 'ar')).map((dept) => ({ dept, counts: tree[sector][dept] }))
@@ -2980,7 +2986,15 @@ function buildAppointmentReport(list) {
   return `<table class="report-table"><thead>${head}</thead><tbody>${body}</tbody></table>`;
 }
 
-function openAppointmentReport(opener) {
+function openAppointmentReport(opener, mode = 'appointment') {
+  reportMode = mode;
+  const ttl = $('reportTitle');
+  const ar0 = lang() === 'ar';
+  if (ttl) {
+    ttl.dataset.en = mode === 'job' ? 'Jobs by department' : 'Appointment type by department';
+    ttl.dataset.ar = mode === 'job' ? 'الوظائف حسب الإدارة' : 'نوع التعيين حسب الإدارة';
+    ttl.textContent = ar0 ? ttl.dataset.ar : ttl.dataset.en;
+  }
   const list = state.employees.length ? state.employees : [];
   $('reportBody').innerHTML = list.length ?
   buildAppointmentReport(list) :
@@ -3474,7 +3488,7 @@ async function exportAppointmentReport() {
     const wb = new ExcelJS.Workbook();
     wb.creator = 'EgyptAir Work Tools';
     wb.created = new Date();
-    const ws = wb.addWorksheet(ar ? 'تقرير نوع التعيين' : 'Appointment report', {
+    const ws = wb.addWorksheet(reportMode === 'job' ? ar ? 'تقرير الوظائف' : 'Jobs report' : ar ? 'تقرير نوع التعيين' : 'Appointment report', {
       views: [{ rightToLeft: true, showGridLines: false, state: 'frozen', xSplit: 1, ySplit: 3 }],
       properties: { tabColor: { argb: argb(BLUE) } },
       pageSetup: { orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '3:3' }
@@ -3495,7 +3509,7 @@ async function exportAppointmentReport() {
     ws.mergeCells(1, 1, 1, lastCol);
     for (let c = 1; c <= lastCol; c++) ws.getCell(1, c).fill = solid(NAVY);
     const title = ws.getCell(1, 1);
-    title.value = ar ? 'نوع التعيين حسب الإدارة' : 'Appointment type by department';
+    title.value = reportMode === 'job' ? ar ? 'الوظائف حسب الإدارة' : 'Jobs by department' : ar ? 'نوع التعيين حسب الإدارة' : 'Appointment type by department';
     title.font = font({ size: 18, bold: true, color: { argb: 'FFFFFFFF' } });
     title.alignment = { horizontal: 'center', vertical: 'middle', readingOrder };
     ws.getRow(1).height = 38;
@@ -3646,8 +3660,8 @@ async function exportAppointmentReport() {
       cell.border = borderAll(gridColor);
     });
 
-    await saveWorkbook(wb, `appointment-report-${localStamp()}.xlsx`);
-    toast(ar ? 'تم تنزيل تقرير نوع التعيين.' : 'Appointment report downloaded.', 'success');
+    await saveWorkbook(wb, `${reportMode === 'job' ? 'jobs' : 'appointment'}-report-${localStamp()}.xlsx`);
+    toast(reportMode === 'job' ? ar ? 'تم تنزيل تقرير الوظائف.' : 'Jobs report downloaded.' : ar ? 'تم تنزيل تقرير نوع التعيين.' : 'Appointment report downloaded.', 'success');
   } catch (err) {
     console.error(err);
     toast((ar ? 'فشل التصدير: ' : 'Export failed: ') + (err.message || err), 'error');
@@ -3867,7 +3881,8 @@ function initEvents() {var _$16, _$17, _$18, _$19, _$20, _$21, _$22, _$23, _$24,
   $('refreshBtn').addEventListener('click', () => load({
     quiet: false
   }));
-  $('reportBtn').addEventListener('click', (event) => openAppointmentReport(event.currentTarget));
+  $('reportBtn').addEventListener('click', (event) => openAppointmentReport(event.currentTarget, 'appointment'));
+  $('jobReportBtn').addEventListener('click', (event) => openAppointmentReport(event.currentTarget, 'job'));
   (_$22 = $('reportDownloadBtn')) === null || _$22 === void 0 ? void 0 : _$22.addEventListener('click', exportAppointmentReport);
   (_$23 = $('hireToday')) === null || _$23 === void 0 ? void 0 : _$23.addEventListener('click', () => {
     const input = $('hireTo');
