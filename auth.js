@@ -176,7 +176,7 @@
   var allowed = !!session && (!needed || can(needed));
   window.PortalAuth.allowed = allowed;
 
-  /* ---------- allowed: hide links the person may not use, add Sign-out ---------- */
+  /* ---------- allowed: hide the links this person may not use ---------- */
   if (allowed) {
     var hide = '';
     ['c', 't', 'v'].forEach(function (r) {
@@ -187,19 +187,6 @@
       st.appendChild(document.createTextNode(hide));
       document.head.appendChild(st);
     }
-    document.addEventListener('DOMContentLoaded', function () {
-      var bar = document.querySelector('.portal-actions');
-      if (!bar) return;
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'theme-btn';
-      b.setAttribute('data-en', 'Sign out');
-      b.setAttribute('data-ar', 'تسجيل الخروج');
-      b.textContent = 'Sign out';
-      b.title = session.c;
-      b.addEventListener('click', window.PortalAuth.logout);
-      bar.appendChild(b);
-    });
     return;
   }
 
