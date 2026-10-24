@@ -24,7 +24,7 @@
   const LANGUAGE_KEY = 'egyptairPortal:language';
   const THEME_KEY = 'egyptairPortal:theme';
 
-  const savedLanguage = store.get(LANGUAGE_KEY) || store.get('holidayPlanner:language') || 'en';
+  const savedLanguage = store.get(LANGUAGE_KEY) || store.get('holidayPlanner:language') || 'ar';
   const savedTheme = store.get(THEME_KEY) || 'light';
 
   function setLanguage(language) {
@@ -60,7 +60,7 @@
     document.documentElement.dataset.theme = nextTheme;
 
     document.querySelectorAll('[data-theme-toggle]').forEach((button) => {
-      const lang = store.get(LANGUAGE_KEY) || 'en';
+      const lang = store.get(LANGUAGE_KEY) || 'ar';
       const lightLabel = lang === 'ar' ? 'فاتح' : 'Light';
       const darkLabel = lang === 'ar' ? 'داكن' : 'Dark';
       button.textContent = nextTheme === 'dark' ? lightLabel : darkLabel;
@@ -89,7 +89,7 @@
 
   window.EgyptAirPortal = {
     get language() {
-      return store.get(LANGUAGE_KEY) || 'en';
+      return store.get(LANGUAGE_KEY) || 'ar';
     },
     setLanguage,
     setTheme

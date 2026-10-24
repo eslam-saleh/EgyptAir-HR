@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr" data-theme="light">
+<html lang="ar" dir="rtl" data-theme="light">
 <head>
     <meta charset="UTF-8">
   <script src="auth.js"></script>
@@ -51,9 +51,9 @@
         </nav>
 
         <div class="portal-actions" aria-label="Display controls">
-            <button class="segmented-btn active" type="button" data-lang-option="en">EN</button>
-            <button class="segmented-btn" type="button" data-lang-option="ar">AR</button>
-            <button class="theme-btn" type="button" data-theme-toggle data-en="Dark" data-ar="داكن">Dark</button>
+            <button class="segmented-btn" type="button" data-lang-option="en">EN</button>
+            <button class="segmented-btn active" type="button" data-lang-option="ar">AR</button>
+            <button class="theme-btn" type="button" data-theme-toggle data-en="Dark" data-ar="داكن">داكن</button>
         </div>
     </header>
 
@@ -260,7 +260,7 @@ const DEFAULT_BALANCE = 21;
 const DEFAULT_EMERGENCY = 7;
 const STORAGE_KEY = `holidayPlanner:${CALENDAR_YEAR}`;
 
-let currentLanguage = localStorage.getItem('egyptairPortal:language') || localStorage.getItem('holidayPlanner:language') || 'en';
+let currentLanguage = localStorage.getItem('egyptairPortal:language') || localStorage.getItem('holidayPlanner:language') || 'ar';
 let annualBalance = DEFAULT_BALANCE;
 let emergencyBalance = DEFAULT_EMERGENCY;
 /** Day-of-week indices (0=Sun..6=Sat) treated as the weekend. Egypt default: Fri & Sat. */
