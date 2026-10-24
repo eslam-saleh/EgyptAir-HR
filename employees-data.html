@@ -2,6 +2,7 @@
 <html lang="en" dir="ltr" data-theme="light">
   <head>
     <meta charset="utf-8">
+  <script src="auth.js" data-page="employees"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="EgyptAir employee directory and workforce overview.">
     <title>Employee Data | EgyptAir Work Tools</title>
@@ -1279,23 +1280,8 @@
     </script>
 </head>
   <body>
-    <section class="access-gate" id="accessGate" aria-labelledby="accessTitle">
-      <div class="access-card">
-        <p class="eyebrow" data-en="Employee directory" data-ar="دليل الموظفين">Employee directory</p>
-        <h1 id="accessTitle" data-en="Employee data access" data-ar="الدخول إلى بيانات الموظفين">Employee data access</h1>
-        <p data-en="Enter the password to unlock the employee directory." data-ar="أدخل كلمة المرور لفتح دليل الموظفين.">Enter the password to unlock the employee directory.</p>
-        <form class="access-form" id="accessForm">
-          <div class="access-field">
-            <label for="accessPassword" data-en="Password" data-ar="كلمة المرور">Password</label>
-            <input id="accessPassword" name="password" type="password" autocomplete="current-password" inputmode="numeric" required autofocus>
-          </div>
-          <button class="primary-btn" type="submit" data-en="Unlock" data-ar="فتح">Unlock</button>
-        </form>
-        <p class="access-error status-line" id="accessError" role="alert" aria-live="polite"></p>
-      </div>
-    </section>
     <header class="portal-header"><a class="brand" href="index.html" aria-label="EgyptAir home"><img src="egyptair-logo_.png" alt="EgyptAir logo"><span><strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong><small data-en="Human Resources Management" data-ar="إدارة الموارد البشرية">Human Resources Management</small></span></a>
-      <nav class="portal-nav" aria-label="Main navigation"><a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a><a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a><a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a><a href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a><a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a><a class="active" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a><a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">Penalties & Salaries</a><a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a></nav>
+      <nav class="portal-nav" aria-label="Main navigation"><a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a><a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a><a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a><a data-requires="c" href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a><a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a><a data-requires="v" class="active" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a><a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">Penalties & Salaries</a><a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a><a data-requires="t" href="tagging.html" data-en="Countdown" data-ar="العد التنازلي">Countdown</a></nav>
       <div class="portal-actions" aria-label="Display controls"><button class="segmented-btn active" type="button" data-lang-option="en">EN</button><button class="segmented-btn" type="button" data-lang-option="ar">AR</button><button class="theme-btn" type="button" data-theme-toggle>Dark</button></div>
     </header>
     <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="true"></div>
@@ -1471,24 +1457,6 @@
 /* API_TOKEN is only a compatibility fallback. For HR data, restrict the Apps Script deployment and use its email allowlist. */
 const API_URL = 'https://script.google.com/macros/s/AKfycbzoF2Cpp1bG18ZbZcHTTafFFhkTD6mZi7BIw_a0iEtqwBS1k2oDxDetGd3p8Jk30CVb/exec';
 const API_TOKEN = '';
-/* All of these unlock the directory. EDITOR_PASSWORD_HASHES enable Add / Edit / Move to retired. */
-const UNLOCK_PASSWORD_HASHES = new Set([
-'3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb', // 42554 — full edit
-'a8c855fbaeaf16e3f04d4352ff0e576a32a3dc4cbb07e310f6fdfb61f6c28cce', // 86942 — full edit
-'3f64a7f4dd53bb20cfbc148d34d8bf866c5f8728da9dce2066be0e3e408c612e', // 42069 — view only
-'d073e341e454ce18f401d4dc19e7c72661eb45dd8bf1bc802cb8416ef71aa971', // 68224 — view only
-'492f431bae35265f2e5f4ed49bd8c58dda912431be561504846988d00d05d117' // 32000 — view only
-]);
-const EDITOR_PASSWORD_HASHES = new Set([
-'3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb', // 42554
-'a8c855fbaeaf16e3f04d4352ff0e576a32a3dc4cbb07e310f6fdfb61f6c28cce' // 86942
-]);
-/** Map editor password hash → short label stored in History "المختص". */
-const EDITOR_LABEL_BY_HASH = {
-  '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb': '42554',
-  'a8c855fbaeaf16e3f04d4352ff0e576a32a3dc4cbb07e310f6fdfb61f6c28cce': '86942'
-};
-const EDITOR_PASSWORD_HASH = '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb'; // legacy alias
 const $ = (id) => document.getElementById(id);
 const clean = (value) => String(value !== null && value !== void 0 ? value : '').trim();
 const normal = (value) => clean(value).toLocaleLowerCase('ar-EG');
@@ -1524,8 +1492,8 @@ const state = {
   loading: false,
   view: 'active', // 'active' | 'retired' — separate lists, never merged
   upcomingOnly: false, // date-period filter: retiring within 12 months
-  canEdit: false, // true when unlocked with an editor password (42554 or 86942)
-  editorLabel: '', // "42554" | "86942" | "" — who is logged in (for History المختص)
+  canEdit: false, // true when the signed-in code has edit rights (set in auth.js)
+  editorLabel: '', // the signed-in editor's code, or "" (stored in History المختص)
   sel: {}, // multi-select filters: control id -> Set of selected values
   history: { loaded: false, failed: false, count: 0, records: [] } // last-30-days log from the History sheet
 };
@@ -2009,7 +1977,7 @@ function setLoading(loading) {
 }
 
 /* "Latest modifications" card + popup: same rule as the Add / Edit buttons —
-   only editor passwords (42554 / 86942) see them. */
+   only editors see them. */
 function applyHistoryVisibility() {var _document$querySelect;
   const show = state.canEdit;
   if ($('historyStat')) $('historyStat').hidden = !show;
@@ -3139,60 +3107,15 @@ function formatFailure(prefixKey, error) {
   return `${t(prefixKey)} ${t('reason')}: ${reason}`;
 }
 
-async function sha256Hex(value) {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-async function unlockEmployeeData(event) {
-  event.preventDefault();
-  const input = $('accessPassword');
-  const error = $('accessError');
-  const button = event.submitter || $('accessForm').querySelector('button[type="submit"]');
-  error.textContent = '';
-  error.classList.remove('error');
-  button.disabled = true;
-  try {
-    const hash = await sha256Hex(input.value);
-    if (!UNLOCK_PASSWORD_HASHES.has(hash)) {
-      error.textContent = lang() === 'ar' ? 'كلمة المرور غير صحيحة.' : 'Incorrect password.';
-      error.classList.add('error');
-      input.select();
-      return;
-    }
-    state.canEdit = EDITOR_PASSWORD_HASHES.has(hash);
-    state.editorLabel = EDITOR_LABEL_BY_HASH[hash] || '';
-    __ss.setItem('employee-data-unlocked', hash);
-    __ss.setItem('employee-data-can-edit', state.canEdit ? '1' : '0');
-    __ss.setItem('employee-data-editor-label', state.editorLabel);
-    $('accessGate').hidden = true;
-    applyViewChrome();
-    setLoading(state.loading);
-    const loaded = await employeeDataLoadPromise;
-    if (!loaded) await load({ quiet: true });
-    if (state.canEdit) loadHistory();
-  } finally {
-    button.disabled = false;
-  }
-}
-
+/* Who may open this page (and who may edit) is decided once, in auth.js. */
 async function initAccessGate() {
-  $('accessForm').addEventListener('submit', unlockEmployeeData);
-  // Begin loading behind the access overlay so the directory is ready
-  // by the time the user finishes entering the password.
+  const auth = window.PortalAuth;
+  state.canEdit = !!(auth && auth.can('e'));
+  state.editorLabel = state.canEdit ? auth.code() : '';
+  applyViewChrome();
   employeeDataLoadPromise = load({ quiet: true });
-  const storedHash = __ss.getItem('employee-data-unlocked');
-  if (storedHash && UNLOCK_PASSWORD_HASHES.has(storedHash)) {
-    state.canEdit = __ss.getItem('employee-data-can-edit') === '1' || EDITOR_PASSWORD_HASHES.has(storedHash);
-    state.editorLabel = __ss.getItem('employee-data-editor-label') || EDITOR_LABEL_BY_HASH[storedHash] || '';
-    __ss.setItem('employee-data-can-edit', state.canEdit ? '1' : '0');
-    __ss.setItem('employee-data-editor-label', state.editorLabel);
-    $('accessGate').hidden = true;
-    applyViewChrome();
-    await employeeDataLoadPromise;
-    if (state.canEdit) loadHistory();
-  }
+  await employeeDataLoadPromise;
+  if (state.canEdit) loadHistory();
 }
 
 async function postEmployee(employee, isEdit) {

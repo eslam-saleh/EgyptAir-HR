@@ -124,8 +124,9 @@ textarea {
 
 .portal-nav {
   display: flex;
+  flex-wrap: wrap; /* all links stay reachable when a user has the extra pages (Clinics, Employee Data, Tagging) */
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   overflow-x: auto;
 }
@@ -135,11 +136,11 @@ textarea {
   min-height: 40px;
   display: inline-flex;
   align-items: center;
-  padding: 0 13px;
+  padding: 0 10px;
   border-radius: 6px;
   color: #4a5568; color: var(--muted);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   text-decoration: none;
   border: 1px solid transparent;
 }
@@ -674,6 +675,7 @@ html[dir="rtl"] .toast {
 
   .portal-nav {
     justify-content: flex-start;
+    flex-wrap: nowrap; /* phones/tablets: one scrolling row */
   }
 
   .portal-actions {

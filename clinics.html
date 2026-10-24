@@ -2,6 +2,7 @@
 <html lang="en" dir="ltr" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <script src="auth.js" data-page="clinics"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Clinics</title>
   <link rel="icon" href="egyptair-logo_.png" type="image/png">
@@ -572,10 +573,12 @@
       <a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a>
       <a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a>
       <a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a>
-      <a class="active" href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a>
+      <a data-requires="c" class="active" href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a>
       <a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a>
+      <a data-requires="v" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a>
       <a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">الجزاءات والمرتبات</a>
       <a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a>
+      <a data-requires="t" href="tagging.html" data-en="Countdown" data-ar="العد التنازلي">Countdown</a>
     </nav>
 
     <div class="portal-actions" aria-label="Display controls">
@@ -604,7 +607,7 @@
     <section class="panel-card admin-panel">
       <p class="eyebrow" data-en="Admin access & Inquiry" data-ar="دخول المسؤول والاستعلام">Admin access & Inquiry</p>
       <h2 data-en="Clinic reservation results" data-ar="نتائج حجوزات العيادات">Clinic reservation results</h2>
-      <p data-en="Enter the admin password to unlock full access and the patient ID inquiry." data-ar="أدخل كلمة مرور المسؤول لفتح الدخول الكامل واستعلام كود الموظف.">Enter the admin password to unlock full access and the patient ID inquiry.</p>
+      <p data-en="You are signed in with clinic access. Use the patient ID inquiry below." data-ar="تم تسجيل دخولك بصلاحية العيادات. استخدم استعلام كود الموظف بالأسفل.">You are signed in with clinic access. Use the patient ID inquiry below.</p>
 
       <form class="admin-form" id="adminForm">
         <div class="admin-field">
@@ -765,7 +768,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
   <script>
 const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
-const ADMIN_PASSWORD_HASH = 'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64';
 
 // Add as many EmailJS accounts as you want here. Each account needs its
 // OWN copy of the same template (same variable names: title, name, time,
@@ -2662,28 +2664,19 @@ async function decideReservation(button) {
   }
 }
 
-adminForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  setStatus(adminStatus, t('Checking password...', 'جارٍ التحقق من كلمة المرور...'));
-
-  // Convert Arabic numbers to English before hashing
-  const normalizedPassword = normalizeDigits(adminPassword.value);
-  const hash = await sha256Hex(normalizedPassword);
-  if (hash !== ADMIN_PASSWORD_HASH) {
-    setStatus(adminStatus, t('Incorrect password.', 'كلمة المرور غير صحيحة.'), true);
-    return;
-  }
-
-  adminPassword.value = '';
+// Access to this whole page is already limited by auth.js, so the admin panel opens by itself.
+function unlockAdminPanel() {
   isAdmin = true;
   filterPatientId = null;
   patientId.value = '';
   updateClearBtn();
+  adminForm.classList.add('hidden');
   inquiryForm.classList.remove('hidden');
   setStatus(adminStatus, t('Access granted.', 'تم السماح بالدخول.'));
   resultsPanel.classList.remove('hidden');
   loadClinicSheet();
-});
+}
+document.addEventListener('DOMContentLoaded', unlockAdminPanel);
 
 inquiryForm.addEventListener('submit', async (event) => {
   event.preventDefault();

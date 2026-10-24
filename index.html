@@ -2,6 +2,7 @@
 <html lang="en" dir="ltr" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <script src="auth.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EgyptAir Work Tools</title>
   <link rel="icon" href="egyptair-logo_.png" type="image/png">
@@ -24,10 +25,12 @@
       <a class="active" href="index.html" data-en="Home" data-ar="الرئيسية">Home</a>
       <a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a>
       <a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a>
-      <a href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a>
+      <a data-requires="c" href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a>
       <a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a>
+      <a data-requires="v" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a>
       <a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">الجزاءات والمرتبات</a>
       <a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a>
+      <a data-requires="t" href="tagging.html" data-en="Countdown" data-ar="العد التنازلي">Countdown</a>
     </nav>
 
     <div class="portal-actions" aria-label="Display controls">
@@ -65,7 +68,7 @@
         <p data-en="Calculate date differences, add or subtract days, check age, and count working days with the Egyptian weekend." data-ar="احسب الفروق بين التواريخ، وأضف أو اطرح الأيام، واحسب العمر، وعد أيام العمل مع عطلة نهاية الأسبوع المصرية.">Calculate date differences, add or subtract days, check age, and count working days with the Egyptian weekend.</p>
       </a>
 
-      <a class="tool-card" href="clinics.html">
+      <a class="tool-card" data-requires="c" href="clinics.html">
         <span class="tool-icon" aria-hidden="true">🏥</span>
         <h2 data-en="Clinics" data-ar="العيادات">Clinics</h2>
         <p data-en="Open the clinics section for employee medical services and clinic-related resources." data-ar="افتح قسم العيادات لخدمات الموظفين الطبية والموارد المتعلقة بالعيادات.">Open the clinics section for employee medical services and clinic-related resources.</p>
@@ -86,6 +89,18 @@
         <span class="tool-icon" aria-hidden="true">📷</span>
         <h2 data-en="Scanner" data-ar="ماسح ضوئي">Scanner</h2>
         <p data-en="Scan and digitize your documents quickly and easily." data-ar="امسح مستنداتك ضوئياً ورقمنتها بسرعة وسهولة.">Scan and digitize your documents quickly and easily.</p>
+      </a>
+    
+      <a class="tool-card" data-requires="v" href="employees-data.html">
+        <span class="tool-icon" aria-hidden="true">👥</span>
+        <h2 data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</h2>
+        <p data-en="Browse the employee directory, view workforce statistics and, with editor rights, update records." data-ar="تصفح دليل الموظفين، واعرض إحصائيات القوى العاملة، وحدّث السجلات إذا كانت لديك صلاحية التعديل.">Browse the employee directory, view workforce statistics and, with editor rights, update records.</p>
+      </a>
+
+      <a class="tool-card" data-requires="t" href="tagging.html">
+        <span class="tool-icon" aria-hidden="true">🏷️</span>
+        <h2 data-en="Countdown" data-ar="العد التنازلي">Countdown</h2>
+        <p data-en="Track your upcoming deadlines with a live countdown." data-ar="تابع مواعيدك القادمة بعدّ تنازلي مباشر.">Track your upcoming deadlines with a live countdown.</p>
       </a>
     </section>
   </main>

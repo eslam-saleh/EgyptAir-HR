@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="auth.js" data-page="login"></script>
+  <title>Sign in | EgyptAir Work Tools</title>
+  <link rel="icon" href="egyptair-logo_.png" type="image/png">
+  <style>
+    :root{--bg:#f4f7fb;--surface:#fff;--text:#1a202c;--muted:#4a5568;--line:#e2e8f0;--primary:#005daa;--danger:#c73636;--shadow:0 18px 42px rgba(18,59,115,.14)}
+    :root[data-theme="dark"]{--bg:#101722;--surface:#172234;--text:#edf4ff;--muted:#aab7ca;--line:#33445f;--primary:#74b8ff;--danger:#ff8a8a;--shadow:0 18px 44px rgba(0,0,0,.4)}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--bg);color:var(--text);font-family:Inter,"Segoe UI",Cairo,Arial,sans-serif}
+    .card{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px;text-align:center;box-shadow:var(--shadow)}
+    .card img{width:72px;height:auto;margin-bottom:8px}
+    h1{margin:6px 0 4px;font-size:1.3rem;line-height:1.5;color:var(--primary)}
+    p{margin:6px 0 0;color:var(--muted);line-height:1.7;font-size:.95rem}
+    form{display:grid;gap:10px;margin-top:18px}
+    input{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:1.05rem;text-align:center;letter-spacing:.12em}
+    input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,93,170,.18)}
+    button,a.btn{display:inline-block;min-height:44px;padding:11px 18px;border:0;border-radius:10px;background:var(--primary);color:#fff;font-weight:700;font-size:1rem;cursor:pointer;text-decoration:none;font-family:inherit}
+    html[data-theme="dark"] button,html[data-theme="dark"] a.btn{color:#0b1220}
+    button:disabled{opacity:.6;cursor:default}
+    .alt{background:transparent !important;color:var(--primary) !important;border:1px solid var(--line) !important;margin-top:10px}
+    .err{min-height:1.4em;margin-top:10px;color:var(--danger);font-weight:600;font-size:.92rem}
+    [hidden]{display:none !important}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img src="egyptair-logo_.png" alt="EgyptAir">
+
+    <section id="signin" hidden>
+      <h1>EgyptAir Work Tools<br>أدوات عمل مصر للطيران</h1>
+      <p>Enter your access code<br>أدخل كود الدخول الخاص بك</p>
+      <form id="form" autocomplete="off">
+        <input id="code" type="password" inputmode="numeric" autocomplete="current-password" aria-label="Access code" required>
+        <button id="go" type="submit">Unlock / فتح</button>
+      </form>
+      <p class="err" id="err" role="alert" aria-live="polite"></p>
+    </section>
+
+    <section id="denied" hidden>
+      <h1>No access to this page<br>ليس لديك صلاحية لهذه الصفحة</h1>
+      <p>Your code is not allowed to open this page.<br>الكود الخاص بك غير مصرح له بفتح هذه الصفحة.</p>
+      <div style="margin-top:18px"><a class="btn" href="index.html">Home / الرئيسية</a></div>
+      <button id="switch" class="alt" type="button">Sign in with another code / تسجيل الدخول بكود آخر</button>
+    </section>
+  </main>
+
+<script>
+(function () {
+  try { if (window.localStorage.getItem('egyptairPortal:theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch (e) {}
+
+  function param(name) {
+    var m = new RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : '';
+  }
+  var next = param('next');
+  if (!/^[A-Za-z0-9_-]+\.html$/.test(next) || next === 'login.html') next = 'index.html';   // same-site pages only
+  var denied = param('denied') === '1';
+
+  var signin = document.getElementById('signin');
+  var deniedBox = document.getElementById('denied');
+  var form = document.getElementById('form');
+  var code = document.getElementById('code');
+  var go = document.getElementById('go');
+  var err = document.getElementById('err');
+
+  function showSignin() { deniedBox.hidden = true; signin.hidden = false; try { code.focus(); } catch (e) {} }
+
+  if (PortalAuth.signedIn() && !denied) { window.location.replace(next); return; }
+  if (PortalAuth.signedIn() && denied) { deniedBox.hidden = false; } else { showSignin(); }
+
+  document.getElementById('switch').addEventListener('click', function () {
+    try { window.localStorage.removeItem('egyptairPortal:auth'); } catch (e) {}
+    denied = false;
+    showSignin();
+  });
+
+  form.addEventListener('submit', function (ev) {
+    ev.preventDefault();
+    go.disabled = true;
+    err.textContent = '';
+    PortalAuth.login(code.value).then(function (r) {
+      if (r.ok) { window.location.replace(next); return; }
+      if (r.wait) err.innerHTML = 'Too many attempts. Wait ' + r.wait + 's.<br>محاولات كثيرة، انتظر ' + r.wait + ' ثانية.';
+      else err.innerHTML = 'Incorrect code.<br>الكود غير صحيح.';
+      code.select();
+      go.disabled = false;
+    }, function () {
+      err.innerHTML = 'Your browser blocked the check (the site must use HTTPS).<br>المتصفح منع التحقق (يجب أن يكون الموقع HTTPS).';
+      go.disabled = false;
+    });
+  });
+}());
+</script>
+</body>
+</html>
