@@ -961,6 +961,7 @@
       .report-table-wrap {
         overflow: auto;
         max-height: 70vh;
+        overscroll-behavior: contain;
       }
 
       .report-table {
@@ -978,10 +979,11 @@
         white-space: nowrap;
       }
 
-      .report-table th {
+      .report-table thead th {
         position: sticky;
         top: 0;
-        z-index: 1;
+        z-index: 4;
+        box-shadow: 0 1px 0 #cbd5e0, 0 1px 0 var(--line);
         background: #eef3f8; background: var(--surface-2);
         color: #4a5568; color: var(--muted);
         font-weight: 800;
@@ -998,8 +1000,8 @@
         min-width: 180px;
       }
 
-      .report-table th.sticky-col {
-        z-index: 3;
+      .report-table thead th.sticky-col {
+        z-index: 5;
         background: #eef3f8; background: var(--surface-2);
       }
 
@@ -2922,6 +2924,18 @@ function normalizeAppointmentType(value) {
   return s;
 }
 
+/** Matching key for Arabic job names: ignores tatweel/diacritics, unifies alef, ى/ي, ة/ه and spacing. */
+function jobNameKey(value) {
+  return String(value == null ? '' : value).
+  normalize('NFC').
+  replace(/[\u0640\u064B-\u065F\u0670\u06D6-\u06ED]/g, '').
+  replace(/[\u0623\u0625\u0622\u0671]/g, '\u0627').
+  replace(/\u0649/g, '\u064A').
+  replace(/\u0629/g, '\u0647').
+  replace(/\s+/g, ' ').
+  trim();
+}
+
 /** sector → department → appointment-type counts, in display order (shared by the popup and the Excel export). */
 let reportMode = 'appointment'; // 'appointment' | 'job'
 function appointmentReportModel(list, mode = reportMode) {
@@ -2933,13 +2947,29 @@ function appointmentReportModel(list, mode = reportMode) {
   'عقد مؤقت ( موسمى )',
   'مكافأة شاملة'];
 
+  // Job mode: merge spelling variants; show the most common original spelling
+  const jobLabels = {};
+  if (mode === 'job') {
+    const variants = {};
+    list.forEach((emp) => {
+      const raw = clean(emp.statisticsJob);
+      if (!raw) return;
+      const key = jobNameKey(raw);
+      const v = variants[key] || (variants[key] = {});
+      v[raw] = (v[raw] || 0) + 1;
+    });
+    Object.keys(variants).forEach((key) => {
+      jobLabels[key] = Object.entries(variants[key]).sort((a, b) => b[1] - a[1])[0][0];
+    });
+  }
+
   // sector → department → type → count
   const tree = {};
   list.forEach((emp) => {
     const sector = clean(emp.currentSector) || (lang() === 'ar' ? 'بدون قطاع' : 'No sector');
     const dept = clean(emp.currentGeneralDepartment) || (lang() === 'ar' ? 'بدون اداره عامه' : 'No department');
     const type = mode === 'job' ?
-    clean(emp.statisticsJob) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified') :
+    (clean(emp.statisticsJob) ? jobLabels[jobNameKey(clean(emp.statisticsJob))] : '') || (lang() === 'ar' ? 'غير محدد' : 'Unspecified') :
     normalizeAppointmentType(emp.appointmentType) || (lang() === 'ar' ? 'غير محدد' : 'Unspecified');
     if (!tree[sector]) tree[sector] = {};
     if (!tree[sector][dept]) tree[sector][dept] = {};
@@ -2967,7 +2997,7 @@ function buildAppointmentReport(list) {
   let grand = 0;
   let body = '';
   rows.forEach(({ sector, depts }) => {
-    body += `<tr class="sector-row"><td class="sticky-col" colspan="${allTypes.length + 2}">${escapeHtml(sector)}</td></tr>`;
+    body += `<tr class="sector-row"><td class="sticky-col">${escapeHtml(sector)}</td><td colspan="${allTypes.length + 1}"></td></tr>`;
     depts.forEach(({ dept, counts }) => {
       let rowSum = 0;
       const cells = allTypes.map((type) => {
