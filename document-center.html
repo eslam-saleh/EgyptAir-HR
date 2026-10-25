@@ -139,6 +139,7 @@
                       <div class="dg-chip"><span class="dg-tag-pill">{تاريخ البداية}</span><span class="dg-desc">تاريخ البداية</span></div>
                       <div class="dg-chip"><span class="dg-tag-pill">{تاريخ النهاية}</span><span class="dg-desc">تاريخ النهاية</span></div>
                       <div class="dg-chip"><span class="dg-tag-pill">{تاريخ الاصدار}</span><span class="dg-desc">تاريخ الاصدار</span></div>
+                      <div class="dg-chip"><span class="dg-tag-pill">{تاريخ الخطاب}</span><span class="dg-desc">تاريخ الخطاب</span></div>
                     </div>
                   </section>
 
@@ -483,15 +484,15 @@
                 </select>
               </div>
               <div class="document-form-field">
-                <label for="employeeDepartmentFilter" data-en="Department" data-ar="الإدارة">الإدارة</label>
+                <label for="employeeDepartmentFilter" data-en="Primary general department" data-ar="الإدارة العامة الأساسية">الإدارة العامة الأساسية</label>
                 <select id="employeeDepartmentFilter" aria-label="Department filter">
-                  <option value="">كل الإدارات</option>
+                  <option value="">كل الإدارات العامة</option>
                 </select>
               </div>
               <div class="document-form-field">
-                <label for="employeeSubDeptFilter" data-en="Sub-department" data-ar="القسم الفرعي">القسم الفرعي</label>
+                <label for="employeeSubDeptFilter" data-en="Primary sub-department" data-ar="الإدارة الفرعية الأساسية">الإدارة الفرعية الأساسية</label>
                 <select id="employeeSubDeptFilter" aria-label="Sub-department filter">
-                  <option value="">كل الأقسام الفرعية</option>
+                  <option value="">كل الإدارات الفرعية</option>
                 </select>
               </div>
               <div class="document-form-field">
@@ -874,7 +875,10 @@
       'امر تنفيذى ايقاف عن العمل لصالح تحقيق':      { sheet: 'ايقاف',  action: 'append', kind: 'suspendStart' },
 
       'امر تنفيذى انهاء ايقاف عن العمل لسلبية العينة': { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd' },
-      'امر تنفيذى انهاء ايقاف عن العمل مع مجازاة':      { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd' },
+      // يحدّث شيت ايقاف (نهاية الإيقاف) *و* يضيف سجل الجزاء فى شيت جزاءات
+      // (الجزاء هنا ناتج عن تحقيق → الامر التنفيذي = قانوني).
+      'امر تنفيذى انهاء ايقاف عن العمل مع مجازاة':      { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd',
+                                                        alsoPenalty: { sheet: 'جزاءات', sourceLabel: 'قانوني' } },
       // خطاب مدير عام: نهاية الإيقاف تُؤخذ من {تاريخ استلام العمل} فى المستند
       // نفسه، وليس من تاريخ اليوم.
       'خطاب مدير عام انهاء ايقاف عن العمل':             { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd', dateField: 'تاريخ استلام العمل' },
@@ -1048,6 +1052,31 @@
           const endValue = rule.dateField
             ? (toSheetDateFormat(findValueByLabelKeywords(placeholders, valuesByRawKey, [rule.dateField])) || today)
             : today;
+          if (rule.alsoPenalty) {
+            // Two sheets: ايقاف (نهاية الإيقاف) + جزاءات (new penalty record).
+            // Each is attempted independently so one failure never blocks the other.
+            const errors = [];
+            try {
+              await postToSheet({
+                action: 'update', sheet: rule.sheet, code,
+                targetHeader: 'نهاية الإيقاف', value: endValue,
+              });
+            } catch (e) { errors.push(t('Suspension sheet: ', 'شيت ايقاف: ') + (e.message || '')); }
+            try {
+              await postToSheet({
+                action: 'append', sheet: rule.alsoPenalty.sheet, overwriteByCode: true,
+                rows: [{
+                  'كود': code, 'اسم': name, 'التاريخ': today,
+                  'نوع الجزاء': findValueByLabelKeywords(placeholders, valuesByRawKey, ['نوع الجزاء']),
+                  'سبب الجزاء': findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الجزاء', 'السبب']),
+                  'الامر التنفيذي': rule.alsoPenalty.sourceLabel || '',
+                }],
+              });
+            } catch (e) { errors.push(t('Penalty sheet: ', 'شيت جزاءات: ') + (e.message || '')); }
+            if (errors.length) throw new Error(errors.join(' | '));
+            showSheetSyncToast(t('Suspension end date updated and penalty added.', 'تم تحديث نهاية الإيقاف وإضافة الجزاء بنجاح.'));
+            return;
+          }
           await postToSheet({
             action: 'update', sheet: rule.sheet, code,
             targetHeader: 'نهاية الإيقاف', value: endValue,
@@ -1740,6 +1769,10 @@
         map[normalizeKey(key)] = src[key];
       });
 	  map[normalizeKey('تاريخ الاصدار')] = (() => {
+	  const now = new Date();
+	  return `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+		})();
+	  map[normalizeKey('تاريخ الخطاب')] = (() => {
 	  const now = new Date();
 	  return `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
 		})();
@@ -2772,8 +2805,8 @@ function renderPlaceholderForm(doc, placeholders) {
       // Visual order matches the left-panel form: sector → department → sub-dept → job
       const defs = [
         [employeeSectorFilter, 'sector', 'All sectors', 'كل القطاعات'],
-        [employeeDepartmentFilter, 'department', 'All departments', 'كل الإدارات'],
-        [employeeSubDeptFilter, 'subDepartment', 'All sub-depts', 'كل الأقسام الفرعية'],
+        [employeeDepartmentFilter, 'department', 'All general departments', 'كل الإدارات العامة'],
+        [employeeSubDeptFilter, 'subDepartment', 'All sub-departments', 'كل الإدارات الفرعية'],
         [employeeJobFilter, 'job', 'All jobs', 'كل الوظائف']
       ];
 
@@ -2825,8 +2858,8 @@ function renderPlaceholderForm(doc, placeholders) {
               <div class="employee-field"><strong class="employee-field-label">${t('Code', 'الكود')}</strong><span class="employee-field-value">${code}</span></div>
               <div class="employee-field"><strong class="employee-field-label">${t('Job', 'الوظيفة')}</strong><span class="employee-field-value">${job}</span></div>
               <div class="employee-field"><strong class="employee-field-label">${t('Sector', 'القطاع')}</strong><span class="employee-field-value">${sector}</span></div>
-              <div class="employee-field"><strong class="employee-field-label">${t('Department', 'الإدارة')}</strong><span class="employee-field-value">${department}</span></div>
-              <div class="employee-field"><strong class="employee-field-label">${t('Sub-dept', 'القسم')}</strong><span class="employee-field-value">${subDept}</span></div>
+              <div class="employee-field"><strong class="employee-field-label">${t('Primary general department', 'الإدارة العامة الأساسية')}</strong><span class="employee-field-value">${department}</span></div>
+              <div class="employee-field"><strong class="employee-field-label">${t('Primary sub-department', 'الإدارة الفرعية الأساسية')}</strong><span class="employee-field-value">${subDept}</span></div>
               <div class="employee-field"><strong class="employee-field-label">${t('Group', 'المجموعة')}</strong><span class="employee-field-value">${group}</span></div>
               <div class="employee-field"><strong class="employee-field-label">${t('Hire date', 'تاريخ التعيين')}</strong><span class="employee-field-value">${hire}</span></div>
               <div class="employee-field"><strong class="employee-field-label">${t('Date of birth', 'تاريخ الميلاد')}</strong><span class="employee-field-value">${dob}</span></div>

@@ -214,8 +214,8 @@ function ensureHistorySheet() {
 const HISTORY_LABELS = {
   code: 'الكود', name: 'الاسم', originalCompany: 'الشركة الأساسية',
   currentCompany: 'الشركة الحالية', currentSector: 'القطاع الحالي',
-  currentGeneralDepartment: 'الإدارة العامة الحالية',
-  currentSubDepartment: 'الإدارة الفرعية الحالية', jobTitle: 'مسمى الوظيفة',
+  currentGeneralDepartment: 'الإدارة العامة الأساسية',
+  currentSubDepartment: 'الإدارة الفرعية الأساسية', jobTitle: 'مسمى الوظيفة',
   actualJob: 'الوظيفة الفعلية', statisticsJob: 'مسمى الوظيفة للإحصائيات',
   uniform: 'الزي', gender: 'النوع', birthDate: 'تاريخ الميلاد',
   appointmentDate: 'تاريخ التعيين', serviceType: 'نوع الخدمة', workType: 'نوع العمل',
@@ -319,7 +319,6 @@ function logHistory(type, details, actor) {
   try {
     const sh = ensureHistorySheet();
     const who = String(actor || '').trim();
-    // التاريخ | المختص | النوع | التفاصيل
     sh.appendRow([new Date(), who, type, String(details || '').slice(0, 40000)]);
     const row = sh.getLastRow();
     sh.getRange(row, 1).setNumberFormat(HISTORY_DATE_FORMAT);
@@ -488,7 +487,7 @@ function errorMessage(err) {
   return err && err.message ? err.message : String(err);
 }
 
-const DIRECTORY_CACHE_KEY = 'emp_dir_v3';
+const DIRECTORY_CACHE_KEY = 'emp_dir_v4'; // bumped: departments now come from the basic columns
 // Keep direct spreadsheet edits visible quickly; cache is only a short-lived optimization.
 const DIRECTORY_CACHE_TTL = 15;
 const DIRECTORY_JOB_GROUPS = [
@@ -622,13 +621,16 @@ function mapDirectoryEmployee(row) {
     cellAt(row, 'secondedSector'),
     currentCompany
   );
+  // Departments use the BASIC (الأساسية) columns, with any انتداب appended in
+  // parentheses. If a row has no basic value, fall back to the current column
+  // so the document field is not left blank.
   const department = withSecondmentLabel_(
-    cellAt(row, 'currentGeneralDepartment'),
+    firstNonEmpty_(cellAt(row, 'originalGeneralDepartment'), cellAt(row, 'currentGeneralDepartment')),
     cellAt(row, 'secondedGeneralDepartment'),
     currentCompany
   );
   const subDepartment = withSecondmentLabel_(
-    cellAt(row, 'currentSubDepartment'),
+    firstNonEmpty_(cellAt(row, 'originalSubDepartment'), cellAt(row, 'currentSubDepartment')),
     cellAt(row, 'secondedDepartment'),
     currentCompany
   );

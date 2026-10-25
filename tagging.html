@@ -1587,7 +1587,26 @@ async function tagDocx(file, options = {}) {
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
-        return `${day}/${m}/${y}`;
+        return `${y}/${m}/${day}`;
+      };
+
+      // Re-formats a detail-modal value to yyyy/mm/dd when the whole cell is
+      // a single date (Date object, ISO string, yyyy/m/d or d/m/yyyy text).
+      // Cells with extra text around the date are left untouched.
+      const formatDetailValue = (value) => {
+        if (value instanceof Date) return fmtDate(parseSheetDate(value));
+        const raw = String(value).trim();
+        const ascii = raw
+          .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+          .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06F0));
+        let m = ascii.match(/^(\d{4})-(\d{2})-(\d{2})T[\d:.]+Z?$/);
+        if (m) return m[1] + '/' + m[2] + '/' + m[3];
+        if (/^\d{4}\s*[-\/]\s*\d{1,2}\s*[-\/]\s*\d{1,2}(\s+[\d:]+)?$/.test(ascii)
+          || /^\d{1,2}\s*[-\/]\s*\d{1,2}\s*[-\/]\s*\d{4}(\s+[\d:]+)?$/.test(ascii)) {
+          const d = parseSheetDate(ascii);
+          if (d) return fmtDate(d);
+        }
+        return String(value);
       };
 
       const bilingual = (el, en, ar) => {
@@ -1644,7 +1663,7 @@ async function tagDocx(file, options = {}) {
           const labelEl = document.createElement('dt');
           labelEl.textContent = label;
           const valueEl = document.createElement('dd');
-          valueEl.textContent = String(value);
+          valueEl.textContent = formatDetailValue(value);
           field.append(labelEl, valueEl);
           rowDetailFields.appendChild(field);
         });
@@ -1898,7 +1917,6 @@ async function tagDocx(file, options = {}) {
         const detailRec = { ...rec };
         if (cfg.isSuspension) {
           const duration = getWindowDays(rec, cfg);
-          detailRec['تاريخ بداية الإيقاف'] = fmtDate(start);
           detailRec['المدة'] = duration === Infinity ? text('Indefinite', 'دائم') : `${duration} ${text('day(s)', 'يوم')}`;
           detailRec['تاريخ العودة'] = duration === Infinity
             ? text('No scheduled return date', 'لا يوجد تاريخ عودة محدد')
