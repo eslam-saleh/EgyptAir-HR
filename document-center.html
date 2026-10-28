@@ -848,10 +848,15 @@
     // Which document (by its filename, without extension) maps to which
     // sheet/action. "kind" selects which extra columns get filled in below.
     const SHEET_DOC_RULES = {
-      'امر تنفيذى تصريح عمل نصف الوقت':            { sheet: 'اجازات', action: 'append', kind: 'leave' },
+      // تصريح عمل نصف الوقت ما فيهوش حقل {السبب} → نوع الاجازة ثابت.
+      'امر تنفيذى تصريح عمل نصف الوقت':            { sheet: 'اجازات', action: 'append', kind: 'leave', fixedLeaveType: 'تصريح عمل نصف الوقت' },
       'امر تنفيذى منح اجازة بدون مرتب':             { sheet: 'اجازات', action: 'append', kind: 'leave' },
       'امر تنفيذى مد اجازة بدون مرتب':              { sheet: 'اجازات', action: 'append', kind: 'leave' },
       'امر تنفيذى اسقاط اجازة بدون مرتب':              { sheet: 'اجازات', action: 'append', kind: 'leave' },
+      // قطع الاجازة: مفيش سجل جديد — بنحدّث "نهاية الاجازة" لآخر سجل للكود
+      // بتاريخ القطع (overwrite لأن الخانة مليانة أصلاً).
+      'امر تنفيذى قطع اجازة بدون مرتب':             { sheet: 'اجازات', action: 'update', kind: 'leaveCut',
+                                                        targetHeader: 'نهاية الاجازة', dateField: 'تاريخ قطع الاجازة', overwrite: true },
       // تعديل الاجازة: نفس منطق "مد اجازة بدون مرتب"، لكن هذا المستند يحتوي
       // على تاريخ النهاية الأصلي *و* المعدَّل معًا ({تاريخ نهاية الاجازة}
       // فى سياق الطلب الأصلى، و{تاريخ نهاية الاجازة المعدلة} فى مادة اولى) —
@@ -873,8 +878,11 @@
 
       'امر تنفيذى ايقاف عن العمل لايجابية العينة':  { sheet: 'ايقاف',  action: 'append', kind: 'suspendStart' },
       'امر تنفيذى ايقاف عن العمل لصالح تحقيق':      { sheet: 'ايقاف',  action: 'append', kind: 'suspendStart' },
+      // ايقاف شخصين: سجل لكل شخص (كود/اسم المذكور الأول والثاني) بنفس تاريخ الايقاف.
+      'امر تنفيذى ايقاف شخصين عن العمل لصالح تحقيق': { sheet: 'ايقاف',  action: 'append', kind: 'suspendStart2' },
 
-      'امر تنفيذى انهاء ايقاف عن العمل لسلبية العينة': { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd' },
+      // المستند فيه {تاريخ انهاء الايقاف} → نستخدمه (ولو فاضي يرجع لتاريخ اليوم).
+      'امر تنفيذى انهاء ايقاف عن العمل لسلبية العينة': { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd', dateField: 'تاريخ انهاء الايقاف' },
       // يحدّث شيت ايقاف (نهاية الإيقاف) *و* يضيف سجل الجزاء فى شيت جزاءات
       // (الجزاء هنا ناتج عن تحقيق → الامر التنفيذي = قانوني).
       'امر تنفيذى انهاء ايقاف عن العمل مع مجازاة':      { sheet: 'ايقاف', action: 'update', kind: 'suspendEnd',
@@ -891,12 +899,18 @@
         .replace(/\s+/g, ' ');
     }
 
+    // Arabic-folded lookup table (ى/ي، ة/ه، أ/إ/ا، تطويل، شرطة→مسافة) so a Drive
+    // file name spelled slightly differently from the keys above still matches.
+    let _sheetRuleIndex = null;
     function getSheetRule(docName) {
       const norm = normalizeDocRuleName(docName);
       if (SHEET_DOC_RULES[norm]) return SHEET_DOC_RULES[norm];
-      // Fuzzy fallback: collapse " - " spacing differences and retry.
       const collapsed = norm.replace(/\s*-\s*/g, ' - ');
-      return SHEET_DOC_RULES[collapsed] || null;
+      if (SHEET_DOC_RULES[collapsed]) return SHEET_DOC_RULES[collapsed];
+      if (!_sheetRuleIndex) {
+        _sheetRuleIndex = new Map(Object.keys(SHEET_DOC_RULES).map((k) => [normalizeArabicVariants(k), SHEET_DOC_RULES[k]]));
+      }
+      return _sheetRuleIndex.get(normalizeArabicVariants(norm)) || null;
     }
 
     // سنة/شهر/يوم بدلاً من يوم/شهر/سنة (تبديل الأيام بالسنوات فى بيانات.xlsx).
@@ -1000,23 +1014,27 @@
       const today = selectedAtDate || sheetSyncToday();
 
       try {
-        if (rule.kind === 'penalty2') {
+        if (rule.kind === 'penalty2' || rule.kind === 'suspendStart2') {
+          // Two-person documents: كود/اسم (المذكور|الموظف) الأول والثاني — paired by order.
           const codes = findAllValuesByLabelKeyword(placeholders, valuesByRawKey, 'كود');
           const names = findAllValuesByLabelKeyword(placeholders, valuesByRawKey, 'اسم');
-          const penaltyType   = findValueByLabelKeywords(placeholders, valuesByRawKey, ['نوع الجزاء']);
-          const penaltyReason = findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الجزاء', 'السبب']);
           const count = Math.min(codes.length, names.length) || 0;
+          let extra;
+          if (rule.kind === 'penalty2') {
+            extra = {
+              'نوع الجزاء': findValueByLabelKeywords(placeholders, valuesByRawKey, ['نوع الجزاء']),
+              'سبب الجزاء': findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الجزاء', 'السبب']),
+              'الامر التنفيذي': rule.sourceLabel || '',
+            };
+          } else {
+            extra = {
+              'بداية الإيقاف': toSheetDateFormat(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ الايقاف عن العمل', 'تاريخ الايقاف'])) || today,
+            };
+          }
           const rows = [];
           for (let i = 0; i < count; i += 1) {
             if (!codes[i]) continue;
-            rows.push({
-              'كود': codes[i],
-              'اسم': names[i] || '',
-              'التاريخ': today,
-              'نوع الجزاء': penaltyType,
-              'سبب الجزاء': penaltyReason,
-              'الامر التنفيذي': rule.sourceLabel || '',
-            });
+            rows.push({ 'كود': codes[i], 'اسم': names[i] || '', 'التاريخ': today, ...extra });
           }
           if (!rows.length) throw new Error(t('Could not find two code fields in this document.', 'تعذر العثور على حقلي كود في هذا المستند.'));
           await postToSheet({ action: 'append', sheet: rule.sheet, rows, overwriteByCode: true });
@@ -1079,15 +1097,18 @@
           }
           await postToSheet({
             action: 'update', sheet: rule.sheet, code,
-            targetHeader: 'نهاية الإيقاف', value: endValue,
+            targetHeader: rule.targetHeader || 'نهاية الإيقاف', value: endValue,
+            ...(rule.overwrite ? { overwrite: true } : {}),
           });
-          showSheetSyncToast(t('Suspension end date updated.', 'تم تحديث تاريخ نهاية الإيقاف بنجاح.'));
+          showSheetSyncToast(rule.kind === 'leaveCut'
+            ? t('Leave end date updated.', 'تم تحديث نهاية الاجازة بتاريخ القطع.')
+            : t('Suspension end date updated.', 'تم تحديث تاريخ نهاية الإيقاف بنجاح.'));
           return;
         }
 
         const row = { 'كود': code, 'اسم': name, 'التاريخ': today };
         if (rule.kind === 'leave') {
-          row['نوع الاجازة']  = findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الاجازة', 'السبب']);
+          row['نوع الاجازة']  = findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الاجازة', 'السبب']) || rule.fixedLeaveType || '';
           // rule.endDateKeywords lets a document override which {placeholder}
           // is the leave's end date — needed by "تعديل اجازة بدون مرتب",
           // whose recitals also contain the ORIGINAL {تاريخ نهاية الاجازة}
@@ -1125,18 +1146,20 @@
       if (!/\.docx$/i.test(fileName)) return;
       if (!/تنفيذ[يى]/.test(fileName)) return;
       try {
-        const code = String(findValueByLabelKeywords(placeholders, valuesByRawKey, ['كود']) || '').trim();
-        const name = String(findValueByLabelKeywords(placeholders, valuesByRawKey, ['اسم']) || '').trim();
-        if (!code || !name) return;
+        // One executive order = ONE number. Two-person documents (ايقاف شخصين،
+        // جزاء شخصين) write one row per person, all sharing that same number.
+        const codes = findAllValuesByLabelKeyword(placeholders, valuesByRawKey, 'كود').map((v) => String(v || '').trim());
+        const names = findAllValuesByLabelKeyword(placeholders, valuesByRawKey, 'اسم').map((v) => String(v || '').trim());
+        const subject = fileName.replace(/\.docx$/i, '');
+        const rows = [];
+        codes.forEach((c, i) => {
+          if (c && names[i]) rows.push({ 'التاريخ': sheetSyncToday(), 'الكود': c, 'الاسم': names[i], 'الموضوع': subject });
+        });
+        if (!rows.length) return;
         const data = await postToSheet({
           action: 'nextNumber',
           sheet: 'الارقام',
-          row: {
-            'التاريخ': sheetSyncToday(),
-            'الكود': code,
-            'الاسم': name,
-            'الموضوع': fileName.replace(/\.docx$/i, ''),
-          },
+          rows,
         });
         const num = data?.data?.number;
         showSheetSyncToast(t(`Number ${num} recorded in the \"الارقام\" sheet.`, `تم تسجيل الرقم ${num} في شيت \"الارقام\".`));
@@ -1606,6 +1629,7 @@
 
       const displayName = employee.name ? String(employee.name).trim() : '';
       const fullGroupPath = buildGroupPath(employee);
+      const hasUnscopedCodeField = selectedPlaceholders.some((g) => labelContains(g.label, 'كود') && !getFieldOrdinal(g.label));
 
       // Resolved units from the live roster only (never invent sector from a missing sub-dept)
       const resolvedSector = cleanOrganizationValue(employee.sector || '', 'sector');
@@ -1622,7 +1646,14 @@
         // Unscoped load (no ordinal on the code) only touches unlabeled fields.
         const fieldOrd = getFieldOrdinal(label);
         if (scopeOrdinal) {
-          if (fieldOrd !== scopeOrdinal) return;
+          if (fieldOrd !== scopeOrdinal) {
+            // Shared fields of a two-person document (e.g. "وظيفة المذكورين",
+            // "المجموعة و الإدارة و القطاع") have no ordinal. Fill them from the
+            // FIRST person, only if still empty and only when every code field
+            // in this document is ordinal (so there is no "main" person).
+            const sharedOk = scopeOrdinal === 'first' && !fieldOrd && !field.value.trim() && !hasUnscopedCodeField;
+            if (!sharedOk) return;
+          }
         } else if (fieldOrd) {
           return;
         }
@@ -2481,7 +2512,9 @@ function renderPlaceholderForm(doc, placeholders) {
           const docxBlob = replacePlaceholdersInDocx(buffer, values, true);
           downloadBlob(docxBlob, getExportFileName(doc.name, 'docx', true));
         }
-        await syncGeneratedDocumentToSheet(doc, values);
+        // No sheet sync here: the quick download has no typed code/name, and
+        // syncGeneratedDocumentToSheet reads the globally *selected* document's
+        // fields, which may belong to a different file. Use "Select" to sync.
       } catch (err) {
         window.showToast?.(err.message || t('Could not create the file.', 'تعذر إنشاء الملف.'), 'error');
       } finally {

@@ -474,25 +474,32 @@ function handleNextNumber(sheet, body) {
     }
   }
 
-  var out = new Array(loaded.lastCol).fill('');
-  if (orderCol === 0) out[0] = nextOrder;
-  out[numCol] = next;
-  Object.keys(row).forEach(function (key) {
-    var col = findHeaderCol(loaded.headers, key);
-    if (col < 0 || col === numCol || col === orderCol) return;
-    out[col] = isDateHeader(loaded.headers[col]) ? normalizeDateCellText(row[key]) : row[key];
+  // body.rows (two-person orders): one sheet row per person, ALL sharing the
+  // same الرقم; the م running order still advances by one per row.
+  var inputRows = (body.rows && body.rows.length) ? body.rows : [row];
+  var outRows = inputRows.map(function (r, idx) {
+    var out = new Array(loaded.lastCol).fill('');
+    if (orderCol === 0) out[0] = nextOrder + idx;
+    out[numCol] = next;
+    Object.keys(r).forEach(function (key) {
+      var col = findHeaderCol(loaded.headers, key);
+      if (col < 0 || col === numCol || col === orderCol) return;
+      out[col] = isDateHeader(loaded.headers[col]) ? normalizeDateCellText(r[key]) : r[key];
+    });
+    return out;
   });
 
   var targetRow = loaded.lastRow + 1;
   for (var c = 0; c < loaded.headers.length; c++) {
-    if (isDateHeader(loaded.headers[c])) sheet.getRange(targetRow, c + 1).setNumberFormat('@');
+    if (isDateHeader(loaded.headers[c])) sheet.getRange(targetRow, c + 1, outRows.length, 1).setNumberFormat('@');
   }
-  sheet.getRange(targetRow, 1, 1, loaded.lastCol).setValues([out]);
-  return respond(true, 'تمت إضافة الرقم ' + next + ' في شيت ' + sheet.getName() + '.',
-    { number: next, row: targetRow });
+  sheet.getRange(targetRow, 1, outRows.length, loaded.lastCol).setValues(outRows);
+  return respond(true, 'تمت إضافة الرقم ' + next + ' في شيت ' + sheet.getName() + (outRows.length > 1 ? ' (' + outRows.length + ' صفوف).' : '.'),
+    { number: next, row: targetRow, rows: outRows.length });
 }
 
-// ── UPDATE (نهاية الإيقاف: fills the newest still-open row for a code) ──
+// ── UPDATE (نهاية الإيقاف: fills the newest still-open row for a code;
+//    with body.overwrite=true — قطع الاجازة — replaces نهاية الاجازة on the newest row) ──
 // Writes ONE cell directly (getRange(row, col).setValue(...)) rather than
 // rewriting the whole data range: this column can already hold a mix of
 // real Date values (older rows) and plain "yyyy/mm/dd" text (rows written
@@ -514,7 +521,10 @@ function handleUpdate(sheet, body) {
   var data = loaded.data;
   for (var r = data.length - 1; r >= 0; r--) { // newest → oldest
     var sameCode = String(data[r][codeCol]).trim() === String(body.code).trim();
-    var isOpen = !data[r][targetCol];
+    // body.overwrite = true: replace the value even if the cell is already
+    // filled (قطع الاجازة moves an existing نهاية الاجازة). Default: only
+    // fill still-open (blank) cells, as نهاية الإيقاف needs.
+    var isOpen = body.overwrite === true || !data[r][targetCol];
     if (sameCode && isOpen) {
       var header = loaded.headers[targetCol];
       var value = isDateHeader(header) ? normalizeDateCellText(body.value) : body.value;
@@ -523,6 +533,9 @@ function handleUpdate(sheet, body) {
       cell.setValue(value); // single targeted write
       return respond(true, 'تم تحديث ' + body.targetHeader + ' بنجاح.', { row: r + 2 });
     }
+  }
+  if (body.overwrite === true) {
+    return respond(false, 'لم يتم العثور على سجل لهذا الكود (' + body.code + ') في شيت ' + sheet.getName() + '.');
   }
   return respond(false, 'لم يتم العثور على سجل إيقاف مفتوح لهذا الكود (' + body.code + ') في شيت ' + sheet.getName() + '.');
 }
