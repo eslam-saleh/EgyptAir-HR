@@ -217,6 +217,11 @@ function normalizeAr(s) {
 
 function findHeaderCol(headers, keyword) {
   var nk = normalizeAr(keyword);
+  // Exact header match wins over a "contains" match, so e.g. the key
+  // "الامر التنفيذي" never lands in a "رقم الامر التنفيذي" column.
+  for (var e = 0; e < headers.length; e++) {
+    if (normalizeAr(headers[e]) === nk) return e;
+  }
   for (var i = 0; i < headers.length; i++) {
     if (normalizeAr(headers[i]).indexOf(nk) !== -1) return i; // 0-based
   }
@@ -236,6 +241,13 @@ function findHeaderCol(headers, keyword) {
 // write to one of them goes through a cell forced to Plain text ("@")
 // format first, so Sheets never re-interprets it — the cell always shows
 // exactly the text that was sent, in every locale.
+// "الرقم" in اجازات/جزاءات/ايقاف holds text like "2026/12" — forced to Plain
+// text so Sheets never reads it as a date (year/month). Not used for الارقام,
+// whose الرقم is a plain integer.
+function isTextHeader(header) {
+  return normalizeAr(header) === 'الرقم';
+}
+
 function isDateHeader(header) {
   var n = normalizeAr(header);
   return n.indexOf('تاريخ') !== -1 || n.indexOf('بداية') !== -1 || n.indexOf('نهاية') !== -1;
@@ -381,7 +393,7 @@ function handleAppend(sheet, body) {
 
   var setDateFormats = function (row, count) {
     for (var c = 0; c < headers.length; c++) {
-      if (isDateHeader(headers[c])) sheet.getRange(row, c + 1, count, 1).setNumberFormat('@');
+      if (isDateHeader(headers[c]) || isTextHeader(headers[c])) sheet.getRange(row, c + 1, count, 1).setNumberFormat('@');
     }
   };
 
@@ -439,6 +451,13 @@ function handleAppend(sheet, body) {
 // "yyyy/mm/dd" text like every other date in this script. Runs under the
 // script lock taken in doPost, so two simultaneous documents never get the
 // same number.
+// Year (number) from a sheet cell that is either a Date or "yyyy/mm/dd" text.
+function yearOfCell(v) {
+  if (v instanceof Date) return v.getFullYear();
+  var m = String(v == null ? '' : v).match(/(\d{4})/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
 function handleNextNumber(sheet, body) {
   var row = body.row || {};
   var loaded = loadSheet(sheet);
@@ -449,6 +468,8 @@ function handleNextNumber(sheet, body) {
 
   // Last row (from the bottom) that actually holds a number.
   var last = 0;
+  var lastYear = null;
+  var dateCol = findHeaderCol(loaded.headers, 'التاريخ');
   for (var i = loaded.data.length - 1; i >= 0; i--) {
     var raw = loaded.data[i][numCol];
     if (raw === '' || raw === null) continue;
@@ -458,8 +479,15 @@ function handleNextNumber(sheet, body) {
       .match(/\d+/);
     if (!digits) return respond(false, 'آخر قيمة في عمود الرقم ليست رقماً: ' + raw);
     last = parseInt(digits[0], 10);
+    if (dateCol !== -1) lastYear = yearOfCell(loaded.data[i][dateCol]);
     break;
   }
+  // The count restarts at 1 every calendar year (2026/21 in January …
+  // 2026/208 in October). If the new order's year is later than the year of
+  // the last numbered row, start over.
+  var firstIn = (body.rows && body.rows.length) ? body.rows[0] : row;
+  var newYear = yearOfCell(firstIn['التاريخ']) || new Date().getFullYear();
+  if (lastYear && newYear > lastYear) last = 0;
   var next = last + 1;
 
   // Column A (م) is the running order, separate from الرقم: last filled م + 1.

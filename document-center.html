@@ -1004,9 +1004,15 @@
     // Reads whatever was just generated and pushes it to بيانات.xlsx.
     // Never throws — failures are reported via the top-left toast only, so
     // they never block the document download itself.
-    async function syncGeneratedDocumentToSheet(doc, valuesByRawKey) {
+    async function syncGeneratedDocumentToSheet(doc, valuesByRawKey, execNumber = null) {
       const rule = getSheetRule(doc?.name);
       if (!rule) return; // this document isn't tracked in بيانات.xlsx
+      // The executive-order number assigned in "الارقام" (plain integer there)
+      // goes into the target sheet's existing "الرقم" column as "YYYY/N"
+      // (e.g. 2026/140) — YYYY = year of the order date, same as the older rows.
+      const numField = execNumber
+        ? { 'الرقم': `${String(selectedAtDate || sheetSyncToday()).slice(0, 4)}/${execNumber}` }
+        : {};
 
       const placeholders = selectedPlaceholders.length ? selectedPlaceholders : autoPlaceholders;
       // التاريخ = the date "Select" was pressed for this document, not the
@@ -1034,7 +1040,7 @@
           const rows = [];
           for (let i = 0; i < count; i += 1) {
             if (!codes[i]) continue;
-            rows.push({ 'كود': codes[i], 'اسم': names[i] || '', 'التاريخ': today, ...extra });
+            rows.push({ 'كود': codes[i], 'اسم': names[i] || '', 'التاريخ': today, ...extra, ...numField });
           }
           if (!rows.length) throw new Error(t('Could not find two code fields in this document.', 'تعذر العثور على حقلي كود في هذا المستند.'));
           await postToSheet({ action: 'append', sheet: rule.sheet, rows, overwriteByCode: true });
@@ -1088,6 +1094,7 @@
                   'نوع الجزاء': findValueByLabelKeywords(placeholders, valuesByRawKey, ['نوع الجزاء']),
                   'سبب الجزاء': findValueByLabelKeywords(placeholders, valuesByRawKey, ['سبب الجزاء', 'السبب']),
                   'الامر التنفيذي': rule.alsoPenalty.sourceLabel || '',
+                  ...numField,
                 }],
               });
             } catch (e) { errors.push(t('Penalty sheet: ', 'شيت جزاءات: ') + (e.message || '')); }
@@ -1127,6 +1134,7 @@
           row['بداية الإيقاف'] = toSheetDateFormat(findValueByLabelKeywords(placeholders, valuesByRawKey, ['تاريخ الايقاف عن العمل', 'تاريخ الايقاف'])) || today;
         }
 
+        Object.assign(row, numField);
         await postToSheet({ action: 'append', sheet: rule.sheet, rows: [row], overwriteByCode: true });
         showSheetSyncToast(t(`Added to "${rule.sheet}" sheet.`, `تمت الإضافة إلى شيت "${rule.sheet}".`));
       } catch (err) {
@@ -1143,8 +1151,8 @@
     // Never throws — failures only show the top-left toast, so they never block the download.
     async function logExecutiveNumberToSheet(doc, valuesByRawKey, placeholders) {
       const fileName = String(doc?.name || '');
-      if (!/\.docx$/i.test(fileName)) return;
-      if (!/تنفيذ[يى]/.test(fileName)) return;
+      if (!/\.docx$/i.test(fileName)) return null;
+      if (!/تنفيذ[يى]/.test(fileName)) return null;
       try {
         // One executive order = ONE number. Two-person documents (ايقاف شخصين،
         // جزاء شخصين) write one row per person, all sharing that same number.
@@ -1155,7 +1163,7 @@
         codes.forEach((c, i) => {
           if (c && names[i]) rows.push({ 'التاريخ': sheetSyncToday(), 'الكود': c, 'الاسم': names[i], 'الموضوع': subject });
         });
-        if (!rows.length) return;
+        if (!rows.length) return null;
         const data = await postToSheet({
           action: 'nextNumber',
           sheet: 'الارقام',
@@ -1163,8 +1171,10 @@
         });
         const num = data?.data?.number;
         showSheetSyncToast(t(`Number ${num} recorded in the \"الارقام\" sheet.`, `تم تسجيل الرقم ${num} في شيت \"الارقام\".`));
+        return num ?? null;
       } catch (err) {
         showSheetSyncToast(err.message || t('Failed to update the sheet.', 'فشل تحديث الشيت.'), true);
+        return null;
       }
     }
 
@@ -2443,6 +2453,7 @@ function renderPlaceholderForm(doc, placeholders) {
 
       const values = readFormValues();
       const feminize = isFemaleSelected();
+      let execNumber = null; // الرقم from the "الارقام" sheet (docx path only)
       generatePdfBtn.disabled = true;
 
       try {
@@ -2463,10 +2474,10 @@ function renderPlaceholderForm(doc, placeholders) {
           const buffer = await downloadDriveFile(selectedDoc);
           const docxBlob = replacePlaceholdersInDocx(buffer, values, false, feminize);
           downloadBlob(docxBlob, getExportFileName(selectedDoc.name, 'docx', true));
-          await logExecutiveNumberToSheet(selectedDoc, values, [...selectedPlaceholders, ...autoPlaceholders]);
+          execNumber = await logExecutiveNumberToSheet(selectedDoc, values, [...selectedPlaceholders, ...autoPlaceholders]);
         }
 
-        await syncGeneratedDocumentToSheet(selectedDoc, values);
+        await syncGeneratedDocumentToSheet(selectedDoc, values, execNumber);
         hideDocumentForm();
       } catch (err) {
         generatePdfBtn.disabled = false;
