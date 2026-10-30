@@ -10,6 +10,7 @@ const HISTORY_DATE_FORMAT = 'h:mm am/pm  d/m/yyyy'; // e.g. 3:00 pm  1/10/2026
 const HISTORY_TYPE_ADD = 'إضافة';
 const HISTORY_TYPE_EDIT = 'تعديل';
 const HISTORY_TYPE_RETIRE = 'إحالة للمعاش';
+const HISTORY_TYPE_RESTORE = 'إعادة للخدمة';
 const FIELDS = [
   ['code', 'كود'],
   ['name', 'الاســـــــــــم '],
@@ -446,7 +447,9 @@ function doPost(e) {
       action !== 'update' &&
       action !== 'create' &&
       action !== 'retire' &&
-      action !== 'moveToRetired'
+      action !== 'moveToRetired' &&
+      action !== 'restore' &&
+      action !== 'moveToActive'
     ) {
       return json({ ok: false, error: 'Unknown action' });
     }
@@ -462,6 +465,10 @@ function doPost(e) {
       const payload = body.employee || {};
       payload._actor = actor;
       employee = moveEmployeeToRetired(payload);
+    } else if (action === 'restore' || action === 'moveToActive') {
+      const payload = body.employee || {};
+      payload._actor = actor;
+      employee = moveEmployeeToActive(payload);
     } else if (action === 'update') {
       // Updates only apply to the active Employees sheet.
       const payload = body.employee || {};
@@ -947,6 +954,67 @@ function moveEmployeeToRetired(input) {
     newRow
   );
   result._sheet = RETIRED_SHEET_NAME;
+  return result;
+}
+
+/**
+ * Move an employee back from the Retired sheet to the active Employees sheet
+ * (the reverse of moveEmployeeToRetired). Copies the row, verifies the copy,
+ * then deletes it from Retired and logs to History.
+ */
+function moveEmployeeToActive(input) {
+  ensureRetiredSheet();
+  const retiredSh = getSheet(RETIRED_SHEET_NAME);
+  ensureSheetShape(retiredSh, RETIRED_SHEET_NAME);
+  const activeSh = getSheet(SHEET_NAME);
+  ensureSheetShape(activeSh, SHEET_NAME);
+  const row = resolveEmployeeRow(retiredSh, input);
+  const displayRow = retiredSh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0];
+  if (!input.version || input.version !== rowVersion(displayRow)) {
+    throw new Error(
+      'This employee record changed since it was loaded. Reload the list and try again.'
+    );
+  }
+  const code = cellAt(displayRow, 'code');
+  // Never create a duplicate code on the active sheet.
+  if (findRowByCode(activeSh, code)) {
+    throw new Error('An active employee with this code already exists.');
+  }
+  const values = displayRow.slice();
+  // A former employee marked inactive comes back as active.
+  const statusIdx = fieldIndex('status');
+  if (statusIdx >= 0) {
+    const current = normalizeStatus(values[statusIdx]);
+    if (input.status) values[statusIdx] = normalizeStatus(input.status) || values[statusIdx];
+    else if (!current || current === 'inactive') values[statusIdx] = 'active';
+  }
+  activeSh.appendRow(values);
+  const newRow = activeSh.getLastRow();
+  applyDateFormats(activeSh, newRow);
+  writeDerivedFormulas(activeSh, newRow);
+  SpreadsheetApp.flush();
+  // Confirm the copy really exists on Employees BEFORE removing the source row.
+  assertWriteLanded_(
+    activeSh.getRange(newRow, 1, 1, FIELDS.length).getDisplayValues()[0],
+    code,
+    'restore to Employees'
+  );
+  retiredSh.deleteRow(row);
+  SpreadsheetApp.flush();
+  if (row <= retiredSh.getLastRow()) {
+    const still = retiredSh.getRange(row, 1, 1, FIELDS.length).getDisplayValues()[0];
+    if (normalizeCode(cellAt(still, 'code')) === normalizeCode(code)) {
+      throw new Error('The employee could not be removed from the Retired sheet, so it was not recorded in History.');
+    }
+  }
+  const afterDisplay = activeSh.getRange(newRow, 1, 1, FIELDS.length).getDisplayValues()[0];
+  logHistory(
+    HISTORY_TYPE_RESTORE,
+    'تمت إعادة الموظف من المتقاعدين إلى الخدمة (' + historyEmployeeLine_(afterDisplay) + ')',
+    input._actor
+  );
+  const result = rowToObject(afterDisplay, newRow);
+  result._sheet = SHEET_NAME;
   return result;
 }
 

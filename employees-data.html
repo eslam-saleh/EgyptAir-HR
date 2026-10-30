@@ -1453,6 +1453,24 @@
         </div>
       </section>
     </div>
+    <div class="modal" id="restoreConfirmModal" hidden>
+      <section class="dialog" style="width:100%;max-width:480px;width:min(480px,100%)" role="dialog" aria-modal="true" aria-labelledby="restoreConfirmTitle">
+        <div class="dialog-head">
+          <h2 id="restoreConfirmTitle" data-en="Confirm return to active" data-ar="تأكيد الإعادة إلى الخدمة">Confirm return to active</h2>
+          <button class="icon-btn" type="button" data-close="restoreConfirmModal" aria-label="Close">×</button>
+        </div>
+        <div class="dialog-body">
+          <p id="restoreConfirmText" style="margin:0;line-height:1.6;color:var(--text)"></p>
+          <p style="margin:12px 0 0;color:var(--muted);font-size:.88rem;line-height:1.55" data-en="The employee will leave Retired / Former and appear again in the active list." data-ar="سيُزال الموظف من المتقاعدين / السابقين ويظهر مجدداً في القائمة النشطة.">The employee will leave Retired / Former and appear again in the active list.</p>
+        </div>
+        <div class="dialog-foot">
+          <div class="button-row" style="margin-inline-start:auto;gap:12px">
+            <button class="btn secondary" type="button" data-close="restoreConfirmModal" data-en="Cancel" data-ar="إلغاء">Cancel</button>
+            <button class="btn" type="button" id="restoreConfirmBtn" data-en="Yes, return to active" data-ar="نعم، أعده إلى الخدمة">Yes, return to active</button>
+          </div>
+        </div>
+      </section>
+    </div>
     <script>
 /* API_TOKEN is only a compatibility fallback. For HR data, restrict the Apps Script deployment and use its email allowlist. */
 const API_URL = 'https://script.google.com/macros/s/AKfycbzoF2Cpp1bG18ZbZcHTTafFFhkTD6mZi7BIw_a0iEtqwBS1k2oDxDetGd3p8Jk30CVb/exec';
@@ -1593,6 +1611,13 @@ const i18n = {
     retireConfirmNamed: 'Move “{name}” (code {code}) to the Retired sheet?',
     retireConfirmTitle: 'Confirm move to retired',
     retireConfirmYes: 'Yes, move to retired',
+    restoreToActive: 'Return to active',
+    restoring: 'Restoring…',
+    restoredOk: 'Employee returned to the active list.',
+    restoreFailed: 'Unable to return the employee to the active list.',
+    restoreConfirmNamed: 'Return “{name}” (code {code}) to the active Employees list?',
+    restoreConfirmTitle: 'Confirm return to active',
+    restoreConfirmYes: 'Yes, return to active',
     listActive: 'Employee list',
     listRetired: 'Retired / former list',
     subtitleActive: 'Find employee records quickly, review workforce distribution, and keep employee details up to date.',
@@ -1694,6 +1719,13 @@ const i18n = {
     retireConfirmNamed: 'نقل «{name}» (كود {code}) إلى شيت المتقاعدين؟',
     retireConfirmTitle: 'تأكيد النقل إلى المتقاعدين',
     retireConfirmYes: 'نعم، انقل إلى المتقاعدين',
+    restoreToActive: 'إعادة إلى الخدمة',
+    restoring: 'جارٍ الإعادة…',
+    restoredOk: 'تمت إعادة الموظف إلى قائمة الموظفين النشطين.',
+    restoreFailed: 'تعذرت إعادة الموظف إلى القائمة النشطة.',
+    restoreConfirmNamed: 'إعادة «{name}» (كود {code}) إلى قائمة الموظفين النشطين؟',
+    restoreConfirmTitle: 'تأكيد الإعادة إلى الخدمة',
+    restoreConfirmYes: 'نعم، أعده إلى الخدمة',
     listActive: 'قائمة الموظفين',
     listRetired: 'قائمة المتقاعدين / السابقين',
     subtitleActive: 'ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.',
@@ -2482,7 +2514,7 @@ async function loadHistory() {
 
 function historyTypeClass(type) {
   const text = clean(type);
-  if (text.includes('إضافة')) return '';
+  if (text.includes('إضافة') || text.includes('إعادة')) return '';
   if (text.includes('تعديل')) return 'leave';
   return 'inactive';
 }
@@ -2625,7 +2657,9 @@ function openProfile(key, opener) {
   }
   const canEdit = state.view === 'active' && state.canEdit;
   const canRetire = state.view === 'active' && state.canEdit;
+  const canRestore = state.view === 'retired' && state.canEdit;
   const actions = [];
+  if (canRestore) actions.push(`<button class="btn" type="button" id="restoreProfileBtn">${escapeHtml(t('restoreToActive'))}</button>`);
   if (canEdit) actions.push(`<button class="btn" type="button" id="editProfileBtn">${escapeHtml(t('edit'))}</button>`);
   if (canRetire) actions.push(`<button class="btn danger-solid" type="button" id="retireProfileBtn">${escapeHtml(t('moveToRetired'))}</button>`);
   $('profileBody').innerHTML = `<div class="profile-hero"><div><h3>${escapeHtml(e.name || t('unknown'))}</h3><p>${escapeHtml(e.code ? `${lang() === 'ar' ? 'كود الموظف: ' : 'Employee code: '}${e.code}` : overview)}</p><p>${escapeHtml(overview)}</p></div><div class="button-row">${actions.join('')}</div></div><div class="profile-sections">${profileSections || `<p class="empty">${t('noData')}</p>`}</div>`;
@@ -2637,6 +2671,9 @@ function openProfile(key, opener) {
   }
   if (canRetire && $('retireProfileBtn')) {
     $('retireProfileBtn').onclick = () => askRetireConfirm(employee);
+  }
+  if (canRestore && $('restoreProfileBtn')) {
+    $('restoreProfileBtn').onclick = () => askRestoreConfirm(employee);
   }
   openModal('profileModal', opener);
 }
@@ -2760,6 +2797,115 @@ async function retireEmployee(employee) {
       profileBtn.textContent = t('moveToRetired');
     }
   }
+}
+
+let pendingRestoreEmployee = null;
+
+function askRestoreConfirm(employee) {
+  if (!employee || state.view !== 'retired' || !state.canEdit) return;
+  pendingRestoreEmployee = employee;
+  const name = clean(employee.name) || t('unknown');
+  const code = clean(employee.code) || '—';
+  $('restoreConfirmText').textContent = t('restoreConfirmNamed', { name, code });
+  const title = $('restoreConfirmTitle');
+  if (title) title.textContent = t('restoreConfirmTitle');
+  const yesBtn = $('restoreConfirmBtn');
+  if (yesBtn) {
+    yesBtn.disabled = false;
+    yesBtn.textContent = t('restoreConfirmYes');
+  }
+  openModal('restoreConfirmModal', $('restoreProfileBtn') || document.activeElement);
+}
+
+async function restoreEmployee(employee) {
+  if (!employee || state.view !== 'retired' || !state.canEdit) return;
+  const btn = $('restoreConfirmBtn');
+  const profileBtn = $('restoreProfileBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = t('restoring');
+  }
+  if (profileBtn) {
+    profileBtn.disabled = true;
+    profileBtn.textContent = t('restoring');
+  }
+  try {
+    await postRestore(employee);
+    // Update the local retired list only (no full reload). The server deleted
+    // the Retired row, so rows below it shift up by one.
+    const key = recordKey(employee);
+    const removedRow = Number(employee.rowNumber);
+    state.employees = state.employees.
+    filter((item) => recordKey(item) !== key).
+    map((item) => {
+      const itemRow = Number(item.rowNumber);
+      if (Number.isFinite(removedRow) && Number.isFinite(itemRow) && itemRow > removedRow) {
+        return { ...item, rowNumber: itemRow - 1 };
+      }
+      return item;
+    });
+    pendingRestoreEmployee = null;
+    closeModal('restoreConfirmModal');
+    closeModal('profileModal');
+    toast(t('restoredOk'), 'success');
+    refreshFilters();
+    render();
+    loadHistory();
+  } catch (error) {
+    toast(formatFailure('restoreFailed', error), 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = t('restoreConfirmYes');
+    }
+    if (profileBtn) {
+      profileBtn.disabled = false;
+      profileBtn.textContent = t('restoreToActive');
+    }
+  }
+}
+
+async function postRestore(employee) {
+  const maxAttempts = 3;
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await fetch(withToken(API_URL), {
+        method: 'POST',
+        redirect: 'follow',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'restore',
+          employee: {
+            code: employee.code,
+            name: employee.name,
+            rowNumber: employee.rowNumber,
+            version: employee.version,
+            id: employee.id
+          },
+          actor: state.editorLabel || undefined,
+          token: API_TOKEN || undefined
+        })
+      });
+      if ((response.status === 404 || response.status === 405) && attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 300 * attempt));
+        continue;
+      }
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+      const payload = await readApi(response);
+      if (!payload.ok) throw new Error(payload.error || payload.message || t('restoreFailed'));
+      return payload;
+    } catch (err) {
+      lastError = err;
+      const msg = clean(err && err.message);
+      if ((msg.includes('404') || msg.includes('405') || msg.includes('Failed to fetch') || msg.includes('Network') || msg.includes('busy') || msg.includes('lock')) && attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 300 * attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError || new Error('404');
 }
 
 async function postRetire(employee) {
@@ -3859,6 +4005,9 @@ function initEvents() {var _$16, _$17, _$18, _$19, _$20, _$21, _$22, _$23, _$24,
     // inputs) Enter should only confirm a highlighted dropdown option, not
     // submit the whole form.
     event.preventDefault();
+  });
+  if ($('restoreConfirmBtn')) $('restoreConfirmBtn').addEventListener('click', () => {
+    if (pendingRestoreEmployee) restoreEmployee(pendingRestoreEmployee);
   });
   (_$27 = $('retireConfirmBtn')) === null || _$27 === void 0 ? void 0 : _$27.addEventListener('click', () => {
     if (pendingRetireEmployee) retireEmployee(pendingRetireEmployee);
