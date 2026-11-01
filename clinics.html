@@ -258,6 +258,11 @@
     .day-ms-check { width: 18px; color: #005daa; color: var(--primary); font-weight: 800; visibility: hidden; }
     .day-ms-opt.selected .day-ms-check { visibility: visible; }
 
+    .pager { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; margin: 14px 0 4px; }
+    .pager.hidden { display: none; }
+    .pager-info { font-size: 0.9rem; color: #4a5568; color: var(--muted); }
+    .pager .ghost-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
     .auto-refresh-toggle {
       display: inline-flex; align-items: center; gap: 6px;
       cursor: pointer; user-select: none; white-space: nowrap;
@@ -675,6 +680,11 @@
           <thead id="clinicTableHead"></thead>
           <tbody id="clinicTableBody"></tbody>
         </table>
+      </div>
+      <div class="pager hidden" id="pager">
+        <button class="ghost-btn" id="pagerPrev" type="button"></button>
+        <span class="pager-info" id="pagerInfo"></span>
+        <button class="ghost-btn" id="pagerNext" type="button"></button>
       </div>
       <p class="status-line" id="tableStatus" aria-live="polite"></p>
     </section>
@@ -1233,6 +1243,41 @@ function switchToTabWithResults() {
   if (activeTab === 'nodate' && noDateCount === 0 && datedCount > 0) activeTab = 'dated';
 }
 
+// Paging: 200 rows per page. The page is kept across live refreshes and
+// resets to 1 whenever the tab / day filter / patient filter changes.
+const PAGE_SIZE = 200;
+let currentPage = 0;
+let pageFilterSignature = '';
+const pagerEl = document.getElementById('pager');
+const pagerPrev = document.getElementById('pagerPrev');
+const pagerNext = document.getElementById('pagerNext');
+const pagerInfo = document.getElementById('pagerInfo');
+
+function updatePager(total, totalPages) {
+  pagerEl.classList.toggle('hidden', totalPages <= 1);
+  if (totalPages <= 1) return;
+  pagerPrev.textContent = t('← Previous', 'السابق →');
+  pagerNext.textContent = t('Next →', '← التالي');
+  const from = currentPage * PAGE_SIZE + 1;
+  const to = Math.min(total, (currentPage + 1) * PAGE_SIZE);
+  pagerInfo.textContent = t(
+    `Page ${currentPage + 1} of ${totalPages} (rows ${from}–${to} of ${total})`,
+    `صفحة ${currentPage + 1} من ${totalPages} (الصفوف ${from}–${to} من ${total})`);
+  pagerPrev.disabled = currentPage <= 0;
+  pagerNext.disabled = currentPage >= totalPages - 1;
+}
+
+pagerPrev.addEventListener('click', () => {
+  if (currentPage > 0) {currentPage--;renderClinicsTable();scrollTableIntoView();}
+});
+pagerNext.addEventListener('click', () => {
+  currentPage++;renderClinicsTable();scrollTableIntoView();
+});
+function scrollTableIntoView() {
+  const wrap = document.querySelector('.table-wrap');
+  if (wrap) wrap.scrollIntoView({ block: 'start' });
+}
+
 // Renders the active tab. Returns the total number of rows (both tabs).
 function renderClinicsTable() {
   const allRows = getFilteredRows();
@@ -1240,8 +1285,16 @@ function renderClinicsTable() {
   const noDateRows = allRows.filter(isNoDateClinic);
   updateTabsUi(datedRows.length, noDateRows.length);
 
-  const rowsToRender = activeTab === 'nodate' ? noDateRows : datedRows;
+  const tabRows = activeTab === 'nodate' ? noDateRows : datedRows;
   const orderedColumns = columnsForTab(activeTab);
+
+  const signature = [activeTab, [...getSelectedDayKeys()].sort().join(','), filterPatientId || ''].join('|');
+  if (signature !== pageFilterSignature) {pageFilterSignature = signature;currentPage = 0;}
+  const totalPages = Math.max(1, Math.ceil(tabRows.length / PAGE_SIZE));
+  if (currentPage > totalPages - 1) currentPage = totalPages - 1;
+  if (currentPage < 0) currentPage = 0;
+  const rowsToRender = tabRows.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  updatePager(tabRows.length, totalPages);
 
   let headerHtml = `<tr>${orderedColumns.map((item) => `<th>${escapeHtml(columnHeaderLabel(item))}</th>`).join('')}<th>${t('Status', 'الحالة')}</th>`;
   if (isAdmin) {
