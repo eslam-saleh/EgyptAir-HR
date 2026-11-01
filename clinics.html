@@ -258,6 +258,13 @@
     .day-ms-check { width: 18px; color: #005daa; color: var(--primary); font-weight: 800; visibility: hidden; }
     .day-ms-opt.selected .day-ms-check { visibility: visible; }
 
+    .auto-refresh-toggle {
+      display: inline-flex; align-items: center; gap: 6px;
+      cursor: pointer; user-select: none; white-space: nowrap;
+      font-size: 0.9rem; color: #1a202c; color: var(--text);
+    }
+    .auto-refresh-toggle input { width: 16px; height: 16px; margin: 0; cursor: pointer; accent-color: #005daa; accent-color: var(--primary); }
+
     .refresh-btn.loading {
       opacity: 0.7;
     }
@@ -639,6 +646,7 @@
           <p data-en="Latest submissions appear first. Decided rows are greyed out." data-ar="تظهر أحدث الطلبات أولاً. الصفوف التي تم اتخاذ قرار بشأنها تظهر باللون الرمادي.">Latest submissions appear first. Decided rows are greyed out.</p>
         </div>
         <div class="results-tools">
+          <label class="auto-refresh-toggle" for="autoRefreshToggle" title="When off, new records are not shown until you press Refresh"><input type="checkbox" id="autoRefreshToggle" checked><span id="autoRefreshLabel">Auto</span></label>
           <button class="ghost-btn export-btn refresh-btn" id="refreshBtn" type="button"><span class="refresh-icon" aria-hidden="true">↻</span> <span id="refreshBtnLabel">Refresh</span></button>
           <div class="export-group">
             <div class="export-day-field">
@@ -826,6 +834,8 @@ const exportDaySelect = document.getElementById('exportDaySelect');
 const exportDayLabel = document.getElementById('exportDayLabel');
 const refreshBtn = document.getElementById('refreshBtn');
 const refreshBtnLabel = document.getElementById('refreshBtnLabel');
+const autoRefreshToggle = document.getElementById('autoRefreshToggle');
+const autoRefreshLabel = document.getElementById('autoRefreshLabel');
 const copyFormLinkBtn = document.getElementById('copyFormLinkBtn');
 const clearInquiryBtn = document.getElementById('clearInquiryBtn');
 const clinicTabs = document.getElementById('clinicTabs');
@@ -1485,6 +1495,8 @@ function populateDaySelect() {
   renderDaySelect(keys);
   exportDayLabel.textContent = t('Day(s) (Egypt time)', 'اليوم/الأيام (بتوقيت مصر)');
   refreshBtnLabel.textContent = t('Refresh', 'تحديث');
+  autoRefreshLabel.textContent = t('Auto', 'تلقائي');
+  autoRefreshToggle.parentElement.title = t('When off, new records are not shown until you press Refresh', 'عند الإيقاف لا تظهر السجلات الجديدة حتى تضغط تحديث');
 }
 
 function sortRowsForExport(rows) {
@@ -2269,6 +2281,7 @@ function enqueueSheetSave(task) {
 }
 
 async function liveRefreshSheet() {var _document$activeEleme;
+  if (!autoRefreshToggle.checked) return; // auto-refresh paused: only the Refresh button loads new records
   if (liveRefreshBusy || isLoadingSheet || document.hidden) return;
   if ((_document$activeEleme = document.activeElement) !== null && _document$activeEleme !== void 0 && _document$activeEleme.classList.contains('nearest-time-input')) return; // user is typing a date
   if (typeof resultsPanel === 'undefined' || resultsPanel.classList.contains('hidden')) return;
@@ -2291,6 +2304,11 @@ async function liveRefreshSheet() {var _document$activeEleme;
     liveRefreshBusy = false;
   }
 }
+try {if (localStorage.getItem('clinicsAutoRefresh') === 'off') autoRefreshToggle.checked = false;} catch (e) {}
+autoRefreshToggle.addEventListener('change', () => {
+  try {localStorage.setItem('clinicsAutoRefresh', autoRefreshToggle.checked ? 'on' : 'off');} catch (e) {}
+  if (autoRefreshToggle.checked) {lastActivityAt = Date.now();liveRefreshSheet();} // catch up right away
+});
 ['pointerdown', 'keydown'].forEach((name) =>
 document.addEventListener(name, () => {lastActivityAt = Date.now();}, { passive: true }));
 (function scheduleLiveRefresh() {
