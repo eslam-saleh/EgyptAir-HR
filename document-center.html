@@ -26,6 +26,7 @@
     .search-clear-btn:hover, .search-clear-btn:focus-visible {
       background: #b32020; transform: translateY(-50%) scale(1.12); outline: 2px solid #fff; outline-offset: 1px;
     }
+    .is-drop-over { outline: 2px dashed var(--primary, #0b5cad); outline-offset: 3px; background: rgba(11, 92, 173, 0.12) !important; transform: scale(1.04); }
   </style>
 </head>
 <body>
@@ -1005,6 +1006,7 @@
     // Never throws — failures are reported via the top-left toast only, so
     // they never block the document download itself.
     async function syncGeneratedDocumentToSheet(doc, valuesByRawKey, execNumber = null) {
+      if (isExecutiveLetterDoc(doc)) return; // the notification letter never updates any sheet
       const rule = getSheetRule(doc?.name);
       if (!rule) return; // this document isn't tracked in بيانات.xlsx
       // The executive-order number assigned in "الارقام" (plain integer there)
@@ -1153,6 +1155,7 @@
       const fileName = String(doc?.name || '');
       if (!/\.docx$/i.test(fileName)) return null;
       if (!/تنفيذ[يى]/.test(fileName)) return null;
+      if (isExecutiveLetterDoc(doc)) return null; // the notification letter never gets a number
       try {
         // One executive order = ONE number. Two-person documents (ايقاف شخصين،
         // جزاء شخصين) write one row per person, all sharing that same number.
@@ -2447,6 +2450,74 @@ function renderPlaceholderForm(doc, placeholders) {
       }).from(element).save();
     }
 
+    // ========== EXECUTIVE ORDER → NOTIFICATION LETTER ==========
+    const EXEC_LETTER_NAME = 'خطاب مدير عام اخطار امر تنفيذي.docx';
+
+    // Letters that mention an executive order but must never get a number
+    // in "الارقام" or update any sheet.
+    const NO_SHEET_LETTER_NAMES = [
+      EXEC_LETTER_NAME,
+      'خطاب مدير عام ارفاق امر تنفيذي.docx',
+    ].map((n) => execNameKey(n));
+
+    function isExecutiveLetterDoc(doc) {
+      return NO_SHEET_LETTER_NAMES.includes(execNameKey(doc?.name));
+    }
+
+    function execNameKey(name) {
+      return String(name || '')
+        .replace(/[\u064B-\u065F\u0640]/g, '')   // diacritics + tatweel
+        .replace(/[ىي]/g, 'ي')
+        .replace(/[أإآ]/g, 'ا')
+        .replace(/ة/g, 'ه')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    }
+
+    // Returns the letter document when `doc` is an executive-order .docx
+    // (name contains تنفيذي/تنفيذى) and is not the letter itself.
+    function getExecutiveFollowUp(doc) {
+      const name = String(doc?.name || '');
+      if (!/\.docx$/i.test(name) || !/تنفيذ[يى]/.test(name)) return null;
+      const targetKey = execNameKey(EXEC_LETTER_NAME);
+      if (isExecutiveLetterDoc(doc)) return null; // letters never trigger the follow-up
+      return allDocs.find((d) => execNameKey(d.name) === targetKey) || null;
+    }
+
+    // Every non-empty value of a field whose label contains "كود", in form order.
+    function collectCodeValuesFromForm() {
+      return Array.from(formFields.querySelectorAll('[data-placeholder-index]'))
+        .filter((f) => {
+          const g = selectedPlaceholders[Number(f.dataset.placeholderIndex)];
+          return g && labelContains(g.label, 'كود');
+        })
+        .map((f) => f.value.trim())
+        .filter(Boolean);
+    }
+
+    async function openExecutiveLetterForm(letterDoc, codes) {
+      await selectDocument(letterDoc.id);
+      if (!selectedDoc || selectedDoc.id !== letterDoc.id || !codes.length) return;
+
+      const codeFields = Array.from(formFields.querySelectorAll('[data-placeholder-index]'))
+        .filter((f) => {
+          const g = selectedPlaceholders[Number(f.dataset.placeholderIndex)];
+          return g && labelContains(g.label, 'كود');
+        });
+
+      codeFields.forEach((field, i) => {
+        // One code for a single field; otherwise pair them by order.
+        const code = codes[i] ?? (codeFields.length === 1 ? codes[0] : '');
+        if (!code) return;
+        field.value = code;
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        // Same behaviour as pressing the field's load-employee button.
+        field.parentElement?.querySelector('.code-load-btn')?.click();
+      });
+    }
+    // ========== END EXECUTIVE ORDER → LETTER ==========
+
     async function generatePdf(event) {
       event.preventDefault();
       if (!selectedDoc || (!selectedPlaceholders.length && !autoPlaceholders.length)) return;
@@ -2478,7 +2549,13 @@ function renderPlaceholderForm(doc, placeholders) {
         }
 
         await syncGeneratedDocumentToSheet(selectedDoc, values, execNumber);
+
+        // Executive order Word file → auto-open the notification letter form
+        // and carry the employee code(s) over to its "كود" field(s).
+        const followUp = getExecutiveFollowUp(selectedDoc);
+        const carriedCodes = followUp ? collectCodeValuesFromForm() : [];
         hideDocumentForm();
+        if (followUp) await openExecutiveLetterForm(followUp, carriedCodes);
       } catch (err) {
         generatePdfBtn.disabled = false;
         setFormStatus(
@@ -2673,6 +2750,41 @@ function renderPlaceholderForm(doc, placeholders) {
       if (file) loadFormFieldsFromFile(file);
       loadFieldsInput.value = '';
     });
+
+    // Drag & drop a .json file onto the "Load data" button
+    (function setupLoadFieldsDrop() {
+      const hasFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+      const setOver = (on) => {
+        loadFieldsBtn.classList.toggle('is-drop-over', on);
+      };
+      ['dragenter', 'dragover'].forEach((type) => {
+        loadFieldsBtn.addEventListener(type, (e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          setOver(true);
+        });
+      });
+      loadFieldsBtn.addEventListener('dragleave', (e) => {
+        if (e.relatedTarget && loadFieldsBtn.contains(e.relatedTarget)) return;
+        setOver(false);
+      });
+      loadFieldsBtn.addEventListener('drop', (e) => {
+        if (!hasFiles(e)) return;
+        e.preventDefault();
+        setOver(false);
+        const file = Array.from(e.dataTransfer.files).find((f) => /\.json$/i.test(f.name) || f.type === 'application/json');
+        if (!file) {
+          setFormStatus(t('Please drop a .json file.', 'من فضلك اسحب ملف بصيغة JSON.'), true);
+          return;
+        }
+        loadFormFieldsFromFile(file);
+      });
+      // Stop the browser from opening a JSON file dropped outside the button
+      ['dragover', 'drop'].forEach((type) => {
+        window.addEventListener(type, (e) => { if (hasFiles(e)) e.preventDefault(); });
+      });
+    })();
 
     searchInput.addEventListener('input', (e) => renderDocuments(e.target.value));
     window.addEventListener('portal-language-change', () => {
