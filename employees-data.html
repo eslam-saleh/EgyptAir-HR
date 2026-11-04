@@ -1912,9 +1912,9 @@ function computed(employee) {
   e.age = currentAge;
   e.ageAtAppointment = birth && appointment ? ageOn(birth, appointment) : '';
   e.ageGroup = currentAge === '' ? '' : currentAge < 20 ? lang() === 'ar' ? 'أقل من 20' : 'Under 20' : currentAge < 25 ? '20–24' : currentAge < 30 ? '25–29' : currentAge < 35 ? '30–34' : currentAge < 40 ? '35–39' : currentAge < 45 ? '40–44' : currentAge < 50 ? '45–49' : currentAge < 55 ? '50–54' : currentAge < 60 ? '55–59' : currentAge < 65 ? '60–64' : lang() === 'ar' ? '65 فأكثر' : '65+';
-  // تاريخ المعاش = birth + 60 years (matches Apps Script formula)
+  // تاريخ المعاش = birth + 60 years - 1 day
   if (birth) {
-    const pension = new Date(birth.getFullYear() + 60, birth.getMonth(), birth.getDate());
+    const pension = new Date(birth.getFullYear() + 60, birth.getMonth(), birth.getDate() - 1);
     const pad = (n) => n < 10 ? '0' + n : String(n);
     e.retirementDate = pension.getFullYear() + '/' + pad(pension.getMonth() + 1) + '/' + pad(pension.getDate());
   } else {
