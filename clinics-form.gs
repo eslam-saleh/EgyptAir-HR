@@ -70,6 +70,10 @@ function updateNext30Days() {
 // must come BEFORE the date question (the script moves the date
 // question after it if it isn't). Safe to run again: it reuses the
 // sections it already created.
+//
+// Choice labels may contain a note in parentheses, e.g. "مسالك (ايام الخميس)".
+// The note is ignored when deciding whether a clinic skips the date; the
+// dashboard script trims it from the saved sheet value.
 // ==========================================================
 function setupClinicDateBranching() {
   var form = FormApp.getActiveForm();
@@ -82,8 +86,9 @@ function setupClinicDateBranching() {
   }
   var noDateSet = NO_DATE_CLINICS.map(norm);
   // Match by keyword too, so choices like "عيادة الأسنان" or "العيادة العامة" are caught.
+  // Anything from the first "(" onward is ignored ("عيادة عامة (ايام ...)").
   function skipsDate(value) {
-    var v = norm(value);
+    var v = norm(String(value).split(/[(（]/)[0]);
     // Exact names, plus anything containing "اسنان" (عيادة الأسنان) or exactly the
     // general clinic ("عيادة عامة" / "العيادة العامة"). A bare "عامة" substring would
     // also catch e.g. "جراحة عامة", which must still ask for a date.
