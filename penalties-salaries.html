@@ -602,38 +602,65 @@
           <div class="sal-field">
             <label class="sal-label" for="basicNumber" data-en="Basic Salary (أساسي)" data-ar="الأجر الأساسي">الأجر الأساسي</label>
             <div class="sal-input-row">
-              <input type="number" id="basicNumber" min="0" max="4000" step="50" value="2000">
+              <input type="number" id="basicNumber" min="0" max="10000" step="50" value="5000">
               <span class="sal-currency">EGP</span>
-              <input type="range" id="basicRange" min="0" max="4000" step="50" value="2000">
+              <input type="range" id="basicRange" min="0" max="10000" step="50" value="5000">
             </div>
           </div>
 
-          <!-- Incentives / Variable (الحوافز) -->
+          <!-- Incentives / Variable Pay in POINTS (بنط / أبناط) -->
           <div class="sal-field">
-            <label class="sal-label" for="incentivesNumber" data-en="Incentives / Variable Pay" data-ar="الحوافز / الأجر المتغير">الحوافز / الأجر المتغير</label>
+            <label class="sal-label" for="pointsNumber" data-en="Incentives / Variable Pay (points – أبناط)" data-ar="الحوافز / الأجر المتغير (أبناط)">الحوافز / الأجر المتغير (أبناط)</label>
             <div class="sal-input-row">
-              <input type="number" id="incentivesNumber" min="0" max="50000" step="50" value="13000">
-              <span class="sal-currency">EGP</span>
-              <input type="range" id="incentivesRange" min="0" max="50000" step="50" value="13000">
+              <input type="number" id="pointsNumber" min="100" max="5000" step="50" value="1000">
+              <span class="sal-currency" data-en="pts" data-ar="بنط">بنط</span>
+              <input type="range" id="pointsRange" min="100" max="5000" step="50" value="1000">
+            </div>
+            <p class="hint-text" data-en="Min 100 – Max 5,000 points." data-ar="الحد الأدنى ١٠٠ بنط – الحد الأقصى ٥٠٠٠ بنط.">الحد الأدنى ١٠٠ بنط – الحد الأقصى ٥٠٠٠ بنط.</p>
+          </div>
+
+          <!-- Point value -->
+          <div class="sal-field">
+            <label class="sal-label" for="pointValue" data-en="Point value (flexible)" data-ar="قيمة البنط (مرنة)">قيمة البنط (مرنة)</label>
+            <div class="sal-input-row">
+              <input type="number" id="pointValue" min="0" max="1000" step="0.5" value="17">
+              <span class="sal-currency" data-en="EGP / point" data-ar="جنيه / بنط">جنيه / بنط</span>
             </div>
           </div>
 
-          <!-- Meal money (وجبة) -->
+          <!-- Monthly performance grade -->
           <div class="sal-field">
-            <label class="sal-label" for="mealsNumber" data-en="Meal Allowance (وجبة)" data-ar="بدل الوجبة">بدل الوجبة</label>
-            <div class="sal-input-row">
-              <input type="number" id="mealsNumber" min="0" max="30" step="1" value="0" style="width:90px;">
-              <span class="sal-currency" data-en="meals" data-ar="وجبة">وجبة</span>
-              <input type="range" id="mealsRange" min="0" max="30" step="1" value="0">
+            <span class="sal-label" data-en="Monthly performance rating (incentive payout %)" data-ar="تقييم الأداء الشهري (نسبة الصرف من الحوافز)">تقييم الأداء الشهري (نسبة الصرف من الحوافز)</span>
+            <div class="occ-group" id="gradeGroup">
+              <label><input type="radio" name="grade" value="1" checked><span data-en="Excellent / Very good – 100%" data-ar="ممتاز / جيد جدا – ١٠٠٪">ممتاز / جيد جدا – ١٠٠٪</span></label>
+              <label><input type="radio" name="grade" value="0.9"><span data-en="Good – 90%" data-ar="جيد – ٩٠٪">جيد – ٩٠٪</span></label>
+              <label><input type="radio" name="grade" value="0.8"><span data-en="Average – 80%" data-ar="متوسط – ٨٠٪">متوسط – ٨٠٪</span></label>
+              <label><input type="radio" name="grade" value="0.7"><span data-en="Weak – 70%" data-ar="ضعيف – ٧٠٪">ضعيف – ٧٠٪</span></label>
             </div>
+            <p class="hint-text" id="incentiveBreakdown"></p>
+          </div>
+
+          <!-- Overtime (replaces meal allowance) -->
+          <div class="sal-field">
+            <label class="sal-label" for="otHours" data-en="Overtime hours (replaces Meal Allowance)" data-ar="العمل الإضافي (بديل بدل الوجبة) – عدد الساعات">العمل الإضافي (بديل بدل الوجبة) – عدد الساعات</label>
+            <div class="sal-input-row">
+              <input type="number" id="otHours" min="0" max="80" step="1" value="0" style="width:90px;">
+              <span class="sal-currency" data-en="hrs" data-ar="ساعة">ساعة</span>
+              <input type="range" id="otRange" min="0" max="80" step="1" value="0">
+            </div>
+            <div class="sal-input-row" style="margin-top:8px;">
+              <input type="number" id="otRate" min="0" max="100" step="0.5" value="9" style="width:90px;">
+              <span class="sal-currency" data-en="points per hour" data-ar="بنط لكل ساعة">بنط لكل ساعة</span>
+            </div>
+            <p class="hint-text" id="otBreakdown" data-en="Maximum 80 hours per month." data-ar="الحد الأقصى ٨٠ ساعة شهريًا.">الحد الأقصى ٨٠ ساعة شهريًا.</p>
           </div>
 
           <!-- Total Gross + Annual Raise side by side -->
           <div class="ded-grid" style="margin-bottom:16px;">
             <div class="sal-field" style="margin-bottom:0;">
-              <label class="sal-label" data-en="Total Gross (Basic + Incentives + Meals)" data-ar="إجمالي الاستحقاقات (أساسي + حوافز + وجبات)">إجمالي الاستحقاقات (أساسي + حوافز + وجبات)</label>
+              <label class="sal-label" data-en="Total Gross (Basic + Incentives + Overtime)" data-ar="إجمالي الاستحقاقات (أساسي + حوافز + عمل إضافي)">إجمالي الاستحقاقات (أساسي + حوافز + عمل إضافي)</label>
               <div class="sal-input-row">
-                <input type="number" id="totalGross" readonly value="15000" style="background:var(--surface); font-weight:800; color:var(--primary); width:100%;">
+                <input type="number" id="totalGross" readonly value="5000" style="background:var(--surface); font-weight:800; color:var(--primary); width:100%;">
                 <span class="sal-currency">EGP</span>
               </div>
             </div>
@@ -656,7 +683,7 @@
 
             <label class="ded-toggle" for="enableIncentiveDed">
               <input type="checkbox" id="enableIncentiveDed">
-              <span data-en="Apply Incentive Deduction (30% / 60% / 100%)" data-ar="تطبيق خصم الحوافز (30% / 60% / 100%)">تطبيق خصم الحوافز (30% / 60% / 100%)</span>
+              <span data-en="Apply Incentive Reduction (10% / 15% / 30% / 60% / 90%)" data-ar="تطبيق تخفيض الحوافز (١٠٪ / ١٥٪ / ٣٠٪ / ٦٠٪ / ٩٠٪)">تطبيق تخفيض الحوافز (١٠٪ / ١٥٪ / ٣٠٪ / ٦٠٪ / ٩٠٪)</span>
             </label>
           </div>
 
@@ -702,15 +729,16 @@
           <div class="summary-grid">
             <div class="sum-card">
               <div class="sum-clabel" data-en="Basic" data-ar="الأساسي">الأساسي</div>
-              <div class="sum-cvalue" id="sBasic">2,000.00 EGP</div>
+              <div class="sum-cvalue" id="sBasic">5,000.00 EGP</div>
             </div>
             <div class="sum-card">
-              <div class="sum-clabel" data-en="Incentives" data-ar="الحوافز">الحوافز</div>
-              <div class="sum-cvalue" id="sIncentives">13,000.00 EGP</div>
+              <div class="sum-clabel" data-en="Incentives (paid)" data-ar="الحوافز (المصروف)">الحوافز (المصروف)</div>
+              <div class="sum-cvalue" id="sIncentives">0.00 EGP</div>
+              <div class="hint-text" id="sIncentivesPts"></div>
             </div>
             <div class="sum-card">
               <div class="sum-clabel" data-en="Total Entitlements" data-ar="إجمالي الاستحقاقات">إجمالي الاستحقاقات</div>
-              <div class="sum-cvalue pos" id="sGross">15,000.00 EGP</div>
+              <div class="sum-cvalue pos" id="sGross">5,000.00 EGP</div>
             </div>
             <div class="sum-card" id="sInsCard">
               <div class="sum-clabel" data-en="Social Insurance (10% of gross)" data-ar="التأمينات (١٠٪ من الإجمالي)">التأمينات (١٠٪ من الإجمالي)</div>
@@ -725,15 +753,16 @@
               <div class="sum-cvalue neg" id="sFixed">-0.00 EGP</div>
             </div>
             <div class="sum-card">
-              <div class="sum-clabel" data-en="Meals" data-ar="الوجبات">الوجبات</div>
+              <div class="sum-clabel" data-en="Overtime" data-ar="العمل الإضافي">العمل الإضافي</div>
               <div class="sum-cvalue pos" id="sMeals">0.00 EGP</div>
+              <div class="hint-text" id="sOtPts"></div>
             </div>
             <div class="sum-card">
               <div class="sum-clabel" data-en="Penalty Deduction" data-ar="خصم الجزاء">خصم الجزاء</div>
               <div class="sum-cvalue neg" id="sPenalty">-0.00 EGP</div>
             </div>
             <div class="sum-card hidden" id="sIncentiveCard">
-              <div class="sum-clabel" data-en="Incentive Deduction" data-ar="خصم الحافز">خصم الحافز</div>
+              <div class="sum-clabel" data-en="Incentive Reduction" data-ar="تخفيض الحافز">تخفيض الحافز</div>
               <div class="sum-cvalue neg" id="sIncentive">-0.00 EGP</div>
             </div>
             <div class="sum-card">
@@ -742,7 +771,7 @@
             </div>
             <div class="sum-card highlight">
               <div class="sum-clabel" data-en="Net Salary (الصافي)" data-ar="الصافي">الصافي</div>
-              <div class="sum-cvalue pos" id="sNet">15,000.00 EGP</div>
+              <div class="sum-cvalue pos" id="sNet">5,000.00 EGP</div>
             </div>
           </div>
 
@@ -782,30 +811,29 @@
     let selectedReg  = null;
     let selectedCrew = null;
     let selectedCrewPunishment = null;
-    let basicSalary  = 2000;   // الأجر الأساسي (حد أدنى 0 – أقصى 4000)
-    let incentives   = 13000;  // الحوافز / الأجر المتغير
-    let mealCount    = 0;      // عدد الوجبات (0–30)
-    const MEAL_UNIT  = 60;     // قيمة الوجبة الواحدة
+    let basicSalary  = 5000;   // الأجر الأساسي
+    let incPoints    = 1000;   // الحوافز بالأبناط (100–5000)
+    let pointValue   = 17;     // قيمة البنط بالجنيه (مرنة)
+    let gradeRate    = 1;      // نسبة الصرف حسب تقييم الأداء (1 / .9 / .8 / .7)
+    let otHours      = 0;      // ساعات العمل الإضافي (0–80)
+    let otRate       = 9;      // أبناط لكل ساعة إضافي
+    const POINTS_MIN = 100, POINTS_MAX = 5000, OT_MAX = 80;
     let penaltyAmt   = 0;
     let penaltyDesc  = '';
     let incentivePenaltyRate = 0;
     let incentivePenaltyAmt  = 0;
     let incentivePenaltyDesc = '';
 
-    function getMealGross() {
-      return mealCount * MEAL_UNIT;
-    }
+    // الحوافز: الأبناط × قيمة البنط × نسبة الصرف
+    function getIncentiveMax()  { return incPoints * pointValue; }
+    function getIncentivePaid() { return getIncentiveMax() * gradeRate; }
+    // العمل الإضافي: الساعات × أبناط الساعة × قيمة البنط
+    function getOvertimePoints() { return otHours * otRate; }
+    function getMealGross()      { return getOvertimePoints() * pointValue; } // kept name for compatibility
 
-    // Total Gross for tax / SI / Martyrs / day-penalty =
-    // Basic + Incentives + Meals
-    // (matches real EgyptAir payslips where بدل أغذية is part of إجمالي الاستحقاقات)
+    // Total Gross = Basic + Incentives paid + Overtime
     function getTotalGross() {
-      return basicSalary + incentives + getMealGross();
-    }
-
-    function getMealNet() {
-      // Meals are already included in getTotalGross(), so do NOT add them again to net
-      return 0;
+      return basicSalary + getIncentivePaid() + getMealGross();
     }
 
     // ── Boot ──────────────────────────────────────────────────────────────────
@@ -857,9 +885,8 @@
 
       // Debounce timers so keyboard typing is not interrupted by clamp
       let basicDebounce = null;
-      let incDebounce = null;
 
-      // Basic salary (min 400 – max 4000)
+      // Basic salary (0 – 10000)
       const basicNum = document.getElementById('basicNumber');
       const basicRng = document.getElementById('basicRange');
       basicNum.addEventListener('input', () => {
@@ -868,7 +895,7 @@
         if (raw === '' || raw === '-') return;
         const n = +raw;
         if (!isNaN(n)) {
-          basicRng.value = Math.min(4000, Math.max(0, n));
+          basicRng.value = Math.min(10000, Math.max(0, n));
           basicSalary = n; // temporary unclamped while typing
           updateRaise();
           updateTotalGross();
@@ -907,77 +934,79 @@
         updateSummary();
       });
 
-      // Meals (0–30) — instant 10% tax display
-      const mealsNum = document.getElementById('mealsNumber');
-      const mealsRng = document.getElementById('mealsRange');
-      function applyMeals(v) {
-        mealCount = clampMeals(v);
-        mealsNum.value = mealCount;
-        mealsRng.value = mealCount;
-        updateTotalGross();   // include meals in إجمالي الاستحقاقات
+      // ── Points / grade / overtime ──
+      const ptsNum = document.getElementById('pointsNumber');
+      const ptsRng = document.getElementById('pointsRange');
+      const pvEl   = document.getElementById('pointValue');
+      const otNum  = document.getElementById('otHours');
+      const otRng  = document.getElementById('otRange');
+      const otRateEl = document.getElementById('otRate');
+      function refreshAll() {
+        updateTotalGross();
+        recalcPenalty();
         updateSummary();
       }
-      mealsNum.addEventListener('input', () => {
-        const raw = mealsNum.value;
-        if (raw === '' || raw === '-') return;
-        const n = +raw;
-        if (!isNaN(n)) applyMeals(n);
+      function applyPoints(v, clamp) {
+        incPoints = clamp ? clampPoints(v) : v;
+        if (clamp) ptsNum.value = incPoints;
+        ptsRng.value = Math.min(POINTS_MAX, Math.max(POINTS_MIN, incPoints));
+        refreshAll();
+      }
+      let ptsDebounce = null;
+      ptsNum.addEventListener('input', () => {
+        if (ptsNum.value === '') return;
+        const n = +ptsNum.value;
+        if (!isNaN(n)) applyPoints(n, false);
+        clearTimeout(ptsDebounce);
+        ptsDebounce = setTimeout(() => applyPoints(+ptsNum.value, true), 900);
       });
-      mealsNum.addEventListener('blur', () => applyMeals(+mealsNum.value));
-      mealsRng.addEventListener('input', () => applyMeals(+mealsRng.value));
+      ptsNum.addEventListener('blur', () => { clearTimeout(ptsDebounce); applyPoints(+ptsNum.value, true); });
+      ptsRng.addEventListener('input', () => { ptsNum.value = ptsRng.value; applyPoints(+ptsRng.value, true); });
 
-      // Incentives
-      const incNum = document.getElementById('incentivesNumber');
-      const incRng = document.getElementById('incentivesRange');
-      incNum.addEventListener('input', () => {
-        const raw = incNum.value;
-        if (raw === '' || raw === '-') return;
-        const n = +raw;
-        if (!isNaN(n)) {
-          incRng.value = Math.min(50000, Math.max(0, n));
-          incentives = n;
-          updateTotalGross();
-          recalcPenalty();
-          updateSummary();
-        }
-        clearTimeout(incDebounce);
-        incDebounce = setTimeout(() => {
-          let v = clampInc(+incNum.value);
-          incNum.value = v;
-          incRng.value = v;
-          incentives = v;
-          updateTotalGross();
-          recalcPenalty();
-          updateSummary();
-        }, 900);
+      pvEl.addEventListener('input', () => {
+        const n = parseFloat(pvEl.value);
+        pointValue = (!isNaN(n) && n >= 0) ? n : 0;
+        refreshAll();
       });
-      incNum.addEventListener('blur', () => {
-        clearTimeout(incDebounce);
-        let v = clampInc(+incNum.value);
-        incNum.value = v;
-        incRng.value = v;
-        incentives = v;
+      document.querySelectorAll('input[name="grade"]').forEach(r => {
+        r.addEventListener('change', () => {
+          gradeRate = parseFloat(document.querySelector('input[name="grade"]:checked').value);
+          refreshAll();
+        });
+      });
+
+      function applyOt(v) {
+        otHours = clampOt(v);
+        otNum.value = otHours;
+        otRng.value = otHours;
         updateTotalGross();
-        recalcPenalty();
         updateSummary();
+      }
+      otNum.addEventListener('input', () => {
+        if (otNum.value === '') return;
+        const n = +otNum.value;
+        if (!isNaN(n)) applyOt(n);
       });
-      incRng.addEventListener('input', () => {
-        incentives = +incRng.value;
-        incNum.value = incentives;
+      otNum.addEventListener('blur', () => applyOt(+otNum.value));
+      otRng.addEventListener('input', () => applyOt(+otRng.value));
+      otRateEl.addEventListener('input', () => {
+        const n = parseFloat(otRateEl.value);
+        otRate = (!isNaN(n) && n >= 0) ? n : 0;
         updateTotalGross();
-        recalcPenalty();
         updateSummary();
       });
 
-      // Reset all salary sliders/numbers back to their defaults
+      // Reset all salary inputs back to their defaults
       document.getElementById('salaryResetBtn').addEventListener('click', () => {
         clearTimeout(basicDebounce);
-        clearTimeout(incDebounce);
-        basicSalary = 2000;
-        incentives = 13000;
-        basicNum.value = basicRng.value = 2000;
-        incNum.value = incRng.value = 13000;
-        applyMeals(0);
+        clearTimeout(ptsDebounce);
+        basicSalary = 5000;
+        basicNum.value = basicRng.value = 5000;
+        incPoints = 1000; ptsNum.value = ptsRng.value = 1000;
+        pointValue = 17; pvEl.value = 17;
+        gradeRate = 1; document.querySelector('input[name="grade"][value="1"]').checked = true;
+        otRate = 9; otRateEl.value = 9;
+        applyOt(0);
         const defaults = { unionFee: '5.00', solidarityFee: '100.00', medicalFund: '100.00', healingProject: '58.00' };
         Object.entries(defaults).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v; });
         insurableManualOverride = false;
@@ -1098,7 +1127,7 @@
       if (isMonetary && amount > 0) {
         calcEl.innerHTML = `<span class="penalty-tag">${fmt(amount)} EGP</span>`;
       } else if (!isMonetary && pen !== '—') {
-        calcEl.innerHTML = `<span class="warn-tag">⚠ ${getLang()==='ar' ? (incentivePenaltyRate ? 'جزاء غير نقدي — لا يُخصم من المرتب مع تطبيق خصم الحافز' : 'جزاء غير نقدي — لا يُخصم من المرتب') : (incentivePenaltyRate ? 'Non-monetary — no salary deduction; incentive deduction applies' : 'Non-monetary — no salary deduction')}</span>`;
+        calcEl.innerHTML = `<span class="warn-tag">⚠ ${getLang()==='ar' ? (incentivePenaltyRate ? 'جزاء غير نقدي — لا يُخصم من المرتب مع تطبيق تخفيض الحافز' : 'جزاء غير نقدي — لا يُخصم من المرتب') : (incentivePenaltyRate ? 'Non-monetary — no salary deduction; incentive reduction applies' : 'Non-monetary — no salary deduction')}</span>`;
         penaltyAmt = 0;
       } else {
         calcEl.innerHTML = '';
@@ -1226,11 +1255,11 @@
     }
 
     // ── Penalty calculation (comprehensive) ──────────────────────────────────
-    // IMPORTANT: day-based penalties use Total Gross (basic + incentives) as directed
+    // IMPORTANT: day-based penalties use Total Gross (basic + incentives + overtime) / 30
     function calcPenalty(text) {
       if (!text || text === '—' || text === '-') return { amount: 0, desc: '', isMonetary: false };
       const t = text.toString();
-      const daily  = getTotalGross() / 30;   // ← من الأجر الشامل (أساسي + حوافز)
+      const daily  = getTotalGross() / 30;   // ← من إجمالي الاستحقاقات (أساسي + حوافز + عمل إضافي)
       const raise  = getRaise();
 
       // Percentage of daily wage (total gross)
@@ -1267,60 +1296,31 @@
       return { amount: 0, desc: '', isMonetary: false };
     }
 
-    // خصم الحافز يُطبق بالإضافة إلى الخصومات النقدية الحالية لجزاء الموظف العادي.
-    // قاعدة 30%: الإنذار وأي جزاء من يوم إلى أقل من خمسة أيام.
-    // قاعدة 60%: خمسة أيام فأكثر، أو الوقف عشرة أيام، أو تأجيل موعد العلاوة.
-    // قاعدة 100%: الحرمان من نصف العلاوة، أو خفض الأجر، أو الخفض إلى وظيفة.
+    // تخفيض الحوافز (النظام الجديد) – يُطبق على الحوافز المصروفة (بعد تقييم الأداء):
+    //  ١٠٪ : الإنذار
+    //  ١٥٪ : الخصم من الأجر الأساسي أقل من ثلاثة أيام
+    //  ٣٠٪ : الخصم من الأجر الأساسي ثلاثة أيام أو أكثر
+    //  ٦٠٪ : تأجيل موعد استحقاق العلاوة السنوية (حتى ثلاثة أشهر)
+    //  ٩٠٪ : الحرمان من جزء من العلاوة / تأجيل الترقية / خفض الأجر / الخفض إلى وظيفة أدنى
     function calcIncentiveDeduction(text) {
       if (!text || text === '—' || text === '-') return { rate: 0, amount: 0, desc: '' };
-
-      const t = text.toString().trim();
-      const normalized = t.replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
-      const exact = values => values.includes(t) || values.includes(normalized);
-      const isFullIncentiveDeduction = exact([
-        'الحرمان من نصف العلاوة',
-        'الحرمان من نصف العلاوة السنوية',
-        'خفض الأجر بمقدار علاوة',
-        'خفض الأجر بمقدار علاوة على الأكثر',
-        'خفض الأجر في حدود علاوة',
-        'الخفض إلى وظيفة في الدرجة الأدنى مباشرة'
-      ]);
-      const isRaiseDelay = t.startsWith('تأجيل موعد استحقاق العلاوة') ||
-        t.startsWith('تأجيل موعد استحقاق العلاوة السنوية');
-      const isTenDaySuspension = /(?:الوقف|وقف|إيقاف|ايقاف)\s*(?:10|١٠|عشرة|عشر)\s*أيام?/.test(t);
-      const isFiveOrMoreDays = exact([
-        'خمسة أيام'
-      ]);
-      const isLessThanFiveDays = exact([
-        'إنذار',
-        '١٠٪ من أجر اليوم',
-        '٧٥٪ من أجر اليوم',
-        'ربع اليوم',
-        'ربع يوم',
-        'نصف اليوم',
-        'نصف يوم',
-        'يوم',
-        'يوم ونصف',
-        'يومان',
-        'ثلاثة أيام',
-        'أربعة أيام'
-      ]);
-
+      const t = text.toString().trim().replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
       let rate = 0;
-      let desc = '';
 
-      if (isFullIncentiveDeduction) {
-        rate = 1;
-        desc = '100%';
-      } else if (isFiveOrMoreDays || isTenDaySuspension || isRaiseDelay) {
+      if (/تأجيل\s*(الترقية|الترقيه)|الحرمان\s*من.*العلاوة|خفض\s*الأجر|الخفض\s*إلى\s*وظيفة|الخفض\s*الى\s*وظيفة/.test(t)) {
+        rate = 0.90;
+      } else if (/^تأجيل/.test(t)) {
         rate = 0.60;
-        desc = '60%';
-      } else if (isLessThanFiveDays) {
+      } else if (/إنذار|انذار/.test(t)) {
+        rate = 0.10;
+      } else if (/(ثلاثة|أربعة|اربعة|خمسة|ستة|سبعة|ثمانية|تسعة|عشرة)\s*أيام|^[3-9]\s*أيام|^\d{2,}\s*أيام/.test(t)) {
         rate = 0.30;
-        desc = '30%';
+      } else if (/ربع|نصف\s*(ال)?يوم|يوم|يومان|٪|%|خصم/.test(t)) {
+        rate = 0.15;
       }
 
-      return { rate, amount: incentives * rate, desc };
+      const amount = getIncentivePaid() * rate;
+      return { rate, amount, desc: Math.round(rate * 100) + '%' };
     }
 
     function recalcPenalty() {
@@ -1348,11 +1348,11 @@
 
     // Annual tax brackets (EGP) – Law 7 of 2024 / 2026
     const TAX_BRACKETS = [
-      { upTo: 40000,   rate: 0 },
+      { upTo: 100000,   rate: 0 },
       { upTo: 55000,   rate: 0.10 },
       { upTo: 70000,   rate: 0.15 },
       { upTo: 200000,  rate: 0.20 },
-      { upTo: 400000,  rate: 0.225 },
+      { upTo: 1000000,  rate: 0.225 },
       { upTo: 1200000, rate: 0.25 },
       { upTo: Infinity, rate: 0.275 }
     ];
@@ -1427,11 +1427,23 @@
 
       const effectiveIncentivePenalty = enableIncDed ? incentivePenaltyAmt : 0;
       const totalDeductions = insAmt + taxAmt + martyrsAmt + fixedAmt + penaltyAmt + effectiveIncentivePenalty;
-      // meals are already inside gross → do not add again
+      // overtime is already inside gross → do not add again
       const net = Math.max(0, gross - totalDeductions);
 
       document.getElementById('sBasic').textContent      = fmtEGP(basicSalary);
-      document.getElementById('sIncentives').textContent = fmtEGP(incentives);
+      document.getElementById('sIncentives').textContent = fmtEGP(getIncentivePaid());
+      const ipts = document.getElementById('sIncentivesPts');
+      if (ipts) ipts.textContent = fmt(incPoints * gradeRate).replace(/\.00$/,'') + (getLang()==='ar' ? ' بنط' : ' pts');
+      const otp = document.getElementById('sOtPts');
+      if (otp) otp.textContent = fmt(getOvertimePoints()).replace(/\.00$/,'') + (getLang()==='ar' ? ' بنط' : ' pts');
+      const ib = document.getElementById('incentiveBreakdown');
+      if (ib) ib.textContent = getLang()==='ar'
+        ? `${incPoints} بنط × ${pointValue} جنيه = ${fmtEGP(getIncentiveMax())} ← المصروف ${Math.round(gradeRate*100)}٪ = ${fmtEGP(getIncentivePaid())}`
+        : `${incPoints} pts × ${pointValue} EGP = ${fmtEGP(getIncentiveMax())} → paid at ${Math.round(gradeRate*100)}% = ${fmtEGP(getIncentivePaid())}`;
+      const ob = document.getElementById('otBreakdown');
+      if (ob) ob.textContent = getLang()==='ar'
+        ? `${otHours} ساعة × ${otRate} بنط = ${fmt(getOvertimePoints()).replace(/\.00$/,'')} بنط = ${fmtEGP(getMealGross())} (الحد الأقصى ٨٠ ساعة)`
+        : `${otHours} h × ${otRate} pts = ${fmt(getOvertimePoints()).replace(/\.00$/,'')} pts = ${fmtEGP(getMealGross())} (max 80 h)`;
       document.getElementById('sGross').textContent      = fmtEGP(gross);
       document.getElementById('sIns').textContent        = '-' + fmtEGP(insAmt);
       document.getElementById('sTax').textContent        = '-' + fmtEGP(taxAmt);
@@ -1462,7 +1474,7 @@
         parts.push(penaltyDesc + ' = ' + fmtEGP(penaltyAmt));
       }
       if (enableIncDed && incentivePenaltyRate > 0) {
-        const label = getLang() === 'ar' ? 'خصم الحافز بنسبة ' : 'Incentive deduction at ';
+        const label = getLang() === 'ar' ? 'تخفيض الحافز بنسبة ' : 'Incentive reduction at ';
         parts.push(label + incentivePenaltyDesc + ' = ' + fmtEGP(incentivePenaltyAmt));
       }
       if (parts.length) {
@@ -1514,20 +1526,20 @@
 
     function clampBasic(v) {
       if (isNaN(v) || v < 0) return 0;
-      if (v > 4000) return 4000;
+      if (v > 10000) return 10000;
       return v;
     }
 
-    function clampMeals(v) {
+    function clampOt(v) {
       if (isNaN(v) || v < 0) return 0;
-      if (v > 30) return 30;
+      if (v > OT_MAX) return OT_MAX;
       return Math.round(v);
     }
 
-    function clampInc(v) {
-      if (isNaN(v) || v < 0) return 0;
-      if (v > 50000) return 50000;
-      return v;
+    function clampPoints(v) {
+      if (isNaN(v) || v < POINTS_MIN) return POINTS_MIN;
+      if (v > POINTS_MAX) return POINTS_MAX;
+      return Math.round(v);
     }
 
     function getLang() {
