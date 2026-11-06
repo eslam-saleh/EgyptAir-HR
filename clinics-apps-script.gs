@@ -81,7 +81,10 @@ function clearClinicCache() {
 // The form shows "مسالك (ايام الخميس)" but the sheet should hold "مسالك".
 // Cuts everything from the first "(" (or full-width "（") onward.
 function stripParens_(value) {
-  return String(value).split(/[(（]/)[0].trim();
+  return String(value)
+    .split(/[(（]/)[0]
+    .replace(/[\u200B\u0640]/g, '')   // zero-width spaces / tatweel used for alignment
+    .trim();                          // trim() also removes em spaces (U+2003)
 }
 
 function findClinicColumn_(headers) {

@@ -71,9 +71,17 @@ function updateNext30Days() {
 // question after it if it isn't). Safe to run again: it reuses the
 // sections it already created.
 //
-// Choice labels may contain a note in parentheses, e.g. "مسالك (ايام الخميس)".
-// The note is ignored when deciding whether a clinic skips the date; the
-// dashboard script trims it from the saved sheet value.
+// ALIGNMENT: choice labels with a note, e.g. "مسالك (ايام الخميس)", are
+// rebuilt as  name + " ـــــ " + "(note)"  (a stretch line "ـ", tatweel),
+// with the number of tatweels chosen so every "(" lines up. Google Forms
+// collapses every kind of space, but it keeps tatweel. Labels without a
+// "(note)" (e.g. "صدر") are left alone. The note and the tatweels are
+// ignored when deciding whether a clinic skips the date; the dashboard
+// script trims them from the value saved in the sheet.
+//
+// To align by hand instead: set AUTO_ALIGN = false and add/delete "ـ"
+// in the option text in the form. The script then keeps your labels as
+// they are and only sets up the routing.
 // ==========================================================
 function setupClinicDateBranching() {
   var form = FormApp.getActiveForm();
@@ -81,14 +89,53 @@ function setupClinicDateBranching() {
   var DATE_SECTION_TITLE = "اختيار التاريخ";
   var AFTER_DATE_SECTION_TITLE = "باقي البيانات";
 
+  // ── Alignment settings (tune if the "(" don't line up on your screen) ──
+  var AUTO_ALIGN = true;      // true = rebuild the tatweel padding on every run (overwrites hand edits)
+                              // false = keep the labels exactly as they are in the form
+  var TATWEEL = "\u0640";     // "ـ"
+  var PAD_FACTOR = 1;         // tatweels added per character of difference in name length
+  var MIN_PAD = 3;            // tatweels on the longest name
+
   function norm(text) {
     return String(text).replace(/[أإآ]/g, "ا").replace(/\s+/g, " ").trim();
   }
   var noDateSet = NO_DATE_CLINICS.map(norm);
+
+  // Clinic name only: no "(note)", no padding characters (also cleans old
+  // labels padded with other kinds of spaces by earlier versions).
+  function cleanName(value) {
+    return String(value)
+      .split(/[(（]/)[0]
+      .replace(/[\u200B\u2000-\u200A\u2003\u00A0\u3000\u0640]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  // Takes the current labels, returns labels with every "(" aligned.
+  // Labels without a "(note)" are returned untouched.
+  function alignLabels(values) {
+    var parts = values.map(function (v) {
+      var s = String(v);
+      var i = s.search(/[(（]/);
+      return i === -1
+        ? { name: s, note: "" }
+        : { name: cleanName(s), note: s.slice(i).trim() };
+    });
+    var maxLen = 0;
+    parts.forEach(function (p) {
+      if (p.note && p.name.length > maxLen) maxLen = p.name.length;
+    });
+    return parts.map(function (p) {
+      if (!p.note) return p.name;
+      var count = Math.max(1, Math.round((maxLen - p.name.length) * PAD_FACTOR) + MIN_PAD);
+      return p.name + " " + new Array(count + 1).join(TATWEEL) + " " + p.note;
+    });
+  }
+
   // Match by keyword too, so choices like "عيادة الأسنان" or "العيادة العامة" are caught.
   // Anything from the first "(" onward is ignored ("عيادة عامة (ايام ...)").
   function skipsDate(value) {
-    var v = norm(String(value).split(/[(（]/)[0]);
+    var v = norm(cleanName(value));
     // Exact names, plus anything containing "اسنان" (عيادة الأسنان) or exactly the
     // general clinic ("عيادة عامة" / "العيادة العامة"). A bare "عامة" substring would
     // also catch e.g. "جراحة عامة", which must still ask for a date.
@@ -123,14 +170,6 @@ function setupClinicDateBranching() {
     var from = item.getIndex();
     var to = anchor.getIndex();
     if (from < to) to = to - 1;   // account for the removal shifting the anchor up
-    if (from !== to) form.moveItem(from, to);
-  }
-
-  // Move item so it sits directly AFTER the anchor.
-  function placeAfter(item, anchor) {
-    var from = item.getIndex();
-    var to = anchor.getIndex();
-    if (from > to) to = to + 1;
     if (from !== to) form.moveItem(from, to);
   }
 
@@ -171,21 +210,45 @@ function setupClinicDateBranching() {
     afterPage = null;
   }
 
-  // Route the clinic answers.
-  var choices = (clinicItem.getType() === FormApp.ItemType.LIST
-    ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem()).getChoices();
-  var newChoices = choices.map(function (choice) {
-    var value = choice.getValue();
-    var skipDate = skipsDate(value);
-    Logger.log((skipDate ? "SKIPS date  : " : "asks for date: ") + value);
+  // Route the clinic answers, with every "(" aligned.
+  var isList = clinicItem.getType() === FormApp.ItemType.LIST;
+  var clinicQ = isList ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem();
+
+  var currentLabels = clinicQ.getChoices().map(function (c) { return c.getValue(); });
+  var labels = AUTO_ALIGN ? alignLabels(currentLabels) : currentLabels;
+
+  var newChoices = labels.map(function (label) {
+    var skipDate = skipsDate(label);
+    Logger.log((skipDate ? "SKIPS date  : " : "asks for date: ") + label);
     var target = skipDate
       ? FormApp.PageNavigationType.SUBMIT   // skip the date section
       : datePage;
-    return (clinicItem.getType() === FormApp.ItemType.LIST
-      ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem()).createChoice(value, target);
+    return clinicQ.createChoice(label, target);
   });
-  (clinicItem.getType() === FormApp.ItemType.LIST
-    ? clinicItem.asListItem() : clinicItem.asMultipleChoiceItem()).setChoices(newChoices);
+  clinicQ.setChoices(newChoices);
 
-  Logger.log("Done: اسنان / عيادة عامة now skip the date question.");
+  Logger.log("Done: اسنان / عيادة عامة skip the date question" +
+    (AUTO_ALIGN ? ", and the \"(\" are aligned." : "."));
+}
+
+
+// ==========================================================
+// DIAGNOSTIC: shows what is stored in each clinic choice right now.
+// "640" = tatweel (kept by Forms), "20" = normal space.
+// ==========================================================
+function dumpClinicLabels() {
+  var form = FormApp.getActiveForm();
+  form.getItems().forEach(function (it) {
+    var t = it.getType();
+    if (it.getTitle().indexOf("العيادة") === -1) return;
+    if (t !== FormApp.ItemType.MULTIPLE_CHOICE && t !== FormApp.ItemType.LIST) return;
+    var q = t === FormApp.ItemType.LIST ? it.asListItem() : it.asMultipleChoiceItem();
+    q.getChoices().forEach(function (c) {
+      var v = c.getValue();
+      var head = v.split(/[(（]/)[0];
+      Logger.log(v + "   | before ( : " + head.slice(-12).split("").map(function (ch) {
+        return ch.charCodeAt(0).toString(16);
+      }).join(" "));
+    });
+  });
 }
