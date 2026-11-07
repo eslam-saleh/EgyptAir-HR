@@ -89,7 +89,9 @@
     .sheet-row.risk-warning { border-inline-start-color: #a47b00; background: color-mix(in srgb, var(--accent) 10%, var(--surface-2)); }
     .sheet-row.risk-danger { border-inline-start-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface-2)); }
     .sheet-row.risk-expired { border-inline-start-color: var(--muted); opacity: .78; }
-    .sheet-row.risk-resolved { border-inline-start-color: var(--success); opacity: .78; }
+    .sheet-row.risk-ended-recent { border-inline-start-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--surface-2)); }
+.sheet-row.risk-ended-old { border-inline-start-color: #1fb8cd; }
+.sheet-row.risk-resolved { border-inline-start-color: var(--success); opacity: .78; }
     /* Record has no value in الرقم — distinct colour regardless of risk level (must stay after the risk-* rules). */
     .sheet-row.no-number { border-inline-start-color: #8e5bd9; background: color-mix(in srgb, #8e5bd9 14%, var(--surface-2)); }
     .sheet-row-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -100,7 +102,9 @@
     .risk-badge.risk-warning { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: #ff7b7b; }
     .risk-badge.risk-danger { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
     .risk-badge.risk-expired { background: color-mix(in srgb, var(--muted) 16%, var(--surface)); color: var(--muted); }
-    .risk-badge.risk-resolved { background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); }
+    .risk-badge.risk-ended-recent { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
+.risk-badge.risk-ended-old { background: color-mix(in srgb, #1fb8cd 16%, var(--surface)); color: #1fb8cd; }
+.risk-badge.risk-resolved { background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); }
     .sheet-group-label { margin: 6px 0 -2px; color: var(--muted); font-size: .84rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
     .sheet-empty, .sheet-error { color: var(--muted); font-size: .95rem; text-align: center; padding: 20px 0; margin: 0; }
     .sheet-error { color: var(--danger); }
@@ -1810,11 +1814,15 @@ async function tagDocx(file, options = {}) {
         const name = findField(rec, 'اسم');
         const code = findField(rec, 'كود');
         const type = findField(rec, 'نوع الاجازة');
-        const level = remaining < 0 ? 'expired' : (remaining <= 7 ? 'warning' : 'safe');
+        // Ended leaves show how long ago they ended: red for 1–10 days, cyan after that.
+        const since = -remaining;
+        const level = remaining < 0
+          ? (since <= 10 ? 'ended-recent' : 'ended-old')
+          : (remaining <= 7 ? 'warning' : 'safe');
         const { row, main } = buildRowShell(level, name, code, type, rec);
         appendMeta(main, 'Ends', 'تنتهي', fmtDate(end));
         if (remaining >= 0) appendBadge(row, level, remaining + ' day(s) left', remaining + ' يوم متبقي');
-        else appendBadge(row, level, 'Ended', 'منتهية');
+        else appendBadge(row, level, since + ' day(s) ago', 'منذ ' + since + ' يوم');
         return row;
       }
 
