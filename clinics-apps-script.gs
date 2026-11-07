@@ -60,7 +60,6 @@ function installClinicTriggers() {
   ScriptApp.getProjectTriggers().forEach(t => {
     const h = t.getHandlerFunction();
     if (h === 'clearClinicCache' || h === 'onClinicFormSubmit') ScriptApp.deleteTrigger(t);
-
   });
   ScriptApp.newTrigger('onClinicFormSubmit')
     .forSpreadsheet(CLINIC_SHEET_ID)
@@ -68,21 +67,21 @@ function installClinicTriggers() {
     .create();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Run ONCE from the Apps Script editor: schedules deleteOldRecords daily at ~3 AM.
+ * PURGE_AFTER_DAYS controls how old a record must be before it is deleted.
+ * Replaces any existing purge trigger so you never get duplicates.
+ */
+function installPurgeTrigger() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'deleteOldRecords') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('deleteOldRecords')
+    .timeBased()
+    .everyDays(1)
+    .atHour(3)
+    .create();
+}
 
 function clearClinicCache() {
   try {
@@ -323,12 +322,12 @@ function jsonResponse(payload) {
 }
 
 // ==========================================================
-// AUTOMATIC PURGE — run from a daily time-driven trigger.
-
+// AUTOMATIC PURGE — run from a daily time-driven trigger
+// (see installPurgeTrigger above).
 // Uses the appointment-date column (found by header, like updateDecision).
 // Rows with no real date (اقرب وقت, or clinics that skip the date question)
 // fall back to the submission timestamp, so they no longer pile up forever.
-
+// Anything older than PURGE_AFTER_DAYS is deleted permanently.
 // ==========================================================
 function deleteOldRecords() {
   let lock;
