@@ -7,8 +7,8 @@ const PURGE_AFTER_DAYS = 10;
 // ── Short-lived cache for the dashboard read ─────────────────────────────
 // Form submissions write to the sheet without going through this script, so
 // installClinicTriggers() (run it ONCE) adds an "On form submit" trigger that
-// clears this cache the moment a submission lands. Writes made here
-// (decisions / purge) clear it at once too.
+// trims the clinic name and clears this cache the moment a submission lands.
+// Writes made here (decisions / purge) clear it at once too.
 const CLINIC_CACHE_KEY = 'clinic-data-v1';
 const CLINIC_CACHE_TTL_SECONDS = 20;
 const CLINIC_CACHE_CHUNK = 30000; // characters; Arabic is 2-3 bytes/char, limit is 100 KB per key
@@ -51,34 +51,38 @@ function getSheetDataCached_() {
   return data;
 }
 
-/** Run ONCE from the Apps Script editor: new form submissions then show instantly. */
+/**
+ * Run ONCE from the Apps Script editor.
+ * Replaces any old trigger with the single "On form submit" trigger that
+ * trims the clinic name and then clears the cache.
+ */
 function installClinicTriggers() {
   ScriptApp.getProjectTriggers().forEach(t => {
-    const fn = t.getHandlerFunction();
-    // 'onClinicFormSubmit' is a leftover from an old version of this script.
-    if (fn === 'clearClinicCache' || fn === 'onClinicFormSubmit') ScriptApp.deleteTrigger(t);
+    const h = t.getHandlerFunction();
+    if (h === 'clearClinicCache' || h === 'onClinicFormSubmit') ScriptApp.deleteTrigger(t);
+
   });
-  ScriptApp.newTrigger('clearClinicCache')
+  ScriptApp.newTrigger('onClinicFormSubmit')
     .forSpreadsheet(CLINIC_SHEET_ID)
     .onFormSubmit()
     .create();
 }
 
-/**
- * Run ONCE from the Apps Script editor: schedules deleteOldRecords daily at ~3 AM.
- * PURGE_AFTER_DAYS controls how old a record must be before it is deleted.
- * Replaces any existing purge trigger so you never get duplicates.
- */
-function installPurgeTrigger() {
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (t.getHandlerFunction() === 'deleteOldRecords') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('deleteOldRecords')
-    .timeBased()
-    .everyDays(1)
-    .atHour(3)
-    .create();
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function clearClinicCache() {
   try {
@@ -90,6 +94,63 @@ function clearClinicCache() {
   } catch (err) { /* ignore */ }
 }
 
+// ── Clinic name trimming ─────────────────────────────────────────────────
+// The form shows "مسالك (ايام الخميس)" but the sheet should hold "مسالك".
+// Cuts everything from the first "(" (or full-width "（") onward.
+function stripParens_(value) {
+  return String(value)
+    .split(/[(（]/)[0]
+    .replace(/[\u200B\u0640]/g, '')   // zero-width spaces / tatweel used for alignment
+    .trim();                          // trim() also removes em spaces (U+2003)
+}
+
+function findClinicColumn_(headers) {
+  const labels = headers.map(h => String(h).trim());
+  let idx = labels.indexOf('العيادة المختارة');
+  if (idx === -1) idx = labels.findIndex(h => h.indexOf('العيادة') !== -1);
+  return idx; // 0-based, -1 if not found
+}
+
+// Runs on every form submission: trims the clinic cell, then clears the cache.
+function onClinicFormSubmit(e) {
+  let lock;
+  try {
+    lock = LockService.getScriptLock();
+    lock.tryLock(20000);
+
+    const sheet = e.range.getSheet();
+    const row = e.range.getRow();
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const col = findClinicColumn_(headers);
+    if (col >= 0) {
+      const cell = sheet.getRange(row, col + 1);
+      const raw = String(cell.getValue());
+      const cleaned = stripParens_(raw);
+      if (cleaned !== raw) cell.setValue(cleaned);
+    }
+    SpreadsheetApp.flush();
+  } catch (err) {
+    Logger.log('onClinicFormSubmit error: ' + err.message);
+  } finally {
+    if (lock) lock.releaseLock();
+    clearClinicCache();
+  }
+}
+
+// OPTIONAL: run once manually to clean rows already saved with parentheses.
+function cleanExistingClinicValues() {
+  const sheet = getResponsesSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const col = findClinicColumn_(headers);
+  if (col < 0) return;
+  const range = sheet.getRange(2, col + 1, lastRow - 1, 1);
+  range.setValues(range.getValues().map(r => [stripParens_(r[0])]));
+  clearClinicCache();
+}
+
+// ── Web endpoints ────────────────────────────────────────────────────────
 function doGet(e) {
   const params = e.parameter || {};
   const callback = String(params.callback || '');
@@ -107,7 +168,7 @@ function doGet(e) {
   return jsonResponse(payload);
 }
 
-// Employee lookup by code. Email columns are stripped before returning.
+// Returns the rows for one employee code, without the email column.
 function lookupByCode_(rawId) {
   const id = String(rawId || '').replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632).trim();
   if (!id || id.length > 20) return { ok: false, error: 'Invalid ID.' };
@@ -262,12 +323,12 @@ function jsonResponse(payload) {
 }
 
 // ==========================================================
-// AUTOMATIC PURGE — run from a daily time-driven trigger
-// (see installPurgeTrigger above).
+// AUTOMATIC PURGE — run from a daily time-driven trigger.
+
 // Uses the appointment-date column (found by header, like updateDecision).
 // Rows with no real date (اقرب وقت, or clinics that skip the date question)
 // fall back to the submission timestamp, so they no longer pile up forever.
-// Anything older than PURGE_AFTER_DAYS is deleted permanently.
+
 // ==========================================================
 function deleteOldRecords() {
   let lock;
