@@ -1276,6 +1276,18 @@
       }
       window.__ls = wrap('localStorage');
       window.__ss = wrap('sessionStorage');
+      /* Same keys as portal.js (the other pages). Old page-local keys are only a fallback. */
+      window.__KEYS = { theme: 'egyptairPortal:theme', lang: 'egyptairPortal:language' };
+      window.__getTheme = function () {
+        var v = window.__ls.getItem(__KEYS.theme) || window.__ls.getItem('portal-theme');
+        return v === 'dark' ? 'dark' : 'light';
+      };
+      window.__getLang = function () {
+        var v = window.__ls.getItem(__KEYS.lang) || window.__ls.getItem('holidayPlanner:language') || window.__ls.getItem('portal-language');
+        return v === 'en' ? 'en' : 'ar';
+      };
+      /* Apply the saved theme immediately so there is no light flash on navigation. */
+      document.documentElement.dataset.theme = window.__getTheme();
     })();
     </script>
 </head>
@@ -2067,6 +2079,8 @@ function updateStaticText() {
 function applyLanguage(next) {
   document.documentElement.lang = next;
   document.documentElement.dir = next === 'ar' ? 'rtl' : 'ltr';
+  __ls.setItem(__KEYS.lang, next);
+  __ls.setItem('holidayPlanner:language', next);
   __ls.setItem('portal-language', next);
   updateStaticText();
   refreshFilters();
@@ -2075,6 +2089,7 @@ function applyLanguage(next) {
 
 function applyTheme(next) {
   document.documentElement.dataset.theme = next;
+  __ls.setItem(__KEYS.theme, next);
   __ls.setItem('portal-theme', next);
   updateStaticText();
 }
@@ -2215,7 +2230,7 @@ function initMultiSelects() {
     const btn = host.querySelector('.ms-btn');
     const panel = host.querySelector('.ms-panel');
     const search = host.querySelector('.ms-search');
-    const change = () => applyFilter();
+    const change = () => { msRender(id); scheduleApplyFilter(); }; // show the choice at once, filter after paint
     btn.addEventListener('click', () => {
       const opening = panel.hidden;
       msCloseAll(id);
@@ -2553,12 +2568,64 @@ function openHistory(opener) {
   loadHistory(); // refresh in the background so the popup is never stale
 }
 
+/* ---- Loading counters: count up quickly (to 1000, then keep creeping) while the data
+   loads, then glide to the real numbers. ---- */
+const counterTick = { timer: null, active: false, value: 0 };
+const counterAnim = {};
+
+function setCount(id, n) {
+  if (counterAnim[id]) { cancelAnimationFrame(counterAnim[id]); counterAnim[id] = 0; }
+  $(id).textContent = Number(n).toLocaleString();
+}
+
+function animateCount(id, from, to, ms) {
+  if (counterAnim[id]) cancelAnimationFrame(counterAnim[id]);
+  const t0 = performance.now();
+  const step = (now) => {
+    const p = Math.min(1, (now - t0) / ms);
+    const eased = 1 - Math.pow(1 - p, 3);
+    $(id).textContent = Math.round(from + (to - from) * eased).toLocaleString();
+    counterAnim[id] = p < 1 ? requestAnimationFrame(step) : 0;
+  };
+  counterAnim[id] = requestAnimationFrame(step);
+}
+
+function startCounterTicker() {
+  stopCounterTicker();
+  counterTick.active = true;
+  counterTick.value = 0;
+  const t0 = performance.now();
+  const RAMP = 1200, FLOOR = 1000;
+  counterTick.timer = setInterval(() => {
+    const e = performance.now() - t0;
+    const v = e < RAMP ? Math.round(FLOOR * (1 - Math.pow(1 - e / RAMP, 2))) : FLOOR + Math.floor((e - RAMP) / 90);
+    counterTick.value = v;
+    $('totalCount').textContent = v.toLocaleString();
+    $('shownCount').textContent = v.toLocaleString();
+  }, 30);
+}
+
+function stopCounterTicker() {
+  if (counterTick.timer) clearInterval(counterTick.timer);
+  counterTick.timer = null;
+}
+
 function renderStats(list) {
   const isRetired = state.view === 'retired';
   const total = state.employees.length;
   const upcoming = isRetired ? 0 : state.employees.filter(isUpcomingRetirement).length;
-  $('totalCount').textContent = total.toLocaleString();
-  $('shownCount').textContent = list.length.toLocaleString();
+  if (counterTick.active && state.loading) {
+    // still loading: leave the ticking numbers alone
+  } else if (counterTick.active) {
+    // data just arrived: glide from the ticker value to the real numbers
+    counterTick.active = false;
+    stopCounterTicker();
+    animateCount('totalCount', counterTick.value, total, 450);
+    animateCount('shownCount', counterTick.value, list.length, 450);
+  } else {
+    setCount('totalCount', total);
+    setCount('shownCount', list.length);
+  }
   $('retirementCount').textContent = isRetired ? '—' : upcoming.toLocaleString();
   if ($('totalLabel')) $('totalLabel').textContent = isRetired ? t('totalRetired') : t('totalActive');
   if ($('shownLabel')) $('shownLabel').textContent = t('matching');
@@ -3180,6 +3247,7 @@ async function load({
   quiet = false
 } = {}) {
   setLoading(true);
+  if (!state.employees.length) startCounterTicker();
   showNotice('');
   applyViewChrome();
   // One light loading state — avoid triple full-table renders during fetch.
@@ -3904,6 +3972,20 @@ async function exportFilteredList() {
   }
 }
 
+let filterJobPending = false;
+/** Paint first (selection is already shown), then run the heavy filter + cascade. */
+function scheduleApplyFilter() {
+  if (filterJobPending) return; // several quick clicks share one run
+  filterJobPending = true;
+  if (!state.loading && $('loadingState')) $('loadingState').textContent = t('loading');
+  requestAnimationFrame(() => setTimeout(() => {
+    filterJobPending = false;
+    try { applyFilter(); } finally {
+      if (!state.loading && $('loadingState')) $('loadingState').textContent = '';
+    }
+  }, 0));
+}
+
 function applyFilter() {
   state.page = 1;
   // Rebuild dependent options so Sector → Department → Section cascade,
@@ -4054,8 +4136,8 @@ function initEvents() {var _$16, _$17, _$18, _$19, _$20, _$21, _$22, _$23, _$24,
     render();
   });
 }
-applyTheme(__ls.getItem('portal-theme') || 'light');
-applyLanguage(__ls.getItem('portal-language') || 'ar');
+applyTheme(__getTheme());
+applyLanguage(__getLang());
 initEvents();
 applyViewChrome();
 initAccessGate();</script>
