@@ -1921,7 +1921,7 @@ async function tagDocx(file, options = {}) {
         const code = findField(rec, 'كود');
         const reason = findField(rec, cfg.reasonKeyword);
         const isIndefinite = remaining === Infinity;
-        const level = isIndefinite ? 'safe' : (remaining <= 0 ? 'expired' : (remaining > cfg.safeThreshold ? 'safe' : 'warning'));
+        const level = isIndefinite ? 'safe' : (remaining <= 0 ? (cfg.isSuspension ? 'ended-recent' : 'expired') : (remaining > cfg.safeThreshold ? 'safe' : 'warning'));
         const detailRec = { ...rec };
         if (cfg.isSuspension) {
           const duration = getWindowDays(rec, cfg);
@@ -1946,10 +1946,11 @@ async function tagDocx(file, options = {}) {
         const name = findField(rec, 'اسم');
         const code = findField(rec, 'كود');
         const reason = findField(rec, cfg.reasonKeyword);
-        const { row, main } = buildRowShell('resolved', name, code, reason, rec);
+        const resolvedLevel = cfg.isSuspension ? 'ended-old' : 'resolved';
+        const { row, main } = buildRowShell(resolvedLevel, name, code, reason, rec);
         appendMeta(main, cfg.dateLabelEn, cfg.dateLabelAr, fmtDate(start));
         appendMeta(main, 'Ended', 'انتهى في', fmtDate(end));
-        appendBadge(row, 'resolved', 'Resolved', 'منتهية');
+        appendBadge(row, resolvedLevel, 'Resolved', 'منتهية');
         return row;
       }
 
