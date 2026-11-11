@@ -3222,7 +3222,7 @@ function openForm(employee = {}, opener) {
   const e = computed(employee);
   $('formTitle').textContent = state.editingKey ? t('editEmployee') : t('newEmployee');
   $('formError').textContent = '';
-  $('employeeForm').innerHTML = `<input type="hidden" name="id" value="${escapeHtml(employee.id || '')}"><input type="hidden" name="rowNumber" value="${escapeHtml(employee.rowNumber || '')}"><input type="hidden" name="version" value="${escapeHtml(employee.version || '')}">` + schema.map((section, index) => `<details class="form-section" open><summary>${escapeHtml(sectionLabel(section))}</summary><div class="fields">${section[3].map((field) => {var _e$key;const [key, en, ar, type, required] = field,value = (_e$key = e[key]) !== null && _e$key !== void 0 ? _e$key : '',label = lang() === 'ar' ? ar : en;if (type === 'computed') return `<div class="field computed"><label>${escapeHtml(label)}</label><input type="text" readonly value="${escapeHtml(value)}"></div>`;if (type === 'select') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><select id="field-${key}" name="${key}" ${required ? 'required' : ''}>${selectOptions(key, value)}</select></div>`;if (type === 'combo') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="text" list="dl-${key}" autocomplete="off" value="${escapeHtml(value)}" ${required ? 'required' : ''}><datalist id="dl-${key}">${comboOptions(key)}</datalist></div>`;return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="${type === 'date' ? 'date' : type === 'tel' ? 'tel' : 'text'}" ${type === 'date' ? `min="${MIN_VALID_DATE}"` : ''} value="${escapeHtml(type === 'date' ? dateValue(value) : value)}" ${required ? 'required' : ''}></div>`;}).join('')}</div></details>`).join('');
+  $('employeeForm').innerHTML = `<input type="hidden" name="id" value="${escapeHtml(employee.id || '')}"><input type="hidden" name="rowNumber" value="${escapeHtml(employee.rowNumber || '')}"><input type="hidden" name="version" value="${escapeHtml(employee.version || '')}">` + schema.map((section, index) => `<details class="form-section" open><summary>${escapeHtml(sectionLabel(section))}</summary><div class="fields">${section[3].map((field) => {var _e$key;const [key, en, ar, type, required] = field,value = (_e$key = e[key]) !== null && _e$key !== void 0 ? _e$key : '',label = lang() === 'ar' ? ar : en;if (type === 'computed') return `<div class="field computed"><label>${escapeHtml(label)}</label><input type="text" readonly id="field-${key}" data-computed="${key}" value="${escapeHtml(value)}"></div>`;if (type === 'select') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><select id="field-${key}" name="${key}" ${required ? 'required' : ''}>${selectOptions(key, value)}</select></div>`;if (type === 'combo') return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="text" list="dl-${key}" autocomplete="off" value="${escapeHtml(value)}" ${required ? 'required' : ''}><datalist id="dl-${key}">${comboOptions(key)}</datalist></div>`;return `<div class="field"><label class="${required ? 'required' : ''}" for="field-${key}">${escapeHtml(label)}</label><input id="field-${key}" name="${key}" type="${type === 'date' ? 'date' : type === 'tel' ? 'tel' : 'text'}" ${type === 'date' ? `min="${MIN_VALID_DATE}"` : ''} value="${escapeHtml(type === 'date' ? dateValue(value) : value)}" ${required ? 'required' : ''}></div>`;}).join('')}</div></details>`).join('');
   openModal('formModal', opener);
 }
 
@@ -4076,6 +4076,19 @@ function initEvents() {var _$16, _$17, _$18, _$19, _$20, _$21, _$22, _$23, _$24,
   (_$25 = $('viewActiveBtn')) === null || _$25 === void 0 ? void 0 : _$25.addEventListener('click', () => switchView('active'));
   (_$26 = $('viewRetiredBtn')) === null || _$26 === void 0 ? void 0 : _$26.addEventListener('click', () => switchView('retired'));
   $('employeeForm').addEventListener('submit', saveEmployee);
+  // Live-recalculate the read-only derived fields when birth / hire date change.
+  const refreshComputedFields = () => {
+    const form = $('employeeForm');
+    const data = Object.fromEntries(new FormData(form).entries());
+    const e = computed(data);
+    form.querySelectorAll('[data-computed]').forEach((input) => {
+      const v = e[input.dataset.computed];
+      input.value = v === undefined || v === null ? '' : v;
+    });
+  };
+  ['input', 'change'].forEach((type) => $('employeeForm').addEventListener(type, (event) => {
+    if (event.target && (event.target.name === 'birthDate' || event.target.name === 'appointmentDate')) refreshComputedFields();
+  }));
   $('employeeForm').addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return;
     const target = event.target;
