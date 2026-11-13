@@ -1989,6 +1989,7 @@
     }
 
     function hideDocumentForm() {
+      document.getElementById('downloadConfirmBox')?.remove();
       selectedDoc = null;
       selectedPlaceholders = [];
       autoPlaceholders = [];
@@ -2397,20 +2398,105 @@ function renderPlaceholderForm(doc, placeholders) {
       });
     }
 
+    // Strip characters browsers/OSes reject in file names (/ \\ : * ? " < > | and
+    // control chars). A code like "12/345" or a date like 13/11/2026 used to
+    // make some browsers silently drop the download.
+    function sanitizeFileName(name) {
+      return String(name || 'document')
+        .replace(/[\\/:*?"<>|\u0000-\u001F]+/g, '-')
+        .replace(/\s+/g, ' ')
+        .replace(/[. ]+(?=\.[A-Za-z0-9]+$)/, '')
+        .trim()
+        .slice(0, 180);
+    }
+
+    // Always-visible fallback: the download is started from code long after
+    // the click (Drive fetch + sheet sync), so a browser may ignore it. This
+    // gives the user a real link to the same file so nothing is lost.
+    function showDownloadFallback(url, filename) {
+      let box = document.getElementById('downloadFallbackBox');
+      if (!box) {
+        box = document.createElement('div');
+        box.id = 'downloadFallbackBox';
+        box.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:9999;background:#1f2937;color:#fff;'
+          + 'padding:12px 16px;border-radius:10px;font:600 14px/1.4 sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);'
+          + 'direction:rtl;max-width:360px;';
+        document.body.appendChild(box);
+      }
+      box.innerHTML = '';
+      const msg = document.createElement('span');
+      msg.textContent = t('Download didn\u2019t start? ', 'لم يبدأ التحميل؟ ');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.textContent = t('Click here', 'اضغط هنا');
+      a.style.cssText = 'color:#8ab4f8;text-decoration:underline;';
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.textContent = '\u00d7';
+      close.style.cssText = 'margin-inline-start:12px;background:none;border:0;color:#fff;font-size:18px;cursor:pointer;';
+      close.addEventListener('click', () => box.remove());
+      box.append(msg, a, close);
+      clearTimeout(box._t);
+      box._t = setTimeout(() => box.remove(), 120000);
+    }
+
     function downloadBlob(blob, filename) {
+      const safeName = sanitizeFileName(filename);
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = filename;
+      link.download = safeName;
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showDownloadFallback(url, safeName);
+      // Keep the blob alive long enough for slow starts and the fallback link.
+      setTimeout(() => URL.revokeObjectURL(url), 150000);
+      return { url, filename: safeName };
+    }
+
+    // The browser never reports when a download finishes, so the form is only
+    // closed after the user confirms the file arrived. "Download again" re-uses
+    // the already-generated file (no sheet sync, no new row).
+    function showDownloadConfirm(info) {
+      let box = document.getElementById('downloadConfirmBox');
+      if (box) box.remove();
+      box = document.createElement('div');
+      box.id = 'downloadConfirmBox';
+      box.style.cssText = 'margin-top:12px;padding:12px 14px;border:1px solid #1e8e3e;border-radius:10px;'
+        + 'background:rgba(30,142,62,.08);display:flex;flex-wrap:wrap;gap:8px;align-items:center;';
+      const msg = document.createElement('span');
+      msg.style.cssText = 'flex:1 1 100%;font-weight:600;';
+      msg.textContent = info
+        ? t('Did the file download? The form stays open until you confirm.', 'هل تم تحميل الملف؟ سيبقى النموذج مفتوحًا حتى تؤكد.')
+        : t('Did the PDF download? The form stays open until you confirm.', 'هل تم تحميل ملف PDF؟ سيبقى النموذج مفتوحًا حتى تؤكد.');
+      const yes = document.createElement('button');
+      yes.type = 'button';
+      yes.className = 'primary-btn';
+      yes.textContent = t('Yes, close the form', 'نعم، أغلق النموذج');
+      yes.addEventListener('click', () => { box.remove(); hideDocumentForm(); });
+      box.appendChild(msg);
+      box.appendChild(yes);
+      if (info) {
+        const again = document.createElement('button');
+        again.type = 'button';
+        again.className = 'ghost-btn';
+        again.textContent = t('No, download again', 'لا، حمّل مرة أخرى');
+        again.addEventListener('click', () => {
+          const a = document.createElement('a');
+          a.href = info.url; a.download = info.filename;
+          document.body.appendChild(a); a.click(); a.remove();
+        });
+        box.appendChild(again);
+      }
+      (formStatus.parentNode || formPanel).insertBefore(box, formStatus.nextSibling);
     }
 
     function currentDateFileSuffix() {
       const now = new Date();
-      return `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
+      return `${now.getDate()}-${now.getMonth() + 1}-${now.getFullYear()}`;
     }
 
 	function getExportFileName(docName, extension, includeDate = false) {
@@ -2478,6 +2564,7 @@ function renderPlaceholderForm(doc, placeholders) {
       const values = readFormValues();
       const feminize = isFemaleSelected();
       let execNumber = null; // الرقم from the "الارقام" sheet (docx path only)
+      let downloadInfo = null;
       generatePdfBtn.disabled = true;
 
       try {
@@ -2497,13 +2584,15 @@ function renderPlaceholderForm(doc, placeholders) {
           setFormStatus(t('Preparing document…', 'جارٍ تجهيز المستند…'));
           const buffer = await downloadDriveFile(selectedDoc);
           const docxBlob = replacePlaceholdersInDocx(buffer, values, false, feminize);
-          downloadBlob(docxBlob, getExportFileName(selectedDoc.name, 'docx', true));
+          downloadInfo = downloadBlob(docxBlob, getExportFileName(selectedDoc.name, 'docx', true));
           execNumber = await logExecutiveNumberToSheet(selectedDoc, values, [...selectedPlaceholders, ...autoPlaceholders]);
         }
 
         await syncGeneratedDocumentToSheet(selectedDoc, values, execNumber);
 
-        hideDocumentForm();
+        // Do NOT close the form automatically: keep it until the user confirms.
+        setFormStatus('');
+        showDownloadConfirm(downloadInfo);
       } catch (err) {
         generatePdfBtn.disabled = false;
         setFormStatus(
