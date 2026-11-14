@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <script src="auth.js" data-page="meetings"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meetings</title>
+  <link rel="icon" href="egyptair-logo_.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="portal.css">
+  <style>
+    .mt-root {
+      --mt-bg: #fff; --mt-border: #dfe5ec; --mt-muted: #667085; --mt-head: #f3f6fa;
+      --mt-green: #d8f1dc; --mt-green-strong: #1e8e3e; --mt-red: #c62828; --mt-pending: #eef1f5;
+    }
+    [data-theme="dark"] .mt-root {
+      --mt-bg: #161b22; --mt-border: #30363d; --mt-muted: #9aa4b2; --mt-head: #21262d;
+      --mt-green: rgba(63,185,80,.24); --mt-green-strong: #56d364; --mt-red: #ff7b72; --mt-pending: #262c34;
+    }
+    .mt-root { max-width: 1100px; margin: 0 auto; }
+    .mt-card { padding: 22px; }
+    .mt-lead { color: var(--mt-muted); margin: 4px 0 16px; }
+    .mt-tabs { display: flex; gap: 10px; margin: 8px 0 14px; flex-wrap: wrap; }
+    .mt-tabs .segmented-btn { flex: 1 1 200px; padding: 12px 16px; border-radius: 12px; font-weight: 700; }
+    .mt-tabs .segmented-btn.active { background: var(--primary, #0b5cad); color: #fff; border-color: var(--primary, #0b5cad); }
+    .mt-count { opacity: .8; font-weight: 600; margin-inline-start: 6px; }
+    .mt-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+    .mt-tools .search-input { flex: 1 1 260px; }
+    .mt-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+    .mt-chip { border: 1px solid var(--mt-border); background: var(--mt-bg); color: inherit; border-radius: 999px;
+      padding: 6px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+    .mt-chip.active { background: var(--primary, #0b5cad); color: #fff; border-color: var(--primary, #0b5cad); }
+    .mt-legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 14px; margin: 4px 0 16px; align-items: center; }
+    .mt-key { display: inline-flex; align-items: center; gap: 8px; }
+    .mt-swatch-red { color: var(--mt-red); font-weight: 800; }
+    .mt-swatch-green { display: inline-block; width: 26px; height: 16px; border-radius: 4px; background: var(--mt-green); border: 1px solid var(--mt-green-strong); }
+    .mt-source { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; color: var(--mt-muted); font-size: 13px; margin-bottom: 14px; }
+    .mt-error { color: var(--mt-red); font-weight: 600; }
+    .mt-empty { border: 2px dashed var(--mt-border); border-radius: 14px; padding: 40px 20px; text-align: center; color: var(--mt-muted); }
+    .mt-empty.is-drop { border-color: var(--primary, #0b5cad); background: rgba(11,92,173,.08); }
+    .mt-meeting { border: 1px solid var(--mt-border); border-radius: 14px; margin-bottom: 14px; background: var(--mt-bg); overflow: hidden; }
+    .mt-meeting > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+      padding: 12px 16px; background: var(--mt-head); font-weight: 700; }
+    .mt-meeting > summary::-webkit-details-marker { display: none; }
+    .mt-title { font-size: 17px; font-weight: 800; }
+    .mt-dates { color: var(--mt-muted); font-weight: 500; font-size: 13px; }
+    .mt-dates b { color: inherit; font-weight: 700; }
+    .mt-sum { margin-inline-start: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+    .mt-pill { border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 700; border: 1px solid var(--mt-border); background: var(--mt-pending); }
+    .mt-pill.green { background: var(--mt-green); border-color: var(--mt-green-strong); }
+    .mt-pill.red { color: var(--mt-red); border-color: var(--mt-red); background: transparent; }
+    .mt-table-wrap { overflow-x: auto; }
+    .mt-table { width: 100%; border-collapse: collapse; }
+    .mt-table th, .mt-table td { padding: 9px 12px; text-align: start; border-top: 1px solid var(--mt-border); vertical-align: top; }
+    .mt-table th { font-size: 13px; color: var(--mt-muted); font-weight: 700; }
+    .mt-table td.num { width: 44px; }
+    .mt-table td.code { width: 90px; font-variant-numeric: tabular-nums; }
+    .mt-table tr.is-decided td { background: var(--mt-green); }
+    .mt-table tr.is-denied td { color: var(--mt-red); }
+    .mt-badge { display: inline-block; border-radius: 6px; padding: 1px 8px; font-size: 12px; font-weight: 700; margin-inline-end: 4px; white-space: nowrap; }
+    .mt-badge.denied { border: 1px solid var(--mt-red); color: var(--mt-red); }
+    .mt-badge.decided { border: 1px solid var(--mt-green-strong); color: var(--mt-green-strong); }
+    .mt-badge.pending { border: 1px solid var(--mt-border); color: var(--mt-muted); }
+    .mt-tog { border: 1px solid var(--mt-border); background: var(--mt-bg); color: inherit; border-radius: 8px; padding: 3px 10px;
+      font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; margin-inline-end: 4px; }
+    .mt-tog:disabled { opacity: .5; cursor: wait; }
+    .mt-tog.denied.on { background: var(--mt-red); border-color: var(--mt-red); color: #fff; }
+    .mt-tog.decided.on { background: var(--mt-green-strong); border-color: var(--mt-green-strong); color: #fff; }
+    .mt-mini { border: 1px solid var(--mt-border); background: var(--mt-bg); color: inherit; border-radius: 8px; padding: 3px 10px;
+      font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .mt-actions { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--mt-border); }
+    .mt-top { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+    dialog.mt-dialog { border: 1px solid var(--mt-border); border-radius: 14px; padding: 0; width: min(460px, 94vw);
+      background: var(--mt-bg); color: inherit; }
+    dialog.mt-dialog::backdrop { background: rgba(0,0,0,.45); }
+    .mt-dialog form { padding: 20px; display: grid; gap: 12px; }
+    .mt-dialog h3 { margin: 0; }
+    .mt-field { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
+    .mt-field input { padding: 10px 12px; border: 1px solid var(--mt-border); border-radius: 10px; background: transparent; color: inherit; font: inherit; }
+    .mt-field input[readonly] { opacity: .7; }
+    .mt-dialog .mt-buttons { display: flex; gap: 10px; justify-content: flex-end; }
+    .mt-toast { position: fixed; bottom: 16px; inset-inline-start: 16px; z-index: 50; max-width: 340px; padding: 12px 16px; border-radius: 10px;
+      background: #1f2937; color: #fff; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+    .mt-toast.err { background: #b3261e; }
+    .mt-none { padding: 14px 16px; color: var(--mt-muted); }
+  </style>
+</head>
+<body>
+  <header class="portal-header">
+    <a class="brand" href="index.html" aria-label="EgyptAir home">
+      <img src="egyptair-logo_.png" alt="EgyptAir logo">
+      <span>
+        <strong data-en="EgyptAir Work Tools" data-ar="أدوات عمل مصر للطيران">EgyptAir Work Tools</strong>
+        <small data-en="Human Resources Management" data-ar="ادارة الموارد البشرية">ادارة الموارد البشرية</small>
+      </span>
+    </a>
+
+    <nav class="portal-nav" aria-label="Main navigation">
+      <a href="index.html" data-en="Home" data-ar="الرئيسية">Home</a>
+      <a href="holiday-planner.html" data-en="Holiday Planner" data-ar="مخطط الإجازات">Holiday Planner</a>
+      <a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a>
+      <a data-requires="c" href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a>
+      <a href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a>
+      <a data-requires="m" class="active" href="meetings.html" data-en="Meetings" data-ar="الاجتماعات">Meetings</a>
+      <a data-requires="v" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a>
+      <a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">الجزاءات والمرتبات</a>
+      <a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a>
+      <a data-requires="t" href="tagging.html" data-en="Countdown" data-ar="العد التنازلي">Countdown</a>
+    </nav>
+
+    <div class="portal-actions" aria-label="Display controls">
+      <button class="segmented-btn" type="button" data-lang-option="en">EN</button>
+      <button class="segmented-btn active" type="button" data-lang-option="ar">AR</button>
+      <button class="theme-btn" type="button" data-theme-toggle data-en="Dark" data-ar="داكن">داكن</button>
+    </div>
+  </header>
+
+  <main class="app-page">
+    <section class="mt-root">
+      <div class="panel-card mt-card">
+        <p class="eyebrow" data-en="Meetings" data-ar="الاجتماعات">Meetings</p>
+        <h1 data-en="Committee meetings" data-ar="اجتماعات اللجان" style="margin:0;">Committee meetings</h1>
+        <p class="mt-lead" data-en="Requests presented at each meeting and what was decided." data-ar="الطلبات المعروضة في كل اجتماع وما تم البت فيه.">Requests presented at each meeting and what was decided.</p>
+
+        <div class="mt-top">
+          <div class="mt-tabs" id="mtTabs" role="tablist" style="flex:1 1 360px;"></div>
+          <button type="button" class="primary-btn" id="mtNewMeeting"></button>
+        </div>
+
+        <div class="mt-tools">
+          <div class="search-clear-wrap" style="flex:1 1 260px;">
+            <input type="text" id="mtSearch" class="search-input" data-en="Search by name, code or subject..." data-ar="ابحث بالاسم أو الكود أو الموضوع..." placeholder="ابحث بالاسم أو الكود أو الموضوع...">
+          </div>
+          <div class="mt-chips" id="mtChips"></div>
+        </div>
+
+        <div class="mt-legend" id="mtLegend"></div>
+        <div class="mt-source" id="mtSource"></div>
+        <div id="mtBody"></div>
+      </div>
+    </section>
+  </main>
+  <dialog class="mt-dialog" id="mtDialog"><form method="dialog" id="mtForm" novalidate>
+    <h3></h3><div class="mt-fields" id="mtFields"></div>
+    <p class="mt-error" id="mtFormError" role="alert"></p>
+    <div class="mt-buttons"><button type="button" class="ghost-btn" id="mtCancel"></button><button type="submit" class="primary-btn" id="mtSubmit"></button></div>
+  </form></dialog>
+  <div class="mt-toast" id="mtToast" hidden></div>
+
+  <script src="site-data.js"></script>
+  <script src="portal.js"></script>
+  <script>
+    // Deploy meetings.gs as a Web App and paste its /exec URL here.
+    const MEETINGS_URL = 'https://script.google.com/macros/s/AKfycbxzpJqa69Z1OrMTJE_EgUY52oLhtUvwRm1DuDyC_qcyDsACFzBDVWC5I6VsHLHu2VNdCQ/exec';
+    // Optional: same value as the MEETINGS_TOKEN script property (leave '' if you did not set one).
+    const MEETINGS_TOKEN = '';
+    const CACHE_KEY = 'meetings.cache.v2';
+
+    const $ = (id) => document.getElementById(id);
+    const lang = () => window.EgyptAirPortal?.language || 'ar';
+    const t = (en, ar) => (lang() === 'ar' ? ar : en);
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const fold = (s) => String(s ?? '').toLowerCase().replace(/[\u064B-\u065F\u0640]/g, '')
+      .replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/\s+/g, ' ').trim();
+
+    const state = { data: null, sheet: 0, filter: 'all', query: '', at: 0, fromCache: false, error: '', busy: false };
+
+    // ── backend ─────────────────────────────────────────────────────────
+    async function callApi(payload) {
+      if (!MEETINGS_URL) throw new Error(t('MEETINGS_URL is not set in meetings.html.', 'لم يتم ضبط MEETINGS_URL في ملف meetings.html.'));
+      const res = payload
+        ? await fetch(MEETINGS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...payload, token: MEETINGS_TOKEN || undefined }) })
+        : await fetch(`${MEETINGS_URL}?action=meetings${MEETINGS_TOKEN ? '&token=' + encodeURIComponent(MEETINGS_TOKEN) : ''}`);
+      if (!res.ok) throw new Error(t('The server did not respond.', 'لم يستجب الخادم.'));
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.message || t('Request failed.', 'فشل الطلب.'));
+      return json;
+    }
+
+    function setData(data, fromCache) {
+      state.data = data; state.fromCache = !!fromCache; state.at = fromCache ? state.at : Date.now();
+      state.sheet = Math.min(state.sheet, Math.max(0, data.kinds.length - 1));
+      if (!fromCache) { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, at: state.at })); } catch (e) { /* storage may be unavailable */ } }
+    }
+
+    async function load() {
+      state.error = ''; state.busy = true; render();
+      try { setData((await callApi()).data); }
+      catch (e) {
+        state.error = e.message || String(e);
+        try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); if (c) { state.at = c.at; setData(c.data, true); } } catch (x) { /* no cache */ }
+      }
+      state.busy = false; render();
+    }
+
+    function toast(msg, isErr) {
+      const el = $('mtToast'); el.textContent = msg; el.className = 'mt-toast' + (isErr ? ' err' : ''); el.hidden = false;
+      clearTimeout(toast.t); toast.t = setTimeout(() => { el.hidden = true; }, isErr ? 6000 : 2500);
+    }
+
+    // ── helpers ─────────────────────────────────────────────────────────
+    const kind = () => state.data?.kinds[state.sheet];
+    const allReqs = (k) => k.meetings.flatMap((m) => m.requests);
+    const totalsOf = (k) => { const r = allReqs(k); return { all: r.length, decided: r.filter((x) => x.decided).length, denied: r.filter((x) => x.denied).length, pending: r.filter((x) => !x.denied && !x.decided).length }; };
+    const matchesFilter = (r) => state.filter === 'all' || (state.filter === 'denied' && r.denied) || (state.filter === 'decided' && r.decided) || (state.filter === 'pending' && !r.denied && !r.decided);
+    const fmtDate = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${m[3]}/${m[2]}/${m[1]}` : ''; };
+    const dateLabel = (iso) => (iso ? esc(fmtDate(iso)) : `<span style="opacity:.6">${t('Not set yet', 'لم يحدد بعد')}</span>`);
+
+    // ── rendering ───────────────────────────────────────────────────────
+    function renderMeeting(m, q) {
+      const hay = fold(m.title);
+      const rows = m.requests.filter((r) => matchesFilter(r) && (!q || hay.includes(q) || fold([r.code, r.name, r.subject].join(' ')).includes(q)));
+      if ((q || state.filter !== 'all') && !rows.length) return '';
+      const decided = m.requests.filter((r) => r.decided).length, denied = m.requests.filter((r) => r.denied).length;
+      const pending = m.requests.length - m.requests.filter((r) => r.decided || r.denied).length;
+      const k = kind().name;
+      const body = rows.length ? `
+        <div class="mt-table-wrap"><table class="mt-table">
+          <thead><tr><th>${t('#', 'م')}</th><th>${t('Code', 'الكود')}</th><th>${t('Name', 'الاسم')}</th><th>${t('Subject', 'الموضوع')}</th><th>${t('Status', 'الحالة')}</th></tr></thead>
+          <tbody>${rows.map((r) => {
+            const idx = m.requests.indexOf(r) + 1;
+            const key = `data-kind="${esc(k)}" data-meeting="${m.number}" data-code="${esc(r.code)}" data-row="${r.row}"`;
+            return `<tr class="${r.denied ? 'is-denied' : ''} ${r.decided ? 'is-decided' : ''}">
+              <td class="num">${idx}</td><td class="code">${esc(r.code)}</td><td>${esc(r.name)}</td>
+              <td>${esc(r.subject)}</td>
+              <td><button type="button" class="mt-tog denied ${r.denied ? 'on' : ''}" data-toggle="denied" aria-pressed="${r.denied}" ${key} ${state.busy ? 'disabled' : ''}>${t('Denied', 'مرفوض')}</button><button type="button" class="mt-tog decided ${r.decided ? 'on' : ''}" data-toggle="decided" aria-pressed="${r.decided}" ${key} ${state.busy ? 'disabled' : ''}>${t('Decided', 'تم البت')}</button>${!r.denied && !r.decided ? `<span class="mt-badge pending">${t('Pending', 'قيد الانتظار')}</span>` : ''}</td></tr>`;
+          }).join('')}</tbody></table></div>`
+        : `<div class="mt-none">${t('No requests recorded for this meeting yet.', 'لا توجد طلبات مسجلة لهذا الاجتماع بعد.')}</div>`;
+      return `<details class="mt-meeting" open>
+        <summary>
+          <span class="mt-title">${esc(m.title)}</span>
+          <span class="mt-dates">${t('Held', 'المنعقد')}: <b>${dateLabel(m.held)}</b> &nbsp;·&nbsp; ${t('Approved', 'المعتمد')}: <b>${dateLabel(m.approved)}</b></span>
+          <span class="mt-sum">
+            <span class="mt-pill">${m.requests.length} ${t('requests', 'طلب')}</span>
+            ${decided ? `<span class="mt-pill green">${decided} ${t('decided', 'تم البت')}</span>` : ''}
+            ${denied ? `<span class="mt-pill red">${denied} ${t('denied', 'مرفوض')}</span>` : ''}
+            ${pending ? `<span class="mt-pill">${pending} ${t('pending', 'قيد الانتظار')}</span>` : ''}
+          </span>
+        </summary>${body}
+        <div class="mt-actions">
+          <button type="button" class="mt-mini" data-add-request="${m.number}">+ ${t('Add request', 'إضافة طلب')}</button>
+          <button type="button" class="mt-mini" data-edit-meeting="${m.number}">${t('Edit meeting', 'تعديل الاجتماع')}</button>
+        </div></details>`;
+    }
+
+    function render() {
+      const data = state.data;
+      $('mtNewMeeting').textContent = '+ ' + t('New meeting', 'اجتماع جديد');
+      $('mtNewMeeting').disabled = !data;
+      $('mtTabs').innerHTML = data ? data.kinds.map((k, i) =>
+        `<button type="button" role="tab" class="segmented-btn ${i === state.sheet ? 'active' : ''}" data-sheet="${i}">${esc(k.name)}<span class="mt-count">${totalsOf(k).all}</span></button>`).join('') : '';
+
+      const totals = data ? totalsOf(kind()) : { all: 0, decided: 0, denied: 0, pending: 0 };
+      const chips = [['all', t('All', 'الكل')], ['decided', t('Decided', 'تم البت')], ['denied', t('Denied', 'مرفوض')], ['pending', t('Pending', 'قيد الانتظار')]];
+      $('mtChips').innerHTML = chips.map(([k, label]) => `<button type="button" class="mt-chip ${state.filter === k ? 'active' : ''}" data-filter="${k}">${label} (${totals[k]})</button>`).join('');
+
+      $('mtLegend').innerHTML = `
+        <span class="mt-key"><span class="mt-swatch-red">${t('Red text', 'نص أحمر')}</span> = ${t('request denied', 'تم رفض الطلب')}</span>
+        <span class="mt-key"><span class="mt-swatch-green"></span> ${t('Green background', 'خلفية خضراء')} = ${t('decision made', 'تم اتخاذ قرار')}</span>`;
+
+      $('mtSource').innerHTML = (state.error ? `<span class="mt-error">${esc(state.error)}</span>` : '')
+        + (state.at ? `<span>${state.fromCache ? t('Saved copy from', 'نسخة محفوظة من') : t('Updated', 'آخر تحديث')}: ${new Date(state.at).toLocaleString(lang() === 'ar' ? 'ar-EG' : 'en-GB')}</span>` : '')
+        + `<button type="button" class="ghost-btn" id="mtReload" ${state.busy ? 'disabled' : ''}>${t('Reload', 'تحديث')}</button>`;
+
+      if (!data) {
+        $('mtBody').innerHTML = `<div class="mt-empty"><p style="font-weight:700;font-size:17px;margin:0 0 6px;">${state.busy ? t('Loading…', 'جارٍ التحميل…') : t('No meetings data', 'لا توجد بيانات اجتماعات')}</p>
+          <p style="margin:0;">${MEETINGS_URL ? '' : t('Set MEETINGS_URL at the top of the page script.', 'اضبط MEETINGS_URL في أعلى سكربت الصفحة.')}</p></div>`;
+        return;
+      }
+      const q = fold(state.query);
+      const html = kind().meetings.map((m) => renderMeeting(m, q)).join('');
+      $('mtBody').innerHTML = html || `<div class="mt-none">${t('No matching requests.', 'لا توجد طلبات مطابقة.')}</div>`;
+    }
+
+    // ── saving ──────────────────────────────────────────────────────────
+    async function save(payload, okMsg) {
+      state.busy = true; render();
+      try { const res = await callApi(payload); setData(res.data); toast(okMsg || res.message); return true; }
+      catch (e) { toast(e.message || String(e), true); return false; }
+      finally { state.busy = false; render(); }
+    }
+
+    async function toggleStatus(btn) {
+      const field = btn.dataset.toggle, meeting = Number(btn.dataset.meeting), code = btn.dataset.code, k = btn.dataset.kind;
+      const req = state.data.kinds.find((x) => x.name === k).meetings.find((m) => m.number === meeting).requests.find((r) => r.code === code && String(r.row) === btn.dataset.row);
+      if (!req) return;
+      await save({ action: 'setStatus', kind: k, meeting, code, row: Number(btn.dataset.row), [field]: !req[field] });
+    }
+
+    // ── dialog ──────────────────────────────────────────────────────────
+    let dialogSubmit = null;
+    function openDialog(title, fields, onSubmit) {
+      const dlg = $('mtDialog');
+      dlg.querySelector('h3').textContent = title;
+      $('mtFields').innerHTML = fields.map((f) => `<label class="mt-field"><span>${esc(f.label)}</span>
+        <input name="${f.name}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" ${f.inputmode ? `inputmode="${f.inputmode}"` : ''} ${f.required ? 'required' : ''} ${f.readonly ? 'readonly' : ''} autocomplete="off"></label>`).join('');
+      $('mtFormError').textContent = '';
+      $('mtCancel').textContent = t('Cancel', 'إلغاء'); $('mtSubmit').textContent = t('Save', 'حفظ');
+      dialogSubmit = onSubmit;
+      if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+    }
+    const closeDialog = () => { const d = $('mtDialog'); if (d.close) d.close(); else d.removeAttribute('open'); };
+
+    $('mtForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const vals = Object.fromEntries(new FormData(e.target).entries());
+      for (const el of e.target.querySelectorAll('[required]')) if (!String(vals[el.name] || '').trim()) { $('mtFormError').textContent = t('Please fill the required fields.', 'من فضلك املأ الحقول المطلوبة.'); el.focus(); return; }
+      $('mtSubmit').disabled = true;
+      const ok = await dialogSubmit(vals);
+      $('mtSubmit').disabled = false;
+      if (ok) closeDialog();
+    });
+    $('mtCancel').addEventListener('click', closeDialog);
+
+    function addRequestDialog(number) {
+      const k = kind().name;
+      openDialog(t('Add request', 'إضافة طلب'), [
+        { name: 'code', label: t('Code', 'الكود'), required: true, inputmode: 'numeric' },
+        { name: 'name', label: t('Name', 'الاسم'), required: true },
+        { name: 'subject', label: t('Subject', 'الموضوع'), required: true },
+      ], (v) => save({ action: 'addRequest', kind: k, meeting: number, ...v }));
+    }
+    function newMeetingDialog() {
+      const k = kind();
+      const next = Math.max(0, ...k.meetings.map((m) => m.number)) + 1;
+      openDialog(`${t('New meeting', 'اجتماع جديد')} — ${k.name}`, [
+        { name: 'number', label: t('Meeting number', 'رقم الاجتماع'), value: next, required: true, inputmode: 'numeric' },
+        { name: 'title', label: t('Title', 'العنوان'), value: `الاجتماع ${next}` },
+        { name: 'held', label: t('Held on', 'تاريخ الانعقاد'), type: 'date' },
+        { name: 'approved', label: t('Approved on', 'تاريخ الاعتماد'), type: 'date' },
+      ], (v) => save({ action: 'addMeeting', kind: k.name, ...v }));
+    }
+    function editMeetingDialog(number) {
+      const k = kind(), m = k.meetings.find((x) => x.number === number);
+      openDialog(`${t('Edit meeting', 'تعديل الاجتماع')} — ${m.title}`, [
+        { name: 'title', label: t('Title', 'العنوان'), value: m.title },
+        { name: 'held', label: t('Held on', 'تاريخ الانعقاد'), type: 'date', value: m.held },
+        { name: 'approved', label: t('Approved on', 'تاريخ الاعتماد'), type: 'date', value: m.approved },
+      ], (v) => save({ action: 'updateMeeting', kind: k.name, number, ...v }));
+    }
+
+    // ── events ──────────────────────────────────────────────────────────
+    document.addEventListener('click', (e) => {
+      const el = (s) => e.target.closest(s);
+      let x;
+      if ((x = el('[data-sheet]'))) { state.sheet = Number(x.dataset.sheet); render(); }
+      else if ((x = el('[data-filter]'))) { state.filter = x.dataset.filter; render(); }
+      else if ((x = el('[data-toggle]'))) toggleStatus(x);
+      else if ((x = el('[data-add-request]'))) addRequestDialog(Number(x.dataset.addRequest));
+      else if ((x = el('[data-edit-meeting]'))) editMeetingDialog(Number(x.dataset.editMeeting));
+      else if (el('#mtNewMeeting')) newMeetingDialog();
+      else if (el('#mtReload')) load();
+    });
+    $('mtSearch').addEventListener('input', (e) => { state.query = e.target.value; render(); });
+    window.addEventListener('portal-language-change', render);
+
+    load();
+  </script>
+
+</body>
+</html>

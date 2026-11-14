@@ -7,6 +7,7 @@
  *
  * Rights (letters in USERS below):
  *   c = Clinics     t = Countdown     v = Employee Data (view)     e = Employee Data (edit)
+ *   m = Meetings
  * A code that is listed in USERS can open every normal page; the letters add the extra pages.
  *
  * To add/remove a person: put the SHA-256 of the code in USERS. Generate it with
@@ -96,10 +97,11 @@
     '24bd79f4173351729adbc261a88702b88b7e56fef8b55d2c4a1f800f8363370b': '',
     'e85db97e0af29710a13e4fe619497617801de31f2898160761d7ef3e52c748aa': '',
     '492f431bae35265f2e5f4ed49bd8c58dda912431be561504846988d00d05d117': '',
-    'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64': 'ctv'
+    'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64': 'ctv',
+    '57c5119ac46cdc6ffe1c2d6b861b7c975385483c649f0708beb09de81d570543': 'ctvem'      // 5593 — every right
   };
 
-  var PAGE_RIGHT = { clinics: 'c', tagging: 't', employees: 'v' };
+  var PAGE_RIGHT = { clinics: 'c', tagging: 't', employees: 'v', meetings: 'm' };
 
   /* ---------- tiny safe storage (never throws) ---------- */
   var mem = {};
@@ -179,7 +181,7 @@
   /* ---------- allowed: hide the links this person may not use ---------- */
   if (allowed) {
     var hide = '';
-    ['c', 't', 'v'].forEach(function (r) {
+    ['c', 't', 'v', 'm'].forEach(function (r) {
       if (!can(r)) hide += '[data-requires~="' + r + '"]{display:none !important}';
     });
     if (hide) {

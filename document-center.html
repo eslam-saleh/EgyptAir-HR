@@ -45,6 +45,7 @@
       <a href="calendar-calculator.html" data-en="Calendar Calculator" data-ar="حاسبة التقويم">Calendar Calculator</a>
       <a data-requires="c" href="clinics.html" data-en="Clinics" data-ar="العيادات">Clinics</a>
       <a class="active" href="document-center.html" data-en="Document Center" data-ar="مركز المستندات">Document Center</a>
+      <a data-requires="m" href="meetings.html" data-en="Meetings" data-ar="الاجتماعات">Meetings</a>
       <a data-requires="v" href="employees-data.html" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</a>
       <a href="penalties-salaries.html" data-en="Penalties & Salaries" data-ar="الجزاءات والمرتبات">الجزاءات والمرتبات</a>
       <a href="scanner.html" data-en="Scanner" data-ar="ماسح ضوئي">Scanner</a>
@@ -734,6 +735,14 @@
     // to anyone with the URL above, exactly as before.
     const SHEET_SYNC_TOKEN = '';
 
+    // ═══════════════════════════════════════════════════════════════════
+    // الاجتماعات sync — memos (مذكرة …) and بيان تظلم add a request row to
+    // the meetings spreadsheet (meetings.gs web app). Paste its /exec URL.
+    // MEETINGS_TOKEN must equal the MEETINGS_TOKEN Script Property, if set.
+    // ═══════════════════════════════════════════════════════════════════
+    const MEETINGS_URL = 'https://script.google.com/macros/s/AKfycbxzpJqa69Z1OrMTJE_EgUY52oLhtUvwRm1DuDyC_qcyDsACFzBDVWC5I6VsHLHu2VNdCQ/exec';
+    const MEETINGS_TOKEN = '';
+
     // ── Live Employees directory → window.allEmployees ─────────────────────
     // data.gs's action=directory now does the field-priority mapping
     // server-side (job/sector/department secondment overrides, external-
@@ -1178,6 +1187,160 @@
       } catch (err) {
         showSheetSyncToast(err.message || t('Failed to update the sheet.', 'فشل تحديث الشيت.'), true);
         return null;
+      }
+    }
+
+    // ── الاجتماعات: memos / بيان تظلم → meetings spreadsheet ───────────────
+    // Documents here are matched by file name (Arabic-folded, so underscores,
+    // ى/ي, ة/ه etc. don't matter). Each one adds ONE row to a request sheet of
+    // the meetings workbook through meetings.gs → action "addRequest":
+    //   بيان تظلم     → شيت "التظلمات"
+    //   every memo    → شيت "شئون العاملين"
+    // Columns written: رقم الاجتماع | الكود | الاسم | الموضوع (built below).
+    // مرفوض / تم البت stay empty — they are set later from the meetings page.
+    const MEETING_KIND_AFFAIRS = 'شئون العاملين';
+    const MEETING_KIND_GRIEVANCE = 'التظلمات';
+
+    // subject(f) builds the الموضوع text; f(label) reads a form value.
+    // Wording follows what is already in the workbook: short, one label per type
+    // (تجديد الاجازة / منح الاجازة / قطع الاجازة / محو الجزاء / نصف الوقت) and,
+    // for التظلمات, "جزاء <نوع الجزاء>" (e.g. جزاء خصم ثلاثة أيام).
+    const MEETING_DOC_RULES = {
+      'بيان تظلم': {
+        kind: MEETING_KIND_GRIEVANCE,
+        subject: (f) => {
+          const type = f('نوع الجزاء');
+          return !type ? 'تظلم' : (/^جزاء\s/.test(type) ? type : `جزاء ${type}`);
+        },
+      },
+      'مذكرة محو جزاء':                       { kind: MEETING_KIND_AFFAIRS, subject: () => 'محو الجزاء' },
+      'مذكرة منح اجازة بدون مرتب جوازية':     { kind: MEETING_KIND_AFFAIRS, subject: () => 'منح الاجازة' },
+      'مذكرة تجديد اجازة بدون مرتب جوازية':   { kind: MEETING_KIND_AFFAIRS, subject: () => 'تجديد الاجازة' },
+      'مذكرة تجديد اجازة بدون مرتب وجوبية':   { kind: MEETING_KIND_AFFAIRS, subject: () => 'تجديد الاجازة' },
+      'مذكرة قطع الاجازة بدون مرتب':          { kind: MEETING_KIND_AFFAIRS, subject: () => 'قطع الاجازة' },
+      'مذكرة منح او تجديد العمل نصف الوقت':   { kind: MEETING_KIND_AFFAIRS, subject: () => 'نصف الوقت' },
+    };
+
+    let _meetingRuleIndex = null;
+    function getMeetingRule(docName) {
+      if (!_meetingRuleIndex) {
+        _meetingRuleIndex = new Map(Object.keys(MEETING_DOC_RULES)
+          .map((k) => [normalizeArabicVariants(k), MEETING_DOC_RULES[k]]));
+      }
+      return _meetingRuleIndex.get(normalizeArabicVariants(normalizeDocRuleName(docName))) || null;
+    }
+
+    function meetingsConfigured() {
+      return MEETINGS_URL && !MEETINGS_URL.includes('PUT_MEETINGS');
+    }
+
+    // Registry of meetings per kind, fetched once per page load (re-fetched on failure).
+    let _meetingsPromise = null;
+    function loadMeetingsRegistry() {
+      if (!meetingsConfigured()) return Promise.reject(new Error('MEETINGS_URL is not set'));
+      if (!_meetingsPromise) {
+        _meetingsPromise = (async () => {
+          const url = new URL(MEETINGS_URL);
+          url.searchParams.set('action', 'meetings');
+          if (MEETINGS_TOKEN) url.searchParams.set('token', MEETINGS_TOKEN);
+          const res = await fetch(url.toString(), { credentials: 'omit', cache: 'no-store' });
+          const data = await res.json();
+          if (!data || !data.ok) throw new Error((data && data.message) || 'meetings load failed');
+          return data.data;
+        })();
+        _meetingsPromise.catch(() => { _meetingsPromise = null; });
+      }
+      return _meetingsPromise;
+    }
+
+    // Adds a "رقم الاجتماع" picker at the bottom of the form for tracked docs.
+    // It lives inside formFields, so it disappears with the form on every re-render.
+    async function renderMeetingPicker(doc) {
+      const rule = getMeetingRule(doc?.name);
+      if (!rule) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'document-form-field';
+      wrap.id = 'meetingPickerField';
+      const fieldStyle = 'width:100%;padding:10px 12px;border:1px solid var(--border,#d0d7de);border-radius:10px;font:inherit;background:var(--bg,#fff);color:var(--text,#1f2328);';
+      wrap.innerHTML = `
+        <label for="meetingPickerSelect">${t('Meeting number', 'رقم الاجتماع')} — ${escapeHtml(rule.kind)}</label>
+        <select id="meetingPickerSelect" style="${fieldStyle}" disabled>
+          <option value="">${t('Loading meetings…', 'جارٍ تحميل الاجتماعات…')}</option>
+        </select>`;
+      formFields.appendChild(wrap);
+      const select = wrap.querySelector('select');
+
+      try {
+        const reg = await loadMeetingsRegistry();
+        if (!wrap.isConnected) return; // form was re-rendered meanwhile
+        const kind = (reg.kinds || []).find((k) => normalizeArabicVariants(k.name) === normalizeArabicVariants(rule.kind));
+        const meetings = kind ? kind.meetings : [];
+        if (!meetings.length) throw new Error('no meetings');
+        // newest first (server sorts); preselect the newest meeting not yet approved, else the newest.
+        const open = meetings.find((m) => !m.approved) || meetings[0];
+        select.innerHTML = meetings.map((m) =>
+          `<option value="${m.number}"${m.number === open.number ? ' selected' : ''}>${escapeHtml(m.title)}${m.held ? ' — ' + escapeHtml(m.held) : ''}</option>`
+        ).join('');
+        select.disabled = false;
+      } catch (err) {
+        if (!wrap.isConnected) return;
+        // Fallback: type the number by hand (the sheet still validates it).
+        const input = document.createElement('input');
+        input.type = 'number'; input.min = '1'; input.id = 'meetingPickerSelect';
+        input.setAttribute('style', fieldStyle);
+        input.placeholder = t('Meeting number', 'رقم الاجتماع');
+        select.replaceWith(input);
+      }
+    }
+
+    function getSelectedMeetingNumber() {
+      const el = document.getElementById('meetingPickerSelect');
+      return el ? String(el.value || '').trim() : '';
+    }
+
+    // Reads a value from the form by exact label first, then by keyword.
+    function makeFieldReader(placeholders, valuesByRawKey) {
+      return (keyword) => {
+        const exact = placeholders.find((g) => normalizeArabicVariants(g.label) === normalizeArabicVariants(keyword));
+        const v = exact ? valuesByRawKey[exact.rawKeys[0]] : findValueByLabelKeywords(placeholders, valuesByRawKey, [keyword]);
+        return String(v || '').trim();
+      };
+    }
+
+    // Never throws — failures only show the toast, so they never block the download.
+    async function syncMeetingRequest(doc, valuesByRawKey) {
+      const rule = getMeetingRule(doc?.name);
+      if (!rule) return;
+      try {
+        if (!meetingsConfigured()) throw new Error(t('MEETINGS_URL is not set in document-center.html.', 'لم يتم ضبط MEETINGS_URL في الصفحة.'));
+        const meeting = getSelectedMeetingNumber();
+        if (!meeting) throw new Error(t('Choose the meeting number to record this request.', 'اختر رقم الاجتماع لتسجيل الطلب.'));
+
+        const placeholders = [...selectedPlaceholders, ...autoPlaceholders];
+        const f = makeFieldReader(placeholders, valuesByRawKey);
+        const code = f('كود المتقدم') || f('كود');
+        const name = f('اسم المتقدم') || f('اسم');
+        if (!code || !name) throw new Error(t('Code and name are required to record the meeting request.', 'الكود والاسم مطلوبان لتسجيل الطلب في الاجتماع.'));
+
+        const res = await fetch(MEETINGS_URL, {
+          method: 'POST',
+          // text/plain avoids a CORS preflight against the Apps Script Web App.
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'addRequest',
+            kind: rule.kind,
+            meeting,
+            code,
+            name,
+            subject: rule.subject(f),
+            ...(MEETINGS_TOKEN ? { token: MEETINGS_TOKEN } : {}),
+          }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.message || t('The meetings sheet rejected the request.', 'رفض شيت الاجتماعات الطلب.'));
+        showSheetSyncToast(t(`Added to meeting ${meeting} — ${rule.kind}.`, `تمت الإضافة إلى الاجتماع ${meeting} — ${rule.kind}.`));
+      } catch (err) {
+        showSheetSyncToast(err.message || t('Failed to update the meetings sheet.', 'فشل تحديث شيت الاجتماعات.'), true);
       }
     }
 
@@ -2073,6 +2236,8 @@ function renderPlaceholderForm(doc, placeholders) {
   setupFieldValidation();
   // Add load-employee buttons next to any "كود" fields
   attachCodeLoadButtons();
+  // Memos / بيان تظلم: pick the meeting they will be recorded under
+  renderMeetingPicker(doc);
 }
 
     // ========== SAVE / LOAD FIELD DATA ==========
@@ -2410,37 +2575,6 @@ function renderPlaceholderForm(doc, placeholders) {
         .slice(0, 180);
     }
 
-    // Always-visible fallback: the download is started from code long after
-    // the click (Drive fetch + sheet sync), so a browser may ignore it. This
-    // gives the user a real link to the same file so nothing is lost.
-    function showDownloadFallback(url, filename) {
-      let box = document.getElementById('downloadFallbackBox');
-      if (!box) {
-        box = document.createElement('div');
-        box.id = 'downloadFallbackBox';
-        box.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:9999;background:#1f2937;color:#fff;'
-          + 'padding:12px 16px;border-radius:10px;font:600 14px/1.4 sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);'
-          + 'direction:rtl;max-width:360px;';
-        document.body.appendChild(box);
-      }
-      box.innerHTML = '';
-      const msg = document.createElement('span');
-      msg.textContent = t('Download didn\u2019t start? ', 'لم يبدأ التحميل؟ ');
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.textContent = t('Click here', 'اضغط هنا');
-      a.style.cssText = 'color:#8ab4f8;text-decoration:underline;';
-      const close = document.createElement('button');
-      close.type = 'button';
-      close.textContent = '\u00d7';
-      close.style.cssText = 'margin-inline-start:12px;background:none;border:0;color:#fff;font-size:18px;cursor:pointer;';
-      close.addEventListener('click', () => box.remove());
-      box.append(msg, a, close);
-      clearTimeout(box._t);
-      box._t = setTimeout(() => box.remove(), 120000);
-    }
-
     function downloadBlob(blob, filename) {
       const safeName = sanitizeFileName(filename);
       const url = URL.createObjectURL(blob);
@@ -2451,8 +2585,7 @@ function renderPlaceholderForm(doc, placeholders) {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      showDownloadFallback(url, safeName);
-      // Keep the blob alive long enough for slow starts and the fallback link.
+      // Keep the blob alive long enough for slow starts and "download again".
       setTimeout(() => URL.revokeObjectURL(url), 150000);
       return { url, filename: safeName };
     }
@@ -2589,6 +2722,7 @@ function renderPlaceholderForm(doc, placeholders) {
         }
 
         await syncGeneratedDocumentToSheet(selectedDoc, values, execNumber);
+        await syncMeetingRequest(selectedDoc, values);
 
         // Do NOT close the form automatically: keep it until the user confirms.
         setFormStatus('');
