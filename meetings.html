@@ -11,11 +11,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="portal.css">
   <style>
-    .mt-root {
+    .mt-root, .mt-dialog, .mt-toast {
+      --mt-fg: #1f2328; --mt-surface: #fff; --mt-ring: rgba(11,92,173,.22); --mt-shadow: 0 1px 2px rgba(16,24,40,.06), 0 4px 14px rgba(16,24,40,.06);
       --mt-bg: #fff; --mt-border: #dfe5ec; --mt-muted: #667085; --mt-head: #f3f6fa;
       --mt-green: #d8f1dc; --mt-green-strong: #1e8e3e; --mt-red: #c62828; --mt-pending: #eef1f5;
     }
-    [data-theme="dark"] .mt-root {
+    [data-theme="dark"] .mt-root, [data-theme="dark"] .mt-dialog, [data-theme="dark"] .mt-toast {
+      --mt-fg: #e6edf3; --mt-surface: #161b22; --mt-ring: rgba(88,166,255,.35); --mt-shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35);
       --mt-bg: #161b22; --mt-border: #30363d; --mt-muted: #9aa4b2; --mt-head: #21262d;
       --mt-green: rgba(63,185,80,.24); --mt-green-strong: #56d364; --mt-red: #ff7b72; --mt-pending: #262c34;
     }
@@ -72,15 +74,64 @@
       font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
     .mt-actions { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--mt-border); }
     .mt-top { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
-    dialog.mt-dialog { border: 1px solid var(--mt-border); border-radius: 14px; padding: 0; width: min(460px, 94vw);
-      background: var(--mt-bg); color: inherit; }
-    dialog.mt-dialog::backdrop { background: rgba(0,0,0,.45); }
-    .mt-dialog form { padding: 20px; display: grid; gap: 12px; }
-    .mt-dialog h3 { margin: 0; }
-    .mt-field { display: grid; gap: 4px; font-weight: 600; font-size: 14px; }
-    .mt-field input { padding: 10px 12px; border: 1px solid var(--mt-border); border-radius: 10px; background: transparent; color: inherit; font: inherit; }
-    .mt-field input[readonly] { opacity: .7; }
-    .mt-dialog .mt-buttons { display: flex; gap: 10px; justify-content: flex-end; }
+    /* ── dialog ── */
+    dialog.mt-dialog { border: 1px solid var(--mt-border); border-radius: 16px; padding: 0; width: min(480px, 94vw);
+      background: var(--mt-surface); color: var(--mt-fg); box-shadow: 0 24px 60px rgba(0,0,0,.35); overflow: hidden; }
+    dialog.mt-dialog[open] { animation: mt-pop .16s ease-out; }
+    dialog.mt-dialog::backdrop { background: rgba(15,23,42,.55); backdrop-filter: blur(2px); }
+    @keyframes mt-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+    .mt-dialog form { display: block; margin: 0; }
+    .mt-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px;
+      background: var(--mt-head); border-bottom: 1px solid var(--mt-border); }
+    .mt-dialog h3 { margin: 0; font-size: 18px; font-weight: 800; }
+    .mt-x { border: 0; background: transparent; color: var(--mt-muted); font-size: 24px; line-height: 1; width: 34px; height: 34px;
+      border-radius: 8px; cursor: pointer; }
+    .mt-x:hover { background: var(--mt-border); color: inherit; }
+    .mt-fields { display: grid; gap: 14px; padding: 20px; }
+    .mt-field { display: grid; gap: 6px; font-weight: 700; font-size: 14px; }
+    .mt-req { color: var(--mt-red); font-style: normal; margin-inline-start: 4px; }
+    .mt-field input { padding: 11px 13px; border: 1.5px solid var(--mt-border); border-radius: 10px; background: var(--mt-surface);
+      color: inherit; font: inherit; font-weight: 500; width: 100%; box-sizing: border-box; transition: border-color .12s, box-shadow .12s; }
+    .mt-field input:focus { outline: none; border-color: var(--primary, #0b5cad); box-shadow: 0 0 0 4px var(--mt-ring); }
+    .mt-field input.invalid { border-color: var(--mt-red); }
+    .mt-field input[readonly] { opacity: .7; background: var(--mt-head); }
+    .mt-dialog .mt-error { margin: 0; padding: 0 20px; min-height: 0; font-size: 14px; }
+    .mt-dialog .mt-error:not(:empty) { padding-bottom: 6px; }
+    .mt-dialog .mt-buttons { display: flex; gap: 10px; justify-content: flex-end; padding: 14px 20px; background: var(--mt-head); border-top: 1px solid var(--mt-border); }
+    .mt-dialog .mt-buttons button { min-width: 96px; padding: 10px 18px; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; }
+    .mt-dialog #mtSubmit { background: var(--primary, #0b5cad); color: #fff; border: 1px solid var(--primary, #0b5cad); }
+    .mt-dialog #mtSubmit:disabled { opacity: .6; cursor: wait; }
+    .mt-dialog #mtCancel { background: var(--mt-surface); color: inherit; border: 1px solid var(--mt-border); }
+    /* ── polish ── */
+    .mt-card { box-shadow: var(--mt-shadow); }
+    .mt-meeting { box-shadow: var(--mt-shadow); transition: box-shadow .15s; }
+    .mt-meeting > summary { position: relative; padding-inline-end: 44px; }
+    .mt-meeting > summary::after { content: '▾'; position: absolute; inset-inline-end: 16px; top: 50%; transform: translateY(-50%);
+      font-size: 16px; color: var(--mt-muted); transition: transform .15s; }
+    .mt-meeting:not([open]) > summary::after { transform: translateY(-50%) rotate(90deg); }
+    .mt-table th { background: var(--mt-surface); position: sticky; top: 0; }
+    .mt-table tbody tr:hover td { background: var(--mt-head); }
+    .mt-table tr.is-decided:hover td { background: var(--mt-green); filter: brightness(.97); }
+    .mt-table tr.is-decided td:first-child { box-shadow: inset -4px 0 0 var(--mt-green-strong); }
+    .mt-table tr.is-denied td:first-child { box-shadow: inset -4px 0 0 var(--mt-red); }
+    .mt-table td:last-child { white-space: nowrap; }
+    .mt-tog { padding: 6px 12px; min-height: 32px; transition: background .12s, border-color .12s; }
+    .mt-tog:hover:not(:disabled):not(.on) { background: var(--mt-head); }
+    .mt-actions { background: var(--mt-surface); }
+    .mt-mini { padding: 7px 14px; min-height: 34px; }
+    .mt-mini[data-add-request] { background: var(--primary, #0b5cad); border-color: var(--primary, #0b5cad); color: #fff; }
+    .mt-mini[data-add-request]:hover { filter: brightness(1.08); }
+    .mt-mini[data-edit-meeting]:hover { background: var(--mt-head); }
+    .mt-chip:hover:not(.active) { background: var(--mt-head); }
+    .mt-legend { padding: 10px 14px; background: var(--mt-head); border-radius: 10px; }
+    @media (max-width: 640px) {
+      .mt-card { padding: 14px; }
+      .mt-sum { margin-inline-start: 0; width: 100%; }
+      .mt-table th, .mt-table td { padding: 8px; }
+      .mt-table td:last-child { white-space: normal; }
+      .mt-tog { margin-bottom: 4px; }
+      .mt-dialog .mt-buttons button { flex: 1; }
+    }
     .mt-toast { position: fixed; bottom: 16px; inset-inline-start: 16px; z-index: 50; max-width: 340px; padding: 12px 16px; border-radius: 10px;
       background: #1f2937; color: #fff; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
     .mt-toast.err { background: #b3261e; }
@@ -143,7 +194,8 @@
     </section>
   </main>
   <dialog class="mt-dialog" id="mtDialog"><form method="dialog" id="mtForm" novalidate>
-    <h3></h3><div class="mt-fields" id="mtFields"></div>
+    <div class="mt-dialog-head"><h3></h3><button type="button" class="mt-x" id="mtClose" aria-label="Close">×</button></div>
+    <div class="mt-fields" id="mtFields"></div>
     <p class="mt-error" id="mtFormError" role="alert"></p>
     <div class="mt-buttons"><button type="button" class="ghost-btn" id="mtCancel"></button><button type="submit" class="primary-btn" id="mtSubmit"></button></div>
   </form></dialog>
@@ -294,25 +346,29 @@
     function openDialog(title, fields, onSubmit) {
       const dlg = $('mtDialog');
       dlg.querySelector('h3').textContent = title;
-      $('mtFields').innerHTML = fields.map((f) => `<label class="mt-field"><span>${esc(f.label)}</span>
+      $('mtFields').innerHTML = fields.map((f) => `<label class="mt-field"><span>${esc(f.label)}${f.required ? '<i class="mt-req">*</i>' : ''}</span>
         <input name="${f.name}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" ${f.inputmode ? `inputmode="${f.inputmode}"` : ''} ${f.required ? 'required' : ''} ${f.readonly ? 'readonly' : ''} autocomplete="off"></label>`).join('');
       $('mtFormError').textContent = '';
       $('mtCancel').textContent = t('Cancel', 'إلغاء'); $('mtSubmit').textContent = t('Save', 'حفظ');
       dialogSubmit = onSubmit;
       if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+      const first = $('mtFields').querySelector('input:not([readonly])'); if (first) first.focus();
     }
     const closeDialog = () => { const d = $('mtDialog'); if (d.close) d.close(); else d.removeAttribute('open'); };
 
     $('mtForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const vals = Object.fromEntries(new FormData(e.target).entries());
-      for (const el of e.target.querySelectorAll('[required]')) if (!String(vals[el.name] || '').trim()) { $('mtFormError').textContent = t('Please fill the required fields.', 'من فضلك املأ الحقول المطلوبة.'); el.focus(); return; }
+      e.target.querySelectorAll('input.invalid').forEach((i) => i.classList.remove('invalid'));
+      for (const el of e.target.querySelectorAll('[required]')) if (!String(vals[el.name] || '').trim()) { el.classList.add('invalid'); $('mtFormError').textContent = t('Please fill the required fields.', 'من فضلك املأ الحقول المطلوبة.'); el.focus(); return; }
       $('mtSubmit').disabled = true;
       const ok = await dialogSubmit(vals);
       $('mtSubmit').disabled = false;
       if (ok) closeDialog();
     });
     $('mtCancel').addEventListener('click', closeDialog);
+    $('mtClose').addEventListener('click', closeDialog);
+    $('mtDialog').addEventListener('mousedown', (e) => { if (e.target === e.currentTarget) closeDialog(); }); // click on the backdrop
 
     function addRequestDialog(number) {
       const k = kind().name;
