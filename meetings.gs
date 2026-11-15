@@ -42,6 +42,13 @@ var REGISTRY_KEYS = ['kind', 'number', 'title', 'held', 'approved'];
 var REQUEST_KEYS = ['number', 'code', 'name', 'subject', 'denied', 'decided'];
 // "رقم الاجتماع" is the first column of every request sheet; its header is HEAD.number.
 
+// Meeting number → title ("الاجتماع الاول" … "الاجتماع الثالث عشر"). Beyond 13 → "الاجتماع 14".
+var ORDINALS = ['الاول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر',
+  'الحادي عشر', 'الثاني عشر', 'الثالث عشر'];
+function meetingTitle(n) {
+  return 'الاجتماع ' + (n >= 1 && n <= ORDINALS.length ? ORDINALS[n - 1] : n);
+}
+
 var CACHE_KEY = 'meetings-v1';
 var CACHE_TTL_SECONDS = 30;
 
@@ -60,6 +67,7 @@ function doGet(e) {
     var p = (e && e.parameter) || {};
     if (!isAuthorized(p.token)) return respond(false, 'غير مصرح بهذا الطلب.');
     if (p.action === 'meetings') return respond(true, 'تم تحميل البيانات.', getMeetingsCached());
+    if (p.action === 'export') return respond(true, 'تم تجهيز الملف.', exportOriginalSheet());
     return ContentService.createTextOutput('الاجتماعات sync endpoint is running.');
   } catch (err) {
     return respond(false, 'خطأ في الخادم: ' + err.message);
@@ -101,6 +109,23 @@ function doPost(e) {
 function respond(ok, message, data) {
   return ContentService.createTextOutput(JSON.stringify({ ok: ok, message: message, data: data || null }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+/* ───────────────────────── export original sheet ───────────────────────── */
+
+// Returns the whole workbook as .xlsx (base64) so the page can download it, even for people who
+// have no access to the Google Sheet itself. Runs as the script owner.
+function exportOriginalSheet() {
+  var file = DriveApp.getFileById(MEETINGS_SPREADSHEET_ID);   // also makes Apps Script request Drive access
+  var res = UrlFetchApp.fetch(
+    'https://docs.google.com/spreadsheets/d/' + MEETINGS_SPREADSHEET_ID + '/export?format=xlsx',
+    { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+  if (res.getResponseCode() !== 200) throw new Error('تعذر تصدير الملف (' + res.getResponseCode() + ').');
+  return {
+    filename: file.getName() + '.xlsx',
+    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    base64: Utilities.base64Encode(res.getContent())
+  };
 }
 
 /* ───────────────────────── helpers ───────────────────────── */
@@ -226,7 +251,7 @@ function readMeetings(ss) {
       if (!isFinite(number) || norm(r[reg.col.kind]) !== norm(name)) return;
       meetings[number] = {
         number: number,
-        title: clean(r[reg.col.title]) || ('الاجتماع ' + number),
+        title: clean(r[reg.col.title]) || meetingTitle(number),
         held: toIso(r[reg.col.held], tz),
         approved: toIso(r[reg.col.approved], tz),
         requests: []
@@ -239,7 +264,7 @@ function readMeetings(ss) {
       var code = clean(r[t.col.code]), nm = clean(r[t.col.name]), subject = clean(r[t.col.subject]);
       if (!isFinite(number) || (!code && !nm && !subject)) return;
       // a request whose meeting is missing from the registry is still shown, never hidden
-      if (!meetings[number]) meetings[number] = { number: number, title: 'الاجتماع ' + number, held: '', approved: '', requests: [] };
+      if (!meetings[number]) meetings[number] = { number: number, title: meetingTitle(number), held: '', approved: '', requests: [] };
       meetings[number].requests.push({
         row: i + 2, code: code, name: nm, subject: subject,
         denied: isYes(r[t.col.denied]), decided: isYes(r[t.col.decided])
@@ -281,16 +306,44 @@ function handleSetStatus(ss, b) {
   return 'تم حفظ الحالة.';
 }
 
+// Decides which meeting a new request from the Document Center goes to.
+// Rule: once a meeting has تاريخ الانعقاد it is closed → the request goes to the latest meeting if that one is
+// still open, otherwise a NEW meeting (latest + 1, titled from its number) is created in the registry.
+function resolveOpenMeeting(reg, kind, requested) {
+  var rows = {}, latest = 0;
+  reg.rows.forEach(function (r) {
+    var n = parseInt(digits(r[reg.col.number]), 10);
+    if (!isFinite(n) || norm(r[reg.col.kind]) !== norm(kind)) return;
+    rows[n] = clean(r[reg.col.held]) !== '';          // true = already held (closed)
+    if (n > latest) latest = n;
+  });
+  if (rows.hasOwnProperty(requested) && !rows[requested]) return { number: requested, created: false };
+  if (latest && !rows[latest]) return { number: latest, created: false };
+  var next = latest + 1;
+  var target = firstEmptyRow(reg, reg.col.kind);
+  reg.sheet.getRange(target, reg.col.kind + 1).setValue(kind);
+  reg.sheet.getRange(target, reg.col.number + 1).setValue(next);
+  reg.sheet.getRange(target, reg.col.title + 1).setValue(meetingTitle(next));
+  SpreadsheetApp.flush();
+  return { number: next, created: true };
+}
+
 function handleAddRequest(ss, b) {
   var kind = kindName(b.kind), meeting = meetingNumber(b.meeting);
   var code = clean(digits(b.code)), name = clean(b.name), subject = clean(b.subject);
   if (!code || !name || !subject) throw new Error('الكود والاسم والموضوع مطلوبة.');
 
   var reg = loadTable(ss, REGISTRY_SHEET, REGISTRY_KEYS);
-  var exists = reg.rows.some(function (r) {
-    return norm(r[reg.col.kind]) === norm(kind) && parseInt(digits(r[reg.col.number]), 10) === meeting;
-  });
-  if (!exists) throw new Error('الاجتماع ' + meeting + ' غير مسجل في شيت "' + REGISTRY_SHEET + '" لنوع ' + kind + '.');
+  var created = false;
+  if (b.autoMeeting) {
+    var pick = resolveOpenMeeting(reg, kind, meeting);
+    meeting = pick.number; created = pick.created;
+  } else {
+    var exists = reg.rows.some(function (r) {
+      return norm(r[reg.col.kind]) === norm(kind) && parseInt(digits(r[reg.col.number]), 10) === meeting;
+    });
+    if (!exists) throw new Error('الاجتماع ' + meeting + ' غير مسجل في شيت "' + REGISTRY_SHEET + '" لنوع ' + kind + '.');
+  }
 
   var t = loadTable(ss, kind, REQUEST_KEYS);
   var dup = t.rows.some(function (r) {
@@ -309,7 +362,7 @@ function handleAddRequest(ss, b) {
   row[t.col.decided] = b.decided ? YES : '';
   var target = firstEmptyRow(t, t.col.number);
   t.sheet.getRange(target, 1, 1, t.lastCol).setValues([row]);
-  return 'تمت إضافة الطلب.';
+  return (created ? 'تم إنشاء ' + meetingTitle(meeting) + ' وإضافة الطلب إليه.' : 'تمت إضافة الطلب إلى ' + meetingTitle(meeting) + '.');
 }
 
 function handleAddMeeting(ss, b) {
@@ -319,7 +372,7 @@ function handleAddMeeting(ss, b) {
     return norm(r[reg.col.kind]) === norm(kind) && parseInt(digits(r[reg.col.number]), 10) === number;
   });
   if (exists) throw new Error('الاجتماع ' + number + ' مسجل بالفعل لنوع ' + kind + '.');
-  var title = clean(b.title) || ('الاجتماع ' + number);
+  var title = meetingTitle(number);   // always derived from the number
   var target = firstEmptyRow(reg, reg.col.kind);
   // only the five input columns are written — the count columns are formulas already filled down
   var sh = reg.sheet;
@@ -359,6 +412,7 @@ function handleUpdateMeeting(ss, b) {
 // Run once from the editor: authorizes the script and verifies every sheet and header it needs.
 function setupMeetings() {
   var ss = SpreadsheetApp.openById(MEETINGS_SPREADSHEET_ID);
+  DriveApp.getFileById(MEETINGS_SPREADSHEET_ID).getName();   // authorizes the Drive access used by the export button
   loadTable(ss, REGISTRY_SHEET, REGISTRY_KEYS);
   KIND_SHEETS.forEach(function (n) { loadTable(ss, n, REQUEST_KEYS); });
   var d = readMeetings(ss), summary = [];

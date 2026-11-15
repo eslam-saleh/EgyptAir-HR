@@ -177,7 +177,10 @@
 
         <div class="mt-top">
           <div class="mt-tabs" id="mtTabs" role="tablist" style="flex:1 1 360px;"></div>
-          <button type="button" class="primary-btn" id="mtNewMeeting"></button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="ghost-btn" id="mtExport"></button>
+            <button type="button" class="primary-btn" id="mtNewMeeting"></button>
+          </div>
         </div>
 
         <div class="mt-tools">
@@ -209,6 +212,12 @@
     // Optional: same value as the MEETINGS_TOKEN script property (leave '' if you did not set one).
     const MEETINGS_TOKEN = '';
     const CACHE_KEY = 'meetings.cache.v2';
+    // Google Sheet behind the page — used by the "Download original sheet" button.
+    const MEETINGS_SHEET_ID = '1CD2PHhpEUltA3fg600OmM6N09rj0YlTY-NpLi803h84';
+
+    // Meeting number → title (1 = الاجتماع الاول … 13 = الاجتماع الثالث عشر). Keep in sync with meetings.gs.
+    const ORDINALS = ['الاول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر', 'الثالث عشر'];
+    const meetingTitle = (n) => 'الاجتماع ' + (n >= 1 && n <= ORDINALS.length ? ORDINALS[n - 1] : n);
 
     const $ = (id) => document.getElementById(id);
     const lang = () => window.EgyptAirPortal?.language || 'ar';
@@ -220,11 +229,11 @@
     const state = { data: null, sheet: 0, filter: 'all', query: '', at: 0, fromCache: false, error: '', busy: false };
 
     // ── backend ─────────────────────────────────────────────────────────
-    async function callApi(payload) {
+    async function callApi(payload, getAction) {
       if (!MEETINGS_URL) throw new Error(t('MEETINGS_URL is not set in meetings.html.', 'لم يتم ضبط MEETINGS_URL في ملف meetings.html.'));
-      const res = payload
+      const res = payload && !getAction
         ? await fetch(MEETINGS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...payload, token: MEETINGS_TOKEN || undefined }) })
-        : await fetch(`${MEETINGS_URL}?action=meetings${MEETINGS_TOKEN ? '&token=' + encodeURIComponent(MEETINGS_TOKEN) : ''}`);
+        : await fetch(`${MEETINGS_URL}?action=${getAction ? payload.action : 'meetings'}${MEETINGS_TOKEN ? '&token=' + encodeURIComponent(MEETINGS_TOKEN) : ''}`);
       if (!res.ok) throw new Error(t('The server did not respond.', 'لم يستجب الخادم.'));
       const json = await res.json();
       if (!json.ok) throw new Error(json.message || t('Request failed.', 'فشل الطلب.'));
@@ -301,6 +310,8 @@
       const data = state.data;
       $('mtNewMeeting').textContent = '+ ' + t('New meeting', 'اجتماع جديد');
       $('mtNewMeeting').disabled = !data;
+      $('mtExport').textContent = '⬇ ' + t('Download original sheet', 'تحميل الشيت الأصلي');
+      $('mtExport').disabled = state.exporting;
       $('mtTabs').innerHTML = data ? data.kinds.map((k, i) =>
         `<button type="button" role="tab" class="segmented-btn ${i === state.sheet ? 'active' : ''}" data-sheet="${i}">${esc(k.name)}<span class="mt-count">${totalsOf(k).all}</span></button>`).join('') : '';
 
@@ -339,6 +350,25 @@
       const req = state.data.kinds.find((x) => x.name === k).meetings.find((m) => m.number === meeting).requests.find((r) => r.code === code && String(r.row) === btn.dataset.row);
       if (!req) return;
       await save({ action: 'setStatus', kind: k, meeting, code, row: Number(btn.dataset.row), [field]: !req[field] });
+    }
+
+    // ── download original sheet ─────────────────────────────────────────
+    async function exportSheet() {
+      state.exporting = true; render();
+      try {
+        const { data } = await callApi({ action: 'export' }, true);
+        const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([bytes], { type: data.mime }));
+        a.download = data.filename || 'الاجتماعات.xlsx';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+        toast(t('Sheet downloaded.', 'تم تحميل الشيت.'));
+      } catch (e) {
+        // Backend not updated / unreachable → fall back to Google's own export link (needs access to the sheet).
+        window.open(`https://docs.google.com/spreadsheets/d/${MEETINGS_SHEET_ID}/export?format=xlsx`, '_blank', 'noopener');
+        toast(t('Opened the Google export link instead.', 'تم فتح رابط التصدير من جوجل.'), true);
+      } finally { state.exporting = false; render(); }
     }
 
     // ── dialog ──────────────────────────────────────────────────────────
@@ -383,10 +413,13 @@
       const next = Math.max(0, ...k.meetings.map((m) => m.number)) + 1;
       openDialog(`${t('New meeting', 'اجتماع جديد')} — ${k.name}`, [
         { name: 'number', label: t('Meeting number', 'رقم الاجتماع'), value: next, required: true, inputmode: 'numeric' },
-        { name: 'title', label: t('Title', 'العنوان'), value: `الاجتماع ${next}` },
+        { name: 'title', label: t('Title', 'العنوان'), value: meetingTitle(next), readonly: true },
         { name: 'held', label: t('Held on', 'تاريخ الانعقاد'), type: 'date' },
         { name: 'approved', label: t('Approved on', 'تاريخ الاعتماد'), type: 'date' },
       ], (v) => save({ action: 'addMeeting', kind: k.name, ...v }));
+      // title follows the number automatically
+      const numEl = $('mtFields').querySelector('[name="number"]'), titleEl = $('mtFields').querySelector('[name="title"]');
+      numEl.addEventListener('input', () => { const n = parseInt(numEl.value, 10); titleEl.value = n >= 1 ? meetingTitle(n) : ''; });
     }
     function editMeetingDialog(number) {
       const k = kind(), m = k.meetings.find((x) => x.number === number);
@@ -408,6 +441,7 @@
       else if ((x = el('[data-edit-meeting]'))) editMeetingDialog(Number(x.dataset.editMeeting));
       else if (el('#mtNewMeeting')) newMeetingDialog();
       else if (el('#mtReload')) load();
+      else if (el('#mtExport')) exportSheet();
     });
     $('mtSearch').addEventListener('input', (e) => { state.query = e.target.value; render(); });
     window.addEventListener('portal-language-change', render);

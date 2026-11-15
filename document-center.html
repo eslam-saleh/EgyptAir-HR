@@ -1230,6 +1230,10 @@
       return _meetingRuleIndex.get(normalizeArabicVariants(normalizeDocRuleName(docName))) || null;
     }
 
+    // Meeting number → title (1 = الاجتماع الاول … 13 = الاجتماع الثالث عشر). Keep in sync with meetings.gs.
+    const MEETING_ORDINALS = ['الاول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر', 'الثالث عشر'];
+    const meetingTitleFor = (n) => 'الاجتماع ' + (n >= 1 && n <= MEETING_ORDINALS.length ? MEETING_ORDINALS[n - 1] : n);
+
     function meetingsConfigured() {
       return MEETINGS_URL && !MEETINGS_URL.includes('PUT_MEETINGS');
     }
@@ -1274,13 +1278,18 @@
         const reg = await loadMeetingsRegistry();
         if (!wrap.isConnected) return; // form was re-rendered meanwhile
         const kind = (reg.kinds || []).find((k) => normalizeArabicVariants(k.name) === normalizeArabicVariants(rule.kind));
-        const meetings = kind ? kind.meetings : [];
-        if (!meetings.length) throw new Error('no meetings');
-        // newest first (server sorts); preselect the newest meeting not yet approved, else the newest.
-        const open = meetings.find((m) => !m.approved) || meetings[0];
-        select.innerHTML = meetings.map((m) =>
-          `<option value="${m.number}"${m.number === open.number ? ' selected' : ''}>${escapeHtml(m.title)}${m.held ? ' — ' + escapeHtml(m.held) : ''}</option>`
-        ).join('');
+        const meetings = kind ? kind.meetings : [];          // newest first
+        // A meeting with تاريخ الانعقاد is closed: only open meetings are offered. When the newest
+        // meeting is already held (or none exists) the next number is offered as a NEW meeting,
+        // which meetings.gs creates when the request is saved.
+        const open = meetings.filter((m) => !m.held);
+        const latest = meetings.length ? meetings[0] : null;
+        const options = open.map((m, i) => `<option value="${m.number}"${i === 0 ? ' selected' : ''}>${escapeHtml(m.title)}</option>`);
+        if (!latest || latest.held) {
+          const next = (latest ? latest.number : 0) + 1;
+          options.unshift(`<option value="${next}" selected>${escapeHtml(meetingTitleFor(next))} — ${t('new (created automatically)', 'جديد (يُنشأ تلقائيًا)')}</option>`);
+        }
+        select.innerHTML = options.join('');
         select.disabled = false;
       } catch (err) {
         if (!wrap.isConnected) return;
@@ -1328,6 +1337,7 @@
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             action: 'addRequest',
+            autoMeeting: true,   // server skips meetings that already have تاريخ الانعقاد, creating the next one if needed
             kind: rule.kind,
             meeting,
             code,
@@ -1338,7 +1348,8 @@
         });
         const data = await res.json();
         if (!data.ok) throw new Error(data.message || t('The meetings sheet rejected the request.', 'رفض شيت الاجتماعات الطلب.'));
-        showSheetSyncToast(t(`Added to meeting ${meeting} — ${rule.kind}.`, `تمت الإضافة إلى الاجتماع ${meeting} — ${rule.kind}.`));
+        _meetingsPromise = null;   // registry changed → refetch next time the picker is built
+        showSheetSyncToast(`${data.message} — ${rule.kind}`);
       } catch (err) {
         showSheetSyncToast(err.message || t('Failed to update the meetings sheet.', 'فشل تحديث شيت الاجتماعات.'), true);
       }
