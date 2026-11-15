@@ -73,6 +73,10 @@
     .mt-mini { border: 1px solid var(--mt-border); background: var(--mt-bg); color: inherit; border-radius: 8px; padding: 3px 10px;
       font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
     .mt-actions { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--mt-border); }
+    .mt-download { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 16px; border: 1px solid var(--mt-border);
+      border-radius: 6px; background: var(--mt-bg); color: var(--primary, #0b5cad); font-weight: 800; text-decoration: none; cursor: pointer; transition: transform .16s ease, background .16s ease; }
+    .mt-download:hover { background: var(--mt-head); }
+    .mt-download:active { transform: scale(.97); }
     .mt-top { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
     /* ── dialog ── */
     dialog.mt-dialog { border: 1px solid var(--mt-border); border-radius: 16px; padding: 0; width: min(480px, 94vw);
@@ -178,7 +182,7 @@
         <div class="mt-top">
           <div class="mt-tabs" id="mtTabs" role="tablist" style="flex:1 1 360px;"></div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button type="button" class="ghost-btn" id="mtExport"></button>
+            <a class="mt-download" href="https://docs.google.com/spreadsheets/d/1CD2PHhpEUltA3fg600OmM6N09rj0YlTY-NpLi803h84/export?format=xlsx" download="الاجتماعات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">تنزيل الشيت الأصلي</a>
             <button type="button" class="primary-btn" id="mtNewMeeting"></button>
           </div>
         </div>
@@ -212,9 +216,6 @@
     // Optional: same value as the MEETINGS_TOKEN script property (leave '' if you did not set one).
     const MEETINGS_TOKEN = '';
     const CACHE_KEY = 'meetings.cache.v2';
-    // Google Sheet behind the page — used by the "Download original sheet" button.
-    const MEETINGS_SHEET_ID = '1CD2PHhpEUltA3fg600OmM6N09rj0YlTY-NpLi803h84';
-
     // Meeting number → title (1 = الاجتماع الاول … 13 = الاجتماع الثالث عشر). Keep in sync with meetings.gs.
     const ORDINALS = ['الاول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر', 'الحادي عشر', 'الثاني عشر', 'الثالث عشر'];
     const meetingTitle = (n) => 'الاجتماع ' + (n >= 1 && n <= ORDINALS.length ? ORDINALS[n - 1] : n);
@@ -229,11 +230,11 @@
     const state = { data: null, sheet: 0, filter: 'all', query: '', at: 0, fromCache: false, error: '', busy: false };
 
     // ── backend ─────────────────────────────────────────────────────────
-    async function callApi(payload, getAction) {
+    async function callApi(payload) {
       if (!MEETINGS_URL) throw new Error(t('MEETINGS_URL is not set in meetings.html.', 'لم يتم ضبط MEETINGS_URL في ملف meetings.html.'));
-      const res = payload && !getAction
+      const res = payload
         ? await fetch(MEETINGS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...payload, token: MEETINGS_TOKEN || undefined }) })
-        : await fetch(`${MEETINGS_URL}?action=${getAction ? payload.action : 'meetings'}${MEETINGS_TOKEN ? '&token=' + encodeURIComponent(MEETINGS_TOKEN) : ''}`);
+        : await fetch(`${MEETINGS_URL}?action=meetings${MEETINGS_TOKEN ? '&token=' + encodeURIComponent(MEETINGS_TOKEN) : ''}`);
       if (!res.ok) throw new Error(t('The server did not respond.', 'لم يستجب الخادم.'));
       const json = await res.json();
       if (!json.ok) throw new Error(json.message || t('Request failed.', 'فشل الطلب.'));
@@ -310,8 +311,6 @@
       const data = state.data;
       $('mtNewMeeting').textContent = '+ ' + t('New meeting', 'اجتماع جديد');
       $('mtNewMeeting').disabled = !data;
-      $('mtExport').textContent = '⬇ ' + t('Download original sheet', 'تحميل الشيت الأصلي');
-      $('mtExport').disabled = state.exporting;
       $('mtTabs').innerHTML = data ? data.kinds.map((k, i) =>
         `<button type="button" role="tab" class="segmented-btn ${i === state.sheet ? 'active' : ''}" data-sheet="${i}">${esc(k.name)}<span class="mt-count">${totalsOf(k).all}</span></button>`).join('') : '';
 
@@ -350,25 +349,6 @@
       const req = state.data.kinds.find((x) => x.name === k).meetings.find((m) => m.number === meeting).requests.find((r) => r.code === code && String(r.row) === btn.dataset.row);
       if (!req) return;
       await save({ action: 'setStatus', kind: k, meeting, code, row: Number(btn.dataset.row), [field]: !req[field] });
-    }
-
-    // ── download original sheet ─────────────────────────────────────────
-    async function exportSheet() {
-      state.exporting = true; render();
-      try {
-        const { data } = await callApi({ action: 'export' }, true);
-        const bytes = Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0));
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([bytes], { type: data.mime }));
-        a.download = data.filename || 'الاجتماعات.xlsx';
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-        toast(t('Sheet downloaded.', 'تم تحميل الشيت.'));
-      } catch (e) {
-        // Backend not updated / unreachable → fall back to Google's own export link (needs access to the sheet).
-        window.open(`https://docs.google.com/spreadsheets/d/${MEETINGS_SHEET_ID}/export?format=xlsx`, '_blank', 'noopener');
-        toast(t('Opened the Google export link instead.', 'تم فتح رابط التصدير من جوجل.'), true);
-      } finally { state.exporting = false; render(); }
     }
 
     // ── dialog ──────────────────────────────────────────────────────────
@@ -441,7 +421,6 @@
       else if ((x = el('[data-edit-meeting]'))) editMeetingDialog(Number(x.dataset.editMeeting));
       else if (el('#mtNewMeeting')) newMeetingDialog();
       else if (el('#mtReload')) load();
-      else if (el('#mtExport')) exportSheet();
     });
     $('mtSearch').addEventListener('input', (e) => { state.query = e.target.value; render(); });
     window.addEventListener('portal-language-change', render);

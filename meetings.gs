@@ -67,7 +67,6 @@ function doGet(e) {
     var p = (e && e.parameter) || {};
     if (!isAuthorized(p.token)) return respond(false, 'غير مصرح بهذا الطلب.');
     if (p.action === 'meetings') return respond(true, 'تم تحميل البيانات.', getMeetingsCached());
-    if (p.action === 'export') return respond(true, 'تم تجهيز الملف.', exportOriginalSheet());
     return ContentService.createTextOutput('الاجتماعات sync endpoint is running.');
   } catch (err) {
     return respond(false, 'خطأ في الخادم: ' + err.message);
@@ -109,23 +108,6 @@ function doPost(e) {
 function respond(ok, message, data) {
   return ContentService.createTextOutput(JSON.stringify({ ok: ok, message: message, data: data || null }))
     .setMimeType(ContentService.MimeType.JSON);
-}
-
-/* ───────────────────────── export original sheet ───────────────────────── */
-
-// Returns the whole workbook as .xlsx (base64) so the page can download it, even for people who
-// have no access to the Google Sheet itself. Runs as the script owner.
-function exportOriginalSheet() {
-  var file = DriveApp.getFileById(MEETINGS_SPREADSHEET_ID);   // also makes Apps Script request Drive access
-  var res = UrlFetchApp.fetch(
-    'https://docs.google.com/spreadsheets/d/' + MEETINGS_SPREADSHEET_ID + '/export?format=xlsx',
-    { headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
-  if (res.getResponseCode() !== 200) throw new Error('تعذر تصدير الملف (' + res.getResponseCode() + ').');
-  return {
-    filename: file.getName() + '.xlsx',
-    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    base64: Utilities.base64Encode(res.getContent())
-  };
 }
 
 /* ───────────────────────── helpers ───────────────────────── */
@@ -412,7 +394,6 @@ function handleUpdateMeeting(ss, b) {
 // Run once from the editor: authorizes the script and verifies every sheet and header it needs.
 function setupMeetings() {
   var ss = SpreadsheetApp.openById(MEETINGS_SPREADSHEET_ID);
-  DriveApp.getFileById(MEETINGS_SPREADSHEET_ID).getName();   // authorizes the Drive access used by the export button
   loadTable(ss, REGISTRY_SHEET, REGISTRY_KEYS);
   KIND_SHEETS.forEach(function (n) { loadTable(ss, n, REQUEST_KEYS); });
   var d = readMeetings(ss), summary = [];
