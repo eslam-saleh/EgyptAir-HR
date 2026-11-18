@@ -607,9 +607,9 @@
           <div class="sal-field">
             <label class="sal-label" for="basicNumber" data-en="Basic Salary (أساسي)" data-ar="الأجر الأساسي">الأجر الأساسي</label>
             <div class="sal-input-row">
-              <input type="number" id="basicNumber" min="0" max="10000" step="50" value="5000">
+              <input type="number" id="basicNumber" min="0" max="5000" step="50" value="2000">
               <span class="sal-currency">EGP</span>
-              <input type="range" id="basicRange" min="0" max="10000" step="50" value="5000">
+              <input type="range" id="basicRange" min="0" max="5000" step="50" value="2000">
             </div>
           </div>
 
@@ -891,7 +891,7 @@
       // Debounce timers so keyboard typing is not interrupted by clamp
       let basicDebounce = null;
 
-      // Basic salary (0 – 10000)
+      // Basic salary (0 – 5000)
       const basicNum = document.getElementById('basicNumber');
       const basicRng = document.getElementById('basicRange');
       basicNum.addEventListener('input', () => {
@@ -900,7 +900,7 @@
         if (raw === '' || raw === '-') return;
         const n = +raw;
         if (!isNaN(n)) {
-          basicRng.value = Math.min(10000, Math.max(0, n));
+          basicRng.value = Math.min(5000, Math.max(0, n));
           basicSalary = n; // temporary unclamped while typing
           updateRaise();
           updateTotalGross();
@@ -1531,7 +1531,7 @@
 
     function clampBasic(v) {
       if (isNaN(v) || v < 0) return 0;
-      if (v > 10000) return 10000;
+      if (v > 5000) return 5000;
       return v;
     }
 
