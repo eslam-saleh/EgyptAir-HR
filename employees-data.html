@@ -1787,7 +1787,9 @@ const schema = [
 ['status', 'Status', 'الحالة', 'select'],
 ['report2024', 'Annual report 2024', 'تقرير عام 2024', 'combo'],
 ['report2025', 'Annual report 2025', 'تقرير عام 2025', 'combo'],
-['report2026', 'Annual report 2026', 'تقرير عام 2026', 'combo']]],
+['report2026', 'Annual report 2026', 'تقرير عام 2026', 'combo'],
+['endOfServiceDate', 'End of service date', 'تاريخ إنهاء الخدمة', 'date'],
+['endOfServiceReason', 'End of service reason', 'سبب إنهاء الخدمة', 'combo']]],
 
 ['employment', 'Employment details', 'بيانات وظيفية', [
 ['originalCompany', 'Original company', 'الشركة الأساسية', 'combo'],
@@ -2116,7 +2118,16 @@ function looksLikeDateOrNumber(value) {
   return false;
 }
 
+// Usual end-of-service reasons (spelled as in the Retired sheet). The active
+// list has no values for this column, so these seed the suggestions; reasons
+// already present in the loaded records are merged in, and free text is allowed.
+const END_OF_SERVICE_REASONS = ['بلوغ سن التقاعد', 'رفع من وظيفه لتعيين بأخرى', 'وفاه', 'انقطاع عن العمل', 'استقالة', 'استقاله حكميه', 'معاش مبكر', 'أنهــاء العــقـد', 'عدم صـلاحيه خلال الاختبار', 'عدم اللياقه الصحيه', 'فصل من الخدمة', 'أســـباب أخــرى'];
+
 function comboOptions(key) {
+  if (key === 'endOfServiceReason') {
+    return [...new Set([...END_OF_SERVICE_REASONS, ...unique(key)])].
+    map((value) => `<option value="${escapeHtml(value)}">`).join('');
+  }
   return unique(key).
   filter((value) => !looksLikeDateOrNumber(value)).
   map((value) => `<option value="${escapeHtml(value)}">`).join('');
@@ -3455,7 +3466,8 @@ const SOURCE_COLUMN_ORDER = [
 'leaveEnd', 'militaryStatus', 'exemptionReason', 'contractStart', 'contractEnd', 'appointmentType', 'status', 'address', 'phone',
 'governorate', 'addressExtra', 'originalCompanyName', 'originalGeneralDepartment', 'originalSubDepartment', 'workSchedule',
 'nationalId', 'insuranceNumber',
-'report2024', 'report2025', 'report2026'];
+'report2024', 'report2025', 'report2026',
+'endOfServiceDate', 'endOfServiceReason'];
 
 // Columns that must always appear in the filtered Excel export.
 const EXPORT_LOCKED_KEYS = ['code', 'name'];

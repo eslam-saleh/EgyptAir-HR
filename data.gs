@@ -78,7 +78,9 @@ const FIELDS = [
   ['insuranceNumber', 'الرقم التاميني'],
   ['report2024', 'تقرير عام 2024'],
   ['report2025', 'تقرير عام 2025'],
-  ['report2026', 'تقرير عام 2026']
+  ['report2026', 'تقرير عام 2026'],
+  ['endOfServiceDate', 'تاريخ انهاء الخدمة'],
+  ['endOfServiceReason', 'سبب انهاء الخدمة']
 ];
 const HEADER_KEYS = FIELDS.map(x => x[1]);
 
@@ -94,8 +96,12 @@ const COMPUTED = new Set(['retirementDate', 'age', 'ageGroup', 'ageAtAppointment
 const DATE_FIELDS = new Set([
   'birthDate', 'retirementDate', 'appointmentDate', 'gradeDate', 'jobDate',
   'qualificationDate', 'secondmentStart', 'secondmentEnd', 'leaveStart',
-  'leaveEnd', 'contractStart', 'contractEnd'
+  'leaveEnd', 'contractStart', 'contractEnd', 'endOfServiceDate'
 ]);
+
+// Date columns that use "-" (yyyy-mm-dd) instead of "/" in the sheet.
+// Parsing accepts both separators everywhere; only the written format differs.
+const DASH_DATE_FIELDS = new Set(['endOfServiceDate']);
 
 // Preferred access control: set EMPLOYEE_DATA_ALLOWED_EMAILS to a
 // comma-separated allowlist and deploy as "User accessing the web app" to
@@ -245,7 +251,9 @@ const HISTORY_LABELS = {
   insuranceNumber: 'الرقم التأميني',
   report2024: 'تقرير عام 2024',
   report2025: 'تقرير عام 2025',
-  report2026: 'تقرير عام 2026'
+  report2026: 'تقرير عام 2026',
+  endOfServiceDate: 'تاريخ إنهاء الخدمة',
+  endOfServiceReason: 'سبب إنهاء الخدمة'
 };
 const HISTORY_STATUS_LABELS = {
   active: 'نشط', inactive: 'غير نشط', leave: 'إجازة', seconded: 'منتدب'
@@ -921,6 +929,16 @@ function moveEmployeeToRetired(input) {
   if (statusIdx >= 0 && input.status) {
     values[statusIdx] = normalizeStatus(input.status) || values[statusIdx];
   }
+  // تاريخ انهاء الخدمة: keep the date already set on the employee (edit form);
+  // if it is empty, use today's date (Cairo time). سبب انهاء الخدمة is only
+  // overwritten when the client sends one — an empty reason stays empty.
+  const endDateIdx = fieldIndex('endOfServiceDate');
+  const endReasonIdx = fieldIndex('endOfServiceReason');
+  const endDate = parseSheetDate(input.endOfServiceDate) || parseSheetDate(values[endDateIdx]);
+  values[endDateIdx] = formatDateForField_('endOfServiceDate', endDate || parseSheetDate(todayYmd_()));
+  if (String(input.endOfServiceReason || '').trim()) {
+    values[endReasonIdx] = String(input.endOfServiceReason).trim();
+  }
   const retiredSh = getSheet(RETIRED_SHEET_NAME);
   ensureSheetShape(retiredSh, RETIRED_SHEET_NAME);
   // Append as plain values (same column order).
@@ -1024,7 +1042,10 @@ function valuesForWrite(input, existing) {
     if (COMPUTED.has(key)) return existing && existing[index] != null ? existing[index] : '';
     let value = input[key] === undefined || input[key] === null ? '' : input[key];
     if (key === 'code') value = normalizeCode(value);
-    if (DATE_FIELDS.has(key)) value = normalizeDateOnly(value);
+    if (DATE_FIELDS.has(key)) {
+      value = normalizeDateOnly(value);
+      if (DASH_DATE_FIELDS.has(key) && /^\d{4}\/\d{2}\/\d{2}$/.test(String(value))) value = String(value).replace(/\//g, '-');
+    }
     if (key === 'status') value = normalizeStatus(value);
     return value;
   });
@@ -1129,7 +1150,7 @@ function applyDateFormats(sh, row) {
       const cell = sh.getRange(row, col);
       const parsed = parseSheetDate(cell.getValue());
       cell.setNumberFormat('@');
-      cell.setValue(parsed ? formatDateYmd(parsed) : '');
+      cell.setValue(parsed ? formatDateForField_(key, parsed) : '');
     }
   });
 }
@@ -1192,6 +1213,17 @@ function serviceDurationLabel(appointmentDate, today) {
   if (years === 0) return rest + ' شهر';
   if (rest === 0) return years + ' سنة';
   return years + ' سنة و ' + rest + ' شهر';
+}
+
+/** Today as yyyy/mm/dd in Cairo time (independent of the script's own time zone). */
+function todayYmd_() {
+  return Utilities.formatDate(new Date(), 'Africa/Cairo', 'yyyy/MM/dd');
+}
+
+/** Format a date the way that column is written in the sheet (/ or -). */
+function formatDateForField_(key, date) {
+  const s = formatDateYmd(date);
+  return DASH_DATE_FIELDS.has(key) ? s.replace(/\//g, '-') : s;
 }
 
 function formatDateYmd(date) {
@@ -1328,7 +1360,7 @@ function backfillDerivedFormulas() {
         const year = parsed.getFullYear();
         // Drop nonsense dates (e.g. 1111-11-11)
         if (year < 1920 || year > 2100) return [''];
-        return [formatDateYmd(parsed)];
+        return [formatDateForField_(key, parsed)];
       }
       return [''];
     });
