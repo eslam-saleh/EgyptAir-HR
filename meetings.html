@@ -147,14 +147,13 @@
     .mt-combo-arrow { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border: 0; background: transparent;
       color: inherit; cursor: pointer; border-radius: 6px; font-size: 12px; opacity: .7; }
     .mt-combo-arrow:hover { background: var(--mt-head); opacity: 1; }
-    .mt-combo-list { position: absolute; z-index: 20; inset-inline: 0; top: calc(100% + 4px); max-height: 240px; overflow-y: auto; margin: 0; padding: 4px;
-      list-style: none; background: var(--mt-surface); border: 1.5px solid var(--mt-border); border-radius: 10px; box-shadow: 0 10px 30px rgba(15,23,42,.25); }
+    .mt-combo-list { position: static; margin: 6px 0 0; max-height: 220px; overflow-y: auto; overscroll-behavior: contain; padding: 4px;
+      list-style: none; background: var(--mt-surface); border: 1.5px solid var(--mt-border); border-radius: 10px; font-weight: 400; }
     .mt-combo-list[hidden] { display: none; }
     .mt-combo-group { padding: 7px 10px 3px; font-size: 12px; font-weight: 800; color: var(--primary, #0b5cad); cursor: default; }
     .mt-combo-opt { padding: 7px 10px; padding-inline-start: 22px; border-radius: 8px; font-weight: 600; cursor: pointer; }
     .mt-combo-opt.active, .mt-combo-opt:hover { background: var(--mt-head); }
     .mt-combo-empty { padding: 8px 10px; opacity: .6; font-weight: 600; cursor: default; }
-    .mt-fields { overflow: visible; }
   </style>
 </head>
 <body>
@@ -377,7 +376,8 @@
       const opts = () => [...list.querySelectorAll('.mt-combo-opt')];
       const hide = () => { list.hidden = true; active = -1; };
       const pick = (v) => { input.value = v; input.classList.remove('invalid'); hide(); input.focus(); };
-      const setActive = (i) => { const o = opts(); if (!o.length) return; active = (i + o.length) % o.length; o.forEach((x, n) => x.classList.toggle('active', n === active)); o[active].scrollIntoView({ block: 'nearest' }); };
+      const setActive = (i) => { const o = opts(); if (!o.length) return; active = (i + o.length) % o.length; o.forEach((x, n) => x.classList.toggle('active', n === active)); const el = o[active], top = el.offsetTop, bot = top + el.offsetHeight;
+        if (top < list.scrollTop) list.scrollTop = top; else if (bot > list.scrollTop + list.clientHeight) list.scrollTop = bot - list.clientHeight; };
       function show(filterText) {
         const q = fold(filterText || '');
         let html = '';
@@ -396,9 +396,11 @@
         else if (e.key === 'Enter' && !list.hidden && active >= 0) { e.preventDefault(); pick(opts()[active].dataset.v); }
         else if (e.key === 'Escape' && !list.hidden) { e.preventDefault(); e.stopPropagation(); hide(); }
       });
-      list.addEventListener('mousedown', (e) => { e.preventDefault(); const o = e.target.closest('.mt-combo-opt'); if (o) pick(o.dataset.v); });
+      let dragging = false;
+      list.addEventListener('mousedown', (e) => { const o = e.target.closest('.mt-combo-opt'); if (o) { e.preventDefault(); pick(o.dataset.v); } else dragging = true; /* scrollbar / header: keep list open */ });
+      document.addEventListener('mouseup', () => { if (dragging) { dragging = false; input.focus(); } });
       arrow.addEventListener('mousedown', (e) => { e.preventDefault(); if (list.hidden) { input.focus(); show(''); } else hide(); });
-      input.addEventListener('blur', hide);
+      input.addEventListener('blur', () => { if (!dragging) hide(); });
     }
     let dialogSubmit = null;
     function openDialog(title, fields, onSubmit) {
