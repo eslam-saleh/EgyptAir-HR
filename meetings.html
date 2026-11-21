@@ -140,6 +140,21 @@
       background: #1f2937; color: #fff; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
     .mt-toast.err { background: #b3261e; }
     .mt-none { padding: 14px 16px; color: var(--mt-muted); }
+
+    /* subject combobox: type freely or pick from grouped list */
+    .mt-combo { position: relative; display: block; }
+    .mt-combo input { width: 100%; box-sizing: border-box; padding-inline-end: 34px; }
+    .mt-combo-arrow { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border: 0; background: transparent;
+      color: inherit; cursor: pointer; border-radius: 6px; font-size: 12px; opacity: .7; }
+    .mt-combo-arrow:hover { background: var(--mt-head); opacity: 1; }
+    .mt-combo-list { position: absolute; z-index: 20; inset-inline: 0; top: calc(100% + 4px); max-height: 240px; overflow-y: auto; margin: 0; padding: 4px;
+      list-style: none; background: var(--mt-surface); border: 1.5px solid var(--mt-border); border-radius: 10px; box-shadow: 0 10px 30px rgba(15,23,42,.25); }
+    .mt-combo-list[hidden] { display: none; }
+    .mt-combo-group { padding: 7px 10px 3px; font-size: 12px; font-weight: 800; color: var(--primary, #0b5cad); cursor: default; }
+    .mt-combo-opt { padding: 7px 10px; padding-inline-start: 22px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .mt-combo-opt.active, .mt-combo-opt:hover { background: var(--mt-head); }
+    .mt-combo-empty { padding: 8px 10px; opacity: .6; font-weight: 600; cursor: default; }
+    .mt-fields { overflow: visible; }
   </style>
 </head>
 <body>
@@ -352,12 +367,46 @@
     }
 
     // ── dialog ──────────────────────────────────────────────────────────
+    const SUBJECT_OPTIONS = [
+      { group: 'شئون العاملين', items: ['منح الاجازة', 'تجديد الاجازة', 'قطع الاجازة', 'نصف الوقت', 'محو الجزاء', 'ترقيات', 'تعيينات'] },
+      { group: 'التظلمات', items: ['جزاء الإنذار', 'جزاء خصم يوم', 'جزاء خصم ثلاثة أيام', 'جزاء خصم خمسة أيام', 'تقييم ضعيف', 'تقييم متوسط', 'تقييم جيد'] },
+    ];
+    function setupCombo(input, options) {
+      const wrap = input.closest('.mt-combo'), list = wrap.querySelector('.mt-combo-list'), arrow = wrap.querySelector('.mt-combo-arrow');
+      let active = -1;
+      const opts = () => [...list.querySelectorAll('.mt-combo-opt')];
+      const hide = () => { list.hidden = true; active = -1; };
+      const pick = (v) => { input.value = v; input.classList.remove('invalid'); hide(); input.focus(); };
+      const setActive = (i) => { const o = opts(); if (!o.length) return; active = (i + o.length) % o.length; o.forEach((x, n) => x.classList.toggle('active', n === active)); o[active].scrollIntoView({ block: 'nearest' }); };
+      function show(filterText) {
+        const q = fold(filterText || '');
+        let html = '';
+        for (const g of options) {
+          const items = g.items.filter((it) => !q || fold(it).includes(q) || fold(g.group).includes(q));
+          if (items.length) html += `<li class="mt-combo-group" role="presentation">${esc(g.group)}</li>` + items.map((it) => `<li class="mt-combo-opt" role="option" data-v="${esc(it)}">${esc(it)}</li>`).join('');
+        }
+        list.innerHTML = html || `<li class="mt-combo-empty">${t('No matches — your text will be used as typed', 'لا توجد نتائج — سيتم استخدام النص كما كتبته')}</li>`;
+        list.hidden = false; active = -1;
+      }
+      input.addEventListener('input', () => show(input.value));
+      input.addEventListener('focus', () => show(''));
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); if (list.hidden) show(input.value); setActive(active + 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); if (list.hidden) show(input.value); setActive(active - 1); }
+        else if (e.key === 'Enter' && !list.hidden && active >= 0) { e.preventDefault(); pick(opts()[active].dataset.v); }
+        else if (e.key === 'Escape' && !list.hidden) { e.preventDefault(); e.stopPropagation(); hide(); }
+      });
+      list.addEventListener('mousedown', (e) => { e.preventDefault(); const o = e.target.closest('.mt-combo-opt'); if (o) pick(o.dataset.v); });
+      arrow.addEventListener('mousedown', (e) => { e.preventDefault(); if (list.hidden) { input.focus(); show(''); } else hide(); });
+      input.addEventListener('blur', hide);
+    }
     let dialogSubmit = null;
     function openDialog(title, fields, onSubmit) {
       const dlg = $('mtDialog');
       dlg.querySelector('h3').textContent = title;
       $('mtFields').innerHTML = fields.map((f) => `<label class="mt-field"><span>${esc(f.label)}${f.required ? '<i class="mt-req">*</i>' : ''}</span>
-        <input name="${f.name}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" ${f.inputmode ? `inputmode="${f.inputmode}"` : ''} ${f.required ? 'required' : ''} ${f.readonly ? 'readonly' : ''} autocomplete="off"></label>`).join('');
+        ${f.options ? '<span class="mt-combo">' : ''}<input name="${f.name}" type="${f.type || 'text'}" value="${esc(f.value ?? '')}" ${f.inputmode ? `inputmode="${f.inputmode}"` : ''} ${f.required ? 'required' : ''} ${f.readonly ? 'readonly' : ''} autocomplete="off">${f.options ? '<button type="button" class="mt-combo-arrow" tabindex="-1" aria-label="▾">▼</button><ul class="mt-combo-list" role="listbox" hidden></ul></span>' : ''}</label>`).join('');
+      fields.forEach((f) => { if (f.options) setupCombo($('mtFields').querySelector(`[name="${f.name}"]`), f.options); });
       $('mtFormError').textContent = '';
       $('mtCancel').textContent = t('Cancel', 'إلغاء'); $('mtSubmit').textContent = t('Save', 'حفظ');
       dialogSubmit = onSubmit;
@@ -385,7 +434,7 @@
       openDialog(t('Add request', 'إضافة طلب'), [
         { name: 'code', label: t('Code', 'الكود'), required: true, inputmode: 'numeric' },
         { name: 'name', label: t('Name', 'الاسم'), required: true },
-        { name: 'subject', label: t('Subject', 'الموضوع'), required: true },
+        { name: 'subject', label: t('Subject', 'الموضوع'), required: true, options: SUBJECT_OPTIONS },
       ], (v) => save({ action: 'addRequest', kind: k, meeting: number, ...v }));
     }
     function newMeetingDialog() {
