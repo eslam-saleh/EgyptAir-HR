@@ -23,6 +23,11 @@
   var MAX_FAILS = 5;           // wrong tries before a short wait
   var WAIT_SECONDS = 60;
 
+  // Sign-in log: every successful login is sent to meetings.gs, which writes it to the sheet الزائرون.
+  var LOG_URL = 'https://script.google.com/macros/s/AKfycbxzpJqa69Z1OrMTJE_EgUY52oLhtUvwRm1DuDyC_qcyDsACFzBDVWC5I6VsHLHu2VNdCQ/exec';
+  var LOG_TOKEN = '';          // same value as MEETINGS_TOKEN (script property) if you set one
+  var LOG_WAIT_MS = 3000;      // never keep the person waiting longer than this
+
   var USERS = {
     '40dcbc1c876fc50a6f1fada833a91038ef62a21666820629ee391b3b5feb3086': 't',
     '44d71d355722bb0c6d04c8f221030c14ff89148551cd4fc39ce73942365ce8aa': '',
@@ -123,6 +128,24 @@
     });
   }
 
+  // Fire-and-wait (max LOG_WAIT_MS). Failure never blocks the sign-in.
+  function logVisit(code) {
+    return new Promise(function (resolve) {
+      var done = false, timer = null;
+      function finish() { if (!done) { done = true; if (timer) clearTimeout(timer); resolve(); } }
+      timer = setTimeout(finish, LOG_WAIT_MS);
+      try {
+        fetch(LOG_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          keepalive: true,
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'logVisit', code: code, token: LOG_TOKEN || undefined })
+        }).then(finish, finish);
+      } catch (e) { finish(); }
+    });
+  }
+
   function failState() {
     try { return JSON.parse(sget(FAIL_KEY)) || { n: 0, until: 0 }; } catch (e) { return { n: 0, until: 0 }; }
   }
@@ -162,7 +185,7 @@
         }
         sset(SESSION_KEY, JSON.stringify({ h: h, c: code, at: Date.now() }));
         sdel(FAIL_KEY);
-        return { ok: true, wait: 0 };
+        return logVisit(code).then(function () { return { ok: true, wait: 0 }; });
       });
     }
   };

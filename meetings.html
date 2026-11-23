@@ -73,10 +73,6 @@
     .mt-mini { border: 1px solid var(--mt-border); background: var(--mt-bg); color: inherit; border-radius: 8px; padding: 3px 10px;
       font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
     .mt-actions { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--mt-border); }
-    .mt-download { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 0 16px; border: 1px solid var(--mt-border);
-      border-radius: 6px; background: var(--mt-bg); color: var(--primary, #0b5cad); font-weight: 800; text-decoration: none; cursor: pointer; transition: transform .16s ease, background .16s ease; }
-    .mt-download:hover { background: var(--mt-head); }
-    .mt-download:active { transform: scale(.97); }
     .mt-top { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
     /* ── dialog ── */
     dialog.mt-dialog { border: 1px solid var(--mt-border); border-radius: 16px; padding: 0; width: min(480px, 94vw);
@@ -196,7 +192,6 @@
         <div class="mt-top">
           <div class="mt-tabs" id="mtTabs" role="tablist" style="flex:1 1 360px;"></div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <a class="mt-download" href="https://docs.google.com/spreadsheets/d/1CD2PHhpEUltA3fg600OmM6N09rj0YlTY-NpLi803h84/export?format=xlsx" download="الاجتماعات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">تنزيل الشيت الأصلي</a>
             <button type="button" class="primary-btn" id="mtNewMeeting"></button>
           </div>
         </div>

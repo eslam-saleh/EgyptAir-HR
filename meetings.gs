@@ -32,6 +32,7 @@ var MEETINGS_SPREADSHEET_ID = '1CD2PHhpEUltA3fg600OmM6N09rj0YlTY-NpLi803h84';
 
 var REGISTRY_SHEET = 'الاجتماعات';
 var KIND_SHEETS = ['شئون العاملين', 'التظلمات'];
+var VISITORS_SHEET = 'الزائرون';   // sign-in log: الكود | وقت الدخول. Written only by logVisit — never read back or sent to any page.
 var YES = 'نعم';
 
 var HEAD = {
@@ -79,6 +80,7 @@ function doPost(e) {
   try {
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (!isAuthorized(body.token)) return respond(false, 'غير مصرح بهذا الطلب.');
+    if (body.action === 'logVisit') return handleLogVisit(body);   // returns no data on purpose
     var handlers = {
       setStatus: handleSetStatus,
       addRequest: handleAddRequest,
@@ -387,6 +389,32 @@ function handleUpdateMeeting(ss, b) {
   }
   if (!changes.length) throw new Error('لا توجد بيانات لتعديلها.');
   return 'تم حفظ بيانات الاجتماع.';
+}
+
+/* ───────────────────────── sign-in log (الزائرون) ───────────────────────── */
+
+// Appends one row per sign-in: the access code and the exact time. Creates the sheet if missing.
+// This sheet is never read by readMeetings() and the response carries no data.
+function handleLogVisit(b) {
+  var code = digits(b.code).replace(/\s+/g, '');
+  if (!/^\d{1,12}$/.test(code)) return respond(false, 'كود غير صحيح.');
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) return respond(false, 'الشيت مشغول حالياً.');
+  try {
+    var ss = SpreadsheetApp.openById(MEETINGS_SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(VISITORS_SHEET);
+    if (!sheet) {
+      sheet = ss.insertSheet(VISITORS_SHEET);
+      sheet.getRange(1, 1, 1, 2).setValues([['الكود', 'وقت الدخول']]).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
+    var row = sheet.getLastRow() + 1;
+    sheet.getRange(row, 1).setNumberFormat('@').setValue(code);
+    sheet.getRange(row, 2).setNumberFormat('dd/mm/yyyy hh:mm:ss').setValue(new Date());
+    return respond(true, 'تم.');
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /* ───────────────────────── one-time check ───────────────────────── */
