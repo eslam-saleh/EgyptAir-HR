@@ -2324,9 +2324,14 @@ function renderPlaceholderForm(doc, placeholders) {
     }
     // ========== END SAVE / LOAD FIELD DATA ==========
 
+    let selectRequestId = 0;   // lets a newer Select win over a slower, older one
     async function selectDocument(docId) {
+      if (!canUseSelect()) return;
       const doc = allDocs.find((item) => item.id === docId);
       if (!doc) return;
+      const myRequest = ++selectRequestId;
+      document.getElementById('downloadConfirmBox')?.remove();   // leftover box from the previous file
+      placeholderForm.reset();
 
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -2346,6 +2351,7 @@ function renderPlaceholderForm(doc, placeholders) {
 
       try {
         const placeholders = await loadDocumentPlaceholders(doc);
+        if (myRequest !== selectRequestId) return;   // user already picked another document
         if (!placeholders.length) {
           throw new Error(t(
             'No {placeholders} were found in this document.',
@@ -2365,6 +2371,7 @@ function renderPlaceholderForm(doc, placeholders) {
         });
         renderPlaceholderForm(doc, selectedPlaceholders);
       } catch (err) {
+        if (myRequest !== selectRequestId) return;
         setFormStatus(err.message || t('Failed to read the document.', 'تعذر قراءة المستند.'), true);
         generatePdfBtn.disabled = true;
       }
@@ -2701,15 +2708,33 @@ function renderPlaceholderForm(doc, placeholders) {
         .toLowerCase();
     }
 
+    // Network steps (Drive / Google Sheets) must never be able to freeze the form.
+    function withTimeout(promise, ms, fallback) {
+      return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => (fallback === undefined
+          ? reject(new Error(t('The server took too long to respond.', 'الخادم تأخر في الرد.')))
+          : resolve(fallback)), ms);
+        Promise.resolve(promise).then(
+          (v) => { clearTimeout(timer); resolve(v); },
+          (e) => { clearTimeout(timer); fallback === undefined ? reject(e) : resolve(fallback); }
+        );
+      });
+    }
+
+    let generating = false;
     async function generatePdf(event) {
       event.preventDefault();
+      if (generating) return;
       if (!selectedDoc || (!selectedPlaceholders.length && !autoPlaceholders.length)) return;
 
       const values = readFormValues();
       const feminize = isFemaleSelected();
       let execNumber = null; // الرقم from the "الارقام" sheet (docx path only)
       let downloadInfo = null;
+      const docAtStart = selectedDoc;
+      generating = true;
       generatePdfBtn.disabled = true;
+      document.getElementById('downloadConfirmBox')?.remove();
 
       try {
         if (isLegacyDoc(selectedDoc)) {
@@ -2726,24 +2751,31 @@ function renderPlaceholderForm(doc, placeholders) {
           // Modern .docx: edit the real Word XML directly with docxtemplater.
           // This preserves all original formatting, fonts, tables, and RTL layout exactly.
           setFormStatus(t('Preparing document…', 'جارٍ تجهيز المستند…'));
-          const buffer = await downloadDriveFile(selectedDoc);
+          const buffer = await withTimeout(downloadDriveFile(selectedDoc), 45000);
           const docxBlob = replacePlaceholdersInDocx(buffer, values, false, feminize);
           downloadInfo = downloadBlob(docxBlob, getExportFileName(selectedDoc.name, 'docx', true));
-          execNumber = await logExecutiveNumberToSheet(selectedDoc, values, [...selectedPlaceholders, ...autoPlaceholders]);
+          execNumber = await withTimeout(logExecutiveNumberToSheet(selectedDoc, values, [...selectedPlaceholders, ...autoPlaceholders]), 20000, null);
         }
 
-        await syncGeneratedDocumentToSheet(selectedDoc, values, execNumber);
-        await syncMeetingRequest(selectedDoc, values);
+        await withTimeout(syncGeneratedDocumentToSheet(selectedDoc, values, execNumber), 20000, null);
+        await withTimeout(syncMeetingRequest(selectedDoc, values), 20000, null);
 
         // Do NOT close the form automatically: keep it until the user confirms.
-        setFormStatus('');
-        showDownloadConfirm(downloadInfo);
+        if (selectedDoc === docAtStart) {
+          setFormStatus('');
+          showDownloadConfirm(downloadInfo);
+        }
       } catch (err) {
-        generatePdfBtn.disabled = false;
-        setFormStatus(
-          err.message || t('Could not create the file.', 'تعذر إنشاء الملف.'),
-          true
-        );
+        if (selectedDoc === docAtStart) {
+          setFormStatus(
+            err.message || t('Could not create the file.', 'تعذر إنشاء الملف.'),
+            true
+          );
+        }
+      } finally {
+        generating = false;
+        // Re-enable only if a form is still showing (a new Select may have taken over).
+        if (selectedDoc) generatePdfBtn.disabled = false;
       }
     }
 
@@ -2831,6 +2863,10 @@ function renderPlaceholderForm(doc, placeholders) {
       });
     }
 
+    function canUseSelect() {
+      return !!(window.PortalAuth && PortalAuth.can('s'));
+    }
+
     function renderDocuments(filter = '') {
       const normalizedFilter = normalizeSearchText(filter);
       const filtered = sortWithPinnedFirst(allDocs.filter((doc) =>
@@ -2845,7 +2881,7 @@ function renderPlaceholderForm(doc, placeholders) {
       list.innerHTML = filtered.map((doc) => {
         const wordDoc = isWordDocument(doc);
         const isPinned = PINNED_DOC_NAMES.includes(doc.name);
-        const selectBtn = (wordDoc && !isPinned) ? `
+        const selectBtn = (wordDoc && !isPinned && canUseSelect()) ? `
           <button class="ghost-btn" type="button" data-select-id="${doc.id}">
             ${t('Select', 'اختيار')}
           </button>
