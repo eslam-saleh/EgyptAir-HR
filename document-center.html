@@ -2869,8 +2869,12 @@ function renderPlaceholderForm(doc, placeholders) {
 
     function renderDocuments(filter = '') {
       const normalizedFilter = normalizeSearchText(filter);
+      // Unpinned Word files (the ones that have a Select button) are only listed
+      // for codes with the 's' right; everyone else doesn't see those rows at all.
+      const showSelectable = canUseSelect();
       const filtered = sortWithPinnedFirst(allDocs.filter((doc) =>
-        normalizeSearchText(doc.name).includes(normalizedFilter)
+        normalizeSearchText(doc.name).includes(normalizedFilter) &&
+        (showSelectable || !isWordDocument(doc) || PINNED_DOC_NAMES.includes(doc.name))
       ));
 
       if (!filtered.length) {
