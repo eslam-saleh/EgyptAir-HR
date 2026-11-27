@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="light">
   <head>
     <meta charset="utf-8">
+  <script src="secure.js"></script>
   <script src="misc-config.js"></script>
   <script src="auth.js" data-page="employees"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1305,7 +1306,7 @@
           <h1 id="pageTitle" data-en="Employee Data" data-ar="بيانات الموظفين">Employee Data</h1>
           <p id="pageSubtitle" data-en="Find employee records quickly, review workforce distribution, and keep employee details up to date." data-ar="ابحث عن سجلات الموظفين بسرعة، وراجع توزيع القوى العاملة، وحافظ على تحديث بيانات الموظفين.">Find employee records quickly, review workforce distribution, and keep employee details up to date.</p>
         </div>
-        <div class="actions"><button class="btn" id="jobReportBtn" type="button" data-en="Jobs report" data-ar="تقرير الوظائف">Jobs report</button><button class="btn" id="reportBtn" type="button" data-en="Appointment report" data-ar="تقرير نوع التعيين">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn" id="exportBtn" href="https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
+        <div class="actions"><button class="btn" id="jobReportBtn" type="button" data-en="Jobs report" data-ar="تقرير الوظائف">Jobs report</button><button class="btn" id="reportBtn" type="button" data-en="Appointment report" data-ar="تقرير نوع التعيين">Appointment report</button><button class="btn" id="newBtn" type="button" data-en="Add employee" data-ar="إضافة موظف">Add employee</button><button class="btn" id="refreshBtn" type="button" data-en="Refresh data" data-ar="تحديث البيانات">Refresh data</button><a class="btn" id="exportBtn" href="#" data-secure-href="s1.33aa35eb8085a871.ea1a087f.1wObsj7qFmoQ0-rcihEdoWniSX81TgHSjTv4FvLV3Zstov_nn-qi8Px6T41x93RdEh2kNBLVd3FTDZX9-lVTDvtzX4qjnmDgHLQhoG1tYtAeL8Su_-2ORXDD8q5-WaCYLS0AWYS7" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a></div>
       </section>
       <div class="view-tabs" role="tablist" aria-label="Employee view">
         <button type="button" class="view-tab active" id="viewActiveBtn" data-view="active" role="tab" aria-selected="true" data-en="Active employees" data-ar="الموظفون النشطون">Active employees</button>
@@ -1486,7 +1487,9 @@
     </div>
     <script>
 /* API_TOKEN is only a compatibility fallback. For HR data, restrict the Apps Script deployment and use its email allowlist. */
-const API_URL = 'https://script.google.com/macros/s/AKfycbzoF2Cpp1bG18ZbZcHTTafFFhkTD6mZi7BIw_a0iEtqwBS1k2oDxDetGd3p8Jk30CVb/exec';
+/* The web app URL is stored SEALED (secure.js) and decoded in memory only when a request is made. */
+const _SEALED = { api: 's1.935a9a55c3518f15.0bda3b9a.YDXiTpQckW4CNvJTOfRMucz4xglta-gY6CjBgh_M8jJxv0MAt1XvM_QodpSwkGyXCr_PeFt82xXN-wBaD-b__yjWODPJV3I6URs8yBa6ioB_rh-uVPkcO-To49VUK4499Df3H4TAzMoJtDEHMPYDzA' };
+const unsealed = (name) => secure.unseal(_SEALED[name]);
 const API_TOKEN = '';
 const $ = (id) => document.getElementById(id);
 const clean = (value) => String(value !== null && value !== void 0 ? value : '').trim();
@@ -2522,7 +2525,7 @@ function renderHistoryStat() {
 async function loadHistory() {
   if (!state.canEdit) return; // modifications log is for the editor password only
   try {
-    const response = await fetch(withToken(`${API_URL}?action=history`), { redirect: 'follow', cache: 'no-store' });
+    const response = await fetch(withToken(`${unsealed('api')}?action=history`), { redirect: 'follow', cache: 'no-store' });
     if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
     const payload = await readApi(response);
     if (!payload.ok || !Array.isArray(payload.records)) throw new Error(payload.error || payload.message || t('badResponse'));
@@ -2948,7 +2951,7 @@ async function postRestore(employee) {
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await fetch(withToken(API_URL), {
+      const response = await fetch(withToken(unsealed('api')), {
         method: 'POST',
         redirect: 'follow',
         cache: 'no-store',
@@ -2993,7 +2996,7 @@ async function postRetire(employee) {
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await fetch(withToken(API_URL), {
+      const response = await fetch(withToken(unsealed('api')), {
         method: 'POST',
         redirect: 'follow',
         cache: 'no-store',
@@ -3267,8 +3270,8 @@ async function load({
   try {
     const isRetired = state.view === 'retired';
     const url = isRetired ?
-    withToken(`${API_URL}?action=list&sheet=retired`) :
-    withToken(`${API_URL}?action=list`);
+    withToken(`${unsealed('api')}?action=list&sheet=retired`) :
+    withToken(`${unsealed('api')}?action=list`);
     const response = await fetch(url, {
       redirect: 'follow',
       cache: 'no-store'
@@ -3351,7 +3354,7 @@ async function postEmployee(employee, isEdit) {
   let lastError;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const response = await fetch(withToken(API_URL), {
+      const response = await fetch(withToken(unsealed('api')), {
         method: 'POST',
         redirect: 'follow',
         cache: 'no-store',

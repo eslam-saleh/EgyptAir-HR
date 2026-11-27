@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <script src="secure.js"></script>
   <script src="misc-config.js"></script>
   <script src="auth.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -709,19 +710,24 @@
   <script>
     window.allEmployees = window.allEmployees || [];
     window.allEmployeesError = null;
-    window.employeesReady = null; // assigned after EMPLOYEE_DATA_URL is declared
+    window.employeesReady = null; // assigned once the sealed roster URL is available
   </script>
   <script>
-    const FOLDER_ID = '1j6DuR_aAvrqJIkbRebdrIGTdUN86Jm8Q';
-    const API_KEY   = 'AIzaSyAsl5N735tOpOjkcQK4kEritH6noDBH2eA';
+    // Links and keys are stored SEALED (secure.js) and decoded in memory only at the moment of use.
+    const _SEALED = {
+      "folderId": "s1.a96e52b186089870.6acb856f.Pogdpsi2qnsXWpvF6TE-jKbZDg261fmJ_fez3J6SP15u",
+      "apiKey": "s1.bac0dbde29875185.8d2aeb6e.7NpLBxKMCyr1MuaW_nY1gNop9x0-c0mpcHoZTQh6PB3YstMhiXpo",
+      "employeeData": "s1.785e97b33392fde3.0b77f72b.S-WbiJWSfDPJdEgcWPDayr-sVgMogJ3vaRTxaCDqPqOzN0ArZRQvXhlX_vbYKJsgOFUrTiF5z8wi2NjZ5N-KUrXd88-njSMPb_MPhIzCaWYoc0AfVLRLQIPk1QH-k5kAElePuJBOLStharjbURyR2w",
+      "sheetSync": "s1.d64e1f0dbdc6caa1.1a71bceb.tOQFey1wjRcOYelw8M53Jv-YFXtvv7BIiXxBYZIIHFEyL4FIRiDLOgkyDBGC1VoqkxaP_8gboaneYwku34iZibpa5_GVxuHwKCCsAhwCsBaNIlfE7Jw2d8TeRUqbgdZBv33SI2fGODb3OAQX_-Q7mw",
+      "meetings": "s1.7df215a2c5b5a3fd.516b27fb.qRnVUWBi_cwJAaWgqtfamMDhgAf9O1rnWAmTyKImTdLvGL4zLVs-I27A-YIZOGp4Tw3XDJiuFgT_QS9j9y6LHEvNKVEAigDRAliS_6ICqHc4FOaw-EQB8_stfB4LVG8HJm1DvMELAgccjtDHjYqS1b4h"
+    };
+    const unsealed = (name) => secure.unseal(_SEALED[name]);
 
     // ═══════════════════════════════════════════════════════════════════
     // Live employee roster from the Employees sheet
-    // Spreadsheet: https://docs.google.com/spreadsheets/d/1merEUtN-JlAFsxjffXpoqvS3SIlwaP65E27n_1fyI7Y
     // Deploy data.gs as a Web App (Execute as: Me; Who has access: Anyone /
-    // organization) and paste the /exec URL here.
+    // organization), seal its /exec URL with seal-tool.js and put it in _SEALED.employeeData above.
     // ═══════════════════════════════════════════════════════════════════
-    const EMPLOYEE_DATA_URL = 'https://script.google.com/macros/s/AKfycbzoF2Cpp1bG18ZbZcHTTafFFhkTD6mZi7BIw_a0iEtqwBS1k2oDxDetGd3p8Jk30CVb/exec'; // ← paste deployed data.gs web-app /exec URL
     const EMPLOYEE_DATA_TOKEN = ''; // optional; prefer ALLOWED_EMAILS in Script Properties
 
     // ═══════════════════════════════════════════════════════════════════
@@ -729,7 +735,6 @@
     // tracked document is generated. See the "Google Apps Script" backend
     // (Code.gs) that must be deployed as a Web App; paste its URL below.
     // ═══════════════════════════════════════════════════════════════════
-    const SHEET_SYNC_URL = 'https://script.google.com/macros/s/AKfycbxqwTz6C_MQ4Yxx7aXRl7fUvzQKlmbclUFkQ-krYq3umcukDN7C5piLuGcRvYfSDz14/exec';
     // Optional shared secret — see the "Access control" note at the top of
     // Code.gs. Leave this blank until you've set a matching SYNC_TOKEN
     // Script Property in Apps Script; until then the endpoint stays open
@@ -741,7 +746,6 @@
     // the meetings spreadsheet (meetings.gs web app). Paste its /exec URL.
     // MEETINGS_TOKEN must equal the MEETINGS_TOKEN Script Property, if set.
     // ═══════════════════════════════════════════════════════════════════
-    const MEETINGS_URL = 'https://script.google.com/macros/s/AKfycbxzpJqa69Z1OrMTJE_EgUY52oLhtUvwRm1DuDyC_qcyDsACFzBDVWC5I6VsHLHu2VNdCQ/exec';
     const MEETINGS_TOKEN = '';
 
     // ── Live Employees directory → window.allEmployees ─────────────────────
@@ -789,7 +793,7 @@
     }
 
     async function fetchLiveEmployees() {
-      if (!EMPLOYEE_DATA_URL || EMPLOYEE_DATA_URL.includes('PLACEHOLDER')) {
+      if (!unsealed('employeeData') || unsealed('employeeData').includes('PLACEHOLDER')) {
         window.allEmployees = [];
         console.warn('EMPLOYEE_DATA_URL is not set. Deploy data.gs as a Web App and paste its /exec URL.');
         return [];
@@ -804,7 +808,7 @@
       let lastError;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          const url = new URL(EMPLOYEE_DATA_URL);
+          const url = new URL(unsealed('employeeData'));
           // Document Center only ever needs the compact, already-mapped
           // directory response — never the full HR record list.
           url.searchParams.set('action', 'directory');
@@ -1003,7 +1007,7 @@
     }
 
     async function postToSheet(payload) {
-      const res = await fetch(SHEET_SYNC_URL, {
+      const res = await fetch(unsealed('sheetSync'), {
         method: 'POST',
         // text/plain avoids a CORS preflight against the Apps Script Web App.
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1238,7 +1242,7 @@
     const meetingTitleFor = (n) => 'الاجتماع ' + (n >= 1 && n <= MEETING_ORDINALS.length ? MEETING_ORDINALS[n - 1] : n);
 
     function meetingsConfigured() {
-      return MEETINGS_URL && !MEETINGS_URL.includes('PUT_MEETINGS');
+      return unsealed('meetings') && !unsealed('meetings').includes('PUT_MEETINGS');
     }
 
     // Registry of meetings per kind, fetched once per page load (re-fetched on failure).
@@ -1247,7 +1251,7 @@
       if (!meetingsConfigured()) return Promise.reject(new Error('MEETINGS_URL is not set'));
       if (!_meetingsPromise) {
         _meetingsPromise = (async () => {
-          const url = new URL(MEETINGS_URL);
+          const url = new URL(unsealed('meetings'));
           url.searchParams.set('action', 'meetings');
           if (MEETINGS_TOKEN) url.searchParams.set('token', MEETINGS_TOKEN);
           const res = await fetch(url.toString(), { credentials: 'omit', cache: 'no-store' });
@@ -1334,7 +1338,7 @@
         const name = f('اسم المتقدم') || f('اسم');
         if (!code || !name) throw new Error(t('Code and name are required to record the meeting request.', 'الكود والاسم مطلوبان لتسجيل الطلب في الاجتماع.'));
 
-        const res = await fetch(MEETINGS_URL, {
+        const res = await fetch(unsealed('meetings'), {
           method: 'POST',
           // text/plain avoids a CORS preflight against the Apps Script Web App.
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2153,7 +2157,7 @@
     }
 
     async function downloadDriveFile(doc) {
-      const apiUrl = `https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media&key=${API_KEY}`;
+      const apiUrl = `https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media&key=${unsealed('apiKey')}`;
       let response = await fetch(apiUrl);
       if (!response.ok) {
         response = await fetch(`https://drive.google.com/uc?export=download&id=${doc.id}`);
@@ -2956,10 +2960,10 @@ function renderPlaceholderForm(doc, placeholders) {
     async function fetchDriveFiles() {
       showLoading();
       const url = `https://www.googleapis.com/drive/v3/files`
-        + `?q='${FOLDER_ID}'+in+parents+and+trashed=false`
+        + `?q='${unsealed('folderId')}'+in+parents+and+trashed=false`
         + `&fields=files(id,name,size,modifiedTime,mimeType)`
         + `&orderBy=name desc`
-        + `&key=${API_KEY}`;
+        + `&key=${unsealed('apiKey')}`;
       try {
         const res  = await fetch(url);
         const data = await res.json();

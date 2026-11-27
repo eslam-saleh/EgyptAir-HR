@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <script src="secure.js"></script>
   <script src="misc-config.js"></script>
   <script src="auth.js" data-page="tagging"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -169,7 +170,7 @@
         </div>
         <div class="sheet-dashboard-actions">
           <button id="clear-searches" class="browse-docx" type="button" data-en="Clear" data-ar="مسح">Clear</button>
-          <a class="browse-docx" href="https://docs.google.com/spreadsheets/d/1YCAUm-0kSeXS5mdJDwuq3cSYNyC6d52DBTMHlRtQjHI/export?format=xlsx" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a>
+          <a class="browse-docx" href="#" data-secure-href="s1.f20fd9aa485f376b.3c7c75c5.nrkgN8MbTWiGpKS7AwJYsUVuM4Ot4TIPrMQvFn-ymtL8DjHsdfRk5YTnmH4Ym7UEdCm4Ny5bu4LpAFUyGgzmE6bOhhgIfglm9-7ZZ9mS7wob243wew5nCCBl3el74dRFSwC9asyA" download="بيانات.xlsx" data-en="Download original sheet" data-ar="تنزيل الشيت الأصلي">Download original sheet</a>
           <button id="dashboard-refresh" class="browse-docx" type="button" data-en="Refresh" data-ar="تحديث">Refresh</button>
         </div>
         <p id="dashboard-updated" class="sheet-dashboard-updated" aria-live="polite"></p>
@@ -1479,7 +1480,7 @@ async function tagDocx(file, options = {}) {
   <script>
     (() => {
       // Reads from the بيانات.xlsx Apps Script web app (see Code.gs, action=dashboard).
-      const DASHBOARD_URL = 'https://script.google.com/macros/s/AKfycbxqwTz6C_MQ4Yxx7aXRl7fUvzQKlmbclUFkQ-krYq3umcukDN7C5piLuGcRvYfSDz14/exec';
+      const DASHBOARD_URL_SEALED = 's1.290f998a7e7d57c4.cbc86d77.LmRkCUjIuZGzL0XOH91CZ56dLu8WGSEdc8DBgNHPL2vKL5pxi7AAfE7n9cGiEQMEBa4YHG16Ie5M-msaFWPXwW0lNe__DyjAHM4Fdi74fGD6MTqhwSpN7c1l4DBNkTwprXuR7wKqIc70vS_BGlhwIQ'; // sealed (secure.js), decoded only when the request is made
       // Optional shared secret — see the "Access control" note at the top
       // of Code.gs, and SHEET_SYNC_TOKEN in document-center.html. Leave
       // blank until a matching SYNC_TOKEN Script Property is set.
@@ -2068,7 +2069,7 @@ async function tagDocx(file, options = {}) {
         try {
           renderCurrent(renderLoading);
           const tokenParam = DASHBOARD_TOKEN ? '&token=' + encodeURIComponent(DASHBOARD_TOKEN) : '';
-          const url = DASHBOARD_URL + '?action=dashboard' + tokenParam;
+          const url = secure.unseal(DASHBOARD_URL_SEALED) + '?action=dashboard' + tokenParam;
 
           for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
             let slowNoticeTimer;

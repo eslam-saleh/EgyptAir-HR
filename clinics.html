@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <script src="secure.js"></script>
   <script src="misc-config.js"></script>
   <script src="auth.js" data-page="clinics"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -614,7 +615,7 @@
           <span class="copy-link-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span>
           <span class="copy-link-icon copy-link-icon-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg></span>
         </button>
-        <a class="primary-btn" href="https://forms.gle/74zUcvv5eW5WWzxp8" target="_blank" rel="noopener" data-en="Place a reservation" data-ar="تسجيل حجز">Place a reservation</a>
+        <a class="primary-btn" href="#" data-secure-href="s1.02e1c9109d8b5ad3.702b3b8f.YPlgCNJj-11jsm-OX5G_Un5wloMM7WqRwejrcwIBz2qsVns" target="_blank" rel="noopener" data-en="Place a reservation" data-ar="تسجيل حجز">Place a reservation</a>
       </div>
     </section>
 
@@ -787,25 +788,18 @@
 })();</script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
   <script>
-const RESERVATION_FORM_URL = 'https://forms.gle/74zUcvv5eW5WWzxp8';
-
-// Add as many EmailJS accounts as you want here. Each account needs its
-// OWN copy of the same template (same variable names: title, name, time,
-// message, to_email, email, reply_to) since templates don't carry over
-// between EmailJS accounts. When the currently-used account's monthly
-// quota (200 on the free plan) runs out, sending automatically rolls
-// over to the next account in this list.
-const EMAILJS_ACCOUNTS = [
-{ serviceId: 'service_ulzc3yq', templateId: 'template_2ww2fmf', publicKey: '2HT2DiS7Jke92DnaM' }
-// Hotmail-backed account disabled for now — EmailJS might flag/ban it.
-// Falls back to the mailto: trick below instead (see sendDecisionEmail).
-// { serviceId: 'service_w5ir8kq', templateId: 'template_ygdl3ir', publicKey: 'tD0jDmxF7s4DZrqR1' },
-// { serviceId: 'service_yyyyyyy', templateId: 'template_yyyyyyy', publicKey: 'yyyyyyyyyyyyyyyy' },
-];
-
-// Google Sheets needs a writable backend for updates. Paste the deployed
-// Apps Script Web App URL here after deploying clinics-apps-script.gs.
-const SHEET_UPDATE_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw_gRRaCBY_iBYHQkQ4SUCxGQ4AAg45VS1PW6dLDukN_DQVJUvkHyzyviUBCBmzLI8L/exec';
+// Links and keys are stored SEALED (secure.js) and decoded in memory only at the moment of use.
+// To change one: node seal-tool.js "<new value>" and paste the result here.
+// EmailJS accounts: seal the JSON  [{"serviceId":"…","templateId":"…","publicKey":"…"}, …]  as one value.
+// Each account needs its OWN copy of the same template (variables: title, name, time, message, to_email,
+// email, reply_to). When an account's monthly quota runs out, sending rolls over to the next one in the list.
+const _SEALED = {
+  reservationForm: 's1.25052c53a8225e84.88a66594.r2FYTByEA_YFnVCakD-QG7_AMyjFfGGs4xKwtdweufskEh0',
+  sheetUpdate: 's1.5da70c3b8ca4783d.11763972.XkjQKk1EYnyonDxQMbxuYqFTSPuhUERVfC3i9UHD_DxWWPrM76fe28THeHK8n3S0bvXf_cw_yBFCP-EneUOOf4YTEcvI41CCLDoU0XJbPMN5o5CgpxfUI2yVhuNw_7spc2ezjvMIrsejWppx5BlBJA',
+  emailAccounts: 's1.c6e14dd57fba58ec.be2d638b._L2j09YZSsYyOpo6AFSXBHLYl_484ZfDyLWBHNKQ7N7f5LU1ctRahWHIZbr0tynZ-Gsk63aOEYZ1oh2StuzeKvSngaeeXGTAYPPGEm_dFCN-0fjSVLM9O6OZ9DJiSjh5wQ'
+};
+const unsealed = (name) => secure.unseal(_SEALED[name]);
+const emailAccounts = () => secure.unsealJSON(_SEALED.emailAccounts) || [];
 
 // Column order configuration
 const COLUMN_ORDER = [
@@ -1909,9 +1903,9 @@ function bulkEmailRequestBody(recipient, subject, message) {var _EMAILJS_ACCOUNT
   return {
     templateParams,
     json: JSON.stringify({
-      service_id: (_EMAILJS_ACCOUNTS$ = EMAILJS_ACCOUNTS[0]) === null || _EMAILJS_ACCOUNTS$ === void 0 ? void 0 : _EMAILJS_ACCOUNTS$.serviceId,
-      template_id: (_EMAILJS_ACCOUNTS$2 = EMAILJS_ACCOUNTS[0]) === null || _EMAILJS_ACCOUNTS$2 === void 0 ? void 0 : _EMAILJS_ACCOUNTS$2.templateId,
-      user_id: (_EMAILJS_ACCOUNTS$3 = EMAILJS_ACCOUNTS[0]) === null || _EMAILJS_ACCOUNTS$3 === void 0 ? void 0 : _EMAILJS_ACCOUNTS$3.publicKey,
+      service_id: (_EMAILJS_ACCOUNTS$ = emailAccounts()[0]) === null || _EMAILJS_ACCOUNTS$ === void 0 ? void 0 : _EMAILJS_ACCOUNTS$.serviceId,
+      template_id: (_EMAILJS_ACCOUNTS$2 = emailAccounts()[0]) === null || _EMAILJS_ACCOUNTS$2 === void 0 ? void 0 : _EMAILJS_ACCOUNTS$2.templateId,
+      user_id: (_EMAILJS_ACCOUNTS$3 = emailAccounts()[0]) === null || _EMAILJS_ACCOUNTS$3 === void 0 ? void 0 : _EMAILJS_ACCOUNTS$3.publicKey,
       template_params: templateParams
     })
   };
@@ -2003,7 +1997,7 @@ function sleepForBulkEmail(milliseconds) {
 
 async function emailAllTableRecords() {
   if (isSendingBulkEmail) return;
-  if (!EMAILJS_ACCOUNTS.length) {var _window$showToast5, _window5;
+  if (!emailAccounts().length) {var _window$showToast5, _window5;
     (_window$showToast5 = (_window5 = window).showToast) === null || _window$showToast5 === void 0 ? void 0 : _window$showToast5.call(_window5, t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'), 'error');
     return;
   }
@@ -2145,10 +2139,10 @@ populateDaySelect();
 async function copyReservationFormLink() {
   try {var _window$showToast11, _window11;
     if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(RESERVATION_FORM_URL);
+      await navigator.clipboard.writeText(unsealed('reservationForm'));
     } else {
       const textarea = document.createElement('textarea');
-      textarea.value = RESERVATION_FORM_URL;
+      textarea.value = unsealed('reservationForm');
       textarea.style.position = 'fixed';
       textarea.style.opacity = '0';
       document.body.appendChild(textarea);
@@ -2257,7 +2251,7 @@ function requestSheetOnce(requestId, attempt) {
     script.onerror = () => settle(reject, new Error('Network error'));
     timer = setTimeout(() => settle(reject, new Error('Timed out')), SHEET_TIMEOUT_MS);
 
-    const url = new URL(SHEET_UPDATE_WEB_APP_URL);
+    const url = new URL(unsealed('sheetUpdate'));
     url.searchParams.set('action', 'getData');
     url.searchParams.set('callback', callbackName);
     url.searchParams.set('t', Date.now());
@@ -2274,7 +2268,7 @@ function setLoadingUi(loading) {
 // Loads (or reloads) the sheet. Safe to call at any time: a newer call
 // supersedes an older one still in flight (its late result is ignored).
 async function loadClinicSheet() {
-  if (!SHEET_UPDATE_WEB_APP_URL) {
+  if (!unsealed('sheetUpdate')) {
     setStatus(tableStatus, t('Sheet endpoint is not configured yet.', 'لم يتم إعداد رابط الجدول بعد.'), true);
     return;
   }
@@ -2436,7 +2430,7 @@ function getEmailAccountIndex() {
     return 0;
   }
   const saved = parseInt(__ls.getItem(EMAIL_ACCOUNT_INDEX_KEY) || '0', 10);
-  return Number.isInteger(saved) && saved >= 0 && saved < EMAILJS_ACCOUNTS.length ? saved : 0;
+  return Number.isInteger(saved) && saved >= 0 && saved < emailAccounts().length ? saved : 0;
 }
 
 function setEmailAccountIndex(index) {
@@ -2466,13 +2460,13 @@ async function sendEmailWithAccount(account, templateParams) {
 // succeeds becomes the new starting point, so an exhausted account is not
 // retried on every send. Throws the last error if every account fails.
 async function sendWithAccountFailover(templateParams) {
-  if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
+  if (!emailAccounts().length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
   const startIndex = getEmailAccountIndex();
   let lastError = null;
-  for (let step = 0; step < EMAILJS_ACCOUNTS.length; step++) {
-    const index = (startIndex + step) % EMAILJS_ACCOUNTS.length;
+  for (let step = 0; step < emailAccounts().length; step++) {
+    const index = (startIndex + step) % emailAccounts().length;
     try {
-      await sendEmailWithAccount(EMAILJS_ACCOUNTS[index], templateParams);
+      await sendEmailWithAccount(emailAccounts()[index], templateParams);
       setEmailAccountIndex(index);
       return;
     } catch (error) {
@@ -2522,7 +2516,7 @@ async function sendDecisionEmail(row, decision) {var _window$showToast13, _windo
   // address simply means no message is sent; the decision is still saved.
   const toEmail = String(getRowValue(row, ['email address', 'email', 'البريد']) || '').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail)) return 'none';
-  if (!EMAILJS_ACCOUNTS.length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
+  if (!emailAccounts().length) throw new Error(t('No EmailJS account configured.', 'لم يتم إعداد حساب EmailJS.'));
 
   const content = reservationMessage(row, decision);
   const templateParams = {
@@ -2561,7 +2555,7 @@ async function sendDecisionEmail(row, decision) {var _window$showToast13, _windo
 // flagged with isNetworkError so the wrapper below can safely retry them;
 // errors the server answered with (result.error) are NOT retried.
 async function updateSheetDecisionOnce(row, decision, chosenDateIso) {
-  if (!SHEET_UPDATE_WEB_APP_URL) {
+  if (!unsealed('sheetUpdate')) {
     throw new Error(t(
       'Sheet update endpoint is not configured yet.',
       'لم يتم إعداد رابط تحديث جدول Google Sheets بعد.'
@@ -2571,7 +2565,7 @@ async function updateSheetDecisionOnce(row, decision, chosenDateIso) {
   return new Promise((resolve, reject) => {
     const callbackName = `handleClinicUpdate_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement('script');
-    const url = new URL(SHEET_UPDATE_WEB_APP_URL);
+    const url = new URL(unsealed('sheetUpdate'));
     url.searchParams.set('rowNumber', row.sheetRow);
     url.searchParams.set('isReserved', decision);
     // Row numbers shift when old rows are purged, so also send the row's key
