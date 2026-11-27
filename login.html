@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="misc-config.js"></script>
   <script src="auth.js" data-page="login"></script>
   <title>Sign in | EgyptAir Work Tools</title>
   <link rel="icon" href="egyptair-logo_.png" type="image/png">
@@ -89,7 +90,7 @@
       code.select();
       go.disabled = false;
     }, function () {
-      err.innerHTML = 'Your browser blocked the check (the site must use HTTPS).<br>المتصفح منع التحقق (يجب أن يكون الموقع HTTPS).';
+      err.innerHTML = 'Could not reach the sign-in server. Check your connection and try again.<br>تعذر الاتصال بخادم تسجيل الدخول. تحقق من الاتصال وحاول مرة أخرى.';
       go.disabled = false;
     });
   });

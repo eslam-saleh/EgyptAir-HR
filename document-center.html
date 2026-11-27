@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="light">
 <head>
   <meta charset="UTF-8">
+  <script src="misc-config.js"></script>
   <script src="auth.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document Center</title>
@@ -780,6 +781,8 @@
         subDepartment: String(raw.subDepartment || '').trim(),
         job,
         group: String(raw.group || '').trim(),
+        grade: String(raw.grade || '').trim(),   // الدرجة الحالية
+        gradeDate: raw.gradeDate || null,        // تاريخ الدرجة
         gender: String(raw.gender || '').trim(),
         currentCompany: String(raw.currentCompany || '').trim(),
       };
@@ -1753,8 +1756,18 @@
      * All values come from the live Employees sheet (no org tree).
      * Sector "رئيس مجلس الادارة" is an org umbrella, not a real قطاع — omit it.
      */
+    // The seconded group "اشرافية" (e.g. "مجموعة الوظائف التخصصية (انتداب: اشرافية)") is left out of
+    // the group value; the original group and every sector / department detail stay.
+    function stripSupervisoryGroup(group) {
+      return String(group || '')
+        .replace(/\s*\([^()]*[اأإآ]شراف[^()]*\)/g, '')
+        .replace(/^\s*[اأإآ]شراف(?:ية|يه)\s*$/, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     function buildGroupPath(employee) {
-      const group = (employee && employee.group) || '';
+      const group = stripSupervisoryGroup((employee && employee.group) || '');
       const sector = cleanOrganizationValue((employee && employee.sector) || '', 'sector');
       const department = cleanOrganizationValue((employee && employee.department) || '', 'department');
       const subdepartment = cleanOrganizationValue((employee && employee.subDepartment) || '', 'department');
@@ -1814,6 +1827,14 @@
           })()
         : '';
 
+      // gradeDate uses the same YYYY/MM/DD style as hireDate.
+      const gradeDateFormatted = employee.gradeDate
+        ? (() => {
+            const [y, m, d] = String(employee.gradeDate).split('/');
+            return toEnglishDigits(`${Number(d)}/${Number(m)}/${y}`);
+          })()
+        : '';
+
       const displayName = employee.name ? String(employee.name).trim() : '';
       const fullGroupPath = buildGroupPath(employee);
       const hasUnscopedCodeField = selectedPlaceholders.some((g) => labelContains(g.label, 'كود') && !getFieldOrdinal(g.label));
@@ -1848,9 +1869,14 @@
         let value = null;
 		
         if (labelContains(label, 'اسم') && (!labelContains(label, 'موظف')&&!labelContains(label, 'متقدم')&& !labelContains(label, 'مذكور'))) {}
-        else if (labelContains(label, 'تاريخ') && (!labelContains(label, 'ميلاد')&& !labelContains(label, 'تعيين'))) {}		
+        else if (labelContains(label, 'تاريخ') && (!labelContains(label, 'ميلاد')&& !labelContains(label, 'تعيين') && !labelContains(label, 'درج'))) {}		
 		else{
-        if (labelContains(label, 'اسم') && !labelContains(label, 'كود')) {
+        if (labelContains(label, 'درج') && labelContains(label, 'تاريخ')) {
+          value = gradeDateFormatted;   // {تاريخ الدرجة}
+        } else if (labelContains(label, 'درج')) {
+          // Any tag that contains "درج" (الدرجة، الدرجة الوظيفية …) gets the current grade.
+          value = employee.grade || '';
+        } else if (labelContains(label, 'اسم') && !labelContains(label, 'كود')) {
           value = displayName;
         } else if (
           labelContains(label, 'تعيين') ||
@@ -1866,7 +1892,7 @@
         } else if (labelContains(label, 'مجموعة')) {
           // Full combined organisational title (group + sub/dept + sector).
           value = cleanOrganizationValue(
-            fullGroupPath || employee.group || resolvedDept || '',
+            fullGroupPath || stripSupervisoryGroup(employee.group) || resolvedDept || '',
             'group'
           );
         } else if (labelContains(label, 'قطاع') && !labelContains(label, 'مجموعة')) {
@@ -1986,6 +2012,8 @@
       Object.keys(src).forEach((key) => {
         map[normalizeKey(key)] = src[key];
       });
+      // currentYear is never read from the sheet: it is always the present year.
+      map[normalizeKey('currentYear')] = String(new Date().getFullYear());
 	  map[normalizeKey('تاريخ الاصدار')] = (() => {
 	  const now = new Date();
 	  return `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()}`;
@@ -2137,6 +2165,7 @@
     }
 
     async function loadDocumentPlaceholders(doc) {
+      if (window.SiteDataReady) await window.SiteDataReady;   // site-data sheet (متنوعات) — usually already there
       const buffer = await downloadDriveFile(doc);
 
       if (isLegacyDoc(doc)) {
@@ -3228,6 +3257,7 @@ function renderPlaceholderForm(doc, placeholders) {
         const department = escapeHtml(emp.department || '—');
         const subDept = escapeHtml(emp.subDepartment || '—');
         const group = escapeHtml(emp.group || '—');
+        const grade = escapeHtml(emp.grade || '—');
         const hire = formatDateDisplay(emp.hireDate);
         const dob = formatDateDisplay(emp.dateOfBirth);
 
@@ -3243,6 +3273,7 @@ function renderPlaceholderForm(doc, placeholders) {
               <div class="employee-field"><strong class="employee-field-label">${t('Sub-dept', 'القسم')}</strong><span class="employee-field-value">${subDept}</span></div>
 			  
               <div class="employee-field"><strong class="employee-field-label">${t('Group', 'المجموعة')}</strong><span class="employee-field-value">${group}</span></div>
+              <div class="employee-field"><strong class="employee-field-label">${t('Degree', 'الدرجة')}</strong><span class="employee-field-value">${grade}</span></div>
               <div class="employee-field"><strong class="employee-field-label">${t('Hire date', 'تاريخ التعيين')}</strong><span class="employee-field-value">${hire}</span></div>
               <div class="employee-field"><strong class="employee-field-label">${t('Date of birth', 'تاريخ الميلاد')}</strong><span class="employee-field-value">${dob}</span></div>
             </div>

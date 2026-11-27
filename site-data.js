@@ -1,154 +1,41 @@
 /*
- * Add as many keys as you like below — key names are matched to
- * placeholder text case-insensitively and ignoring spaces/dashes/underscores,
- * so "currentYear" will match {current year}, {Current-Year}, {CURRENT_YEAR}, etc.
- {HRHead}
- {inflightHead}
- {penaltiesHead}
- {hiringHead}
+ * site-data.js – the values now live in the "site-data" sheet of the متنوعات spreadsheet
+ * (columns: key | value). Add as many rows as you like — key names are matched to placeholder
+ * text case-insensitively and ignoring spaces/dashes/underscores, so "currentYear" will match
+ * {current year}, {Current-Year}, {CURRENT_YEAR}, etc.
+ *
+ * This file only loads them: window.SiteData is filled from the last copy kept in this browser
+ * straight away, then refreshed from misc.gs (at most once every 5 minutes). Anything that needs
+ * the fresh copy can wait for  window.SiteDataReady  (a Promise that never rejects).
  */
- 
-window.SiteData = {
-  currentYear: '٢٠٢٦',
-  HRHead: 'حسنى عبدالرازق عبدالغنى',
-  inflightHead: 'سهير موسى',
-  penaltiesHead: 'اسلام صالح',
-  hiringHead: 'احمد محمد الدمرداش',
-  legalHead: 'احمد يوسف قطب',
-  presentorHead: 'اسامة توفيق عبدالحفيظ',
-  qualitiesHead: 'هشام محمد مهدى',
-  secretaryHead: 'شيرين منير منقريوس',
-  financialHead: 'محمد عادل راغب',
-  safetyQualityHead: 'حاتم محمود صالح',
-  marketingContractsHead: 'ايناس صبرى',
-  informationSystemsHead: 'حسن على',
-  researchDevelopmentHead: 'شيرين محمد',
-  safetyEnvironmentHead: 'طه ابراهيم الدسوقى',
-  operationsHead: 'على السيد',
-  hurghadaCateringHead: 'محمد صالح عبدالباسط',
-  sharmCateringHead: 'عبدالله عطا الحسينى',
-  hotelServicesHead: 'احمد محمد احمد',
-  productionHead: 'كريم أشرف',
-  servicesHead: 'احمد كريم',
-  planningHead: 'إبراهيم حمدى',
-  procurementHead: 'عمرو عبدالحليم',
-  warehousesHead: 'عبير سليمان',
-  maintenanceHead: 'خالد محمد فوزى',
+(function () {
+  'use strict';
+  var CFG = window.MISC_CONFIG || {};
+  var KEY = 'egyptairPortal:siteData';
+  var TTL_MS = 5 * 60 * 1000;
+  var TIMEOUT_MS = 15000;
 
-  // ---- added from employee records ----
-  investigationsHead: 'داليا حسين سلطان',
-  inflightServicePlanningHead: 'نهى عمرو عبدالفتاح',
-  operationDeptHead: 'وليد ابوالوفا عبدالرحمن',
-  administrativeServicesHead: 'صلاح الدين ابراهيم',
-  generalQualityHead: 'محمد محمد عبدالبر',
-  miscFinancialOperationsHead: 'ابراهيم سعيد محمد',
-  localProcurementHead: 'احمد جلال كامل',
-  socialInsuranceHead: 'احمد رزق سلامة',
-  industrialCentersMaintenanceHead: 'احمد زين العابدين',
-  equipmentSuppliesPreparationHead: 'احمد محمد زكى',
-  needsCostsAccountsHead: 'احمد محمد طاهر',
-  qualityAssuranceHead: 'احمد محمد محمد',
-  commodityPlanningHead: 'اسامه صلاح السيد',
-  trainingHead: 'اميره عبدالمجيد بدر',
-  operationsEquipmentWarehousesHead: 'ايهاب احمد رجائى',
-  foreignProcurementHead: 'بدوى سلامه الدمرانى',
-  onboardSalesLogisticsHead: 'حازم عبدالباقى محمد',
-  cafeteriasSecurityHead: 'حمدى عطيه العزب',
-  aircraftCateringSecurityHead: 'خالد عبدالحليم محمد',
-  publicRelationsHead: 'رانيا فاروق محمد',
-  revenueAccountsHead: 'زكريا على زكريا',
-  entitlementsHead: 'زينب على عثمان',
-  claimsLitigationHead: 'سامح محمد متولي',
-  budgetsFinancialResearchHead: 'سليم عبدالفتاح سليم',
-  secretariatHead: 'سمر حسن فريد',
-  boardSecretariatHead: 'شريف حسنى السيد',
-  airServicesSecurityHead: 'شريف محمود احمد',
-  vehiclesEquipmentFollowUpHead: 'شريف محمود على',
-  safetyHead: 'طارق شريف مصطفى',
-  taxesHead: 'عادل محمد خضر',
-  foreignCompaniesCateringHead: 'عبدالحميد سعد سالم',
-  cafeteriasOfficesHead: 'على سيد احمد',
-  qualityControlHead: 'عمرو حسن محمود',
-  materialsConsumptionControlHead: 'عمرو مصطفى عبدالحفيظ',
-  banksClientsHead: 'محمد ابراهيم زكى',
-  externalCafeteriasRestaurantsHead: 'محمد احمد عبدالحكيم',
-  productionFollowUpHead: 'محمد حسن عبد الرؤف',
-  auditHead: 'محمد شحاته عبدالحميد',
-  cairoAirportCafeteriasHead: 'محمد صلاح الدين',
-  egyptAirCateringHead: 'محمد عبدالمرضى محمد',
-  hotelServicesOperationHead: 'محمد مصطفى كامل',
-  restHousesPartiesTransitHotelHead: 'محى الدين محمد',
-  manpowerPlanningHead: 'مروة حسين محمد',
-  foodBeverageWarehousesHead: 'هشام احمد عبدالعال',
-  cateringOperationsHead: 'وليد سيد حسن',
-  HRHeadID: '32000',
-  hiringHeadID: '65732',
-  legalHeadID: '67440',
-  presentorHeadID: '83960',
-  secretaryHeadID: '68530',
-  penaltiesHeadID: '69560',
-  qualitiesHeadID: '23972',
+  function read() { try { return JSON.parse(window.localStorage.getItem(KEY)) || null; } catch (e) { return null; } }
+  function write(o) { try { window.localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) { /* ignore */ } }
 
-  // ---- IDs for existing heads ----
-  hotelServicesHeadID: '24643',
-  safetyQualityHeadID: '23955',
-  maintenanceHeadID: '49959',
-  safetyEnvironmentHeadID: '87676',
-  sharmCateringHeadID: '40791',
-  hurghadaCateringHeadID: '72958',
-  financialHeadID: '80963',
-  marketingContractsHeadID: '45610',
-  informationSystemsHeadID: '84333',
-  researchDevelopmentHeadID: '28781',
-  productionHeadID: '81058',
-  planningHeadID: '24100',
-  procurementHeadID: '69220',
-  warehousesHeadID: '26754',
+  var saved = read();
+  var data = {};
+  if (saved && saved.data) Object.keys(saved.data).forEach(function (k) { data[k] = saved.data[k]; });
+  window.SiteData = data;   // one object for the page's lifetime; it is updated in place
 
-  // ---- IDs for added heads ----
-  investigationsHeadID: '81153',
-  inflightServicePlanningHeadID: '66235',
-  operationDeptHeadID: '30062',
-  administrativeServicesHeadID: '68224',
-  generalQualityHeadID: '66048',
-  miscFinancialOperationsHeadID: '68688',
-  localProcurementHeadID: '42093',
-  socialInsuranceHeadID: '42069',
-  industrialCentersMaintenanceHeadID: '43895',
-  equipmentSuppliesPreparationHeadID: '68858',
-  needsCostsAccountsHeadID: '42137',
-  qualityAssuranceHeadID: '87725',
-  commodityPlanningHeadID: '66065',
-  trainingHeadID: '42085',
-  operationsEquipmentWarehousesHeadID: '64700',
-  foreignProcurementHeadID: '27004',
-  onboardSalesLogisticsHeadID: '26752',
-  cafeteriasSecurityHeadID: '27269',
-  aircraftCateringSecurityHeadID: '27472',
-  publicRelationsHeadID: '89712',
-  revenueAccountsHeadID: '81310',
-  entitlementsHeadID: '27211',
-  claimsLitigationHeadID: '42730',
-  budgetsFinancialResearchHeadID: '89472',
-  secretariatHeadID: '42072',
-  boardSecretariatHeadID: '45692',
-  airServicesSecurityHeadID: '23107',
-  vehiclesEquipmentFollowUpHeadID: '64268',
-  safetyHeadID: '66047',
-  taxesHeadID: '64127',
-  foreignCompaniesCateringHeadID: '27234',
-  cafeteriasOfficesHeadID: '21393',
-  qualityControlHeadID: '81073',
-  materialsConsumptionControlHeadID: '66106',
-  banksClientsHeadID: '30156',
-  externalCafeteriasRestaurantsHeadID: '23670',
-  productionFollowUpHeadID: '82695',
-  auditHeadID: '26476',
-  cairoAirportCafeteriasHeadID: '68598',
-  egyptAirCateringHeadID: '86801',
-  hotelServicesOperationHeadID: '31766',
-  restHousesPartiesTransitHotelHeadID: '68606',
-  manpowerPlanningHeadID: '84649',
-  foodBeverageWarehousesHeadID: '87228',
-  cateringOperationsHeadID: '83940',
-};
+  var fresh = saved && saved.at && (Date.now() - saved.at) < TTL_MS;
+  window.SiteDataReady = new Promise(function (resolve) {
+    if (fresh || !CFG.url || typeof fetch !== 'function') { resolve(data); return; }
+    var timer = setTimeout(function () { resolve(data); }, TIMEOUT_MS);
+    var url = CFG.url + (CFG.url.indexOf('?') === -1 ? '?' : '&') + 'action=sitedata' +
+      (CFG.token ? '&token=' + encodeURIComponent(CFG.token) : '');
+    fetch(url).then(function (r) { return r.json(); }).then(function (j) {
+      if (j && j.ok && j.data) {
+        Object.keys(data).forEach(function (k) { delete data[k]; });
+        Object.keys(j.data).forEach(function (k) { data[k] = j.data[k]; });
+        write({ at: Date.now(), data: j.data });
+        try { window.dispatchEvent(new Event('sitedata:ready')); } catch (e) { /* ignore */ }
+      }
+    }).catch(function () { /* keep the saved copy */ }).then(function () { clearTimeout(timer); resolve(data); });
+  });
+}());

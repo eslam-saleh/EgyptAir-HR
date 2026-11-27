@@ -5,15 +5,18 @@
  *   <script src="auth.js"></script>                      (any valid code)
  *   <script src="auth.js" data-page="clinics"></script>  (needs the clinics right)
  *
- * Rights (letters in USERS below):
+ * Codes and their rights now live in the "auth" sheet of the متنوعات spreadsheet (see misc.gs).
+ * The browser never sees the list: it sends the typed code to misc.gs, which answers with the rights.
+ *
+ * Rights (letters in the sheet's rights column):
  *   c = Clinics     t = Countdown     v = Employee Data (view)     e = Employee Data (edit)
  *   m = Meetings
  *   s = Document Center "Select" button (fill-in-the-form for unpinned documents)
- * A code that is listed in USERS can open every normal page; the letters add the extra pages.
+ * A code that is listed in the sheet can open every normal page; the letters add the extra pages.
  *
- * To add/remove a person: put the SHA-256 of the code in USERS. Generate it with
+ * To add/remove a person: add/delete a row in the "auth" sheet with the SHA-256 of the code. Generate it with
  *   echo -n 12345 | sha256sum          (Linux / Mac / Git Bash)
- * NOTE: this is a client-side gate. It keeps casual visitors out, it is not real security.
+ * NOTE: this is still a client-side gate. It keeps casual visitors out, it is not real security.
  */
 (function () {
   'use strict';
@@ -24,85 +27,9 @@
   var MAX_FAILS = 5;           // wrong tries before a short wait
   var WAIT_SECONDS = 60;
 
-  // Sign-in log: every successful login is sent to meetings.gs, which writes it to the sheet الزائرون.
-  var LOG_URL = 'https://script.google.com/macros/s/AKfycbxzpJqa69Z1OrMTJE_EgUY52oLhtUvwRm1DuDyC_qcyDsACFzBDVWC5I6VsHLHu2VNdCQ/exec';
-  var LOG_TOKEN = '';          // same value as MEETINGS_TOKEN (script property) if you set one
-  var LOG_WAIT_MS = 3000;      // never keep the person waiting longer than this
-
-  var USERS = {
-    '40dcbc1c876fc50a6f1fada833a91038ef62a21666820629ee391b3b5feb3086': 't',
-    '44d71d355722bb0c6d04c8f221030c14ff89148551cd4fc39ce73942365ce8aa': '',
-    '28c35700be5bd86f80aa8ba82632926734c73c2f471ab2923a6287a56eaf223a': 't',
-    '3f64a7f4dd53bb20cfbc148d34d8bf866c5f8728da9dce2066be0e3e408c612e': 'tv',
-    '2a6269286b00572886518126ed10de661ce4ae7256598ac70bfa56d2da14d161': 'tv',
-    'b3c24a5e33aa0057eae207a469be9c909ea962c379ca21092aa691bb09faa11f': 'c',
-    '578508930eda772818694b02e79c545916bbf06428f58c559c750c566259532a': 's',
-    '62378664e2fb341da0c26e963c7631339357bb7390a83f136cb76f2645af95a6': '',
-    'de40ee7ec6e2296125fb4a775262bbecf2fdbcc740cb81266fe3f7195ef2ad28': '',
-    'a6b4a8573f97200bbba71127b0db313fb21824ff8390932590817e12ac2de906': '',
-    '519a44856bd3de3985730aa8fc3b2e89910d6859df109c3a5fe288193587dbb5': '',
-    'a44ed711645ec0f6b68109b35d88e3644b8b59b3c4a96a491f06b0e8d95e42f2': '',
-    '9b4d605eedadee411de809393139385c3a06073dd9a052151d671308f6cd5b73': '',
-    '5385a24c075400f76f2c028fd341ef2647e17fe386f3546a455d8cdb3fd2450e': '',
-    'a26ceb16dadb19e0e066c113d2b84eaae118b69eafa9b405d843d203927078c5': '',
-    '91ebcf68e80ce90efd50bb91a26470823cb89f50ae96c2236d254cbe7f90e09f': 'tv',
-    'b04e39aa824b7a2d31c939b0e924d8233f0778dd902a3c5c0613fdf270761c2a': '',
-    '3ba999816de46a27d66e582d1ef84692fc7ced9ea3848490b9241176ed591a16': 't',
-    '29a70687c36ffcfc53be32d7aa62ac7dbc1c5e3e0782f8daa40893e67ffec5a7': '',
-    'dc6631d46f359cdce2418b4c3ee5ef56ac2c6e4782d0383c2fcc48979ceaa107': 'v',
-    '8325e50c76becc029e8b4c420a23dd2eb21ef54e26a82c8f11605ae0637e1adf': 'v',
-    '7cb5076073ffc517d32f725305235ac140edcfece64dfe808d3afb7708108ffa': 'c',
-    '3962ab4167f6d0d2712605ae96cb4584e8548ecd2d1e92e9b9d5a0073a8002bb': 'tve',
-    'b041879ed6c2172fe9945360bea1a4502aa462236aa45dd6df30e75e14e73238': 's',
-    '3ea82a5852dd322aea1f0dc8e26275d6ab047c0ad8e3abf5d917160d325e5fb5': 'tvs',
-    'e1296ec40d9705193ee08cf5e65d9bbcc2a62e1209568b1bbb1d780f3d9a016f': 't',
-    '140da1171aa5c3052eda5e1facaadc542d19ad2213f2c7abdabb81d16a1c5e21': 'ts',
-    '5cffa0319559271572b16c67459ba31d1600e54d3f834e06d58c8c3d8433c1f7': '',
-    '4066f060269c78cfcac71c7ad7db3c506ea8f36d9d28a59747d08e15096db6fa': '',
-    '1dde0d1afffbeb04755818ecac8c353b5cc98459bc28793e9728d600de1ffc40': '',
-    '5499d97bf22e193e9f5e7f84ef00a7984805f8824a7516a89aa675957facd89a': 'tv',
-    '3bfd18d5b0a3bf82bcee673777d2683a41a21f09dd7c9f033abf9c6559c5660c': 'c',
-    '0b04d7953771c6cb396d9436b5143aee4482b36d2b4bc9b95c14dc31df778187': 'tvs',
-    'bc1295b20a169139f17f78e1edfd76963b7b4b5f4d879f07bb9453a32431a96a': 't',
-    'f2cc0df5d8a663f56ebc753b6b1058e65175d6954e9e691094a1c2a9b207fcd6': '',
-    '27ca4a53b4217f9d49b534cdd7328647cb607b2f88293f651322baae2d46e5c7': '',
-    'd073e341e454ce18f401d4dc19e7c72661eb45dd8bf1bc802cb8416ef71aa971': 'tv',
-    'd0857331c68dcca55e8a03ce1e3b9db98e1fc1b12e82872497b473df1de342b1': 'tvcms',
-    '32bbfa9456562c2c9da1474fc961019c3473ed1eb80f68cdc25c9c82dfad816c': '',
-    '4f3dc22203978f1ef0dfbf3344c1c10f9bd3af9f547d528467e6a70f2ca702de': '',
-    'd9d04476ba7871797298e1034a1104c67a3c9546381f2c57019703aba732bab0': 't',
-    '707ce489cc327373d501548e92bdaa24b12058ee8bfa7923849fc327ca6f663d': '',
-    '9e44f14ce7f9474ab38a58870797821b758c6539a37b0e6271490ca641f69a4b': 'tv',
-    'c3c048b2d83efb39b9737ce09df3ef3c2e382f7d4e0c2228b3a10259c589e1df': '',
-    'fb99c2a25567005e010d1f833279a441b22bda2abd697fd46cad1eac91c7ccff': '',
-    '08ecfb97885e4f6c54d328f0320a8bf3536b2e9c4dcb9e460f1b1369a294b018': 's',
-    '35444bace3288370c5e40ec05f645737ac4aa9200a31056cde636c41865fc24d': '',
-    '11afcd456cc2a4eafd8c5134bcd4710e565f92af086473d937ede871f44cbe39': '',
-    'c0a33cafa0967d46ed22ab30a84d2565ffe7f012aa9c50767eba8276143d88a3': 't',
-    '03d7be2755145563ffb1edd37de0f1d667fbfd26ac9d58f9b3309b5e05084cad': '',
-    'a22dac8b32dea97c06226a1c163d738027bef582d8d564f8af04130990416d1f': 's',
-    'b6b343fed92fa3ebb38aebdf06e58982e6617906c72cb840e912c8e5d59019c8': '',
-    '918a15fdc6826ac0e34b14a8c897cb7b315881bc365871687dd23a41cb4f37e8': 't',
-    '29f7e33c2656e36b348f68f78950f7c87638e93e8e81dedf4bad98bd8c40c816': '',
-    'b08f9aadb5f34a8231db3e08af2fde5028832263fb13d11e9c60ad06f8eab295': 'tv',
-    '726e5d45caaabaa026b256b007ed46b4db3415e45a8ca28c753ac9341be0080a': '',
-    '753d4392e8972570ff23f29a62470e0ebb8bf530b03a9798b6f0eedb3c00b1e0': '',
-    '43b4d56eff360052eee0595236ebc9f4e66c3d4244016b1009dfd7bd3fc0a91e': '',
-    '5c387ae5b889281d1fb831fc693dd945e1f54f1587b6310170678def2f1c3672': 't',
-    '770dd25925e4bbc1e09d89d1412be7b2d41c535a9370d58895a960e0162f7927': '',
-    '0c2022d32040fa888913fb6d6e7e38d714207bad63ae648250ac43236f0639d2': '',
-    'af9c4738ec118556c938831c6727cf3501dd5b9b1740f643b4740b3f9f05011f': '',
-    '2614839e24e309b17d33185f18b0ed23f7a54c91f762c018ebf55b9652bd2c1a': 'tvs',
-    'd2e3ed1682b47a449e0625660782a042ec442ff6e9934e6f7646630fa8563ec6': '',
-    'd24492e6d2975efb4164ba2b6953cf30c839417c98e8838f136924f28a4fd219': '',
-    '44d724a47a714cbbca08f325a6fc85fefde03ae77413a3af161f4ed3ceebee1e': '',
-    'a8c855fbaeaf16e3f04d4352ff0e576a32a3dc4cbb07e310f6fdfb61f6c28cce': 'tve',
-    '24bd79f4173351729adbc261a88702b88b7e56fef8b55d2c4a1f800f8363370b': '',
-    'e85db97e0af29710a13e4fe619497617801de31f2898160761d7ef3e52c748aa': '',
-    '492f431bae35265f2e5f4ed49bd8c58dda912431be561504846988d00d05d117': 'ctvms',
-    'a591c960cc7c01ab484aa964b338b9297e9d05f5ffe7330dce50967345b70f64': 'ctv',
-    '57c5119ac46cdc6ffe1c2d6b861b7c975385483c649f0708beb09de81d570543': 'ctvems'
-  };
+  // Server: misc.gs (web app URL + optional token are set once in misc-config.js).
+  var CFG = window.MISC_CONFIG || {};
+  var LOGIN_TIMEOUT_MS = 20000;   // Apps Script can take a few seconds to wake up
 
   var PAGE_RIGHT = { clinics: 'c', tagging: 't', employees: 'v', meetings: 'm' };
 
@@ -120,30 +47,21 @@
       .replace(/\s+/g, '');
   }
 
-  function sha256Hex(text) {
-    var bytes = new TextEncoder().encode(text);
-    return crypto.subtle.digest('SHA-256', bytes).then(function (buf) {
-      var out = '', arr = new Uint8Array(buf);
-      for (var i = 0; i < arr.length; i++) out += (arr[i] < 16 ? '0' : '') + arr[i].toString(16);
-      return out;
-    });
-  }
-
-  // Fire-and-wait (max LOG_WAIT_MS). Failure never blocks the sign-in.
-  function logVisit(code) {
-    return new Promise(function (resolve) {
-      var done = false, timer = null;
-      function finish() { if (!done) { done = true; if (timer) clearTimeout(timer); resolve(); } }
-      timer = setTimeout(finish, LOG_WAIT_MS);
-      try {
-        fetch(LOG_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          keepalive: true,
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'logVisit', code: code, token: LOG_TOKEN || undefined })
-        }).then(finish, finish);
-      } catch (e) { finish(); }
+  // Asks misc.gs to check the code. It answers { ok, rights } and, on success, writes the sign-in
+  // to the "visitors" sheet. Rejects (network / blocked) so the login page can say so.
+  function checkCode(code) {
+    return new Promise(function (resolve, reject) {
+      if (!CFG.url) { reject(new Error('MISC_CONFIG.url is empty')); return; }
+      var ctl = window.AbortController ? new AbortController() : null;
+      var timer = setTimeout(function () { if (ctl) ctl.abort(); reject(new Error('timeout')); }, LOGIN_TIMEOUT_MS);
+      fetch(CFG.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'login', code: code, token: CFG.token || undefined }),
+        signal: ctl ? ctl.signal : undefined
+      }).then(function (r) { return r.json(); }).then(function (j) {
+        clearTimeout(timer); resolve(j || {});
+      }, function (e) { clearTimeout(timer); reject(e); });
     });
   }
 
@@ -154,14 +72,14 @@
   function readSession() {
     try {
       var s = JSON.parse(sget(SESSION_KEY));
-      if (s && USERS.hasOwnProperty(s.h) && Date.now() - s.at < SESSION_HOURS * 3600000) return s;
+      if (s && typeof s.r === 'string' && Date.now() - s.at < SESSION_HOURS * 3600000) return s;
     } catch (e) { /* fall through */ }
     sdel(SESSION_KEY);
     return null;
   }
 
   var session = readSession();
-  var rights = session ? USERS[session.h] : '';
+  var rights = session ? session.r : '';
 
   function can(letter) { return rights.indexOf(letter) !== -1; }
 
@@ -177,16 +95,17 @@
       if (left > 0) return Promise.resolve({ ok: false, wait: left });
       var code = normalizeDigits(rawCode);
       if (!code) return Promise.resolve({ ok: false, wait: 0 });
-      return sha256Hex(code).then(function (h) {
-        if (!USERS.hasOwnProperty(h)) {
+      return checkCode(code).then(function (res) {
+        if (!res.ok) {
+          if (res.error) throw new Error(res.error);   // server problem, not a wrong code
           fs.n = (fs.n || 0) + 1;
           if (fs.n >= MAX_FAILS) fs = { n: 0, until: Date.now() + WAIT_SECONDS * 1000 };
           sset(FAIL_KEY, JSON.stringify(fs));
           return { ok: false, wait: fs.until > Date.now() ? WAIT_SECONDS : 0 };
         }
-        sset(SESSION_KEY, JSON.stringify({ h: h, c: code, at: Date.now() }));
+        sset(SESSION_KEY, JSON.stringify({ c: code, r: String(res.rights || ''), at: Date.now() }));
         sdel(FAIL_KEY);
-        return logVisit(code).then(function () { return { ok: true, wait: 0 }; });
+        return { ok: true, wait: 0 };
       });
     }
   };

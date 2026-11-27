@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl" data-theme="light">
 <head>
     <meta charset="UTF-8">
+  <script src="misc-config.js"></script>
   <script src="auth.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Holiday Planner</title>
@@ -175,6 +176,7 @@
   </footer>
 
   <script src="site-data.js"></script>
+  <script src="holidays-data.js"></script>
 <script src="portal.js"></script>
   <script>
   /* ───── Custom popup (replaces window.alert / window.confirm) ───── */
@@ -413,74 +415,9 @@ const translations = {
   }
 };
 
-const holidayDefinitions = {
-  2025: [
-    ['2025-01-07', 'copticChristmas'],
-    ['2025-01-26', 'policeDayObserved'],
-    ['2025-03-29', 'eidFitrHoliday'],
-    ['2025-03-30', 'eidFitrHoliday'],
-    ['2025-03-31', 'eidFitr'],
-    ['2025-04-01', 'eidFitrHoliday'],
-    ['2025-04-02', 'eidFitrHoliday'],
-    ['2025-04-21', 'shamElNessim'],
-    ['2025-04-24', 'sinaiLiberationObserved'],
-    ['2025-04-25', 'sinaiLiberation'],
-    ['2025-05-01', 'laborDay'],
-    ['2025-06-05', 'arafatDay'],
-    ['2025-06-06', 'eidAdha'],
-    ['2025-06-07', 'eidAdhaHoliday'],
-    ['2025-06-08', 'eidAdhaHoliday'],
-    ['2025-06-09', 'eidAdhaHoliday'],
-    ['2025-06-26', 'hijriNewYear'],
-    ['2025-07-03', 'june30Observed'],
-    ['2025-07-24', 'julyRevolutionObserved'],
-    ['2025-09-04', 'prophetBirthday'],
-    ['2025-10-09', 'armedForcesObserved']
-  ],
-  2026: [
-    ['2026-01-07', 'copticChristmas'],
-    ['2026-01-29', 'policeDayObserved'],
-    ['2026-03-19', 'eidFitrHoliday'],
-    ['2026-03-20', 'eidFitr'],
-    ['2026-03-21', 'eidFitrHoliday'],
-    ['2026-03-22', 'eidFitrHoliday'],
-    ['2026-03-23', 'eidFitrHoliday'],
-    ['2026-04-13', 'shamElNessim'],
-    ['2026-04-25', 'sinaiLiberation'],
-    ['2026-05-01', 'laborDay'],
-    ['2026-05-26', 'arafatDay'],
-    ['2026-05-27', 'eidAdha'],
-    ['2026-05-28', 'eidAdhaHoliday'],
-    ['2026-05-29', 'eidAdhaHoliday'],
-    ['2026-05-30', 'eidAdhaHoliday'],
-    ['2026-05-31', 'eidAdhaHoliday'],
-    ['2026-06-16', 'hijriNewYear'],
-    ['2026-07-02', 'june30Observed'],
-    ['2026-07-23', 'julyRevolution'],
-    ['2026-08-27', 'prophetBirthday'],
-    ['2026-10-08', 'armedForcesObserved']
-  ],
-  2027: [
-    ['2027-01-07', 'copticChristmas'],
-    ['2027-01-28', 'policeDayObserved'],
-    ['2027-03-09', 'eidFitr'],
-    ['2027-03-10', 'eidFitrHoliday'],
-    ['2027-03-11', 'eidFitrHoliday'],
-    ['2027-04-25', 'sinaiLiberation'],
-    ['2027-05-01', 'laborDay'],
-    ['2027-05-03', 'shamElNessim'],
-    ['2027-05-15', 'arafatDay'],
-    ['2027-05-16', 'eidAdha'],
-    ['2027-05-17', 'eidAdhaHoliday'],
-    ['2027-05-18', 'eidAdhaHoliday'],
-    ['2027-05-19', 'eidAdhaHoliday'],
-    ['2027-06-18', 'hijriNewYear'],
-    ['2027-07-01', 'june30Observed'],
-    ['2027-07-23', 'julyRevolution'],
-    ['2027-08-27', 'prophetBirthday'],
-    ['2027-10-08', 'armedForcesObserved']
-  ]
-};
+// Official holidays come from the "holidays" sheet (متنوعات) via holidays-data.js; filled in place.
+// A year that has no rows there falls back to getFixedHolidayDefinitions().
+const holidayDefinitions = window.HolidaysData ? window.HolidaysData.byYear : {};
 
 document.addEventListener('DOMContentLoaded', () => {
   loadState();
@@ -492,6 +429,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeWeekendControls();
   generateCalendar();
   updateAll();
+  // Fresher holidays arrived from the sheet after the first draw: redraw once.
+  if (window.HolidaysData) {
+    window.HolidaysData.onUpdate(() => { holidayMapCache = null; generateCalendar(); updateAll(); });
+  }
 });
 
 window.addEventListener('portal-language-change', event => {
@@ -1095,6 +1036,8 @@ function t(key) {
 }
 
 function holidayName(key) {
+  const fromSheet = window.HolidaysData && window.HolidaysData.names[key];
+  if (fromSheet && fromSheet[currentLanguage]) return fromSheet[currentLanguage];
   return translations[currentLanguage].holidayNames[key] || key;
 }
 

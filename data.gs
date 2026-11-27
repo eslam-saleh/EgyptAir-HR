@@ -502,7 +502,7 @@ function errorMessage(err) {
   return err && err.message ? err.message : String(err);
 }
 
-const DIRECTORY_CACHE_KEY = 'emp_dir_v4'; // bumped: departments now come from the basic columns
+const DIRECTORY_CACHE_KEY = 'emp_dir_v6'; // bumped: directory now ships grade + gradeDate (الدرجة الحالية / تاريخ الدرجة)
 // Keep direct spreadsheet edits visible quickly; cache is only a short-lived optimization.
 const DIRECTORY_CACHE_TTL = 15;
 const DIRECTORY_JOB_GROUPS = [
@@ -688,6 +688,8 @@ function mapDirectoryEmployee(row) {
     subDepartment: subDepartment || '',
     job: job || '',
     group: group || '',
+    grade: String(cellAt(row, 'currentGrade') || '').trim(),
+    gradeDate: directoryDate(cellAt(row, 'gradeDate')),
     gender: String(cellAt(row, 'gender') || '').trim(),
     currentCompany: currentCompany || ''
   };
